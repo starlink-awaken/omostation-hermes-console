@@ -14,11 +14,11 @@ bun run lint    # ESLint 检查
 
 ## Architecture
 
-独立 Web 前端项目，待集成至 cockpit：
+已集成至 cockpit Web Dashboard：
 
 ```
 hermes-console/        ── 前端 UI（本仓，TypeScript + React + Vite）
-projects/cockpit/     ── 后端 API + 数据（待集成目标）
+projects/cockpit/     ── 后端 API + 数据（Cockpit FastAPI 启动时自动 Mount dist 目录至 /hermes）
 ```
 
 ### 功能
