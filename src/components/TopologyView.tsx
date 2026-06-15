@@ -35,26 +35,35 @@ const ServiceNode = memo(({ data }: any) => {
     <div style={{ 
       padding: '12px 16px', 
       borderRadius: '8px',
-      background: 'rgba(20, 20, 25, 0.95)',
+      background: 'rgba(10, 10, 15, 0.85)',
       border: `1px solid ${getStatusColor(data.status)}`,
       color: '#fff',
       minWidth: '160px',
-      boxShadow: '0 8px 16px -4px rgba(0, 0, 0, 0.5), 0 4px 8px -4px rgba(0, 0, 0, 0.3)',
-      backdropFilter: 'blur(8px)'
+      boxShadow: `0 0 20px -5px ${getStatusColor(data.status)}, inset 0 0 10px rgba(0,0,0,0.8)`,
+      backdropFilter: 'blur(12px)',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
-      <Handle type="target" position={Position.Top} style={{ background: '#555' }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+      {/* Cyberpunk scanline effect */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: '100%',
+        background: 'linear-gradient(rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%)',
+        backgroundSize: '100% 4px', pointerEvents: 'none', zIndex: 0, opacity: 0.5
+      }} />
+      
+      <Handle type="target" position={Position.Top} style={{ background: getStatusColor(data.status), boxShadow: `0 0 10px ${getStatusColor(data.status)}`, width: 10, height: 10 }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', position: 'relative', zIndex: 1 }}>
         <Server size={18} color={getStatusColor(data.status)} />
         <span style={{ fontWeight: 600, fontSize: '14px', letterSpacing: '0.02em' }}>{data.name}</span>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', position: 'relative', zIndex: 1 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           {getStatusIcon(data.status)} 
-          <span style={{ textTransform: 'capitalize' }}>{data.status}</span>
+          <span style={{ textTransform: 'capitalize', textShadow: `0 0 5px ${getStatusColor(data.status)}` }}>{data.status}</span>
         </span>
-        {data.latency && <span>{data.latency}</span>}
+        {data.latency && <span style={{ color: '#0ea5e9', textShadow: '0 0 5px #0ea5e9' }}>{data.latency}</span>}
       </div>
-      <Handle type="source" position={Position.Bottom} style={{ background: '#555' }} />
+      <Handle type="source" position={Position.Bottom} style={{ background: getStatusColor(data.status), boxShadow: `0 0 10px ${getStatusColor(data.status)}`, width: 10, height: 10 }} />
     </div>
   );
 });
