@@ -3,7 +3,8 @@
 > **Layer**: L3 入口层  
 > **Role**: 操作员控制台 Web 视图 — 观察/调度/调试 OMO 多 Agent 工作流  
 > **Stack**: TypeScript, React 19, Vite, Bun, React Flow  
-> **Health**: 🟡 待集成至 cockpit
+> **Health**: See local build verification and cockpit integration state
+> **SSOT**: 集成状态、构建状态、入口挂载情况以本项目验证链和 workspace governance SSOT 为准
 >
 > 系统全景参见：[`docs/ARCHITECTURE-DIAGRAM.md`](../docs/ARCHITECTURE-DIAGRAM.md)
 
