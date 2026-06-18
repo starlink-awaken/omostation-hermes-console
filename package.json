@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "bun test"
+    "test": "bash tests/baseline-check.sh"
   },
   "dependencies": {
     "lucide-react": "^1.17.0",
