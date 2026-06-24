@@ -7,6 +7,9 @@ import SettingsView from './SettingsView';
 import WorkflowsView from './WorkflowsView';
 import TopologyView from './TopologyView';
 import ComputeView from './ComputeView';
+import { DashboardPage as GBrainDashboard } from './GBrain/GBrainDashboard';
+import DebtView from './DebtView';
+import ObservabilityView from './ObservabilityView';
 import './Dashboard.css';
 
 interface Service {
@@ -140,6 +143,20 @@ export default function Dashboard() {
             <Settings size={18} />
             <span>系统设置</span>
           </button>
+          <button 
+            className={`nav-item ${activeTab === 'Debt' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Debt')}
+          >
+            <AlertTriangle size={18} />
+            <span>债务治理</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'Observability' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Observability')}
+          >
+            <Activity size={18} />
+            <span>系统可观测</span>
+          </button>
         </nav>
       </aside>
 
@@ -243,7 +260,10 @@ export default function Dashboard() {
           )}
 
           {activeTab === 'Knowledge' && (
-            <MemoryInjector />
+            <div className="gbrain-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <GBrainDashboard />
+              <MemoryInjector />
+            </div>
           )}
 
           {activeTab === 'Workflows' && (
@@ -256,6 +276,14 @@ export default function Dashboard() {
 
           {activeTab === 'Settings' && (
             <SettingsView />
+          )}
+
+          {activeTab === 'Debt' && (
+            <DebtView />
+          )}
+
+          {activeTab === 'Observability' && (
+            <ObservabilityView />
           )}
         </div>
       </main>
