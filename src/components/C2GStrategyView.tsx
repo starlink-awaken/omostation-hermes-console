@@ -56,6 +56,27 @@ export default function C2GStrategyView() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fixing, setFixing] = useState(false);
+  const [fixResult, setFixResult] = useState<string | null>(null);
+
+  const handleFixDrift = async () => {
+    setFixing(true);
+    setFixResult(null);
+    try {
+      const res = await fetch('/api/omos/fix-drift', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.status === 'ok') {
+        setFixResult(data.msg || '自愈完成');
+        fetchData();
+      } else {
+        setFixResult('自愈失败: ' + (data.error || '原因未知'));
+      }
+    } catch (err: any) {
+      setFixResult('网络异常: ' + err.message);
+    } finally {
+      setFixing(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -194,7 +215,7 @@ export default function C2GStrategyView() {
           borderLeft: `3px solid ${check?.compliant ? 'var(--antd-success)' : 'var(--antd-error)'}`,
           background: check?.compliant ? 'transparent' : 'rgba(255, 71, 87, 0.02)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <div className="stat-info" style={{ flex: 1 }}>
               <h3>SSOT 漂移与合规守卫</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0' }}>
@@ -210,10 +231,29 @@ export default function C2GStrategyView() {
                   </>
                 )}
               </div>
-              <p className="text-muted" style={{ fontSize: '11px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
-                {check?.guidance || '无约束校验反馈'}
+              <p className="text-muted" style={{ fontSize: '11px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                {fixResult || check?.guidance || '无约束校验反馈'}
               </p>
             </div>
+            
+            {!check?.compliant && (
+              <button
+                onClick={handleFixDrift}
+                disabled={fixing}
+                className="antd-btn"
+                style={{
+                  fontSize: '11px',
+                  padding: '4px 8px',
+                  background: 'rgba(255, 71, 87, 0.12)',
+                  color: 'var(--antd-error)',
+                  border: '1px solid rgba(255, 71, 87, 0.25)',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                {fixing ? '正在修复...' : '一键自愈'}
+              </button>
+            )}
           </div>
         </div>
       </div>
