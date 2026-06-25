@@ -21,7 +21,9 @@ import {
   ClipboardList,
   Zap,
   Command,
-  Compass
+  Compass,
+  Globe,
+  Briefcase
 } from 'lucide-react';
 import SandboxTerminal from './SandboxTerminal';
 import MemoryInjector from './MemoryInjector';
@@ -41,6 +43,8 @@ import LogViewerPage from './LogViewerPage';
 import TaskCenterPage from './TaskCenterPage';
 import PerformanceMonitorPage from './PerformanceMonitorPage';
 import C2GStrategyView from './C2GStrategyView';
+import McpMeshView from './McpMeshView';
+import AssetsView from './AssetsView';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
 import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
@@ -72,10 +76,12 @@ export default function Dashboard() {
   const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette([
     { id: 'home', label: '首页', description: '返回首页', action: () => setActiveTab('Home') },
     { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => setActiveTab('Overview') },
+    { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => setActiveTab('McpMesh') },
     { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => setActiveTab('Topology') },
     { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => setActiveTab('Compute') },
     { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => setActiveTab('Knowledge') },
     { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => setActiveTab('Engines') },
+    { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => setActiveTab('Assets') },
     { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
     { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
     { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
@@ -113,12 +119,14 @@ export default function Dashboard() {
       case 'Home':
         break;
       case 'Overview':
+      case 'McpMesh':
       case 'Topology':
       case 'Compute':
         items.push({ label: '运行大盘', onClick: () => setActiveTab('Overview') });
         break;
       case 'Knowledge':
       case 'Engines':
+      case 'Assets':
       case 'Workflows':
         items.push({ label: '智能与知识', onClick: () => setActiveTab('Knowledge') });
         break;
@@ -193,12 +201,16 @@ export default function Dashboard() {
         return { title: '首页 (Home)', subtitle: '系统健康总览、实时告警、关键指标趋势。' };
       case 'Overview':
         return { title: '概览中心 (Overview)', subtitle: '实时监控 eCOS v5 微服务环境，掌握集群全貌。' };
+      case 'McpMesh':
+        return { title: 'BOS URI & MCP 网格 (McpMesh)', subtitle: '分布式新实例动态注册与基于域路由的 BOS URI 在线解析调试。' };
       case 'Topology':
         return { title: '全局服务拓扑 (Topology)', subtitle: '可视化服务间的调用流向与网格状态。' };
       case 'Compute':
         return { title: '算力调配大盘 (Compute)', subtitle: '查看分布式节点 CPU/GPU 使用率与任务调度。' };
       case 'Engines':
         return { title: '引擎调度总线 (Engines)', subtitle: '管理 Kairon, Gbrain 等底层知识与智能引擎。' };
+      case 'Assets':
+        return { title: '技术资产资产库 (Assets)', subtitle: '集中索引自动化工作流 (Workflows)、工具管线 (Pipelines) 与智能体自定义开发技能 (Custom Skills)。' };
       case 'Knowledge':
         return { title: '分布式知识中枢 (Knowledge)', subtitle: '跨域检索与记忆摄取管线的状态和监控。' };
       case 'Sandbox':
@@ -291,6 +303,16 @@ export default function Dashboard() {
           <button 
             role="menuitem"
             aria-describedby="group-monitoring"
+            aria-selected={activeTab === 'McpMesh'}
+            className={`nav-item ${activeTab === 'McpMesh' ? 'active' : ''}`}
+            onClick={() => setActiveTab('McpMesh')}
+          >
+            <Globe size={16} aria-hidden="true" />
+            <span>网格与 MCP</span>
+          </button>
+          <button 
+            role="menuitem"
+            aria-describedby="group-monitoring"
             aria-selected={activeTab === 'Topology'}
             className={`nav-item ${activeTab === 'Topology' ? 'active' : ''}`}
             onClick={() => setActiveTab('Topology')}
@@ -330,6 +352,16 @@ export default function Dashboard() {
           >
             <Cpu size={16} aria-hidden="true" />
             <span>引擎调度</span>
+          </button>
+          <button 
+            role="menuitem"
+            aria-describedby="group-intelligence"
+            aria-selected={activeTab === 'Assets'}
+            className={`nav-item ${activeTab === 'Assets' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Assets')}
+          >
+            <Briefcase size={16} aria-hidden="true" />
+            <span>技术资产库</span>
           </button>
           <button 
             role="menuitem"
@@ -617,6 +649,14 @@ export default function Dashboard() {
             <C2GStrategyView />
           )}
 
+          {activeTab === 'McpMesh' && (
+            <McpMeshView />
+          )}
+
+          {activeTab === 'Assets' && (
+            <AssetsView />
+          )}
+
           {activeTab === 'QuestBoard' && (
             <QuestBoard />
           )}
@@ -662,6 +702,8 @@ export default function Dashboard() {
           { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
           { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
           { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => setActiveTab('C2G') },
+          { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => setActiveTab('McpMesh') },
+          { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => setActiveTab('Assets') },
           { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
           { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
           { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
