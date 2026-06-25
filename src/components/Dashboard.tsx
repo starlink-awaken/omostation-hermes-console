@@ -13,7 +13,8 @@ import {
   GitCommit, 
   Network, 
   Trophy,
-  LayoutDashboard
+  LayoutDashboard,
+  Heart
 } from 'lucide-react';
 import SandboxTerminal from './SandboxTerminal';
 import MemoryInjector from './MemoryInjector';
@@ -26,6 +27,7 @@ import { DashboardPage as GBrainDashboard } from './GBrain/GBrainDashboard';
 import DebtView from './DebtView';
 import ObservabilityView from './ObservabilityView';
 import QuestBoard from './QuestBoard';
+import L4HealthView from './L4HealthView';
 import './Dashboard.css';
 
 interface Service {
@@ -114,6 +116,8 @@ export default function Dashboard() {
         return { title: '积分冒险看板 (QuestBoard)', subtitle: '让家庭充满正向激励与智慧成长，打通 Quest 生态。' };
       case 'Observability':
         return { title: '系统运行可观测 (Observability)', subtitle: '多维度链路日志与可观测性分析面板。' };
+      case 'L4Health':
+        return { title: 'L4 域健康监控 (L4 Health)', subtitle: '实时监控 L4 域健康状态、趋势分析和风险评估。' };
       default:
         return { title: '控制台', subtitle: 'eCOS 管理面板' };
     }
@@ -220,6 +224,16 @@ export default function Dashboard() {
 
           {/* Group 3: 治理与可观测 */}
           <div className="nav-group-title" id="group-governance">系统治理</div>
+          <button 
+            role="menuitem"
+            aria-describedby="group-governance"
+            aria-selected={activeTab === 'L4Health'}
+            className={`nav-item ${activeTab === 'L4Health' ? 'active' : ''}`}
+            onClick={() => setActiveTab('L4Health')}
+          >
+            <Heart size={16} aria-hidden="true" />
+            <span>L4 域健康</span>
+          </button>
           <button 
             role="menuitem"
             aria-describedby="group-governance"
@@ -409,6 +423,10 @@ export default function Dashboard() {
 
           {activeTab === 'Observability' && (
             <ObservabilityView />
+          )}
+
+          {activeTab === 'L4Health' && (
+            <L4HealthView />
           )}
         </div>
       </main>
