@@ -388,3 +388,41 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Knowledge Hub Sub-Tabs System */
+.knowledge-tabs-container {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--antd-border-color);
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.knowledge-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--antd-radius-md);
+  color: var(--antd-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.knowledge-tab-btn:hover {
+  color: var(--antd-primary);
+  background: rgba(0, 242, 254, 0.04);
+}
+
+.knowledge-tab-btn.active {
+  color: var(--antd-primary);
+  background: rgba(0, 242, 254, 0.08);
+  border-color: rgba(0, 242, 254, 0.2);
+  box-shadow: inset 0 0 8px rgba(0, 242, 254, 0.05);
+  text-shadow: 0 0 4px rgba(0, 242, 254, 0.2);
+}

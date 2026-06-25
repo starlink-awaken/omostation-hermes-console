@@ -11,8 +11,7 @@ async function apiFetch(path: string, options?: RequestInit) {
     headers: { 'Content-Type': 'application/json', ...options?.headers },
   });
   if (res.status === 401) {
-    // No token cache to retry from. Redirect to login.
-    window.location.hash = '#login';
+    // Throw error so caller components can intercept and show local login form
     throw new Error('Unauthorized');
   }
   if (!res.ok) {
@@ -26,7 +25,6 @@ async function apiFetch(path: string, options?: RequestInit) {
 async function apiFetchText(path: string) {
   const res = await fetch(`${BASE}${path}`, { credentials: 'same-origin' });
   if (res.status === 401) {
-    window.location.hash = '#login';
     throw new Error('Unauthorized');
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

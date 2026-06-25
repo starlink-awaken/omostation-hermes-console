@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './api';
-import { ALLOWED_SCOPES_LIST, type Scope } from '../lib/scope-constants';
+import { ALLOWED_SCOPES_LIST, type Scope } from './scope-constants';
 
 function timeAgo(date: Date): string {
   const s = Math.floor((Date.now() - date.getTime()) / 1000);

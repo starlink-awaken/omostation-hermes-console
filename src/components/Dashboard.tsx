@@ -453,9 +453,8 @@ export default function Dashboard() {
           )}
 
           {activeTab === 'Knowledge' && (
-            <div className="gbrain-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="gbrain-wrapper animate-fade-in">
               <GBrainDashboard />
-              <MemoryInjector />
             </div>
           )}
 
