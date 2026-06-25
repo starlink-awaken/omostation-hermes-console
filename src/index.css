@@ -1,38 +1,42 @@
 :root {
-  /* Ant Design Theme Tokens (Dark Mode) */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  /* Cybertech Theme Design Tokens */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   
-  --antd-primary: #1677ff;
-  --antd-primary-hover: #4096ff;
-  --antd-primary-active: #0958d9;
-  --antd-primary-outline: rgba(22, 119, 255, 0.2);
+  --antd-primary: #00f2fe; /* Cyber Neon Blue/Cyan */
+  --antd-primary-hover: #4facfe;
+  --antd-primary-active: #0052d4;
+  --antd-primary-outline: rgba(0, 242, 254, 0.2);
   
-  --antd-success: #52c41a;
-  --antd-success-bg: rgba(82, 196, 26, 0.1);
-  --antd-warning: #faad14;
-  --antd-warning-bg: rgba(250, 173, 20, 0.1);
-  --antd-error: #ff4d4f;
-  --antd-error-bg: rgba(255, 77, 79, 0.1);
-  --antd-info: #1677ff;
+  --antd-success: #05f3a2;
+  --antd-success-bg: rgba(5, 243, 162, 0.1);
+  --antd-warning: #ffb800;
+  --antd-warning-bg: rgba(255, 184, 0, 0.1);
+  --antd-error: #ff4757;
+  --antd-error-bg: rgba(255, 71, 87, 0.1);
+  --antd-info: #00d2ff;
   
-  --antd-bg-layout: #001529; /* AntD Classic Dark Sider Base */
-  --antd-bg-body: #0b0f19;   /* Pure SaaS dark layout bg */
-  --antd-bg-container: #151b26;
-  --antd-bg-elevated: #1f2937;
+  /* Cyber Space Layout Colors */
+  --antd-bg-layout: #060913;    /* Deep cosmic blue sider */
+  --antd-bg-body: #0a0e1c;      /* Deep cyber space dark body */
+  --antd-bg-container: rgba(16, 24, 48, 0.7); /* Translucent cyber deck container */
+  --antd-bg-elevated: #151f38;
   
-  --antd-border-color: rgba(255, 255, 255, 0.08);
-  --antd-border-color-hover: rgba(255, 255, 255, 0.16);
+  --tech-cyan-glow: 0 0 12px rgba(0, 242, 254, 0.15);
+  --tech-glow-intense: 0 0 20px rgba(0, 242, 254, 0.3);
   
-  --antd-text-primary: rgba(255, 255, 255, 0.88);
-  --antd-text-secondary: rgba(255, 255, 255, 0.65);
-  --antd-text-muted: rgba(255, 255, 255, 0.45);
+  --antd-border-color: rgba(0, 242, 254, 0.15); /* Tech cyan hairline borders */
+  --antd-border-color-hover: rgba(0, 242, 254, 0.35);
   
-  --antd-radius-lg: 8px;
-  --antd-radius-md: 6px;
-  --antd-radius-sm: 4px;
+  --antd-text-primary: #e0f2fe;    /* Bright ice-blue/white */
+  --antd-text-secondary: #94a3b8;  /* Tech light grey-blue */
+  --antd-text-muted: #475569;
   
-  --antd-shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.3);
-  --antd-shadow-dropdown: 0 6px 16px 0 rgba(0, 0, 0, 0.6), 0 3px 6px -4px rgba(0, 0, 0, 0.4), 0 9px 28px 8px rgba(0, 0, 0, 0.2);
+  --antd-radius-lg: 6px;
+  --antd-radius-md: 4px;
+  --antd-radius-sm: 2px;
+  
+  --antd-shadow-card: 0 0 15px rgba(0, 242, 254, 0.05), inset 0 0 15px rgba(0, 242, 254, 0.02);
+  --antd-shadow-dropdown: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -44,16 +48,37 @@
 body {
   font-family: var(--font-sans);
   background: var(--antd-bg-body);
+  /* Cyber Ambient Background Grid Lines */
+  background-image: 
+    linear-gradient(rgba(0, 242, 254, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
   color: var(--antd-text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
+}
+
+/* Ambient Neon Lights on Body */
+body::before {
+  content: "";
+  position: fixed;
+  top: -10%;
+  left: 30%;
+  width: 40vw;
+  height: 40vw;
+  background: radial-gradient(circle, rgba(0, 242, 254, 0.05), transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* Typography Resets */
 h1, h2, h3, h4, h5, h6 {
   color: var(--antd-text-primary);
   font-weight: 600;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.1);
 }
 
 p {
@@ -61,21 +86,21 @@ p {
   line-height: 1.5715;
 }
 
-/* Accessibility (a11y) Focus Outline style following AntD standards */
+/* Accessibility (a11y) Focus Outline style matching neon cyan glow */
 *:focus-visible {
   outline: 2px solid var(--antd-primary);
   outline-offset: 1px;
-  box-shadow: 0 0 0 2px var(--antd-primary-outline);
+  box-shadow: var(--tech-glow-intense);
 }
 
-/* Global utility classes matching Ant Design styles */
+/* Global utility classes matching Ant Design styles with Cybertech accents */
 .antd-btn {
-  font-size: 14px;
+  font-size: 13px;
   height: 32px;
-  padding: 4px 15px;
+  padding: 4px 16px;
   border-radius: var(--antd-radius-md);
   border: 1px solid var(--antd-border-color);
-  background: transparent;
+  background: rgba(16, 24, 48, 0.4);
   color: var(--antd-text-primary);
   cursor: pointer;
   display: inline-flex;
@@ -84,11 +109,15 @@ p {
   gap: 8px;
   transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
   user-select: none;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .antd-btn:hover {
   color: var(--antd-primary-hover);
   border-color: var(--antd-primary-hover);
+  box-shadow: var(--tech-cyan-glow);
+  background: rgba(16, 24, 48, 0.8);
 }
 
 .antd-btn:active {
@@ -97,15 +126,18 @@ p {
 }
 
 .antd-btn-primary {
-  background: var(--antd-primary);
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.1) 0%, rgba(79, 172, 254, 0.2) 100%);
   border-color: var(--antd-primary);
-  color: #fff;
+  color: var(--antd-primary);
+  text-shadow: 0 0 4px rgba(0, 242, 254, 0.4);
+  box-shadow: var(--tech-cyan-glow);
 }
 
 .antd-btn-primary:hover {
-  background: var(--antd-primary-hover);
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.2) 0%, rgba(79, 172, 254, 0.3) 100%);
   border-color: var(--antd-primary-hover);
   color: #fff;
+  box-shadow: var(--tech-glow-intense);
 }
 
 .antd-btn-primary:active {
@@ -117,21 +149,23 @@ p {
 .antd-btn-danger {
   color: var(--antd-error);
   border-color: var(--antd-error);
+  background: rgba(255, 71, 87, 0.05);
 }
 
 .antd-btn-danger:hover {
   color: #fff;
   background: var(--antd-error);
   border-color: var(--antd-error);
+  box-shadow: 0 0 12px rgba(255, 71, 87, 0.2);
 }
 
 .antd-input {
-  font-size: 14px;
+  font-size: 13px;
   height: 32px;
-  padding: 4px 11px;
+  padding: 4px 12px;
   border-radius: var(--antd-radius-md);
   border: 1px solid var(--antd-border-color);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(6, 9, 19, 0.6);
   color: var(--antd-text-primary);
   outline: none;
   transition: all 0.2s;
@@ -143,11 +177,13 @@ p {
 
 .antd-input:focus {
   border-color: var(--antd-primary);
-  box-shadow: 0 0 0 2px var(--antd-primary-outline);
+  box-shadow: var(--tech-cyan-glow);
 }
 
 .antd-card {
   background: var(--antd-bg-container);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--antd-border-color);
   border-radius: var(--antd-radius-lg);
   padding: 24px;
@@ -157,20 +193,21 @@ p {
 
 .antd-card:hover {
   border-color: var(--antd-border-color-hover);
+  box-shadow: var(--tech-cyan-glow), inset 0 0 8px rgba(0, 242, 254, 0.05);
 }
 
 /* Scrollbar reset */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
+  background: rgba(0, 242, 254, 0.2);
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.24);
+  background: rgba(0, 242, 254, 0.4);
 }

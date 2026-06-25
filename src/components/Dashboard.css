@@ -1,4 +1,4 @@
-/* Ant Design Sider & Header Layout System */
+/* Cybertech Sider & Header Layout System */
 
 .dashboard-container {
   display: flex;
@@ -8,7 +8,7 @@
   background-color: var(--antd-bg-body);
 }
 
-/* Sider Menu (AntD Style) */
+/* Sider Menu (Cybertech Style) */
 .sidebar {
   width: 256px;
   min-width: 256px;
@@ -17,35 +17,39 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--antd-border-color);
-  box-shadow: 2px 0 8px 0 rgba(0, 0, 0, 0.15);
+  box-shadow: 4px 0 16px rgba(0, 242, 254, 0.04);
   z-index: 10;
 }
 
 .sidebar-header {
   height: 64px;
-  padding: 0 16px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid var(--antd-border-color);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .logo-box {
   width: 32px;
   height: 32px;
   border-radius: var(--antd-radius-md);
-  background: var(--antd-primary);
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: #060913;
+  box-shadow: var(--tech-cyan-glow);
 }
 
 .sidebar-header h2 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--antd-text-primary);
-  letter-spacing: 0.5px;
+  color: #fff;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
 }
 
 .sidebar-nav {
@@ -57,14 +61,15 @@
   gap: 4px;
 }
 
-/* AntD Group Header */
+/* Cyber Group Header */
 .nav-group-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--antd-text-muted);
-  padding: 12px 24px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #60a5fa; /* Cyber electric blue */
+  padding: 12px 20px 6px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
 }
 
 .nav-item {
@@ -72,29 +77,34 @@
   align-items: center;
   gap: 12px;
   height: 40px;
-  margin: 0 8px;
+  margin: 0 12px;
   padding: 0 16px;
   border-radius: var(--antd-radius-md);
   color: var(--antd-text-secondary);
   text-decoration: none;
   font-weight: 400;
-  font-size: 14px;
-  border: none;
+  font-size: 13px;
+  border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
   text-align: left;
-  transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+  transition: all 0.25s cubic-bezier(0.645, 0.045, 0.355, 1);
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--antd-text-primary);
+  background: rgba(0, 242, 254, 0.04);
+  color: var(--antd-primary);
+  border-color: rgba(0, 242, 254, 0.1);
+  padding-left: 20px; /* Slight micro-interaction nudge */
 }
 
 .nav-item.active {
-  background: var(--antd-primary);
-  color: #ffffff;
+  background: linear-gradient(90deg, rgba(0, 242, 254, 0.15) 0%, transparent 100%);
+  color: var(--antd-primary);
+  border: 1px solid var(--antd-border-color);
   font-weight: 500;
+  text-shadow: 0 0 6px rgba(0, 242, 254, 0.4);
+  box-shadow: inset 3px 0 0 var(--antd-primary), var(--antd-shadow-card);
 }
 
 /* Main Layout Area */
@@ -110,7 +120,9 @@
 .topbar {
   height: 64px;
   min-height: 64px;
-  background: var(--antd-bg-container);
+  background: rgba(16, 24, 48, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--antd-border-color);
   display: flex;
   justify-content: space-between;
@@ -122,7 +134,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(6, 9, 19, 0.6);
   border: 1px solid var(--antd-border-color);
   padding: 5px 12px;
   border-radius: var(--antd-radius-md);
@@ -132,6 +144,7 @@
 
 .search-bar:hover {
   border-color: var(--antd-primary-hover);
+  box-shadow: var(--tech-cyan-glow);
 }
 
 .search-bar input {
@@ -140,42 +153,47 @@
   color: var(--antd-text-primary);
   outline: none;
   width: 100%;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .search-bar input::placeholder {
-  color: var(--antd-text-muted);
+  color: var(--antd-text-secondary);
+  opacity: 0.6;
 }
 
 .user-profile {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 4px 8px;
+  padding: 4px 12px;
   border-radius: var(--antd-radius-md);
   cursor: pointer;
   transition: all 0.2s;
+  border: 1px solid transparent;
 }
 
 .user-profile:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(0, 242, 254, 0.04);
+  border-color: rgba(0, 242, 254, 0.1);
+  box-shadow: var(--tech-cyan-glow);
 }
 
 .avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #1677ff;
-  color: #fff;
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  color: #060913;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 500;
-  font-size: 12px;
+  font-weight: 600;
+  font-size: 11px;
+  box-shadow: var(--tech-cyan-glow);
 }
 
 .user-profile span {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--antd-text-secondary);
 }
 
@@ -193,7 +211,7 @@
 .hero-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   border-bottom: 1px solid var(--antd-border-color);
   padding-bottom: 16px;
 }
@@ -205,7 +223,7 @@
 }
 
 .hero-subtitle {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--antd-text-secondary);
 }
 
@@ -218,6 +236,8 @@
 
 .stat-card {
   background: var(--antd-bg-container);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--antd-border-color);
   border-radius: var(--antd-radius-lg);
   padding: 16px 24px;
@@ -230,11 +250,12 @@
 
 .stat-card:hover {
   border-color: var(--antd-border-color-hover);
+  box-shadow: var(--tech-cyan-glow), inset 0 0 10px rgba(0, 242, 254, 0.05);
 }
 
 .stat-icon-wrapper {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -244,11 +265,13 @@
 .pulse-success {
   background: var(--antd-success-bg);
   color: var(--antd-success);
+  box-shadow: 0 0 10px rgba(5, 243, 162, 0.1);
 }
 
 .pulse-accent {
-  background: rgba(22, 119, 255, 0.1);
+  background: rgba(0, 242, 254, 0.08);
   color: var(--antd-primary);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.1);
 }
 
 .stat-info {
@@ -258,15 +281,16 @@
 }
 
 .stat-info h3 {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--antd-text-secondary);
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--antd-text-primary);
+  text-shadow: 0 0 6px rgba(0, 242, 254, 0.15);
 }
 
 /* Section Elements */
@@ -276,9 +300,11 @@
   align-items: center;
 }
 
-/* AntD Table styles */
+/* Cybertech Table styles */
 .services-list {
   background: var(--antd-bg-container);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--antd-border-color);
   border-radius: var(--antd-radius-lg);
   box-shadow: var(--antd-shadow-card);
@@ -292,22 +318,28 @@
 }
 
 .services-table th {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 242, 254, 0.02);
   padding: 16px 24px;
-  color: var(--antd-text-secondary);
+  color: #93c5fd; /* Soft tech blue */
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
   border-bottom: 1px solid var(--antd-border-color);
 }
 
 .services-table td {
   padding: 16px 24px;
-  border-bottom: 1px solid var(--antd-border-color);
-  font-size: 14px;
+  border-bottom: 1px solid rgba(0, 242, 254, 0.08);
+  font-size: 13px;
+  color: var(--antd-text-secondary);
+}
+
+.service-row {
+  transition: all 0.2s;
 }
 
 .service-row:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 242, 254, 0.02);
+  color: var(--antd-text-primary);
 }
 
 .status-badge {
@@ -320,14 +352,17 @@
 
 .status-badge.online {
   color: var(--antd-success);
+  text-shadow: 0 0 6px rgba(5, 243, 162, 0.2);
 }
 
 .status-badge.offline {
   color: var(--antd-error);
+  text-shadow: 0 0 6px rgba(255, 71, 87, 0.2);
 }
 
 .status-badge.degraded {
   color: var(--antd-warning);
+  text-shadow: 0 0 6px rgba(255, 184, 0, 0.2);
 }
 
 .loading-state {
@@ -341,12 +376,13 @@
 }
 
 .spinner {
-  width: 28px;
-  height: 28px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(0, 242, 254, 0.1);
   border-top-color: var(--antd-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  box-shadow: var(--tech-cyan-glow);
 }
 
 @keyframes spin {
