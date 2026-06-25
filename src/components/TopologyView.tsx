@@ -11,59 +11,60 @@ import ReactFlow, {
 import type { Node, Edge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Server, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import './Dashboard.css';
 
 const ServiceNode = memo(({ data }: any) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'online': return <CheckCircle size={14} style={{ color: '#10b981' }} />;
-      case 'offline': return <XCircle size={14} style={{ color: '#ef4444' }} />;
-      case 'degraded': return <AlertTriangle size={14} style={{ color: '#f59e0b' }} />;
+      case 'online': return <CheckCircle size={12} style={{ color: 'var(--antd-success)' }} />;
+      case 'offline': return <XCircle size={12} style={{ color: 'var(--antd-error)' }} />;
+      case 'degraded': return <AlertTriangle size={12} style={{ color: 'var(--antd-warning)' }} />;
       default: return null;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return '#10b981';
-      case 'offline': return '#ef4444';
-      case 'degraded': return '#f59e0b';
-      default: return '#6b7280';
+      case 'online': return 'var(--antd-success)';
+      case 'offline': return 'var(--antd-error)';
+      case 'degraded': return 'var(--antd-warning)';
+      default: return 'var(--antd-text-muted)';
     }
   };
 
   return (
     <div style={{ 
       padding: '12px 16px', 
-      borderRadius: '8px',
-      background: 'rgba(10, 10, 15, 0.85)',
+      borderRadius: 'var(--antd-radius-lg)',
+      background: 'rgba(6, 9, 19, 0.9)',
       border: `1px solid ${getStatusColor(data.status)}`,
       color: '#fff',
       minWidth: '160px',
-      boxShadow: `0 0 20px -5px ${getStatusColor(data.status)}, inset 0 0 10px rgba(0,0,0,0.8)`,
-      backdropFilter: 'blur(12px)',
+      boxShadow: `0 0 15px rgba(0, 242, 254, 0.05), inset 0 0 10px rgba(0,0,0,0.8)`,
+      backdropFilter: 'blur(8px)',
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Cyberpunk scanline effect */}
+      {/* Cybertech grid background effect inside node */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: '100%',
-        background: 'linear-gradient(rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%)',
+        background: 'linear-gradient(rgba(0, 242, 254, 0.015) 50%, rgba(0,0,0,0.2) 50%)',
         backgroundSize: '100% 4px', pointerEvents: 'none', zIndex: 0, opacity: 0.5
       }} />
       
-      <Handle type="target" position={Position.Top} style={{ background: getStatusColor(data.status), boxShadow: `0 0 10px ${getStatusColor(data.status)}`, width: 10, height: 10 }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', position: 'relative', zIndex: 1 }}>
-        <Server size={18} color={getStatusColor(data.status)} />
-        <span style={{ fontWeight: 600, fontSize: '14px', letterSpacing: '0.02em' }}>{data.name}</span>
+      <Handle type="target" position={Position.Top} style={{ background: getStatusColor(data.status), width: 8, height: 8 }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', position: 'relative', zIndex: 1 }}>
+        <Server size={14} style={{ color: getStatusColor(data.status) }} />
+        <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--antd-text-primary)' }}>{data.name}</span>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9ca3af', position: 'relative', zIndex: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--antd-text-secondary)', position: 'relative', zIndex: 1 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           {getStatusIcon(data.status)} 
-          <span style={{ textTransform: 'capitalize', textShadow: `0 0 5px ${getStatusColor(data.status)}` }}>{data.status}</span>
+          <span style={{ textTransform: 'capitalize', color: getStatusColor(data.status), fontWeight: 500 }}>{data.status}</span>
         </span>
-        {data.latency && <span style={{ color: '#0ea5e9', textShadow: '0 0 5px #0ea5e9' }}>{data.latency}</span>}
+        {data.latency && <span style={{ color: 'var(--antd-primary)', textShadow: '0 0 4px rgba(0, 242, 254, 0.3)' }}>{data.latency}</span>}
       </div>
-      <Handle type="source" position={Position.Bottom} style={{ background: getStatusColor(data.status), boxShadow: `0 0 10px ${getStatusColor(data.status)}`, width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Bottom} style={{ background: getStatusColor(data.status), width: 8, height: 8 }} />
     </div>
   );
 });
@@ -99,8 +100,8 @@ export default function TopologyView() {
         const newEdges: Edge[] = [];
         
         const centerX = 350;
-        const centerY = 250;
-        const radius = 200;
+        const centerY = 200;
+        const radius = 180;
 
         const meshNode = rawServices.find((s: any) => s.name.includes('Agora')) || rawServices[0];
         const otherNodes = rawServices.filter((s: any) => s !== meshNode);
@@ -137,10 +138,10 @@ export default function TopologyView() {
               source: meshNode.name,
               target: svc.name,
               animated: status === 'online', // animate flow if online
-              style: { stroke: status === 'offline' ? '#ef4444' : '#6366f1', strokeWidth: 2, opacity: 0.7 },
+              style: { stroke: status === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)', strokeWidth: 2, opacity: 0.6 },
               markerEnd: { 
                 type: MarkerType.ArrowClosed, 
-                color: status === 'offline' ? '#ef4444' : '#6366f1' 
+                color: status === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)' 
               }
             });
           }
@@ -161,15 +162,16 @@ export default function TopologyView() {
   }, [setNodes, setEdges]);
 
   return (
-    <div className="glass-panel animate-fade-in" style={{ width: '100%', height: 'calc(100vh - 180px)', marginTop: '20px', display: 'flex', flexDirection: 'column' }}>
-      <div className="section-header" style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#e5e7eb', margin: 0 }}>全局拓扑地图 (Sage View)</h2>
-        <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '4px' }}>上帝视角：实时网络流、路由策略与熔断状态</p>
+    <div className="antd-card animate-fade-in" style={{ width: '100%', height: 'calc(100vh - 200px)', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--antd-border-color)' }}>
+        <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>全局网络拓扑地图 (Sage View)</h2>
+        <p className="text-muted" style={{ fontSize: '12px', marginTop: '4px' }}>上帝视角：实时服务网格拓扑调用流、心跳响应与熔断状态</p>
       </div>
+      
       <div style={{ flex: 1, position: 'relative' }}>
         {loading ? (
           <div className="loading-state" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-            <div className="spinner" style={{ marginBottom: '16px' }}></div>
+            <div className="spinner" aria-hidden="true" style={{ marginBottom: '16px' }}></div>
             <p className="text-muted">正在探测微服务网格拓扑...</p>
           </div>
         ) : (
@@ -182,8 +184,12 @@ export default function TopologyView() {
             fitView
             attributionPosition="bottom-right"
           >
-            <Background color="rgba(255,255,255,0.05)" gap={24} size={2} />
-            <Controls style={{ background: 'rgba(20,20,25,0.8)', border: '1px solid rgba(255,255,255,0.1)', fill: '#fff' }} />
+            <Background color="rgba(0, 242, 254, 0.05)" gap={24} size={1} />
+            <Controls style={{ 
+              background: 'var(--antd-bg-elevated)', 
+              border: '1px solid var(--antd-border-color)', 
+              fill: 'var(--antd-text-primary)' 
+            }} />
           </ReactFlow>
         )}
       </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Server, Activity, DollarSign, Cpu } from 'lucide-react';
+import { Server, DollarSign } from 'lucide-react';
+import './Dashboard.css';
 
 export default function ComputeView() {
   const [data, setData] = useState<any>(null);
@@ -25,8 +26,9 @@ export default function ComputeView() {
 
   if (loading) {
     return (
-      <div className="glass-panel animate-fade-in" style={{ padding: '20px', marginTop: '20px' }}>
-        <p className="text-muted">加载算力网格数据...</p>
+      <div className="loading-state" role="status" aria-live="polite">
+        <div className="spinner" aria-hidden="true"></div>
+        <p>正在读取混合云算力网格数据...</p>
       </div>
     );
   }
@@ -35,80 +37,94 @@ export default function ComputeView() {
   const quota = data?.quota?.quota || [];
 
   return (
-    <div className="glass-panel animate-fade-in" style={{ padding: '20px', marginTop: '20px' }}>
-      <div className="section-header" style={{ marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>混合云算力监控 (Compute Grid)</h2>
-        <p className="text-muted">Local-Mac / LAN / Cloud 流转与账单状态</p>
-      </div>
-
-      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-        {/* Nodes section */}
-        <div style={{ flex: '1 1 300px' }}>
-          <h3 style={{ marginBottom: '10px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Server size={18} className="text-accent" /> 物理节点拓扑
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+        
+        {/* Nodes Section */}
+        <section aria-label="算力物理节点拓扑" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
+            <Server size={16} aria-hidden="true" className="text-accent" /> 
+            物理节点拓扑
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {nodes.map((node: any) => (
-              <div key={node.id} style={{ 
-                padding: '15px', 
-                background: 'rgba(255,255,255,0.02)', 
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
+              <div 
+                key={node.id} 
+                className="antd-card"
+                style={{ 
+                  padding: '16px 20px', 
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: 'bold' }}>{node.name}</div>
-                  <div className="text-muted" style={{ fontSize: '0.85rem' }}>{node.model}</div>
+                  <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--antd-text-primary)' }}>{node.name}</div>
+                  <div className="text-muted" style={{ fontSize: '12px', marginTop: '2px' }}>{node.model}</div>
                 </div>
+                
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ 
-                    color: node.status === 'online' ? '#10b981' : '#f59e0b',
-                    fontSize: '0.85rem',
-                    textTransform: 'uppercase'
-                  }}>● {node.status}</span>
-                  <div className="text-muted" style={{ fontSize: '0.8rem' }}>{node.type}</div>
+                    color: node.status === 'online' ? 'var(--antd-success)' : 'var(--antd-warning)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    textShadow: node.status === 'online' ? '0 0 6px rgba(5, 243, 162, 0.2)' : 'none'
+                  }}>
+                    ● {node.status}
+                  </span>
+                  <div className="text-muted" style={{ fontSize: '11px', marginTop: '2px' }}>{node.type}</div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Quota section */}
-        <div style={{ flex: '1 1 300px' }}>
-          <h3 style={{ marginBottom: '10px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <DollarSign size={18} className="text-success" /> CodexBar 配额缓存
+        {/* Quota Section */}
+        <section aria-label="模型提供商配额" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
+            <DollarSign size={16} aria-hidden="true" className="text-success" /> 
+            模型供应商 API 额度
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {quota.length === 0 ? (
-              <p className="text-muted">未找到配额数据 (可能缓存中无数据)</p>
+              <div className="antd-card" style={{ padding: '24px', textAlign: 'center', color: 'var(--antd-text-secondary)' }}>
+                <p style={{ fontSize: '13px' }}>暂无活跃配额记录</p>
+              </div>
             ) : (
               quota.map((q: any, i: number) => (
-                <div key={i} style={{
-                  padding: '15px',
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>{q.provider}</div>
+                <div 
+                  key={i} 
+                  className="antd-card"
+                  style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '6px' }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--antd-text-primary)', textTransform: 'capitalize' }}>
+                    {q.provider}
+                  </div>
+                  
                   {q.error ? (
-                    <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '4px' }}>{q.error.message || 'Error fetching quota'}</div>
-                  ) : (
-                    <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-                      可用: {q.available ? '是' : '否'}
+                    <div style={{ color: 'var(--antd-error)', fontSize: '12px' }}>
+                      {q.error.message || '获取配额数据异常'}
                     </div>
-                  )}
-                  {q.provider === 'openai' && q.usage && (
-                     <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-                       Token 额度: {q.usage.total_granted} / 已用: {q.usage.total_used}
-                     </div>
+                  ) : (
+                    <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--antd-text-secondary)' }}>
+                      <span>鉴权状态: <strong style={{ color: q.available ? 'var(--antd-success)' : 'var(--antd-error)' }}>{q.available ? '可用' : '失效'}</strong></span>
+                      {q.provider === 'openai' && q.usage && (
+                        <span className="text-muted">
+                          Token 已用: {q.usage.total_used} / {q.usage.total_granted}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               ))
             )}
           </div>
-        </div>
+        </section>
+        
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Terminal, Play, Loader2, ShieldAlert } from 'lucide-react';
+import './Dashboard.css';
 
 export default function SandboxTerminal() {
   const [code, setCode] = useState('print("Hello from eCOS Sandbox!")\n');
@@ -39,66 +40,86 @@ export default function SandboxTerminal() {
   };
 
   return (
-    <div className="sandbox-container animate-fade-in" style={{ animationDelay: '0.2s', padding: '1rem' }}>
-      <div className="section-header" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <Terminal size={24} className="text-accent" />
-        <h2>运行时沙箱 (KEI 隔离)</h2>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-warning)', fontSize: '0.85rem' }}>
-          <ShieldAlert size={16} />
-          <span>AST 与系统级隔离已启用</span>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="section-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Terminal size={18} aria-hidden="true" className="text-accent" />
+          <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>运行时沙箱 (KEI 隔离)</h2>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--antd-warning)', fontSize: '13px' }}>
+          <ShieldAlert size={14} aria-hidden="true" />
+          <span>AST 与进程级沙箱保护已启用</span>
         </div>
       </div>
       
-      <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+      <div className="antd-card" style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
           {/* Editor */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.9rem', color: 'var(--color-muted)' }}>Python 执行代码</label>
+          <div style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label htmlFor="sandbox-code-editor" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>Python 待执行代码</label>
             <textarea 
+              id="sandbox-code-editor"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               style={{
                 width: '100%',
                 height: '300px',
-                backgroundColor: 'rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                padding: '1rem',
-                color: '#00ffcc',
+                backgroundColor: 'rgba(6, 9, 19, 0.6)',
+                border: '1px solid var(--antd-border-color)',
+                borderRadius: 'var(--antd-radius-md)',
+                padding: '12px',
+                color: 'var(--antd-primary)',
                 fontFamily: 'monospace',
-                fontSize: '14px',
+                fontSize: '13px',
                 resize: 'none',
-                outline: 'none'
+                outline: 'none',
+                transition: 'all 0.2s'
+              }}
+              className="antd-textarea-focus"
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--antd-primary)';
+                e.target.style.boxShadow = 'var(--tech-cyan-glow)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--antd-border-color)';
+                e.target.style.boxShadow = 'none';
               }}
               spellCheck="false"
             />
             <button 
-              className="btn-glass" 
+              className="antd-btn antd-btn-primary" 
               onClick={handleExecute} 
               disabled={isRunning}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '0.5rem' }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '4px', width: 'fit-content' }}
+              aria-label="在沙箱中执行代码"
             >
-              {isRunning ? <Loader2 size={16} className="spinner" /> : <Play size={16} />}
-              {isRunning ? '运行中...' : '执行代码'}
+              {isRunning ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Play size={12} aria-hidden="true" />}
+              {isRunning ? '正在运行...' : '执行代码'}
             </button>
           </div>
           
-          {/* Output */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.9rem', color: 'var(--color-muted)' }}>控制台输出</label>
-            <pre style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
-              padding: '1rem',
-              color: 'var(--color-text)',
-              fontFamily: 'monospace',
-              fontSize: '13px',
-              whiteSpace: 'pre-wrap',
-              overflowY: 'auto'
-            }}>
-              {output}
+          {/* Output Console */}
+          <div style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label htmlFor="sandbox-output" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>控制台标准输出</label>
+            <pre 
+              id="sandbox-output"
+              role="log"
+              aria-live="polite"
+              style={{
+                flex: 1,
+                minHeight: '300px',
+                backgroundColor: 'rgba(6, 9, 19, 0.8)',
+                border: '1px solid var(--antd-border-color)',
+                borderRadius: 'var(--antd-radius-md)',
+                padding: '12px',
+                color: 'var(--antd-text-primary)',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                whiteSpace: 'pre-wrap',
+                overflowY: 'auto'
+              }}
+            >
+              {output || '等待代码执行...'}
             </pre>
           </div>
         </div>

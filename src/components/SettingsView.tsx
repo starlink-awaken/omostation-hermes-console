@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Activity, GitBranch } from 'lucide-react';
+import { Activity, GitBranch } from 'lucide-react';
+import './Dashboard.css';
 
 export default function SettingsView() {
   const [metrics, setMetrics] = useState<any>(null);
@@ -34,58 +35,81 @@ export default function SettingsView() {
   };
 
   return (
-    <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+    <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
       
-      {/* Metrics History */}
-      <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Activity size={20} className="text-success" />
-          <h2 style={{ fontSize: '1.2rem', margin: 0 }}>系统监控指标</h2>
+      {/* Metrics History Card */}
+      <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Activity size={18} aria-hidden="true" className="text-success" />
+          <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>系统运行状态指标</h2>
         </div>
         
         {metrics ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-              <span style={{ color: 'var(--color-muted)' }}>时间戳: </span> {metrics.timestamp}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px', fontSize: '13px' }}>
+              <span style={{ color: 'var(--antd-text-secondary)' }}>监控快照时间: </span> {metrics.timestamp}
             </div>
-            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-              <div><span style={{ color: 'var(--color-muted)' }}>服务总数: </span> {metrics.services}</div>
-              <div><span style={{ color: 'var(--color-muted)' }}>健康节点: </span> <span className="text-success">{metrics.healthy}</span></div>
+            <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+              <div><span style={{ color: 'var(--antd-text-secondary)' }}>微服务总数: </span> {metrics.services}</div>
+              <div><span style={{ color: 'var(--antd-text-secondary)' }}>健康路由数: </span> <span className="text-success" style={{ fontWeight: 600 }}>{metrics.healthy}</span></div>
             </div>
-            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-              <span style={{ color: 'var(--color-muted)', display: 'block', marginBottom: '0.5rem' }}>延迟分位数分布 (Latency Percentiles):</span>
-              <pre style={{ margin: 0, color: '#38bdf8', fontSize: '0.85rem' }}>
+            <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px' }}>
+              <span style={{ color: 'var(--antd-text-secondary)', display: 'block', marginBottom: '8px', fontSize: '13px' }}>延迟分位数分布 (Latency Metrics):</span>
+              <pre style={{ margin: 0, color: 'var(--antd-primary)', fontSize: '12px', overflowX: 'auto', fontFamily: 'monospace' }}>
                 {JSON.stringify(metrics.latency, null, 2)}
               </pre>
             </div>
           </div>
         ) : (
-          <p style={{ color: 'var(--color-muted)' }}>正在加载指标数据...</p>
+          <p className="text-muted" style={{ fontSize: '13px' }}>正在加载并同步系统指标数据...</p>
         )}
       </div>
 
-      {/* Instance Registration */}
-      <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <GitBranch size={20} className="text-accent" />
-          <h2 style={{ fontSize: '1.2rem', margin: 0 }}>注册新实例 (Instance)</h2>
+      {/* Instance Registration Card */}
+      <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <GitBranch size={18} aria-hidden="true" className="text-accent" />
+          <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>注册分布式新实例 (Instance)</h2>
         </div>
         
-        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--color-muted)' }}>目标服务名称 (Target Service Name)</label>
-            <input required type="text" className="glass-input" value={instanceService} onChange={e => setInstanceService(e.target.value)} placeholder="例如: gbrain" />
+        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label htmlFor="reg-service-name" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>目标服务名称 (Service Name)</label>
+            <input 
+              id="reg-service-name"
+              required 
+              type="text" 
+              className="antd-input" 
+              value={instanceService} 
+              onChange={e => setInstanceService(e.target.value)} 
+              placeholder="例如: gbrain-local" 
+            />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--color-muted)' }}>MCP 接入点地址 (Endpoint URL)</label>
-            <input required type="text" className="glass-input" value={instanceUrl} onChange={e => setInstanceUrl(e.target.value)} placeholder="http://127.0.0.1:7431" />
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label htmlFor="reg-mcp-url" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>MCP 接入点地址 (Endpoint URL)</label>
+            <input 
+              id="reg-mcp-url"
+              required 
+              type="text" 
+              className="antd-input" 
+              value={instanceUrl} 
+              onChange={e => setInstanceUrl(e.target.value)} 
+              placeholder="http://127.0.0.1:7431" 
+            />
           </div>
-          <button type="submit" className="btn-glass" style={{ width: 'fit-content' }}>注册实例</button>
+          
+          <button type="submit" className="antd-btn antd-btn-primary" style={{ width: 'fit-content' }}>注册实例</button>
         </form>
 
         {registerResult && (
-          <div style={{ padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <pre style={{ margin: 0, fontSize: '0.85rem', color: registerResult.error ? '#ff4444' : '#00ffcc' }}>
+          <div style={{ 
+            padding: '12px', 
+            background: 'rgba(0,0,0,0.2)', 
+            borderRadius: '4px', 
+            border: `1px solid ${registerResult.error ? 'var(--antd-error)' : 'var(--antd-primary)'}` 
+          }}>
+            <pre style={{ margin: 0, fontSize: '12px', color: registerResult.error ? 'var(--antd-error)' : 'var(--antd-success)', fontFamily: 'monospace' }}>
               {JSON.stringify(registerResult, null, 2)}
             </pre>
           </div>

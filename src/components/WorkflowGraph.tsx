@@ -27,12 +27,12 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
         position: { x: 50 + n.index * 250, y: 100 + (n.index % 2 === 0 ? -50 : 50) },
         data: { label: n.label || n.id },
         style: { 
-          background: '#0f172a', 
-          color: '#e2e8f0', 
-          border: '1px solid #38bdf8', 
-          borderRadius: '8px', 
+          background: 'var(--antd-bg-elevated)', 
+          color: 'var(--antd-text-primary)', 
+          border: '1px solid var(--antd-primary)', 
+          borderRadius: 'var(--antd-radius-lg)', 
           padding: '10px',
-          boxShadow: activeSteps.includes(n.id) ? '0 0 15px #38bdf8' : 'none'
+          boxShadow: activeSteps.includes(n.id) ? 'var(--tech-glow-intense)' : 'none'
         }
       }));
       const newEdges = initialEdges.map((e: any, i: number) => ({
@@ -40,7 +40,7 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
         source: e.source,
         target: e.target,
         animated: true,
-        style: { stroke: '#38bdf8', strokeWidth: 2 }
+        style: { stroke: 'var(--antd-primary)', strokeWidth: 2 }
       }));
       setNodes(newNodes);
       setEdges(newEdges);
@@ -57,12 +57,12 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
           position: { x: 50 + n.index * 250, y: 100 + (n.index % 2 === 0 ? -50 : 50) },
           data: { label: n.label },
           style: { 
-            background: '#0f172a', 
-            color: '#e2e8f0', 
-            border: '1px solid #38bdf8', 
-            borderRadius: '8px', 
+            background: 'var(--antd-bg-elevated)', 
+            color: 'var(--antd-text-primary)', 
+            border: '1px solid var(--antd-primary)', 
+            borderRadius: 'var(--antd-radius-lg)', 
             padding: '10px',
-            boxShadow: activeSteps.includes(n.id) ? '0 0 15px #38bdf8' : 'none',
+            boxShadow: activeSteps.includes(n.id) ? 'var(--tech-glow-intense)' : 'none',
             cursor: onNodeClick ? 'pointer' : 'default'
           }
         }));
@@ -71,7 +71,7 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
           source: e.source,
           target: e.target,
           animated: true,
-          style: { stroke: '#38bdf8', strokeWidth: 2 }
+          style: { stroke: 'var(--antd-primary)', strokeWidth: 2 }
         }));
         setNodes(newNodes);
         setEdges(newEdges);
@@ -79,12 +79,12 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
   }, [pipelineName, activeSteps, setNodes, setEdges, initialNodes, initialEdges, onNodeClick]);
 
   const onConnect = useCallback(
-    (params: any) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#38bdf8', strokeWidth: 2 } }, eds)),
+    (params: any) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'var(--antd-primary)', strokeWidth: 2 } }, eds)),
     [setEdges]
   );
 
   return (
-    <div style={{ width: '100%', height: '350px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '1rem' }}>
+    <div style={{ width: '100%', height: '350px', background: 'rgba(0,0,0,0.4)', borderRadius: 'var(--antd-radius-lg)', border: '1px solid var(--antd-border-color)', marginTop: '1rem' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -94,8 +94,8 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
         onNodeClick={onNodeClick}
         fitView
       >
-        <Controls style={{ fill: '#38bdf8' }} />
-        <Background color="rgba(56, 189, 248, 0.2)" gap={16} size={1} />
+        <Controls style={{ fill: 'var(--antd-primary)', background: 'var(--antd-bg-elevated)', border: '1px solid var(--antd-border-color)' }} />
+        <Background color="rgba(0, 242, 254, 0.08)" gap={16} size={1} />
       </ReactFlow>
     </div>
   );
