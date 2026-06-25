@@ -1,25 +1,38 @@
 :root {
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-display: "Outfit", "Inter", sans-serif;
-  --bg-gradient: radial-gradient(ellipse at top left, #12141d, #090a0f);
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
+  /* Ant Design Theme Tokens (Dark Mode) */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   
-  --color-accent: #38bdf8;
-  --color-accent-glow: rgba(56, 189, 248, 0.4);
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.05);
-  --glass-hover: rgba(255, 255, 255, 0.06);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --antd-primary: #1677ff;
+  --antd-primary-hover: #4096ff;
+  --antd-primary-active: #0958d9;
+  --antd-primary-outline: rgba(22, 119, 255, 0.2);
   
-  --radius-lg: 24px;
-  --radius-md: 16px;
-  --radius-sm: 8px;
+  --antd-success: #52c41a;
+  --antd-success-bg: rgba(82, 196, 26, 0.1);
+  --antd-warning: #faad14;
+  --antd-warning-bg: rgba(250, 173, 20, 0.1);
+  --antd-error: #ff4d4f;
+  --antd-error-bg: rgba(255, 77, 79, 0.1);
+  --antd-info: #1677ff;
+  
+  --antd-bg-layout: #001529; /* AntD Classic Dark Sider Base */
+  --antd-bg-body: #0b0f19;   /* Pure SaaS dark layout bg */
+  --antd-bg-container: #151b26;
+  --antd-bg-elevated: #1f2937;
+  
+  --antd-border-color: rgba(255, 255, 255, 0.08);
+  --antd-border-color-hover: rgba(255, 255, 255, 0.16);
+  
+  --antd-text-primary: rgba(255, 255, 255, 0.88);
+  --antd-text-secondary: rgba(255, 255, 255, 0.65);
+  --antd-text-muted: rgba(255, 255, 255, 0.45);
+  
+  --antd-radius-lg: 8px;
+  --antd-radius-md: 6px;
+  --antd-radius-sm: 4px;
+  
+  --antd-shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 2px 4px 0 rgba(0, 0, 0, 0.3);
+  --antd-shadow-dropdown: 0 6px 16px 0 rgba(0, 0, 0, 0.6), 0 3px 6px -4px rgba(0, 0, 0, 0.4), 0 9px 28px 8px rgba(0, 0, 0, 0.2);
 }
 
 * {
@@ -30,122 +43,134 @@
 
 body {
   font-family: var(--font-sans);
-  background: #090a0f;
-  background-attachment: fixed;
-  color: var(--color-text-primary);
+  background: var(--antd-bg-body);
+  color: var(--antd-text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  position: relative;
 }
 
-/* Background Ambient Orbs */
-body::before, body::after {
-  content: "";
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(120px);
-  z-index: -1;
-  opacity: 0.4;
-  animation: float 20s infinite ease-in-out;
-}
-
-body::before {
-  top: -10%;
-  left: -10%;
-  width: 50vw;
-  height: 50vw;
-  background: radial-gradient(circle, #38bdf840, transparent 70%);
-}
-
-body::after {
-  bottom: -20%;
-  right: -10%;
-  width: 60vw;
-  height: 60vw;
-  background: radial-gradient(circle, #818cf830, transparent 70%);
-  animation-delay: -10s;
-}
-
-@keyframes float {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(5%, 5%); }
-}
-
-/* Base Glassmorphism Class */
-.glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--glass-shadow);
-}
-
-.glass-panel:hover {
-  background: var(--glass-hover);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
-}
-
-/* Typography */
+/* Typography Resets */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display);
-  color: var(--color-text-primary);
+  color: var(--antd-text-primary);
   font-weight: 600;
-  letter-spacing: -0.02em;
 }
 
 p {
-  color: var(--color-text-secondary);
-  line-height: 1.6;
+  color: var(--antd-text-secondary);
+  line-height: 1.5715;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Accessibility (a11y) Focus Outline style following AntD standards */
+*:focus-visible {
+  outline: 2px solid var(--antd-primary);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 2px var(--antd-primary-outline);
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Global utility classes matching Ant Design styles */
+.antd-btn {
+  font-size: 14px;
+  height: 32px;
+  padding: 4px 15px;
+  border-radius: var(--antd-radius-md);
+  border: 1px solid var(--antd-border-color);
+  background: transparent;
+  color: var(--antd-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+  user-select: none;
 }
 
-/* Scrollbar */
+.antd-btn:hover {
+  color: var(--antd-primary-hover);
+  border-color: var(--antd-primary-hover);
+}
+
+.antd-btn:active {
+  color: var(--antd-primary-active);
+  border-color: var(--antd-primary-active);
+}
+
+.antd-btn-primary {
+  background: var(--antd-primary);
+  border-color: var(--antd-primary);
+  color: #fff;
+}
+
+.antd-btn-primary:hover {
+  background: var(--antd-primary-hover);
+  border-color: var(--antd-primary-hover);
+  color: #fff;
+}
+
+.antd-btn-primary:active {
+  background: var(--antd-primary-active);
+  border-color: var(--antd-primary-active);
+  color: #fff;
+}
+
+.antd-btn-danger {
+  color: var(--antd-error);
+  border-color: var(--antd-error);
+}
+
+.antd-btn-danger:hover {
+  color: #fff;
+  background: var(--antd-error);
+  border-color: var(--antd-error);
+}
+
+.antd-input {
+  font-size: 14px;
+  height: 32px;
+  padding: 4px 11px;
+  border-radius: var(--antd-radius-md);
+  border: 1px solid var(--antd-border-color);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--antd-text-primary);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.antd-input:hover {
+  border-color: var(--antd-primary-hover);
+}
+
+.antd-input:focus {
+  border-color: var(--antd-primary);
+  box-shadow: 0 0 0 2px var(--antd-primary-outline);
+}
+
+.antd-card {
+  background: var(--antd-bg-container);
+  border: 1px solid var(--antd-border-color);
+  border-radius: var(--antd-radius-lg);
+  padding: 24px;
+  box-shadow: var(--antd-shadow-card);
+  transition: all 0.3s;
+}
+
+.antd-card:hover {
+  border-color: var(--antd-border-color-hover);
+}
+
+/* Scrollbar reset */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Glass Inputs */
-.glass-input {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--color-text-primary);
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-sans);
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
-  outline: none;
-}
-
-.glass-input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.glass-input::placeholder {
-  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.24);
 }

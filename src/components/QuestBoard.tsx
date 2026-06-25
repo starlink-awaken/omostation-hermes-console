@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Shield, Lightbulb, CheckCircle2, Plus, Sparkles, Clock, Star, PlayCircle, Loader2, Award, ArrowUpRight } from 'lucide-react';
+import { Trophy, Shield, Lightbulb, CheckCircle2, Plus, Sparkles, Clock, Star, PlayCircle, Loader2, Award } from 'lucide-react';
 import './Dashboard.css';
 
 interface Quest {
@@ -56,7 +56,6 @@ export default function QuestBoard() {
         setProfiles(data.profiles || []);
         setLogs(data.logs || []);
         if (data.profiles && data.profiles.length > 0 && !assignee) {
-          // 默认选择第一个人物
           setAssignee(data.profiles[0].role);
         }
       } else {
@@ -72,7 +71,6 @@ export default function QuestBoard() {
 
   useEffect(() => {
     fetchBoardData();
-    // 轮询以保持状态实时
     const interval = setInterval(fetchBoardData, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -135,8 +133,8 @@ export default function QuestBoard() {
 
   if (loading) {
     return (
-      <div className="loading-state">
-        <div className="spinner"></div>
+      <div className="loading-state" role="status" aria-live="polite">
+        <div className="spinner" aria-hidden="true"></div>
         <p>正在读取 QuestBoard 积分系统...</p>
       </div>
     );
@@ -144,10 +142,10 @@ export default function QuestBoard() {
 
   if (error) {
     return (
-      <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', margin: '2rem 0' }}>
-        <p style={{ color: 'var(--color-danger)', fontSize: '1.2rem', marginBottom: '1rem' }}>⚠️ 积分系统加载失败</p>
-        <p className="text-muted">{error}</p>
-        <button className="btn-glass" style={{ marginTop: '1.5rem' }} onClick={() => { setLoading(true); setError(null); fetchBoardData(); }}>
+      <div className="antd-card" style={{ padding: '32px', textAlign: 'center', margin: '24px 0' }}>
+        <p style={{ color: 'var(--antd-error)', fontSize: '16px', marginBottom: '16px', fontWeight: 600 }}>⚠️ 积分系统加载失败</p>
+        <p className="text-muted" style={{ marginBottom: '24px' }}>{error}</p>
+        <button className="antd-btn antd-btn-primary" onClick={() => { setLoading(true); setError(null); fetchBoardData(); }}>
           重新连接
         </button>
       </div>
@@ -158,65 +156,78 @@ export default function QuestBoard() {
   const completedQuests = quests.filter(q => q.completed === 1);
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      {/* Top Header Block */}
       <div className="section-header">
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Sparkles className="text-warning animate-pulse" size={20} />
+          <h2 style={{ fontSize: '18px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Sparkles className="text-warning animate-pulse" size={18} aria-hidden="true" />
             QuestBoard 积分冒险看板
           </h2>
-          <p className="text-muted" style={{ fontSize: '0.9rem', marginTop: '0.25rem' }}>
-            通过日常任务培养宝宝的责任感与智慧。
+          <p className="text-muted" style={{ fontSize: '13px', marginTop: '4px' }}>
+            日常家庭任务与正向成长激励中枢。
           </p>
         </div>
+        
         <button 
-          className="btn-glass" 
-          style={{ 
-            borderColor: showAddForm ? 'var(--color-danger)' : 'var(--color-accent)', 
-            color: showAddForm ? 'var(--color-danger)' : 'var(--color-text-primary)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
+          className={`antd-btn ${showAddForm ? 'antd-btn-danger' : 'antd-btn-primary'}`}
           onClick={() => setShowAddForm(!showAddForm)}
+          aria-expanded={showAddForm}
+          aria-controls="quest-creation-form"
         >
-          {showAddForm ? '取消发布' : <><Plus size={16} /> 发布新冒险</>}
+          {showAddForm ? '取消发布' : <><Plus size={14} aria-hidden="true" /> 发布新冒险</>}
         </button>
       </div>
 
-      {/* Add Quest Form Panel */}
+      {/* Quest Creation Form (AntD Form layout) */}
       {showAddForm && (
-        <form onSubmit={handleCreateQuest} className="glass-panel animate-fade-in" style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', alignItems: 'end' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label className="text-muted" style={{ fontSize: '0.85rem' }}>冒险标题</label>
+        <form 
+          id="quest-creation-form"
+          onSubmit={handleCreateQuest} 
+          className="antd-card animate-fade-in" 
+          style={{ 
+            padding: '20px', 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+            gap: '16px', 
+            alignItems: 'end',
+            background: 'var(--antd-bg-container)'
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label htmlFor="quest-title" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>冒险标题</label>
             <input 
+              id="quest-title"
               type="text" 
-              className="glass-input" 
-              placeholder="例如：整理书架、倒垃圾、独立阅读半小时" 
+              className="antd-input" 
+              placeholder="例如：整理书架、倒垃圾、阅读半小时" 
               value={title}
               onChange={e => setTitle(e.target.value)}
               required
             />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label className="text-muted" style={{ fontSize: '0.85rem' }}>冒险类型</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label htmlFor="quest-type" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>冒险类型</label>
             <select 
-              className="glass-input" 
+              id="quest-type"
+              className="antd-input" 
               value={qType}
               onChange={e => setQType(e.target.value)}
-              style={{ background: '#12141d', cursor: 'pointer' }}
+              style={{ background: 'var(--antd-bg-elevated)', cursor: 'pointer' }}
             >
-              <option value="responsibility">🛡️ 责任养成 (每日习惯/打扫)</option>
-              <option value="wisdom">🎩 智慧进阶 (阅读/学习/创意)</option>
+              <option value="responsibility">🛡️ 责任养成 (每日习惯/家务)</option>
+              <option value="wisdom">🎩 智慧进阶 (学习/阅读/创意)</option>
             </select>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label className="text-muted" style={{ fontSize: '0.85rem' }}>积分奖励 (Points)</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label htmlFor="quest-reward" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>积分奖励 (Points)</label>
             <input 
+              id="quest-reward"
               type="number" 
-              className="glass-input" 
+              className="antd-input" 
               min="5" 
               max="200" 
               step="5"
@@ -226,13 +237,14 @@ export default function QuestBoard() {
             />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label className="text-muted" style={{ fontSize: '0.85rem' }}>执行者</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label htmlFor="quest-assignee" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>冒险勇士 (Assignee)</label>
             <select 
-              className="glass-input" 
+              id="quest-assignee"
+              className="antd-input" 
               value={assignee}
               onChange={e => setAssignee(e.target.value)}
-              style={{ background: '#12141d', cursor: 'pointer' }}
+              style={{ background: 'var(--antd-bg-elevated)', cursor: 'pointer' }}
               required
             >
               {profiles.map(p => (
@@ -245,148 +257,176 @@ export default function QuestBoard() {
 
           <button 
             type="submit" 
-            className="btn-glass" 
+            className="antd-btn antd-btn-primary" 
             disabled={submitting}
-            style={{ 
-              backgroundColor: 'var(--color-accent)', 
-              borderColor: 'var(--color-accent)', 
-              color: '#090a0f', 
-              fontWeight: '600',
-              height: '42px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem'
-            }}
+            style={{ height: '32px' }}
           >
-            {submitting ? <Loader2 size={16} className="animate-spin" /> : '立即发布'}
+            {submitting ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : '立即发布'}
           </button>
         </form>
       )}
 
-      {/* Leaderboard Cards */}
-      <div className="stats-grid" style={{ marginBottom: '1rem' }}>
-        {profiles.map((p, idx) => (
-          <div key={p.role} className="stat-card glass-panel" style={{ borderLeft: idx === 0 ? '4px solid var(--color-accent)' : '4px solid var(--color-success)', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', opacity: 0.05, color: '#fff' }}>
-              <Trophy size={100} />
+      {/* Leaderboard Cards Grid (AntD Card Style) */}
+      <div className="stats-grid">
+        {profiles.map((p) => (
+          <div 
+            key={p.role} 
+            className="antd-card" 
+            style={{ 
+              padding: '20px', 
+              position: 'relative', 
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            <div style={{ position: 'absolute', right: '-12px', bottom: '-12px', opacity: 0.04, color: 'var(--antd-text-primary)' }} aria-hidden="true">
+              <Trophy size={96} />
             </div>
-            <div className="stat-info" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: '600', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                  <Award size={18} className={p.role === 'child' ? 'text-warning' : 'text-accent'} />
-                  {p.name}
-                </span>
-                <span className="badge" style={{ backgroundColor: 'rgba(255,255,255,0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>
-                  等级: Lvl {p.level || 1}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                  <Shield size={16} className="text-success" />
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>责任积分</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--color-success)' }}>{p.responsibilityPoints || 0}</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                  <Lightbulb size={16} className="text-warning" />
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>智慧积分</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--color-warning)' }}>{p.wisdomPoints || 0}</div>
-                  </div>
-                </div>
-              </div>
-              {p.inventory && (
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                  🎒 装备: {p.inventory}
-                </div>
-              )}
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: '600', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Award size={16} aria-hidden="true" className={p.role === 'child' ? 'text-warning' : 'text-accent'} />
+                {p.name}
+              </span>
+              <span style={{ 
+                fontSize: '11px', 
+                backgroundColor: 'rgba(255,255,255,0.06)', 
+                padding: '2px 8px', 
+                borderRadius: '4px',
+                color: 'var(--antd-text-secondary)'
+              }}>
+                Lvl {p.level || 1}
+              </span>
             </div>
+
+            <div style={{ display: 'flex', gap: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Shield size={16} aria-hidden="true" className="text-success" />
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>责任积分</div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--antd-success)' }}>{p.responsibilityPoints || 0}</div>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Lightbulb size={16} aria-hidden="true" className="text-warning" />
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>智慧积分</div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--antd-warning)' }}>{p.wisdomPoints || 0}</div>
+                </div>
+              </div>
+            </div>
+
+            {p.inventory && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: 'var(--antd-text-secondary)', 
+                borderTop: '1px solid var(--antd-border-color)', 
+                paddingTop: '8px',
+                marginTop: '4px'
+              }}>
+                🎒 背包: {p.inventory}
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      {/* Main Quest Lists (Active vs Completed) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }}>
+      {/* Main Lists Column Divider */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
         
         {/* Left Column: Active Quests */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <PlayCircle size={18} className="text-accent" />
+        <section aria-label="进行中的任务" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
+            <PlayCircle size={16} aria-hidden="true" className="text-accent" />
             进行中的冒险 ({activeQuests.length})
           </h3>
 
           {activeQuests.length === 0 ? (
-            <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-              <Star size={32} className="text-muted" style={{ marginBottom: '1rem', opacity: 0.5 }} />
-              <p>暂无正在进行的冒险。</p>
-              <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>点击右上角发布一个新任务吧！</p>
+            <div className="antd-card" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--antd-text-secondary)' }}>
+              <Star size={24} className="text-muted" style={{ marginBottom: '8px', opacity: 0.4 }} aria-hidden="true" />
+              <p style={{ fontSize: '14px' }}>暂无正在进行的冒险。</p>
+              <p style={{ fontSize: '12px', color: 'var(--antd-text-muted)', marginTop: '4px' }}>点击上方按钮发布一个新任务吧！</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {activeQuests.map(quest => (
                 <div 
                   key={quest.id} 
-                  className="glass-panel" 
+                  className="antd-card" 
                   style={{ 
-                    padding: '1.25rem', 
+                    padding: '16px 20px', 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center',
-                    borderLeft: quest.type === 'responsibility' ? '4px solid var(--color-success)' : '4px solid var(--color-warning)',
-                    transition: 'transform 0.2s',
+                    borderLeft: quest.type === 'responsibility' ? '3px solid var(--antd-success)' : '3px solid var(--antd-warning)'
                   }}
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {quest.type === 'responsibility' ? (
-                        <span className="badge" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Shield size={12} /> 责任
+                        <span style={{ 
+                          backgroundColor: 'var(--antd-success-bg)', 
+                          color: 'var(--antd-success)', 
+                          fontSize: '11px', 
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}>
+                          <Shield size={10} aria-hidden="true" /> 责任
                         </span>
                       ) : (
-                        <span className="badge" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-warning)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Lightbulb size={12} /> 智慧
+                        <span style={{ 
+                          backgroundColor: 'var(--antd-warning-bg)', 
+                          color: 'var(--antd-warning)', 
+                          fontSize: '11px', 
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}>
+                          <Lightbulb size={10} aria-hidden="true" /> 智慧
                         </span>
                       )}
-                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                        分配给: {profiles.find(p => p.role === quest.assignee)?.name || quest.assignee}
+                      
+                      <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
+                        专属: {profiles.find(p => p.role === quest.assignee)?.name || quest.assignee}
                       </span>
                     </div>
-                    <span style={{ fontWeight: '500', fontSize: '1rem', color: 'var(--color-text-primary)' }}>
+                    
+                    <span style={{ fontWeight: '500', fontSize: '14px', color: 'var(--antd-text-primary)' }}>
                       {quest.title}
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>金币奖励</span>
-                      <span style={{ fontWeight: '700', fontSize: '1.2rem', color: quest.type === 'responsibility' ? 'var(--color-success)' : 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>金币奖励</span>
+                      <span style={{ 
+                        fontWeight: '600', 
+                        fontSize: '16px', 
+                        color: quest.type === 'responsibility' ? 'var(--antd-success)' : 'var(--antd-warning)'
+                      }}>
                         +{quest.reward} PTS
                       </span>
                     </div>
                     
                     <button 
-                      className="btn-glass"
+                      className="antd-btn antd-btn-primary"
                       disabled={completingId !== null}
                       onClick={() => handleCompleteQuest(quest.id)}
-                      style={{ 
-                        borderColor: 'var(--color-success)', 
-                        backgroundColor: 'rgba(16, 185, 129, 0.05)', 
-                        color: 'var(--color-success)',
-                        padding: '0.5rem 0.85rem',
-                        fontWeight: '600',
-                        fontSize: '0.85rem',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem'
-                      }}
+                      aria-label={`完成任务: ${quest.title}`}
+                      style={{ height: '32px' }}
                     >
                       {completingId === quest.id ? (
-                        <Loader2 size={14} className="animate-spin" />
+                        <Loader2 size={12} className="animate-spin" aria-hidden="true" />
                       ) : (
-                        <><CheckCircle2 size={14} /> 完成冒险</>
+                        <><CheckCircle2 size={12} aria-hidden="true" /> 达成</>
                       )}
                     </button>
                   </div>
@@ -394,36 +434,37 @@ export default function QuestBoard() {
               ))}
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Right Column: Points Log & Completed Quests */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Right Column: Timeline Logs & Hall of Fame */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* Logs */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Clock size={18} className="text-muted" />
-              冒险日志 (Point Logs)
+          {/* Timeline Logs Card */}
+          <section aria-label="积分变动日志" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
+              <Clock size={16} aria-hidden="true" className="text-muted" />
+              冒险日志
             </h3>
-            <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
+            
+            <div className="antd-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '280px', overflowY: 'auto' }}>
               {logs.length === 0 ? (
-                <p className="text-muted" style={{ fontSize: '0.85rem', textAlign: 'center', padding: '1rem 0' }}>暂无积分变动日志</p>
+                <p className="text-muted" style={{ fontSize: '12px', textAlign: 'center', padding: '12px 0' }}>暂无积分变动日志</p>
               ) : (
                 logs.map(log => (
-                  <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                      <span style={{ color: 'var(--color-text-primary)', fontWeight: '500' }}>
+                  <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '12px', borderBottom: '1px solid var(--antd-border-color)', paddingBottom: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ color: 'var(--antd-text-primary)', fontWeight: '500' }}>
                         {profiles.find(p => p.role === log.user)?.name || log.user}
                       </span>
-                      <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      <span className="text-muted" style={{ fontSize: '11px' }}>
                         {log.action}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <span style={{ color: log.amount >= 0 ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: '600' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                      <span style={{ color: log.amount >= 0 ? 'var(--antd-success)' : 'var(--antd-error)', fontWeight: '600' }}>
                         {log.amount >= 0 ? `+${log.amount}` : log.amount}
                       </span>
-                      <span className="text-muted" style={{ fontSize: '0.7rem' }}>
+                      <span className="text-muted" style={{ fontSize: '10px' }}>
                         {log.timestamp ? log.timestamp.split('T')[0] : ''}
                       </span>
                     </div>
@@ -431,36 +472,38 @@ export default function QuestBoard() {
                 ))
               )}
             </div>
-          </div>
+          </section>
 
-          {/* Completed Quests List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Trophy size={18} className="text-warning" />
+          {/* Hall of Fame Card */}
+          <section aria-label="荣誉殿堂" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
+              <Trophy size={16} aria-hidden="true" className="text-warning" />
               荣誉殿堂 ({completedQuests.length})
             </h3>
-            <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+            
+            <div className="antd-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
               {completedQuests.length === 0 ? (
-                <p className="text-muted" style={{ fontSize: '0.85rem', textAlign: 'center', padding: '1rem 0' }}>尚无已达成的荣耀</p>
+                <p className="text-muted" style={{ fontSize: '12px', textAlign: 'center', padding: '12px 0' }}>尚无已达成的冒险荣耀</p>
               ) : (
                 completedQuests.map(quest => (
-                  <div key={quest.id} style={{ display: 'flex', justifyItems: 'space-between', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.02)', opacity: 0.7 }}>
+                  <div key={quest.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--antd-border-color)', opacity: 0.8 }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '0.85rem', textDecoration: 'line-through', color: 'var(--color-text-secondary)' }}>
+                      <span style={{ fontSize: '12px', textDecoration: 'line-through', color: 'var(--antd-text-secondary)' }}>
                         {quest.title}
                       </span>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                        达成者: {profiles.find(p => p.role === quest.assignee)?.name || quest.assignee}
+                      <span style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>
+                        达成: {profiles.find(p => p.role === quest.assignee)?.name || quest.assignee}
                       </span>
                     </div>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      +{quest.reward} PTS <CheckCircle2 size={12} />
+                    
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--antd-success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      +{quest.reward} PTS <CheckCircle2 size={12} aria-hidden="true" />
                     </span>
                   </div>
                 ))
               )}
             </div>
-          </div>
+          </section>
 
         </div>
 
