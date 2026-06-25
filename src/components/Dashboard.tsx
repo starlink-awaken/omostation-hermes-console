@@ -14,7 +14,8 @@ import {
   Network, 
   Trophy,
   LayoutDashboard,
-  Heart
+  Heart,
+  Bell
 } from 'lucide-react';
 import SandboxTerminal from './SandboxTerminal';
 import MemoryInjector from './MemoryInjector';
@@ -28,6 +29,8 @@ import DebtView from './DebtView';
 import ObservabilityView from './ObservabilityView';
 import QuestBoard from './QuestBoard';
 import L4HealthView from './L4HealthView';
+import HomePage from './HomePage';
+import AlertCenterPage from './AlertCenterPage';
 import './Dashboard.css';
 
 interface Service {
@@ -94,6 +97,8 @@ export default function Dashboard() {
 
   const getHeroContent = () => {
     switch (activeTab) {
+      case 'Home':
+        return { title: '首页 (Home)', subtitle: '系统健康总览、实时告警、关键指标趋势。' };
       case 'Overview':
         return { title: '概览中心 (Overview)', subtitle: '实时监控 eCOS v5 微服务环境，掌握集群全貌。' };
       case 'Topology':
@@ -118,6 +123,8 @@ export default function Dashboard() {
         return { title: '系统运行可观测 (Observability)', subtitle: '多维度链路日志与可观测性分析面板。' };
       case 'L4Health':
         return { title: 'L4 域健康监控 (L4 Health)', subtitle: '实时监控 L4 域健康状态、趋势分析和风险评估。' };
+      case 'AlertCenter':
+        return { title: '告警中心 (Alert Center)', subtitle: '统一告警管理、规则配置、告警历史。' };
       default:
         return { title: '控制台', subtitle: 'eCOS 管理面板' };
     }
@@ -156,7 +163,20 @@ export default function Dashboard() {
         </div>
         
         <nav aria-label="控制台主导航" className="sidebar-nav" role="menu">
-          {/* Group 1: 运行大盘 */}
+          {/* Group 1: 首页 */}
+          <div className="nav-group-title" id="group-home">首页</div>
+          <button 
+            role="menuitem"
+            aria-describedby="group-home"
+            aria-selected={activeTab === 'Home'}
+            className={`nav-item ${activeTab === 'Home' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Home')}
+          >
+            <LayoutDashboard size={16} aria-hidden="true" />
+            <span>首页</span>
+          </button>
+
+          {/* Group 2: 运行大盘 */}
           <div className="nav-group-title" id="group-monitoring">运行大盘</div>
           <button 
             role="menuitem"
@@ -224,6 +244,16 @@ export default function Dashboard() {
 
           {/* Group 3: 治理与可观测 */}
           <div className="nav-group-title" id="group-governance">系统治理</div>
+          <button 
+            role="menuitem"
+            aria-describedby="group-governance"
+            aria-selected={activeTab === 'AlertCenter'}
+            className={`nav-item ${activeTab === 'AlertCenter' ? 'active' : ''}`}
+            onClick={() => setActiveTab('AlertCenter')}
+          >
+            <Bell size={16} aria-hidden="true" />
+            <span>告警中心</span>
+          </button>
           <button 
             role="menuitem"
             aria-describedby="group-governance"
@@ -313,6 +343,10 @@ export default function Dashboard() {
             <h1 className="hero-title">{hero.title}</h1>
             <p className="hero-subtitle">{hero.subtitle}</p>
           </div>
+
+          {activeTab === 'Home' && (
+            <HomePage />
+          )}
 
           {activeTab === 'Overview' && (
             <>
@@ -427,6 +461,10 @@ export default function Dashboard() {
 
           {activeTab === 'L4Health' && (
             <L4HealthView />
+          )}
+
+          {activeTab === 'AlertCenter' && (
+            <AlertCenterPage />
           )}
         </div>
       </main>
