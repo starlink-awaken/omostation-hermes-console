@@ -11,7 +11,11 @@ import {
   Check,
   Plus,
   RefreshCw,
-  Trophy
+  Trophy,
+  X,
+  Eye,
+  FileCode,
+  Sparkles
 } from 'lucide-react';
 import './Dashboard.css';
 
@@ -49,15 +53,38 @@ interface CardCheck {
   guidance: string;
 }
 
+interface ProposalItem {
+  id: string;
+  type: string;
+  debt_id: string;
+  target_model?: string;
+  scope?: string;
+  status: string;
+  created_at?: string;
+  description?: string;
+}
+
+interface DirectIoViolation {
+  file: string;
+  line: number;
+  detail: string;
+}
+
 export default function C2GStrategyView() {
   const [status, setStatus] = useState<OmoStatus | null>(null);
   const [cards, setCards] = useState<CardItem[]>([]);
   const [check, setCheck] = useState<CardCheck | null>(null);
+  const [proposals, setProposals] = useState<ProposalItem[]>([]);
+  const [violations, setViolations] = useState<DirectIoViolation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fixing, setFixing] = useState(false);
   const [fixResult, setFixResult] = useState<string | null>(null);
+  const [approvingIds, setApprovingIds] = useState<Record<string, boolean>>({});
+  const [rejectingIds, setRejectingIds] = useState<Record<string, boolean>>({});
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const [proposalSuccess, setProposalSuccess] = useState<string | null>(null);
 
   const handleFixDrift = async () => {
     setFixing(true);
@@ -75,6 +102,46 @@ export default function C2GStrategyView() {
       setFixResult('网络异常: ' + err.message);
     } finally {
       setFixing(false);
+    }
+  };
+
+  const handleApproveProposal = async (id: string) => {
+    setApprovingIds(prev => ({ ...prev, [id]: true }));
+    setProposalError(null);
+    setProposalSuccess(null);
+    try {
+      const res = await fetch(`/api/v1/proposals/${id}/approve`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.status === 'ok') {
+        setProposalSuccess(data.message || `提案 ${id} 已批准并执行`);
+        fetchData();
+      } else {
+        setProposalError(`批准失败: ${data.error || '未知错误'}`);
+      }
+    } catch (err: any) {
+      setProposalError(`网络错误: ${err.message}`);
+    } finally {
+      setApprovingIds(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleRejectProposal = async (id: string) => {
+    setRejectingIds(prev => ({ ...prev, [id]: true }));
+    setProposalError(null);
+    setProposalSuccess(null);
+    try {
+      const res = await fetch(`/api/v1/proposals/${id}/reject`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.status === 'ok') {
+        setProposalSuccess(`提案 ${id} 已拒绝`);
+        fetchData();
+      } else {
+        setProposalError(`拒绝失败: ${data.error || '未知错误'}`);
+      }
+    } catch (err: any) {
+      setProposalError(`网络错误: ${err.message}`);
+    } finally {
+      setRejectingIds(prev => ({ ...prev, [id]: false }));
     }
   };
 
@@ -102,9 +169,39 @@ export default function C2GStrategyView() {
         checkData = await checkRes.json();
       }
 
+      // Fetch Proposals
+      let proposalsData = [];
+      try {
+        const proposalsRes = await fetch('/api/v1/proposals');
+        if (proposalsRes.ok) {
+          const body = await proposalsRes.json();
+          if (body.status === 'ok' && Array.isArray(body.proposals)) {
+            proposalsData = body.proposals;
+          }
+        }
+      } catch (pErr) {
+        console.error("Failed to fetch proposals", pErr);
+      }
+
+      // Fetch Violations
+      let violationsData = [];
+      try {
+        const violationsRes = await fetch('/api/omos/violations');
+        if (violationsRes.ok) {
+          const body = await violationsRes.json();
+          if (body.status === 'ok' && Array.isArray(body.violations)) {
+            violationsData = body.violations;
+          }
+        }
+      } catch (vErr) {
+        console.error("Failed to fetch violations", vErr);
+      }
+
       setStatus(statusData);
       setCards(cardsData);
       setCheck(checkData);
+      setProposals(proposalsData);
+      setViolations(violationsData);
     } catch (err: any) {
       console.error(err);
       setError(err.message || '获取 C2G 数据失败');
@@ -281,100 +378,316 @@ export default function C2GStrategyView() {
         </div>
       )}
 
+      {/* 直写违规代码定位舱 */}
+      {violations.length > 0 && (
+        <div style={{
+          backgroundColor: 'rgba(255, 71, 87, 0.05)',
+          border: '1px solid rgba(255, 71, 87, 0.25)',
+          borderRadius: '8px',
+          padding: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileCode size={16} className="text-danger" />
+            <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 600, color: 'var(--antd-error)' }}>
+              Direct-IO 违规代码深度定位舱 (AST Scan Violations)
+            </h4>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+            {violations.map((v, i) => (
+              <div key={i} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'rgba(0,0,0,0.2)',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid rgba(255,255,255,0.03)'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      color: 'var(--antd-warning)',
+                      backgroundColor: 'rgba(255, 184, 0, 0.1)',
+                      padding: '1px 5px',
+                      borderRadius: '3px'
+                    }}>
+                      Line {v.line}
+                    </span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'rgba(255,255,255,0.85)' }}>
+                      {v.file}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)' }}>
+                    {v.detail}
+                  </span>
+                </div>
+                <span style={{ fontSize: '10px', color: 'rgba(255, 71, 87, 0.7)', fontWeight: 600 }}>
+                  CRITICAL BLOCK
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 主面板内容分区 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '20px' }}>
         
-        {/* 左侧：OMO CARDS 活跃任务列表 */}
-        <div className="services-section" style={{ margin: 0 }}>
-          <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>活跃治理卡片 (OMO CARDS)</h3>
-              <span style={{
-                fontSize: '11px',
-                padding: '1px 6px',
-                borderRadius: '10px',
-                backgroundColor: 'rgba(0, 242, 254, 0.1)',
-                color: 'var(--antd-primary)',
-                fontWeight: 600
-              }}>
-                {cards.length}
-              </span>
-            </div>
-            <button className="antd-btn" style={{ fontSize: '11px', padding: '3px 8px' }} onClick={() => alert('通过 cockpit CLI 执行卡片增删改操作。')}>
-              <Plus size={12} style={{ marginRight: '2px' }} />
-              新建卡片
-            </button>
-          </div>
-
-          <div style={{ minHeight: '300px' }}>
-            {cards.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', color: 'rgba(255,255,255,0.45)' }}>
-                <CheckCircle2 size={36} style={{ marginBottom: '12px', strokeWidth: 1.5 }} className="text-muted" />
-                <p style={{ margin: 0, fontSize: '13px' }}>当前没有活跃的治理卡片。系统处于洁净态。</p>
+        {/* 左侧区域：活跃卡片 + B.D.S.K 董事会待审提案 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* OMO CARDS 活跃任务列表 */}
+          <div className="services-section" style={{ margin: 0 }}>
+            <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>活跃治理卡片 (OMO CARDS)</h3>
+                <span style={{
+                  fontSize: '11px',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(0, 242, 254, 0.1)',
+                  color: 'var(--antd-primary)',
+                  fontWeight: 600
+                }}>
+                  {cards.length}
+                </span>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {cards.map(card => (
-                  <div key={card.id} className="service-row" style={{
-                    display: 'grid',
-                    gridTemplateColumns: '80px 1fr 100px 80px',
-                    alignItems: 'center',
-                    padding: '12px 16px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    backgroundColor: 'rgba(255, 255, 255, 0.015)'
-                  }}>
-                    {/* ID & Priority */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255, 255, 255, 0.45)' }}>#{card.id}</span>
-                      <span style={{
-                        width: 'fit-content',
-                        fontSize: '9px',
-                        padding: '1px 5px',
-                        borderRadius: '3px',
-                        fontWeight: 700,
-                        backgroundColor: card.priority.toLowerCase() === 'p0' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(255, 184, 0, 0.15)',
-                        color: card.priority.toLowerCase() === 'p0' ? 'var(--antd-error)' : 'var(--antd-warning)',
-                        border: `1px solid ${card.priority.toLowerCase() === 'p0' ? 'rgba(255, 71, 87, 0.25)' : 'rgba(255, 184, 0, 0.25)'}`
-                      }}>
-                        {card.priority.toUpperCase()}
-                      </span>
-                    </div>
+              <button className="antd-btn" style={{ fontSize: '11px', padding: '3px 8px' }} onClick={() => alert('通过 cockpit CLI 执行卡片增删改操作。')}>
+                <Plus size={12} style={{ marginRight: '2px' }} />
+                新建卡片
+              </button>
+            </div>
 
-                    {/* Title */}
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{card.title}</h4>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px', fontSize: '11px' }}>
-                        <span className="text-muted">域: {card.domain}</span>
-                        <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>|</span>
-                        <span className="text-muted">类型: {card.type}</span>
+            <div style={{ minHeight: '300px' }}>
+              {cards.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', color: 'rgba(255,255,255,0.45)' }}>
+                  <CheckCircle2 size={36} style={{ marginBottom: '12px', strokeWidth: 1.5 }} className="text-muted" />
+                  <p style={{ margin: 0, fontSize: '13px' }}>当前没有活跃的治理卡片。系统处于洁净态。</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {cards.map(card => (
+                    <div key={card.id} className="service-row" style={{
+                      display: 'grid',
+                      gridTemplateColumns: '80px 1fr 100px 80px',
+                      alignItems: 'center',
+                      padding: '12px 16px',
+                      borderRadius: '6px',
+                      border: '1px solid rgba(255, 255, 255, 0.05)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.015)'
+                    }}>
+                      {/* ID & Priority */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255, 255, 255, 0.45)' }}>#{card.id}</span>
+                        <span style={{
+                          width: 'fit-content',
+                          fontSize: '9px',
+                          padding: '1px 5px',
+                          borderRadius: '3px',
+                          fontWeight: 700,
+                          backgroundColor: card.priority.toLowerCase() === 'p0' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(255, 184, 0, 0.15)',
+                          color: card.priority.toLowerCase() === 'p0' ? 'var(--antd-error)' : 'var(--antd-warning)',
+                          border: `1px solid ${card.priority.toLowerCase() === 'p0' ? 'rgba(255, 71, 87, 0.25)' : 'rgba(255, 184, 0, 0.25)'}`
+                        }}>
+                          {card.priority.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{card.title}</h4>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px', fontSize: '11px' }}>
+                          <span className="text-muted">域: {card.domain}</span>
+                          <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>|</span>
+                          <span className="text-muted">类型: {card.type}</span>
+                        </div>
+                      </div>
+
+                      {/* Status badge */}
+                      <div>
+                        <span className="status-badge" style={{
+                          backgroundColor: card.status === 'in_progress' ? 'rgba(22, 119, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                          color: card.status === 'in_progress' ? 'var(--antd-primary)' : 'rgba(255, 255, 255, 0.65)',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px'
+                        }}>
+                          {card.status === 'in_progress' ? '进行中' : card.status}
+                        </span>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button className="antd-btn" style={{ padding: '3px 8px', fontSize: '11px' }} onClick={() => alert(`已批准该治理提议 ${card.id}`)}>
+                          <Check size={11} />
+                        </button>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
-                    {/* Status badge */}
-                    <div>
-                      <span className="status-badge" style={{
-                        backgroundColor: card.status === 'in_progress' ? 'rgba(22, 119, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-                        color: card.status === 'in_progress' ? 'var(--antd-primary)' : 'rgba(255, 255, 255, 0.65)',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px'
-                      }}>
-                        {card.status === 'in_progress' ? '进行中' : card.status}
-                      </span>
-                    </div>
+          {/* B.D.S.K 董事会待审提案舱 */}
+          <div className="services-section animate-fade-in" style={{ 
+            margin: 0, 
+            background: 'linear-gradient(135deg, rgba(22, 119, 255, 0.03) 0%, rgba(0, 242, 254, 0.03) 100%)',
+            border: '1px solid rgba(22, 119, 255, 0.15)',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+            backdropFilter: 'blur(4px)'
+          }}>
+            <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Layers size={16} className="text-primary" />
+                <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0, color: 'var(--antd-text-primary)' }}>
+                  B.D.S.K 虚拟董事会待审提案舱 (Board Proposals)
+                </h3>
+                <span style={{
+                  fontSize: '11px',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(22, 119, 255, 0.15)',
+                  color: 'var(--antd-primary)',
+                  fontWeight: 600
+                }}>
+                  {proposals.length}
+                </span>
+              </div>
+            </div>
 
-                    {/* Action buttons */}
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button className="antd-btn" style={{ padding: '3px 8px', fontSize: '11px' }} onClick={() => alert(`已批准该治理提议 ${card.id}`)}>
-                        <Check size={11} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+            {/* 提示或反馈 */}
+            {(proposalSuccess || proposalError) && (
+              <div style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                marginBottom: '12px',
+                fontSize: '12px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: proposalSuccess ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 69, 58, 0.1)',
+                border: `1px solid ${proposalSuccess ? 'rgba(52, 199, 89, 0.2)' : 'rgba(255, 69, 58, 0.2)'}`,
+                color: proposalSuccess ? 'var(--antd-success)' : 'var(--antd-error)'
+              }}>
+                <span>{proposalSuccess || proposalError}</span>
+                <button 
+                  onClick={() => { setProposalSuccess(null); setProposalError(null); }}
+                  style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                >
+                  <X size={14} />
+                </button>
               </div>
             )}
+
+            <div style={{ minHeight: '180px' }}>
+              {proposals.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '180px', color: 'rgba(255,255,255,0.45)' }}>
+                  <ShieldCheck size={36} style={{ marginBottom: '12px', strokeWidth: 1.5 }} className="text-success" />
+                  <p style={{ margin: 0, fontSize: '13px' }}>暂无待审批的架构提议或算力调整提案。</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {proposals.map(prop => (
+                    <div key={prop.id} className="service-row animate-fade-in" style={{
+                      display: 'grid',
+                      gridTemplateColumns: '120px 1fr 120px',
+                      alignItems: 'center',
+                      padding: '12px 16px',
+                      borderRadius: '6px',
+                      border: '1px solid rgba(255, 255, 255, 0.05)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.15)'
+                    }}>
+                      {/* Type and Target Model */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{
+                          width: 'fit-content',
+                          fontSize: '10px',
+                          padding: '1px 6px',
+                          borderRadius: '3px',
+                          fontWeight: 700,
+                          backgroundColor: 'rgba(22, 119, 255, 0.15)',
+                          color: 'var(--antd-primary)',
+                          border: '1px solid rgba(22, 119, 255, 0.25)',
+                          textTransform: 'uppercase'
+                        }}>
+                          {prop.type.replace('_', ' ')}
+                        </span>
+                        <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'rgba(255,255,255,0.35)' }}>
+                          ID: {prop.id.slice(0, 8)}
+                        </span>
+                      </div>
+
+                      {/* Content Details */}
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>
+                          针对技术债务 <code>{prop.debt_id}</code> 的提议修复
+                        </h4>
+                        <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '11px', flexWrap: 'wrap' }}>
+                          {prop.target_model && (
+                            <span className="text-muted">
+                              目标模型: <strong style={{ color: 'var(--antd-primary)' }}>{prop.target_model}</strong>
+                            </span>
+                          )}
+                          {prop.scope && (
+                            <span className="text-muted">
+                              作用域: <strong>{prop.scope}</strong>
+                            </span>
+                          )}
+                          {prop.description && (
+                            <span className="text-muted">{prop.description}</span>
+                          )}
+                          {prop.created_at && (
+                            <span className="text-muted">创建时间: {prop.created_at}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Approve / Reject Actions */}
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        {/* Reject */}
+                        <button 
+                          className="antd-btn text-danger" 
+                          disabled={approvingIds[prop.id] || rejectingIds[prop.id]}
+                          style={{ 
+                            padding: '4px 8px', 
+                            fontSize: '11px',
+                            background: 'rgba(255, 69, 58, 0.1)',
+                            border: '1px solid rgba(255, 69, 58, 0.2)',
+                            cursor: 'pointer'
+                          }} 
+                          onClick={() => handleRejectProposal(prop.id)}
+                        >
+                          {rejectingIds[prop.id] ? '...' : <X size={12} />}
+                        </button>
+                        {/* Approve */}
+                        <button 
+                          className="antd-btn text-success" 
+                          disabled={approvingIds[prop.id] || rejectingIds[prop.id]}
+                          style={{ 
+                            padding: '4px 10px', 
+                            fontSize: '11px',
+                            background: 'rgba(52, 199, 89, 0.1)',
+                            border: '1px solid rgba(52, 199, 89, 0.2)',
+                            cursor: 'pointer'
+                          }} 
+                          onClick={() => handleApproveProposal(prop.id)}
+                        >
+                          {approvingIds[prop.id] ? '正在执行' : <Check size={12} />}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
         </div>
 
         {/* 右侧：C2G / SSOT 治理铁律看板 */}
