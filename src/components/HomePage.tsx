@@ -118,6 +118,79 @@ interface HomePageProps {
   onTabChange?: (tab: string) => void;
 }
 
+interface Thought {
+  role: string;
+  name: string;
+  avatar: string;
+  content: string;
+}
+
+function ThoughtStreamSection({ thoughts }: { thoughts: Thought[] }) {
+  if (!thoughts || thoughts.length === 0) return null;
+
+  const roleColors: Record<string, string> = {
+    builder: 'var(--antd-primary)',
+    devil: 'var(--antd-error)',
+    sage: 'var(--antd-warning)',
+    keeper: 'var(--antd-success)'
+  };
+
+  return (
+    <div className="services-section animate-fade-in" style={{ marginTop: '0px', marginBottom: '24px' }}>
+      <div className="section-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)', margin: 0 }}>
+          🧠 虚拟董事会心智探针 (Thought Streams)
+        </h3>
+        <span style={{ fontSize: '10.5px', color: 'rgba(255,255,255,0.3)' }}>实时系统洞察与架构审查</span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+        {thoughts.map((t) => (
+          <div 
+            key={t.role} 
+            className="antd-card" 
+            style={{ 
+              padding: '16px 20px', 
+              borderLeft: `3px solid ${roleColors[t.role] || 'rgba(255,255,255,0.1)'}`,
+              background: 'rgba(255,255,255,0.01)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--antd-text-primary)' }}>
+                <span>{t.avatar}</span>
+                <span>{t.name}</span>
+              </span>
+              <span style={{ 
+                fontSize: '9px', 
+                padding: '1px 5px', 
+                borderRadius: '3px',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: 'rgba(255,255,255,0.4)',
+                textTransform: 'uppercase',
+                fontWeight: 600
+              }}>
+                {t.role}
+              </span>
+            </div>
+            <p style={{ 
+              margin: 0, 
+              fontSize: '11.5px', 
+              lineHeight: '1.5', 
+              color: 'rgba(255,255,255,0.7)',
+              wordBreak: 'break-all'
+            }}>
+              {t.content}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage({ onTabChange }: HomePageProps) {
   const [healthSummary, setHealthSummary] = useState<HealthSummary>(DEFAULT_HEALTH_SUMMARY);
   const [alerts, setAlerts] = useState<Alert[]>(DEFAULT_ALERTS);
@@ -125,17 +198,19 @@ export default function HomePage({ onTabChange }: HomePageProps) {
   const [healthScoreData, setHealthScoreData] = useState<DataPoint[]>(DEFAULT_HEALTH_SCORE_DATA);
   const [requestsData, setRequestsData] = useState<DataPoint[]>(DEFAULT_REQUESTS_DATA);
   const [errorRateData, setErrorRateData] = useState<DataPoint[]>(DEFAULT_ERROR_RATE_DATA);
+  const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         // 并行获取所有数据
-        const [summaryRes, alertsRes, tasksRes, metricsRes] = await Promise.all([
+        const [summaryRes, alertsRes, tasksRes, metricsRes, thoughtsRes] = await Promise.all([
           fetch('/api/health/summary'),
           fetch('/api/alerts?limit=3&status=active'),
           fetch('/api/tasks?limit=3&sort=updated'),
           fetch('/api/metrics/trend?range=24h'),
+          fetch('/api/omos/thoughts'),
         ]);
 
         if (summaryRes.ok) {
@@ -169,6 +244,13 @@ export default function HomePage({ onTabChange }: HomePageProps) {
             setErrorRateData(data.error_rate);
           }
         }
+
+        if (thoughtsRes.ok) {
+          const data = await thoughtsRes.json();
+          if (data.status === 'ok') {
+            setThoughts(data.thoughts || []);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch home data:', error);
         // 使用默认数据
@@ -192,6 +274,9 @@ export default function HomePage({ onTabChange }: HomePageProps) {
         todayRequests={healthSummary.today_requests}
         todayRequestsChange={healthSummary.today_requests_change}
       />
+
+      {/* 虚拟董事会心智探针 */}
+      <ThoughtStreamSection thoughts={thoughts} />
 
       {/* 实时告警 */}
       <AlertFeedSection

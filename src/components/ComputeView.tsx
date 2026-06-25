@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Server, DollarSign, Cpu, Activity, Zap, TrendingUp } from 'lucide-react';
+import { Server, DollarSign, Cpu, Activity, Zap, TrendingUp, Shield } from 'lucide-react';
 import './Dashboard.css';
 
 interface NodeTraffic {
@@ -19,13 +19,18 @@ export default function ComputeView() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
+  const [circuitBroken, setCircuitBroken] = useState<boolean>(false);
+  const [dailyBudget, setDailyBudget] = useState<number>(100);
 
   useEffect(() => {
     const fetchCompute = async () => {
       try {
         const res = await fetch('/api/compute/status');
         if (res.ok) {
-          setData(await res.json());
+          const json = await res.json();
+          setData(json);
+          setCircuitBroken(!!json.circuit_broken);
+          setDailyBudget(json.daily_budget !== undefined ? json.daily_budget : 100);
         }
       } catch (err) {
         console.error('Failed to fetch compute data:', err);
@@ -37,6 +42,45 @@ export default function ComputeView() {
     const timer = setInterval(fetchCompute, 6000);
     return () => clearInterval(timer);
   }, []);
+
+  const toggleCircuitBreaker = async () => {
+    const nextVal = !circuitBroken;
+    setCircuitBroken(nextVal);
+    try {
+      const res = await fetch('/api/omos/circuit-break', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ broken: nextVal })
+      });
+      if (!res.ok) throw new Error('API failed');
+      const result = await res.json();
+      if (result.status !== 'ok') {
+        setCircuitBroken(!nextVal);
+        alert('修改熔断状态失败: ' + result.error);
+      }
+    } catch (err: any) {
+      setCircuitBroken(!nextVal);
+      alert('修改熔断状态发生异常: ' + err.message);
+    }
+  };
+
+  const updateBudget = async (val: number) => {
+    setDailyBudget(val);
+    try {
+      const res = await fetch('/api/omos/budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ budget: val })
+      });
+      if (!res.ok) throw new Error('API failed');
+      const result = await res.json();
+      if (result.status !== 'ok') {
+        alert('修改预算失败: ' + result.error);
+      }
+    } catch (err: any) {
+      alert('修改预算异常: ' + err.message);
+    }
+  };
 
   // 每秒触发一次 tick，用于模拟 CPU/GPU 轻微的正弦波起伏动画
   useEffect(() => {
@@ -105,6 +149,93 @@ export default function ComputeView() {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
+      {/* 0. 安全治理与熔断控制台 */}
+      <div className="antd-card animate-fade-in" style={{
+        padding: '20px 24px',
+        background: 'linear-gradient(135deg, rgba(20, 20, 35, 0.4) 0%, rgba(10, 10, 20, 0.6) 100%)',
+        backdropFilter: 'blur(20px)',
+        border: circuitBroken ? '1px solid rgba(255, 69, 58, 0.3)' : '1px solid rgba(0, 242, 254, 0.15)',
+        boxShadow: circuitBroken ? '0 0 25px rgba(255, 69, 58, 0.1)' : '0 0 25px rgba(0, 242, 254, 0.02)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '24px',
+        borderRadius: '12px',
+        marginTop: '-8px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '10px',
+            backgroundColor: circuitBroken ? 'rgba(255, 69, 58, 0.1)' : 'rgba(5, 243, 162, 0.05)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: `1px solid ${circuitBroken ? 'rgba(255, 69, 58, 0.3)' : 'rgba(5, 243, 162, 0.15)'}`
+          }}>
+            <Shield size={20} className={circuitBroken ? 'text-error animate-pulse' : 'text-success'} />
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-primary)' }}>
+              混合云智能体网格熔断闸阀
+              <span className={`status-dot ${circuitBroken ? 'dot-down animate-pulse' : 'dot-ok'}`} style={{ width: '8px', height: '8px', display: 'inline-block' }}></span>
+            </h3>
+            <p className="text-muted" style={{ fontSize: '11px', marginTop: '4px', margin: 0 }}>
+              {circuitBroken 
+                ? '🚨 熔断器已拉闸：云端商业 API 访问已被强制中断，全力降级为本地离线推理网格' 
+                : '🟢 全网健康监听中：当每日 API 消耗触发安全阀值或达到单日预算时将自动断路熔断'}
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '24px', minWidth: '320px', flex: 1, justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, maxWidth: '240px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+              <span className="text-muted">单日 API 消费安全阀线</span>
+              <strong style={{ color: 'var(--antd-accent)' }}>${dailyBudget} / 天</strong>
+            </div>
+            <input 
+              type="range" 
+              min="50" 
+              max="1000" 
+              step="50"
+              value={dailyBudget}
+              onChange={(e) => setDailyBudget(Number(e.target.value))}
+              onMouseUp={(e) => updateBudget(Number((e.target as HTMLInputElement).value))}
+              onTouchEnd={(e) => updateBudget(Number((e.target as HTMLInputElement).value))}
+              style={{
+                width: '100%',
+                accentColor: 'var(--antd-primary)',
+                height: '4px',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                background: 'rgba(255,255,255,0.1)'
+              }}
+            />
+          </div>
+
+          <button 
+            onClick={toggleCircuitBreaker}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontWeight: 600,
+              fontSize: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              backgroundColor: circuitBroken ? 'rgba(255, 69, 58, 0.15)' : 'rgba(5, 243, 162, 0.1)',
+              color: circuitBroken ? 'var(--antd-error)' : 'var(--antd-success)',
+              border: `1px solid ${circuitBroken ? 'var(--antd-error)' : 'var(--antd-success)'}`,
+              boxShadow: circuitBroken ? '0 0 10px rgba(255, 69, 58, 0.1)' : 'none'
+            }}
+          >
+            {circuitBroken ? '🔐 闭合闸路 (恢复云端)' : '⚡️ 紧急拉闸 (强制熔断)'}
+          </button>
+        </div>
+      </div>
+
       {/* 1. 算力调配核心健康指标 */}
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         
