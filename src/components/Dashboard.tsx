@@ -433,17 +433,17 @@ export default function Dashboard() {
       {/* Main Content Area (a11y skip target) */}
       <main id="main-content" tabIndex={-1} className="main-content" style={{ outline: 'none' }}>
         <header className="topbar">
-          <div className="topbar-left">
-            <Breadcrumb items={getBreadcrumbItems()} />
+          <div className="search-bar" role="search">
+            <Search size={16} className="text-muted" aria-hidden="true" />
+            <input type="text" placeholder="搜索服务、模型、智能体..." aria-label="全局搜索输入框" />
           </div>
-          <div className="topbar-right">
+          <div className="topbar-actions">
             <button
               className="topbar-btn"
               onClick={openCommandPalette}
               title="命令面板 (Ctrl+K)"
             >
               <Command size={16} />
-              <span className="topbar-btn-label">命令面板</span>
             </button>
             <button
               className="topbar-btn"
@@ -451,20 +451,20 @@ export default function Dashboard() {
               title="快捷操作 (Ctrl+J)"
             >
               <Zap size={16} />
-              <span className="topbar-btn-label">快捷操作</span>
             </button>
-            <div className="search-bar" role="search">
-              <Search size={16} className="text-muted" aria-hidden="true" />
-              <input type="text" placeholder="搜索服务、模型、智能体..." aria-label="全局搜索输入框" />
-            </div>
-            <div className="user-profile" role="button" aria-label="个人中心，管理员" tabIndex={0}>
-              <div className="avatar" aria-hidden="true">AD</div>
-              <span>管理员</span>
-            </div>
+          </div>
+          <div className="user-profile" role="button" aria-label="个人中心，管理员" tabIndex={0}>
+            <div className="avatar" aria-hidden="true">AD</div>
+            <span>管理员</span>
           </div>
         </header>
 
         <div className="content-area">
+          {/* 面包屑导航 */}
+          {activeTab !== 'Home' && (
+            <Breadcrumb items={getBreadcrumbItems()} />
+          )}
+
           {/* Keyed hero section triggers smooth fade transition upon menu selection */}
           <div key={activeTab} className="hero-section animate-fade-in">
             <h1 className="hero-title">{hero.title}</h1>
