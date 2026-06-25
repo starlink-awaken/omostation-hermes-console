@@ -282,8 +282,8 @@ export default function ComputeView() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
           {nodes.map((node: any, idx: number) => {
-            const cpuLoad = getDynamicLoad(node.id, node.status, idx, 'cpu');
-            const gpuLoad = getDynamicLoad(node.id, node.status, idx, 'gpu');
+            const cpuLoad = node.cpu_usage !== undefined ? node.cpu_usage : getDynamicLoad(node.id, node.status, idx, 'cpu');
+            const gpuLoad = node.gpu_usage !== undefined ? node.gpu_usage : getDynamicLoad(node.id, node.status, idx, 'gpu');
             const isOnline = node.status === 'online';
 
             return (
@@ -418,6 +418,81 @@ export default function ComputeView() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* 下部：实时任务调度追踪舱 */}
+          <div style={{ marginTop: '24px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <TrendingUp size={16} style={{ color: 'var(--antd-primary)' }} />
+              <span>混合云大模型任务调度追踪舱 (Task Dispatcher Status)</span>
+            </h3>
+            <div className="services-list">
+              <table className="services-table" aria-label="大模型任务调度表">
+                <thead>
+                  <tr>
+                    <th scope="col">任务 ID</th>
+                    <th scope="col">任务名称</th>
+                    <th scope="col">调度节点</th>
+                    <th scope="col">底层引擎</th>
+                    <th scope="col">调度状态</th>
+                    <th scope="col">进度</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {!data?.scheduled_tasks || data.scheduled_tasks.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'rgba(255,255,255,0.45)' }}>
+                        暂无处于激活调度态的任务
+                      </td>
+                    </tr>
+                  ) : (
+                    data.scheduled_tasks.map((task: any) => (
+                      <tr key={task.task_id} className="service-row">
+                        <td style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '11.5px' }}>{task.task_id}</td>
+                        <td style={{ fontSize: '11.5px' }}>{task.task_name}</td>
+                        <td>
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '10.5px',
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            color: 'rgba(255,255,255,0.75)'
+                          }}>
+                            {task.node_id}
+                          </span>
+                        </td>
+                        <td className="text-muted" style={{ fontSize: '11px' }}>{task.engine}</td>
+                        <td>
+                          <span style={{
+                            fontSize: '9.5px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                            backgroundColor: task.status === 'running' ? 'rgba(22, 119, 255, 0.12)' : 'rgba(52, 199, 89, 0.1)',
+                            color: task.status === 'running' ? 'var(--antd-primary)' : 'var(--antd-success)',
+                            border: `1px solid ${task.status === 'running' ? 'rgba(22, 119, 255, 0.2)' : 'rgba(52, 199, 89, 0.15)'}`
+                          }}>
+                            {task.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '60px', height: '4px', borderRadius: '2px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                              <div style={{
+                                height: '100%',
+                                width: `${task.progress}%`,
+                                backgroundColor: task.status === 'running' ? 'var(--antd-primary)' : 'var(--antd-success)'
+                              }}></div>
+                            </div>
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--antd-text-secondary)' }}>{task.progress}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 

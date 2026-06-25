@@ -3,7 +3,7 @@ import HealthSummarySection from './home/HealthSummarySection';
 import AlertFeedSection from './home/AlertFeedSection';
 import MetricsTrendSection from './home/MetricsTrendSection';
 import RecentTasksSection from './home/RecentTasksSection';
-import QuickActionsSection from './home/QuickActionsSection';
+import GovernanceOverviewSection from './home/GovernanceOverviewSection';
 
 interface HealthSummary {
   health_score: number;
@@ -300,8 +300,8 @@ export default function HomePage({ onTabChange }: HomePageProps) {
         onViewAll={() => window.location.hash = '#tasks'}
       />
 
-      {/* 快速入口 */}
-      <QuickActionsSection onTabChange={onTabChange} />
+      {/* 核心治理与战役大盘 */}
+      <GovernanceOverviewSection />
     </div>
   );
 }
