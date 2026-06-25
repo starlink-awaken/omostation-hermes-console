@@ -74,12 +74,12 @@ export default function LogViewerPage() {
 
   const getLevelBgColor = (level: LogEntry['level']) => {
     switch (level) {
-      case 'debug': return '#f8f9fa';
-      case 'info': return '#ebf5fb';
-      case 'warning': return '#fef9e7';
-      case 'error': return '#fdedec';
-      case 'fatal': return '#f9ebea';
-      default: return '#f8f9fa';
+      case 'debug': return 'rgba(255, 255, 255, 0.02)';
+      case 'info': return 'rgba(52, 152, 219, 0.04)';
+      case 'warning': return 'rgba(243, 156, 18, 0.06)';
+      case 'error': return 'rgba(231, 76, 60, 0.08)';
+      case 'fatal': return 'rgba(192, 57, 43, 0.12)';
+      default: return 'transparent';
     }
   };
 
