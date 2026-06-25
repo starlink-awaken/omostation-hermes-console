@@ -15,7 +15,10 @@ import {
   Trophy,
   LayoutDashboard,
   Heart,
-  Bell
+  Bell,
+  FileText,
+  BarChart3,
+  ClipboardList
 } from 'lucide-react';
 import SandboxTerminal from './SandboxTerminal';
 import MemoryInjector from './MemoryInjector';
@@ -31,6 +34,9 @@ import QuestBoard from './QuestBoard';
 import L4HealthView from './L4HealthView';
 import HomePage from './HomePage';
 import AlertCenterPage from './AlertCenterPage';
+import LogViewerPage from './LogViewerPage';
+import TaskCenterPage from './TaskCenterPage';
+import PerformanceMonitorPage from './PerformanceMonitorPage';
 import './Dashboard.css';
 
 interface Service {
@@ -125,6 +131,12 @@ export default function Dashboard() {
         return { title: 'L4 域健康监控 (L4 Health)', subtitle: '实时监控 L4 域健康状态、趋势分析和风险评估。' };
       case 'AlertCenter':
         return { title: '告警中心 (Alert Center)', subtitle: '统一告警管理、规则配置、告警历史。' };
+      case 'LogViewer':
+        return { title: '日志查看器 (Log Viewer)', subtitle: '实时日志流、搜索、过滤、导出。' };
+      case 'TaskCenter':
+        return { title: '任务中心 (Task Center)', subtitle: '任务统一管理、状态跟踪、操作控制。' };
+      case 'Performance':
+        return { title: '性能监控 (Performance)', subtitle: 'CPU/内存/磁盘/网络实时监控。' };
       default:
         return { title: '控制台', subtitle: 'eCOS 管理面板' };
     }
@@ -264,9 +276,41 @@ export default function Dashboard() {
             <Heart size={16} aria-hidden="true" />
             <span>L4 域健康</span>
           </button>
+          {/* Group 4: 开发工具 */}
+          <div className="nav-group-title" id="group-devtools">开发工具</div>
           <button 
             role="menuitem"
-            aria-describedby="group-governance"
+            aria-describedby="group-devtools"
+            aria-selected={activeTab === 'LogViewer'}
+            className={`nav-item ${activeTab === 'LogViewer' ? 'active' : ''}`}
+            onClick={() => setActiveTab('LogViewer')}
+          >
+            <FileText size={16} aria-hidden="true" />
+            <span>日志查看器</span>
+          </button>
+          <button 
+            role="menuitem"
+            aria-describedby="group-devtools"
+            aria-selected={activeTab === 'TaskCenter'}
+            className={`nav-item ${activeTab === 'TaskCenter' ? 'active' : ''}`}
+            onClick={() => setActiveTab('TaskCenter')}
+          >
+            <ClipboardList size={16} aria-hidden="true" />
+            <span>任务中心</span>
+          </button>
+          <button 
+            role="menuitem"
+            aria-describedby="group-devtools"
+            aria-selected={activeTab === 'Performance'}
+            className={`nav-item ${activeTab === 'Performance' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Performance')}
+          >
+            <BarChart3 size={16} aria-hidden="true" />
+            <span>性能监控</span>
+          </button>
+          <button 
+            role="menuitem"
+            aria-describedby="group-devtools"
             aria-selected={activeTab === 'Sandbox'}
             className={`nav-item ${activeTab === 'Sandbox' ? 'active' : ''}`}
             onClick={() => setActiveTab('Sandbox')}
@@ -274,28 +318,8 @@ export default function Dashboard() {
             <Terminal size={16} aria-hidden="true" />
             <span>隔离沙箱</span>
           </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'Debt'}
-            className={`nav-item ${activeTab === 'Debt' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Debt')}
-          >
-            <AlertTriangle size={16} aria-hidden="true" />
-            <span>债务治理</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'Observability'}
-            className={`nav-item ${activeTab === 'Observability' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Observability')}
-          >
-            <Activity size={16} aria-hidden="true" />
-            <span>运行可观测</span>
-          </button>
 
-          {/* Group 4: 积分养成游戏化 */}
+          {/* Group 5: 亲子冒险 */}
           <div className="nav-group-title" id="group-gamification">亲子冒险</div>
           <button 
             role="menuitem"
@@ -465,6 +489,18 @@ export default function Dashboard() {
 
           {activeTab === 'AlertCenter' && (
             <AlertCenterPage />
+          )}
+
+          {activeTab === 'LogViewer' && (
+            <LogViewerPage />
+          )}
+
+          {activeTab === 'TaskCenter' && (
+            <TaskCenterPage />
+          )}
+
+          {activeTab === 'Performance' && (
+            <PerformanceMonitorPage />
           )}
         </div>
       </main>
