@@ -60,6 +60,7 @@ export default function ComputeView() {
   const trafficByNode: NodeTraffic[] = data?.traffic_by_node || [];
   const summary = data?.summary || {};
   const costBoard = data?.cost_board || {};
+  const availableModels = data?.available_models || [];
 
   // 计算整体拦截率 (Interception Rate) 
   const interceptionRate = costBoard.interception_rate 
@@ -289,9 +290,9 @@ export default function ComputeView() {
           </div>
         </div>
 
-        {/* 右栏：供应商额度 */}
+        {/* 右栏：供应商额度与余额余额 */}
         <div className="services-section" style={{ margin: 0 }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px' }}>模型供应商 API 配额余额</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px' }}>模型供应商 API 配额与余额</h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {quota.length === 0 ? (
@@ -299,50 +300,129 @@ export default function ComputeView() {
                 暂无活跃的供应商鉴权数据
               </div>
             ) : (
-              quota.map((q: any, i: number) => (
-                <div 
-                  key={i} 
-                  className="antd-card"
-                  style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--antd-text-primary)', textTransform: 'capitalize' }}>
-                      {q.provider}
-                    </span>
-                    <span style={{ 
-                      fontSize: '11px',
-                      color: q.available ? 'var(--antd-success)' : 'var(--antd-error)',
-                      fontWeight: 600
-                    }}>
-                      {q.available ? '● API KEY 可用' : '● KEY 失效'}
-                    </span>
+              quota.map((q: any, i: number) => {
+                const usedPercent = q.used_percent !== undefined ? q.used_percent : Math.round((q.usage?.total_used / q.usage?.total_granted) * 100);
+                const balance = q.balance_usd !== undefined ? q.balance_usd : null;
+                return (
+                  <div 
+                    key={i} 
+                    className="antd-card"
+                    style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--antd-text-primary)', textTransform: 'capitalize' }}>
+                        {q.provider}
+                      </span>
+                      <span style={{ 
+                        fontSize: '11px',
+                        color: q.available ? 'var(--antd-success)' : 'var(--antd-error)',
+                        fontWeight: 600
+                      }}>
+                        {q.available ? '● 额度正常' : '● KEY 失效'}
+                      </span>
+                    </div>
+                    
+                    {q.error ? (
+                      <div style={{ color: 'var(--antd-error)', fontSize: '11px' }}>
+                        {q.error.message || '额度同步错误'}
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginBottom: '6px' }}>
+                          <span>额度已用: <strong>{usedPercent}%</strong></span>
+                          {balance !== null && (
+                            <span>可用余额: <strong style={{ color: 'var(--antd-success)' }}>${balance.toFixed(2)}</strong></span>
+                          )}
+                        </div>
+                        <div style={{ height: '5px', borderRadius: '2.5px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%',
+                            width: `${usedPercent}%`,
+                            backgroundColor: usedPercent > 80 ? 'var(--antd-error)' : usedPercent > 50 ? 'var(--antd-warning)' : 'var(--antd-success)'
+                          }}></div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  
-                  {q.error ? (
-                    <div style={{ color: 'var(--antd-error)', fontSize: '11px' }}>
-                      {q.error.message || '额度同步错误'}
-                    </div>
-                  ) : (
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>
-                        <span>额度使用进度</span>
-                        <span>{Math.round((q.usage?.total_used / q.usage?.total_granted) * 100)}%</span>
-                      </div>
-                      <div style={{ height: '4px', borderRadius: '2px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${(q.usage?.total_used / q.usage?.total_granted) * 100}%`,
-                          backgroundColor: 'var(--antd-success)'
-                        }}></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
 
+      </div>
+
+      {/* 4. 可用大语言模型状态与资源监控舱 */}
+      <div className="services-section" style={{ marginTop: '8px' }}>
+        <div className="section-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Server size={16} className="text-primary" />
+            <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>可用大语言模型监控舱 (Available Models & Resources)</h3>
+          </div>
+          <span style={{
+            fontSize: '11px',
+            padding: '1px 6px',
+            borderRadius: '10px',
+            backgroundColor: 'rgba(0, 242, 254, 0.1)',
+            color: 'var(--antd-primary)',
+            fontWeight: 600
+          }}>
+            {availableModels.length} Models
+          </span>
+        </div>
+
+        <div className="services-list">
+          <table className="services-table" aria-label="可用模型列表">
+            <thead>
+              <tr>
+                <th scope="col">模型名称</th>
+                <th scope="col">提供商</th>
+                <th scope="col">节点健康状态</th>
+                <th scope="col">平均延迟 (p50)</th>
+                <th scope="col">平均吞吐 (T/s)</th>
+                <th scope="col">今日请求数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {availableModels.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'rgba(255,255,255,0.45)' }}>
+                    暂无可用的大语言模型资源
+                  </td>
+                </tr>
+              ) : (
+                availableModels.map((m: any, idx: number) => (
+                  <tr key={idx} className="service-row">
+                    <td style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '12.5px' }}>{m.model_name}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{m.provider}</td>
+                    <td>
+                      <span style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontWeight: 600,
+                        backgroundColor: m.status === 'healthy' ? 'rgba(52, 199, 89, 0.1)' : m.status === 'degraded' ? 'rgba(255, 184, 0, 0.1)' : 'rgba(255, 69, 58, 0.1)',
+                        color: m.status === 'healthy' ? 'var(--antd-success)' : m.status === 'degraded' ? 'var(--antd-warning)' : 'var(--antd-error)',
+                        border: `1px solid ${m.status === 'healthy' ? 'rgba(52,199,89,0.2)' : m.status === 'degraded' ? 'rgba(255,184,0,0.2)' : 'rgba(255,69,58,0.2)'}`
+                      }}>
+                        {m.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="text-muted">
+                      {m.latency_p50 ? `${m.latency_p50} ms` : '-'}
+                    </td>
+                    <td className="font-medium">
+                      {m.tokens_per_second ? `${m.tokens_per_second} T/s` : '-'}
+                    </td>
+                    <td className="text-muted">
+                      {m.calls_today.toLocaleString()} 次
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </div>
