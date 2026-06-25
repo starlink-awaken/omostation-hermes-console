@@ -18,7 +18,9 @@ import {
   Bell,
   FileText,
   BarChart3,
-  ClipboardList
+  ClipboardList,
+  Zap,
+  Command
 } from 'lucide-react';
 import SandboxTerminal from './SandboxTerminal';
 import MemoryInjector from './MemoryInjector';
@@ -37,6 +39,10 @@ import AlertCenterPage from './AlertCenterPage';
 import LogViewerPage from './LogViewerPage';
 import TaskCenterPage from './TaskCenterPage';
 import PerformanceMonitorPage from './PerformanceMonitorPage';
+import Breadcrumb from './common/Breadcrumb';
+import { CommandPalette, useCommandPalette } from './common/CommandPalette';
+import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
+import { useKeyboardShortcuts } from './common/CommandPalette';
 import './Dashboard.css';
 
 interface Service {
@@ -56,9 +62,85 @@ const mockServices: Service[] = [
 ];
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState('Home');
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // 命令面板
+  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette([
+    { id: 'home', label: '首页', description: '返回首页', action: () => setActiveTab('Home') },
+    { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => setActiveTab('Overview') },
+    { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => setActiveTab('Topology') },
+    { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => setActiveTab('Compute') },
+    { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => setActiveTab('Knowledge') },
+    { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => setActiveTab('Engines') },
+    { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
+    { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
+    { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
+    { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
+    { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
+    { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
+    { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => setActiveTab('Sandbox') },
+    { id: 'debt', label: '债务治理', description: '查看债务', action: () => setActiveTab('Debt') },
+    { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => setActiveTab('Observability') },
+    { id: 'quest', label: '积分冒险', description: '查看积分', action: () => setActiveTab('QuestBoard') },
+    { id: 'settings', label: '系统设置', description: '系统设置', action: () => setActiveTab('Settings') },
+  ]);
+
+  // 快捷操作面板
+  const { isOpen: isQuickActionsOpen, open: openQuickActions, close: closeQuickActions } = useQuickActions();
+
+  // 键盘快捷键
+  useKeyboardShortcuts({
+    shortcuts: [
+      { key: 'k', ctrl: true, description: '打开命令面板', action: openCommandPalette },
+      { key: 'j', ctrl: true, description: '打开快捷操作', action: openQuickActions },
+      { key: '1', ctrl: true, description: '首页', action: () => setActiveTab('Home') },
+      { key: '2', ctrl: true, description: '概览', action: () => setActiveTab('Overview') },
+      { key: '3', ctrl: true, description: '告警', action: () => setActiveTab('AlertCenter') },
+      { key: '4', ctrl: true, description: '日志', action: () => setActiveTab('LogViewer') },
+      { key: '5', ctrl: true, description: '任务', action: () => setActiveTab('TaskCenter') },
+    ],
+  });
+
+  // 面包屑
+  const getBreadcrumbItems = () => {
+    const items = [];
+    switch (activeTab) {
+      case 'Home':
+        break;
+      case 'Overview':
+      case 'Topology':
+      case 'Compute':
+        items.push({ label: '运行大盘', onClick: () => setActiveTab('Overview') });
+        break;
+      case 'Knowledge':
+      case 'Engines':
+      case 'Workflows':
+        items.push({ label: '智能与知识', onClick: () => setActiveTab('Knowledge') });
+        break;
+      case 'AlertCenter':
+      case 'L4Health':
+      case 'Debt':
+      case 'Observability':
+        items.push({ label: '系统治理', onClick: () => setActiveTab('AlertCenter') });
+        break;
+      case 'LogViewer':
+      case 'TaskCenter':
+      case 'Performance':
+      case 'Sandbox':
+        items.push({ label: '开发工具', onClick: () => setActiveTab('LogViewer') });
+        break;
+      case 'QuestBoard':
+        items.push({ label: '亲子冒险', onClick: () => setActiveTab('QuestBoard') });
+        break;
+      case 'Settings':
+        items.push({ label: '系统配置', onClick: () => setActiveTab('Settings') });
+        break;
+    }
+    items.push({ label: hero.title.split(' (')[0] });
+    return items;
+  };
 
   useEffect(() => {
     // Fetch real data from Agora API
@@ -351,13 +433,34 @@ export default function Dashboard() {
       {/* Main Content Area (a11y skip target) */}
       <main id="main-content" tabIndex={-1} className="main-content" style={{ outline: 'none' }}>
         <header className="topbar">
-          <div className="search-bar" role="search">
-            <Search size={16} className="text-muted" aria-hidden="true" />
-            <input type="text" placeholder="搜索服务、模型、智能体..." aria-label="全局搜索输入框" />
+          <div className="topbar-left">
+            <Breadcrumb items={getBreadcrumbItems()} />
           </div>
-          <div className="user-profile" role="button" aria-label="个人中心，管理员" tabIndex={0}>
-            <div className="avatar" aria-hidden="true">AD</div>
-            <span>管理员</span>
+          <div className="topbar-right">
+            <button
+              className="topbar-btn"
+              onClick={openCommandPalette}
+              title="命令面板 (Ctrl+K)"
+            >
+              <Command size={16} />
+              <span className="topbar-btn-label">命令面板</span>
+            </button>
+            <button
+              className="topbar-btn"
+              onClick={openQuickActions}
+              title="快捷操作 (Ctrl+J)"
+            >
+              <Zap size={16} />
+              <span className="topbar-btn-label">快捷操作</span>
+            </button>
+            <div className="search-bar" role="search">
+              <Search size={16} className="text-muted" aria-hidden="true" />
+              <input type="text" placeholder="搜索服务、模型、智能体..." aria-label="全局搜索输入框" />
+            </div>
+            <div className="user-profile" role="button" aria-label="个人中心，管理员" tabIndex={0}>
+              <div className="avatar" aria-hidden="true">AD</div>
+              <span>管理员</span>
+            </div>
           </div>
         </header>
 
@@ -503,6 +606,37 @@ export default function Dashboard() {
           )}
         </div>
       </main>
+
+      {/* 命令面板 */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={closeCommandPalette}
+        commands={[
+          { id: 'home', label: '首页', description: '返回首页', action: () => setActiveTab('Home') },
+          { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => setActiveTab('Overview') },
+          { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => setActiveTab('Topology') },
+          { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => setActiveTab('Compute') },
+          { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => setActiveTab('Knowledge') },
+          { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => setActiveTab('Engines') },
+          { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
+          { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
+          { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
+          { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
+          { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
+          { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
+          { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => setActiveTab('Sandbox') },
+          { id: 'debt', label: '债务治理', description: '查看债务', action: () => setActiveTab('Debt') },
+          { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => setActiveTab('Observability') },
+          { id: 'quest', label: '积分冒险', description: '查看积分', action: () => setActiveTab('QuestBoard') },
+          { id: 'settings', label: '系统设置', description: '系统设置', action: () => setActiveTab('Settings') },
+        ]}
+      />
+
+      {/* 快捷操作面板 */}
+      <QuickActionsPanel
+        isOpen={isQuickActionsOpen}
+        onClose={closeQuickActions}
+      />
     </div>
   );
 }
