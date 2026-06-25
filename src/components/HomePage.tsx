@@ -95,21 +95,24 @@ const DEFAULT_TASKS: Task[] = [
   },
 ];
 
+// 生成时间序列数据（根据时间范围）
 const generateTimeSeriesData = (hours: number, baseValue: number, variance: number): DataPoint[] => {
   const data: DataPoint[] = [];
   const now = Date.now();
-  for (let i = hours; i >= 0; i--) {
+  const interval = Math.max(1, Math.floor(hours / 48)); // 最多48个数据点
+  for (let i = hours; i >= 0; i -= interval) {
     data.push({
       timestamp: new Date(now - i * 3600000).toISOString(),
-      value: baseValue + Math.random() * variance - variance / 2,
+      value: Math.round(baseValue + Math.random() * variance - variance / 2),
     });
   }
   return data;
 };
 
-const DEFAULT_HEALTH_SCORE_DATA = generateTimeSeriesData(24, 95, 10);
-const DEFAULT_REQUESTS_DATA = generateTimeSeriesData(24, 500, 200);
-const DEFAULT_ERROR_RATE_DATA = generateTimeSeriesData(24, 2, 3);
+// 生成 7 天的数据（168 小时），这样时间范围切换时可以切片
+const DEFAULT_HEALTH_SCORE_DATA = generateTimeSeriesData(168, 95, 10);
+const DEFAULT_REQUESTS_DATA = generateTimeSeriesData(168, 500, 200);
+const DEFAULT_ERROR_RATE_DATA = generateTimeSeriesData(168, 2, 3);
 
 export default function HomePage() {
   const [healthSummary, setHealthSummary] = useState<HealthSummary>(DEFAULT_HEALTH_SUMMARY);

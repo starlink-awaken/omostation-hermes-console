@@ -20,7 +20,8 @@ import {
   BarChart3,
   ClipboardList,
   Zap,
-  Command
+  Command,
+  Compass
 } from 'lucide-react';
 import SandboxTerminal from './SandboxTerminal';
 import MemoryInjector from './MemoryInjector';
@@ -39,6 +40,7 @@ import AlertCenterPage from './AlertCenterPage';
 import LogViewerPage from './LogViewerPage';
 import TaskCenterPage from './TaskCenterPage';
 import PerformanceMonitorPage from './PerformanceMonitorPage';
+import C2GStrategyView from './C2GStrategyView';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
 import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
@@ -77,6 +79,7 @@ export default function Dashboard() {
     { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
     { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
     { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
+    { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => setActiveTab('C2G') },
     { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
     { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
     { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
@@ -123,6 +126,7 @@ export default function Dashboard() {
       case 'L4Health':
       case 'Debt':
       case 'Observability':
+      case 'C2G':
         items.push({ label: '系统治理', onClick: () => setActiveTab('AlertCenter') });
         break;
       case 'LogViewer':
@@ -205,6 +209,8 @@ export default function Dashboard() {
         return { title: '系统底层设置 (Settings)', subtitle: '配置网格路由、API Token 与治理阈值。' };
       case 'Debt':
         return { title: '技术债务治理舱 (Debt)', subtitle: '全自动审计技术债务评分，追踪高危风险。' };
+      case 'C2G':
+        return { title: 'C2G 战略决策中心 (C2G)', subtitle: '跟踪系统从战役目标 (Goals) 到治理卡片 (OMO CARDS) 的全生命周期，守护 SSOT 保鲜。' };
       case 'QuestBoard':
         return { title: '积分冒险看板 (QuestBoard)', subtitle: '让家庭充满正向激励与智慧成长，打通 Quest 生态。' };
       case 'Observability':
@@ -341,6 +347,16 @@ export default function Dashboard() {
           <button 
             role="menuitem"
             aria-describedby="group-governance"
+            aria-selected={activeTab === 'C2G'}
+            className={`nav-item ${activeTab === 'C2G' ? 'active' : ''}`}
+            onClick={() => setActiveTab('C2G')}
+          >
+            <Compass size={16} aria-hidden="true" />
+            <span>C2G 战略中心</span>
+          </button>
+          <button 
+            role="menuitem"
+            aria-describedby="group-governance"
             aria-selected={activeTab === 'AlertCenter'}
             className={`nav-item ${activeTab === 'AlertCenter' ? 'active' : ''}`}
             onClick={() => setActiveTab('AlertCenter')}
@@ -357,6 +373,26 @@ export default function Dashboard() {
           >
             <Heart size={16} aria-hidden="true" />
             <span>L4 域健康</span>
+          </button>
+          <button 
+            role="menuitem"
+            aria-describedby="group-governance"
+            aria-selected={activeTab === 'Debt'}
+            className={`nav-item ${activeTab === 'Debt' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Debt')}
+          >
+            <Trophy size={16} aria-hidden="true" />
+            <span>技术债务</span>
+          </button>
+          <button 
+            role="menuitem"
+            aria-describedby="group-governance"
+            aria-selected={activeTab === 'Observability'}
+            className={`nav-item ${activeTab === 'Observability' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Observability')}
+          >
+            <Activity size={16} aria-hidden="true" />
+            <span>运行可观测</span>
           </button>
           {/* Group 4: 开发工具 */}
           <div className="nav-group-title" id="group-devtools">开发工具</div>
@@ -577,6 +613,10 @@ export default function Dashboard() {
             <DebtView />
           )}
 
+          {activeTab === 'C2G' && (
+            <C2GStrategyView />
+          )}
+
           {activeTab === 'QuestBoard' && (
             <QuestBoard />
           )}
@@ -621,6 +661,7 @@ export default function Dashboard() {
           { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
           { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
           { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
+          { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => setActiveTab('C2G') },
           { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
           { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
           { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },

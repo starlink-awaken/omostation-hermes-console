@@ -1,23 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import LineChart from '../charts/LineChart';
 import AreaChart from '../charts/AreaChart';
 
 interface DataPoint {
-  [key: string]: any;
+  timestamp: string;
+  value: number;
 }
 
 interface MetricsTrendSectionProps {
   healthScoreData: DataPoint[];
   requestsData: DataPoint[];
   errorRateData: DataPoint[];
+  onTimeRangeChange?: (range: TimeRange) => void;
 }
 
 type TimeRange = '1h' | '6h' | '24h' | '7d';
+
+const TIME_RANGE_HOURS: Record<TimeRange, number> = {
+  '1h': 1,
+  '6h': 6,
+  '24h': 24,
+  '7d': 168,
+};
+
+function sliceDataByRange(data: DataPoint[], range: TimeRange): DataPoint[] {
+  const hours = TIME_RANGE_HOURS[range];
+  const cutoff = Date.now() - hours * 3600000;
+  return data.filter(d => new Date(d.timestamp).getTime() >= cutoff);
+}
 
 export default function MetricsTrendSection({
   healthScoreData,
   requestsData,
   errorRateData,
+  onTimeRangeChange,
 }: MetricsTrendSectionProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
 
@@ -28,6 +44,15 @@ export default function MetricsTrendSection({
     { value: '7d', label: '7天' },
   ];
 
+  const handleTimeRangeChange = (range: TimeRange) => {
+    setTimeRange(range);
+    onTimeRangeChange?.(range);
+  };
+
+  const filteredHealthScore = useMemo(() => sliceDataByRange(healthScoreData, timeRange), [healthScoreData, timeRange]);
+  const filteredRequests = useMemo(() => sliceDataByRange(requestsData, timeRange), [requestsData, timeRange]);
+  const filteredErrorRate = useMemo(() => sliceDataByRange(errorRateData, timeRange), [errorRateData, timeRange]);
+
   return (
     <section className="metrics-trend-section">
       <div className="section-header">
@@ -37,7 +62,7 @@ export default function MetricsTrendSection({
             <button
               key={option.value}
               className={`time-range-btn ${timeRange === option.value ? 'active' : ''}`}
-              onClick={() => setTimeRange(option.value)}
+              onClick={() => handleTimeRangeChange(option.value)}
             >
               {option.label}
             </button>
@@ -48,7 +73,7 @@ export default function MetricsTrendSection({
       <div className="metrics-charts-grid">
         <div className="chart-card">
           <LineChart
-            data={healthScoreData}
+            data={filteredHealthScore}
             xField="timestamp"
             yField="value"
             title="健康分数"
@@ -62,7 +87,7 @@ export default function MetricsTrendSection({
 
         <div className="chart-card">
           <AreaChart
-            data={requestsData}
+            data={filteredRequests}
             xField="timestamp"
             yField="value"
             title="请求数"
@@ -73,7 +98,7 @@ export default function MetricsTrendSection({
 
         <div className="chart-card">
           <LineChart
-            data={errorRateData}
+            data={filteredErrorRate}
             xField="timestamp"
             yField="value"
             title="错误率"
