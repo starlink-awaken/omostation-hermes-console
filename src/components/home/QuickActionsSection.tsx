@@ -1,71 +1,130 @@
 import React from 'react';
-import { Plus, FileText, Search, Terminal, Network, Settings } from 'lucide-react';
+import { Plus, FileText, Search, Terminal, Network, Settings, Compass, Cpu } from 'lucide-react';
 
 interface QuickAction {
   id: string;
   label: string;
   icon: React.ReactNode;
-  onClick: () => void;
+  tabKey: string;
+  description: string;
 }
 
 interface QuickActionsSectionProps {
-  actions?: QuickAction[];
+  onTabChange?: (tab: string) => void;
 }
 
-const DEFAULT_ACTIONS: QuickAction[] = [
+const ACTIONS: QuickAction[] = [
+  {
+    id: 'c2g-center',
+    label: 'C2G 战略决策',
+    icon: <Compass size={20} />,
+    tabKey: 'C2G',
+    description: '战役波次规划与 OMO CARDS 治理',
+  },
+  {
+    id: 'compute-grid',
+    label: '分布式算力调配',
+    icon: <Cpu size={20} />,
+    tabKey: 'Compute',
+    description: '监控分布式 CPU/GPU 负载与分流',
+  },
   {
     id: 'create-task',
-    label: '创建任务',
+    label: '任务治理中心',
     icon: <Plus size={20} />,
-    onClick: () => console.log('创建任务'),
+    tabKey: 'TaskCenter',
+    description: '查看并管理 OMO 规划与活跃任务',
   },
   {
     id: 'view-logs',
-    label: '查看日志',
+    label: '可观测日志流',
     icon: <FileText size={20} />,
-    onClick: () => console.log('查看日志'),
+    tabKey: 'LogViewer',
+    description: '实时微服务环境调试及日志过滤',
   },
   {
     id: 'search-knowledge',
-    label: '搜索知识',
+    label: '分布式知识中枢',
     icon: <Search size={20} />,
-    onClick: () => console.log('搜索知识'),
+    tabKey: 'Knowledge',
+    description: '分布式跨域知识检索与记忆摄取',
   },
   {
     id: 'open-terminal',
-    label: '打开终端',
+    label: '隔离安全沙箱',
     icon: <Terminal size={20} />,
-    onClick: () => console.log('打开终端'),
+    tabKey: 'Sandbox',
+    description: '进入安全沙箱终端执行命令与自愈',
   },
   {
     id: 'view-topology',
-    label: '查看拓扑',
+    label: '全局服务拓扑',
     icon: <Network size={20} />,
-    onClick: () => console.log('查看拓扑'),
+    tabKey: 'Topology',
+    description: '可视化 eCOS 节点调用流向与网格状态',
   },
   {
     id: 'settings',
-    label: '系统设置',
+    label: '系统底层配置',
     icon: <Settings size={20} />,
-    onClick: () => console.log('系统设置'),
+    tabKey: 'Settings',
+    description: '微服务网格路由与 API Token 参数',
   },
 ];
 
-export default function QuickActionsSection({
-  actions = DEFAULT_ACTIONS,
-}: QuickActionsSectionProps) {
+export default function QuickActionsSection({ onTabChange }: QuickActionsSectionProps) {
   return (
     <section className="quick-actions-section">
-      <h2 className="section-title">快速入口</h2>
-      <div className="quick-actions-grid">
-        {actions.map((action) => (
+      <h2 className="section-title" style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px' }}>系统导航与快速入口</h2>
+      <div className="quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        {ACTIONS.map((action) => (
           <button
             key={action.id}
             className="quick-action-btn"
-            onClick={action.onClick}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              padding: '16px',
+              backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              borderRadius: '8px',
+              textAlign: 'left',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              gap: '8px'
+            }}
+            onClick={() => onTabChange && onTabChange(action.tabKey)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(22, 119, 255, 0.08)';
+              e.currentTarget.style.borderColor = 'rgba(22, 119, 255, 0.3)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
           >
-            <div className="quick-action-icon">{action.icon}</div>
-            <span className="quick-action-label">{action.label}</span>
+            <div className="quick-action-icon" style={{ 
+              color: 'var(--antd-primary)', 
+              backgroundColor: 'rgba(22, 119, 255, 0.1)', 
+              padding: '8px', 
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {action.icon}
+            </div>
+            <div>
+              <span className="quick-action-label" style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--antd-text-primary)', display: 'block' }}>
+                {action.label}
+              </span>
+              <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.45)', marginTop: '4px', display: 'block', lineHeight: '1.4' }}>
+                {action.description}
+              </span>
+            </div>
           </button>
         ))}
       </div>

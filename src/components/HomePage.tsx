@@ -114,7 +114,11 @@ const DEFAULT_HEALTH_SCORE_DATA = generateTimeSeriesData(168, 95, 10);
 const DEFAULT_REQUESTS_DATA = generateTimeSeriesData(168, 500, 200);
 const DEFAULT_ERROR_RATE_DATA = generateTimeSeriesData(168, 2, 3);
 
-export default function HomePage() {
+interface HomePageProps {
+  onTabChange?: (tab: string) => void;
+}
+
+export default function HomePage({ onTabChange }: HomePageProps) {
   const [healthSummary, setHealthSummary] = useState<HealthSummary>(DEFAULT_HEALTH_SUMMARY);
   const [alerts, setAlerts] = useState<Alert[]>(DEFAULT_ALERTS);
   const [tasks, setTasks] = useState<Task[]>(DEFAULT_TASKS);
@@ -212,7 +216,7 @@ export default function HomePage() {
       />
 
       {/* 快速入口 */}
-      <QuickActionsSection />
+      <QuickActionsSection onTabChange={onTabChange} />
     </div>
   );
 }

@@ -540,7 +540,7 @@ export default function Dashboard() {
           </div>
 
           {activeTab === 'Home' && (
-            <HomePage />
+            <HomePage onTabChange={setActiveTab} />
           )}
 
           {activeTab === 'Overview' && (
