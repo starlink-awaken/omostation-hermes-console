@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Server, Cpu, Database, CheckCircle, AlertTriangle, XCircle, Search, Settings, Terminal, GitCommit, Network } from 'lucide-react';
+import { Activity, Server, Cpu, Database, CheckCircle, AlertTriangle, XCircle, Search, Settings, Terminal, GitCommit, Network, Trophy } from 'lucide-react';
 import SandboxTerminal from './SandboxTerminal';
 import MemoryInjector from './MemoryInjector';
 import EnginesView from './EnginesView';
@@ -10,6 +10,7 @@ import ComputeView from './ComputeView';
 import { DashboardPage as GBrainDashboard } from './GBrain/GBrainDashboard';
 import DebtView from './DebtView';
 import ObservabilityView from './ObservabilityView';
+import QuestBoard from './QuestBoard';
 import './Dashboard.css';
 
 interface Service {
@@ -32,6 +33,37 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const getHeroContent = () => {
+    switch (activeTab) {
+      case 'Overview':
+        return { title: '系统全局概览', subtitle: '实时监控 eCOS v5 微服务环境，掌握集群全貌。' };
+      case 'Topology':
+        return { title: '全局服务拓扑', subtitle: '可视化服务间的调用流向与网格状态。' };
+      case 'Compute':
+        return { title: '算力调配大盘', subtitle: '查看分布式节点 CPU/GPU 使用率与任务调度。' };
+      case 'Engines':
+        return { title: '引擎调度总线', subtitle: '管理 Kairon, Gbrain 等底层知识与智能引擎。' };
+      case 'Knowledge':
+        return { title: '分布式知识中枢', subtitle: '跨域检索与记忆摄取管线的状态和监控。' };
+      case 'Sandbox':
+        return { title: '隔离安全沙箱', subtitle: '在线执行测试或运行未校验的任务指令。' };
+      case 'Workflows':
+        return { title: 'MetaOS 工作流编排', subtitle: '实时跟踪与干预自治 Agent 的运行链路。' };
+      case 'Settings':
+        return { title: '系统底层设置', subtitle: '配置网格路由、API Token 与治理阈值。' };
+      case 'Debt':
+        return { title: '技术债务治理舱', subtitle: '全自动审计技术债务评分，追踪高危风险。' };
+      case 'QuestBoard':
+        return { title: '积分冒险看板', subtitle: '让家庭充满正向激励与智慧成长，打通 Quest 生态。' };
+      case 'Observability':
+        return { title: '系统运行可观测', subtitle: '多维度链路日志与可观测性分析面板。' };
+      default:
+        return { title: '控制台', subtitle: 'eCOS 管理面板' };
+    }
+  };
+
+  const hero = getHeroContent();
 
   useEffect(() => {
     // Fetch real data from Agora API
@@ -151,6 +183,13 @@ export default function Dashboard() {
             <span>债务治理</span>
           </button>
           <button 
+            className={`nav-item ${activeTab === 'QuestBoard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('QuestBoard')}
+          >
+            <Trophy size={18} />
+            <span>积分冒险 (QuestBoard)</span>
+          </button>
+          <button 
             className={`nav-item ${activeTab === 'Observability' ? 'active' : ''}`}
             onClick={() => setActiveTab('Observability')}
           >
@@ -174,9 +213,9 @@ export default function Dashboard() {
         </header>
 
         <div className="content-area">
-          <div className="hero-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <h1 className="hero-title">系统全局概览</h1>
-            <p className="hero-subtitle">实时监控 eCOS v5 微服务环境，掌握集群全貌。</p>
+          <div key={activeTab} className="hero-section animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <h1 className="hero-title">{hero.title}</h1>
+            <p className="hero-subtitle">{hero.subtitle}</p>
           </div>
 
           {activeTab === 'Overview' && (
@@ -280,6 +319,10 @@ export default function Dashboard() {
 
           {activeTab === 'Debt' && (
             <DebtView />
+          )}
+
+          {activeTab === 'QuestBoard' && (
+            <QuestBoard />
           )}
 
           {activeTab === 'Observability' && (
