@@ -1,4 +1,4 @@
-# hermes-console — Architecture
+# cockpit-ui — Architecture
 
 > **Layer**: L3 入口层  
 > **Role**: 操作员控制台 Web 视图 — 观察/调度/调试 OMO 多 Agent 工作流  
@@ -42,5 +42,5 @@ graph LR
 ## 4. 测试
 
 ```bash
-cd projects/hermes-console && bun run lint && bunx tsc --noEmit
+cd projects/cockpit-ui && bun run lint && bunx tsc --noEmit
 ```

@@ -1,27 +1,34 @@
-# hermes-console
+# Cockpit UI
 
-> eCOS v5 Hermes 拓扑控制台 — 挂载至 cockpit `/hermes/*`
+    > L3/X · cockpit 挂载的 Web 控制台 UI
+    > Metadata SSOT: [`../../docs/project-registry.yaml`](../../docs/project-registry.yaml)
 
-## Quick Commands
+    ## What It Owns
 
-```bash
-bun install
-bun run dev          # Vite 开发服务器
-bun run build        # tsc + vite build
-bun run lint         # eslint
-```
+    cockpit 挂载的 Web 控制台 UI.
 
-## Architecture
+    ## Quick Start
 
-React 19 + TypeScript + Vite + React Flow (拓扑可视化)。
+    ```bash
+    bun install
+bun run build
+bun run lint
+    ```
 
-- 挂载至 cockpit: `projects/hermes-console/dist/` → cockpit `/hermes/*`
-- 独立运行: `bun run dev` (port 5173)
+    ## Key Surfaces
 
-## Key Components
+    - `src/`
+- `src/lib/`
+- vite.config.*
+- `package.json`
 
-| 组件 | 职责 |
-|------|------|
-| `TopologyView` | Agent 拓扑可视化 (React Flow) |
-| `BusAdapter` | Agora bus 事件订阅 |
-| `StatusPanel` | 服务状态展示 |
+    ## Documentation
+
+    - Developer guide: [`AGENTS.md`](AGENTS.md)
+    - AI context loader: [`CLAUDE.md`](CLAUDE.md) when present
+    - Workspace architecture: [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
+    - Layer placement: [`../../LAYER-INDEX.md`](../../LAYER-INDEX.md)
+
+    ## SSOT Rules
+
+    Runtime facts, counts, ports, health, and generated inventories are intentionally not maintained here. Use the workspace registries and project source as the truth.

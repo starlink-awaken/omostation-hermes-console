@@ -1,49 +1,52 @@
-# AGENTS.md — Hermes Console
+# AGENTS.md — Cockpit UI
 
-> eCOS v5 Web 控制台 · Hermes Agent 集群管理 + 配置 + 监控
+    > Scope: project-local developer guide for `cockpit-ui`.
+    > Workspace rules live in [`../../AGENTS.md`](../../AGENTS.md); project metadata lives in [`../../docs/project-registry.yaml`](../../docs/project-registry.yaml).
 
-## Quick Commands
+    ## Role
 
-```bash
-cd projects/hermes-console
-bun install
-bun run dev     # 开发服务器
-bun run build   # 生产构建
-bun run lint    # ESLint 检查
-```
+    - Layer: L3/X
+    - Stack: TypeScript / Vite / Bun
+    - Responsibility: cockpit 挂载的 Web 控制台 UI
 
-## Architecture
+    Do not copy volatile facts such as test counts, tool counts, service counts, ports, or current health into this file.
 
-已集成至 cockpit Web Dashboard：
+    ## Before Editing
 
-```
-hermes-console/        ── 前端 UI（本仓，TypeScript + React + Vite）
-projects/cockpit/     ── 后端 API + 数据（Cockpit FastAPI 启动时自动 Mount dist 目录至 /hermes）
-```
+    1. Read this file and [`CLAUDE.md`](CLAUDE.md) when it exists.
+    2. Check `git status --short` inside this project and at the workspace root.
+    3. Read the specific source or tests you are about to change.
+    4. Prefer project-local commands and targeted tests.
 
-### 功能
+    ## Commands
 
-- Agent 集群状态面板
-- 配置管理界面
-- 运行日志查看
-- 任务调度管理
-
-## Dependencies
-
-- Bun runtime, TypeScript, React, Vite, React Flow
-
-## Testing
-
-```bash
+    ```bash
+    bun install
+bun run build
 bun run lint
-bunx tsc --noEmit   # 类型检查
-```
+    ```
 
-## Workspace-Wide Governance (2026-06-24)
+    ## Key Files
 
-This project follows the workspace-level governance conventions documented in the root `AGENTS.md`:
+    - `src/`
+- `src/lib/`
+- vite.config.*
+- `package.json`
 
-- **Agent Mutation Protocol**: Any autonomous agent/cron/daemon that modifies workspace state must emit `agent_mutation_intent`, avoid direct file I/O to `.omo/`/`spaces/`, and commit immediately. See `.omo/standards/agent-mutation-protocol.md` for the full protocol.
-- **SSOT Guardian**: Run `python3 bin/ssot-guardian.py` from the workspace root before committing to detect task-count, current-wave, submodule-pointer, or direct-omo-io drift.
-- **direct-omo-io**: Scripts must route writes to `.omo/` through `omo CLI`, `projects/omo` core, or `projects/c2g` ingress — never via raw `open()/mkdir()/write_text()`.
-- **Submodule Governance**: Commit changes inside the submodule first, then bump the root-repo pointer; `git submodule status` with a `+` prefix indicates pending drift.
+    ## Gotchas
+
+    - UI 入口挂载关系以 cockpit 文档和端口注册表为准。
+- 不要在 UI 文档复制后端接口数量或端口。
+
+    ## Verification
+
+    - Documentation-only changes: run `uv run --with "pyyaml" python "../../bin/doc-ssot-lint.py" --json` from this project or from the workspace root.
+    - Code changes: run the narrowest relevant project test first, then broaden if shared contracts changed.
+    - Cross-layer behavior: verify the caller and the callee, not just the touched module.
+
+    ## SSOT Pointers
+
+    - Workspace architecture: [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md)
+    - Layer index: [`../../LAYER-INDEX.md`](../../LAYER-INDEX.md)
+    - Project metadata: [`../../docs/project-registry.yaml`](../../docs/project-registry.yaml)
+    - Runtime state: [`../../.omo/state/system.yaml`](../../.omo/state/system.yaml)
