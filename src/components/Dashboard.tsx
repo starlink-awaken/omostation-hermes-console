@@ -200,7 +200,7 @@ export default function Dashboard() {
       case 'Home':
         return { title: '首页 (Home)', subtitle: '系统健康总览、实时告警、关键指标趋势。' };
       case 'Overview':
-        return { title: '概览中心 (Overview)', subtitle: '实时监控 eCOS v5 微服务环境，掌握集群全貌。' };
+        return { title: '概览中心 (Overview)', subtitle: '实时监控 eCOS v6 微服务环境，掌握集群全貌。' };
       case 'McpMesh':
         return { title: 'BOS URI & MCP 网格 (McpMesh)', subtitle: '分布式新实例动态注册与基于域路由的 BOS URI 在线解析调试。' };
       case 'Topology':

@@ -6,7 +6,7 @@
 > **Health**: See local build verification and cockpit integration state
 > **SSOT**: 集成状态、构建状态、入口挂载情况以本项目验证链和 workspace governance SSOT 为准
 >
-> 系统全景参见：[`docs/ARCHITECTURE-DIAGRAM.md`](../docs/ARCHITECTURE-DIAGRAM.md)
+> 系统全景参见：[`../../docs/PANORAMA.md`](../../docs/PANORAMA.md)
 
 ---
 
