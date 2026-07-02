@@ -313,6 +313,7 @@ export default function TaskCenterPage() {
                 {task.status === 'in_progress' && (
                   <button
                     className="btn btn-sm btn-outline"
+                    aria-label="暂停任务"
                     onClick={(e) => { e.stopPropagation(); handlePause(task.id); }}
                   >
                     <Pause size={14} />

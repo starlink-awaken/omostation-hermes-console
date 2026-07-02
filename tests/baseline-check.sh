@@ -8,10 +8,13 @@ cd "$(dirname "$0")/.."
 echo "1. Installing dependencies..."
 bun install
 
-echo "2. Building Vite app..."
+echo "2. Running unit tests..."
+bun run test:unit
+
+echo "3. Building Vite app..."
 bun run build
 
-echo "3. Starting preview server..."
+echo "4. Starting preview server..."
 # Run preview server in background
 PORT=4173
 bun run preview --port $PORT &
