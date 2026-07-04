@@ -21,6 +21,32 @@ export default function ComputeView() {
   const [tick, setTick] = useState(0);
   const [circuitBroken, setCircuitBroken] = useState<boolean>(false);
   const [dailyBudget, setDailyBudget] = useState<number>(100);
+  // 本地生成 (经 /api/governance/compute/generate → BOS → omlx)
+  const [genPrompt, setGenPrompt] = useState<string>('');
+  const [genModel, setGenModel] = useState<string>('coder');
+  const [genResult, setGenResult] = useState<string>('');
+  const [genLoading, setGenLoading] = useState<boolean>(false);
+
+  const runGenerate = async () => {
+    if (!genPrompt.trim()) return;
+    setGenLoading(true);
+    setGenResult('');
+    try {
+      const res = await fetch('/api/governance/compute/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: genPrompt, model: genModel || 'coder' })
+      });
+      const json = await res.json();
+      if (!res.ok) setGenResult('❌ ' + (json.detail || '请求失败'));
+      else if (json.status === 'success') setGenResult(json.content || '(空)');
+      else setGenResult('❌ ' + (json.error || '生成失败'));
+    } catch (err: any) {
+      setGenResult('❌ ' + (err.message || String(err)));
+    } finally {
+      setGenLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchCompute = async () => {
@@ -148,7 +174,41 @@ export default function ComputeView() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
+
+      {/* 本地算力生成 — 经 BOS compute/generate → omlx 集群 */}
+      <div className="antd-card" style={{ padding: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-primary)' }}>
+          <Zap size={16} /> 本地算力生成
+        </h3>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            value={genPrompt}
+            onChange={(e) => setGenPrompt(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !genLoading) runGenerate(); }}
+            placeholder="输入提示词，回车或点生成…"
+            style={{ flex: 1, minWidth: '240px', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--antd-border, #d9d9d9)', background: 'var(--antd-bg-elevated, #fff)', color: 'var(--antd-text-primary)' }}
+          />
+          <select value={genModel} onChange={(e) => setGenModel(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--antd-border, #d9d9d9)' }}>
+            <option value="coder">coder</option>
+            <option value="reasoner">reasoner</option>
+            <option value="mini-9b">mini-9b</option>
+            <option value="mythos">mythos</option>
+            <option value="vision">vision</option>
+          </select>
+          <button onClick={runGenerate} disabled={genLoading || !genPrompt.trim()} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--antd-primary, #1677ff)', color: '#fff', cursor: genLoading ? 'default' : 'pointer', opacity: genLoading ? 0.6 : 1 }}>
+            {genLoading ? '生成中…' : '生成'}
+          </button>
+        </div>
+        {genResult && (
+          <div style={{ marginTop: '12px', padding: '12px', borderRadius: '6px', background: 'var(--antd-bg-layout, #f5f5f5)', color: 'var(--antd-text-primary)', whiteSpace: 'pre-wrap', fontSize: '13px', lineHeight: 1.6 }}>
+            {genResult}
+          </div>
+        )}
+        <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--antd-text-secondary, #888)' }}>
+          经网关路由到本地 omlx 集群 · 首次可能等数十秒(冷启动)
+        </div>
+      </div>
+
       {/* 0. 安全治理与熔断控制台 */}
       <div className="antd-card animate-fade-in" style={{
         padding: '20px 24px',
