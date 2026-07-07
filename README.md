@@ -1,5 +1,11 @@
 # Cockpit UI
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Contributing](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Security](https://img.shields.io/badge/security-policy-blue.svg)](SECURITY.md)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6.svg)](https://www.typescriptlang.org/)
+[![Bun](https://img.shields.io/badge/Bun-runtime-black.svg)](https://bun.sh/)
+
     > L3/X · cockpit 挂载的 Web 控制台 UI
     > Metadata SSOT: [`../../docs/project-registry.yaml`](../../docs/project-registry.yaml)
 
