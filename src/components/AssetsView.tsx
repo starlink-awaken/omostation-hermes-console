@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Briefcase, GitPullRequest, Code, Play, RefreshCw, Send, Terminal, ShieldAlert, Cpu } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Briefcase, Code, Cpu, GitPullRequest, Play, RefreshCw, ShieldAlert, Terminal } from 'lucide-react';
 import './Dashboard.css';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface SkillItem {
   id: string;
@@ -16,35 +19,49 @@ interface WorkflowItem {
   steps: number;
 }
 
-export default function AssetsView() {
+interface AssetsViewProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesAssetsFocusQuery(values: Array<string | null | undefined>, query?: string) {
+  const normalizedQuery = query?.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
+}
+
+export default function AssetsView({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: AssetsViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'skills' | 'pipelines' | 'workflows'>('skills');
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [pipelines, setPipelines] = useState<string[]>([]);
-  const [workflows, setWorkflows] = useState<any[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // 管线执行表单
   const [selectedPipeline, setSelectedPipeline] = useState('');
   const [pipelineGoal, setPipelineGoal] = useState('分析代码库是否有高风险的技术债');
   const [pipelineOutput, setPipelineOutput] = useState<string | null>(null);
   const [pipelineRunning, setPipelineRunning] = useState(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
-  // 工作流执行测试
   const [wfTesting, setWfTesting] = useState<Record<string, boolean>>({});
   const [wfTestResults, setWfTestResults] = useState<Record<string, any>>({});
 
   const fetchData = async () => {
     try {
-      // 1. 获取 Skills
       const skillsRes = await fetch('/api/ecos/skills');
       if (skillsRes.ok) {
         const data = await skillsRes.json();
         setSkills(data.skills || []);
       }
 
-      // 2. 获取 Pipelines
       const pipelinesRes = await fetch('/api/pipelines');
       if (pipelinesRes.ok) {
         const data = await pipelinesRes.json();
@@ -54,7 +71,6 @@ export default function AssetsView() {
         }
       }
 
-      // 3. 获取 Workflows
       const workflowsRes = await fetch('/api/ecos/workflows');
       if (workflowsRes.ok) {
         const data = await workflowsRes.json();
@@ -69,15 +85,29 @@ export default function AssetsView() {
   };
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, []);
+
+  useEffect(() => {
+    if (!focusTaskQuery) return;
+    if (skills.some((skill) => matchesAssetsFocusQuery([skill.id, skill.name, skill.description, skill.source, skill.path], focusTaskQuery))) {
+      setActiveSubTab('skills');
+      return;
+    }
+    if (pipelines.some((pipeline) => matchesAssetsFocusQuery([pipeline], focusTaskQuery))) {
+      setActiveSubTab('pipelines');
+      return;
+    }
+    if (workflows.some((workflow) => matchesAssetsFocusQuery([workflow.name, workflow.description], focusTaskQuery))) {
+      setActiveSubTab('workflows');
+    }
+  }, [focusTaskQuery, pipelines, skills, workflows]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchData();
+    void fetchData();
   };
 
-  // 管线调度
   const handleRunPipeline = async () => {
     if (!selectedPipeline || !pipelineGoal) return;
     setPipelineRunning(true);
@@ -88,12 +118,12 @@ export default function AssetsView() {
       const res = await fetch('/api/pipeline', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           name: selectedPipeline,
-          goal: pipelineGoal
-        })
+          goal: pipelineGoal,
+        }),
       });
 
       const data = await res.json();
@@ -109,21 +139,114 @@ export default function AssetsView() {
     }
   };
 
-  // 工作流测试运行
   const handleTestWorkflow = async (name: string) => {
-    setWfTesting(prev => ({ ...prev, [name]: true }));
+    setWfTesting((prev) => ({ ...prev, [name]: true }));
     try {
       const res = await fetch(`/api/ecos/workflow/test?name=${encodeURIComponent(name)}`, {
-        method: 'POST'
+        method: 'POST',
       });
       const data = await res.json();
-      setWfTestResults(prev => ({ ...prev, [name]: data }));
+      setWfTestResults((prev) => ({ ...prev, [name]: data }));
     } catch (err: any) {
-      setWfTestResults(prev => ({ ...prev, [name]: { error: err.message } }));
+      setWfTestResults((prev) => ({ ...prev, [name]: { error: err.message } }));
     } finally {
-      setWfTesting(prev => ({ ...prev, [name]: false }));
+      setWfTesting((prev) => ({ ...prev, [name]: false }));
     }
   };
+
+  const pluginSkills = useMemo(() => skills.filter((skill) => skill.source.startsWith('plugin')), [skills]);
+  const localSkills = useMemo(() => skills.filter((skill) => !skill.source.startsWith('plugin')), [skills]);
+  const testedWorkflowCount = useMemo(
+    () => Object.values(wfTestResults).filter((result) => result && !result.error).length,
+    [wfTestResults],
+  );
+
+  const actionItems = useMemo(() => {
+    const items = [
+      {
+        id: 'protocol-governance',
+        title: '协议与技能治理',
+        detail: `优先治理 ${localSkills.length} 个本地技能，避免资产只在磁盘里堆着。`,
+        actionLabel: '进入协议面',
+        actionType: 'navigate' as const,
+        actionValue: 'Protocol',
+      },
+      {
+        id: 'workflow-runtime',
+        title: '实时工作流编排',
+        detail: `把 ${workflows.length} 条自动化工作流接回 MetaOS 运行视图和 HITL。`,
+        actionLabel: '进入工作流',
+        actionType: 'navigate' as const,
+        actionValue: 'Workflows',
+      },
+      {
+        id: 'task-handoff',
+        title: '资产补位任务',
+        detail: '把缺失的技能说明、管线目标和测试结果转成任务中心承接。',
+        actionLabel: '进入任务中心',
+        actionType: 'navigate' as const,
+        actionValue: 'TaskCenter',
+      },
+    ];
+    return items;
+  }, [localSkills.length, workflows.length]);
+
+  const assetBacklog = useMemo(() => ({
+    skillItems: (localSkills.length ? localSkills : skills).slice(0, 3),
+    pipelineItems: (pipelines.length ? pipelines : selectedPipeline ? [selectedPipeline] : []).slice(0, 3),
+    workflowItems: workflows.slice(0, 3),
+  }), [localSkills, pipelines, selectedPipeline, skills, workflows]);
+
+  const focusedAssetCard = useMemo(() => {
+    const matchedSkill = skills.find((skill) => (
+      matchesAssetsFocusQuery([skill.id, skill.name, skill.description, skill.source, skill.path], focusTaskQuery)
+    ));
+    if (matchedSkill) {
+      return {
+        kicker: '技能资产',
+        title: matchedSkill.name,
+        detail: matchedSkill.description || `${matchedSkill.source.toUpperCase()} · ${matchedSkill.path}`,
+        objectTarget: { tab: 'Assets', taskQuery: matchedSkill.id },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedSkill.id },
+      };
+    }
+
+    const matchedPipeline = pipelines.find((pipeline) => matchesAssetsFocusQuery([pipeline], focusTaskQuery));
+    if (matchedPipeline) {
+      return {
+        kicker: '工具管线',
+        title: matchedPipeline,
+        detail: '优先给这条管线一个明确目标并执行一轮，再决定是否能日用。',
+        objectTarget: { tab: 'Assets', taskQuery: matchedPipeline },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedPipeline },
+      };
+    }
+
+    const matchedWorkflow = workflows.find((workflow) => (
+      matchesAssetsFocusQuery([workflow.name, workflow.description], focusTaskQuery)
+    ));
+    if (matchedWorkflow) {
+      return {
+        kicker: '资产级工作流',
+        title: matchedWorkflow.name,
+        detail: matchedWorkflow.description || `节点 ${matchedWorkflow.steps || 0}，继续回运行页核对真实编排与授权链。`,
+        objectTarget: { tab: 'Workflows', taskQuery: matchedWorkflow.name },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedWorkflow.name },
+      };
+    }
+
+    if (focusPageId === 'Assets') {
+      return {
+        kicker: '当前页面',
+        title: '技术资产库',
+        detail: '这页负责把技能、管线和工作流沉淀收成可治理、可试跑、可承接的统一资产面。',
+        objectTarget: { tab: 'SystemMap', pageId: 'Assets' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'Assets' },
+      };
+    }
+
+    return null;
+  }, [focusPageId, focusTaskQuery, pipelines, skills, workflows]);
 
   if (loading) {
     return (
@@ -136,15 +259,233 @@ export default function AssetsView() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* 资产类型页签控制 */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        paddingBottom: '12px'
-      }}>
+      <KnowledgeExecutionWorkbench currentPage="Assets" onNavigate={onNavigate} />
+
+      <section className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="section-header" style={{ marginBottom: 0 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 18 }}>技术资产总览</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              把技能、管线和工作流从“静态清单”收成可治理、可试跑、可承接的统一资产面。
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="antd-btn"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px' }}
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+            <span>刷新</span>
+          </button>
+        </div>
+
+        <div className="stats-grid">
+          {[
+            ['本地技能', localSkills.length, <Briefcase key="briefcase" size={20} />],
+            ['插件技能', pluginSkills.length, <Cpu key="cpu" size={20} />],
+            ['工具管线', pipelines.length, <Terminal key="terminal" size={20} />],
+            ['自动化工作流', workflows.length, <GitPullRequest key="workflow" size={20} />],
+          ].map(([label, value, icon]) => (
+            <div key={String(label)} className="stat-card">
+              <div className="stat-icon-wrapper pulse-accent">{icon}</div>
+              <div className="stat-info">
+                <h3>{label}</h3>
+                <p className="stat-value">{value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <ActionSurfacePanel
+        title="资产处理区"
+        subtitle="先治理本地技能，再试跑工具管线，最后把自动化工作流送回运行面验收。"
+        statusText={workflows.length ? `${workflows.length} 条资产级工作流` : '等待资产数据'}
+        items={actionItems}
+        onNavigate={onNavigate}
+      />
+
+      {focusedAssetCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前资产承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前资产承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把系统地图、页面审计或任务里丢过来的上下文，直接翻成资产面当前该承接的对象。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedAssetCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedAssetCard.title}</strong>
+              <p>{focusedAssetCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开资产焦点对象 ${focusedAssetCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedAssetCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <Briefcase size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开资产焦点任务 ${focusedAssetCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedAssetCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <ShieldAlert size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2>资产承接工作台</h2>
+            <p className="text-muted">哪些资产缺治理、哪些需要试跑、哪些已经该进入运行和任务闭环，一眼看清。</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge degraded">待治理技能 {localSkills.length}</span>
+            <span className="status-badge degraded">待试跑管线 {pipelines.length}</span>
+            <span className="status-badge online">已验收工作流 {testedWorkflowCount}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15 }}>技能治理</h3>
+                <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>本地技能先补描述、归类和协议位置，再谈复用。</p>
+              </div>
+              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Protocol')}>
+                <ShieldAlert size={14} />
+                <span>进入协议面</span>
+              </button>
+            </div>
+            {assetBacklog.skillItems.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>当前没有可治理技能。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {assetBacklog.skillItems.map((skill) => (
+                  <button
+                    key={`skill-${skill.id}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`治理技能 ${skill.name}`}
+                    onClick={() => onNavigate?.('Protocol')}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{skill.name}</strong>
+                      <p>{skill.description || '待补技能描述与使用边界。'}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>{skill.source.toUpperCase()} · {skill.path}</span>
+                    </div>
+                    <Code size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15 }}>管线试跑</h3>
+                <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>别只知道管线名，至少给它一轮目标和输出，再决定是否能日用。</p>
+              </div>
+              <button type="button" className="antd-btn" onClick={() => setActiveSubTab('pipelines')}>
+                <Terminal size={14} />
+                <span>打开管线面</span>
+              </button>
+            </div>
+            {assetBacklog.pipelineItems.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>暂无可调度管线。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {assetBacklog.pipelineItems.map((pipeline) => (
+                  <button
+                    key={`pipeline-${pipeline}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`试跑管线 ${pipeline}`}
+                    onClick={() => {
+                      setSelectedPipeline(pipeline);
+                      setActiveSubTab('pipelines');
+                    }}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{pipeline}</strong>
+                      <p>{selectedPipeline === pipeline && pipelineOutput ? '已存在最近一次输出，可继续复核。' : '优先给它一个明确目标并执行一轮。'}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>
+                        {selectedPipeline === pipeline && pipelineOutput ? pipelineOutput.slice(0, 90) : pipelineGoal}
+                      </span>
+                    </div>
+                    <Play size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15 }}>工作流验收</h3>
+                <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>资产层 workflow 试跑完以后，回到运行页看实际编排与授权链。</p>
+              </div>
+              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Workflows')}>
+                <GitPullRequest size={14} />
+                <span>进入工作流页</span>
+              </button>
+            </div>
+            {assetBacklog.workflowItems.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>暂无可验收工作流。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {assetBacklog.workflowItems.map((workflow) => (
+                  <button
+                    key={`workflow-${workflow.name}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`处理工作流 ${workflow.name}`}
+                    onClick={() => onNavigate?.('Workflows')}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{workflow.name}</strong>
+                      <p>{workflow.description || '回运行页检查真实节点状态与 HITL。'}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>
+                        节点 {workflow.steps || 0} · {wfTestResults[workflow.name]?.error ? '最近测试失败' : wfTestResults[workflow.name] ? '最近测试已返回结果' : '尚未跑测试'}
+                      </span>
+                    </div>
+                    <GitPullRequest size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+        </div>
+      </section>
+
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          paddingBottom: '12px',
+        }}
+      >
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => setActiveSubTab('skills')}
@@ -154,7 +495,7 @@ export default function AssetsView() {
             <Code size={14} />
             <span>智能体开发技能 ({skills.length})</span>
           </button>
-          
+
           <button
             onClick={() => setActiveSubTab('pipelines')}
             className={`antd-btn ${activeSubTab === 'pipelines' ? 'btn-primary' : ''}`}
@@ -163,7 +504,7 @@ export default function AssetsView() {
             <Terminal size={14} />
             <span>工具管线 (Pipelines: {pipelines.length})</span>
           </button>
-          
+
           <button
             onClick={() => setActiveSubTab('workflows')}
             className={`antd-btn ${activeSubTab === 'workflows' ? 'btn-primary' : ''}`}
@@ -174,10 +515,10 @@ export default function AssetsView() {
           </button>
         </div>
 
-        <button 
-          onClick={handleRefresh} 
+        <button
+          onClick={handleRefresh}
           disabled={refreshing}
-          className="antd-btn" 
+          className="antd-btn"
           style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px' }}
         >
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
@@ -185,7 +526,6 @@ export default function AssetsView() {
         </button>
       </div>
 
-      {/* 技能资产库面板 */}
       {activeSubTab === 'skills' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
           {skills.length === 0 ? (
@@ -193,37 +533,43 @@ export default function AssetsView() {
               未扫描到已装载技能
             </div>
           ) : (
-            skills.map(skill => (
-              <div key={skill.id} className="antd-card" style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                padding: '20px',
-                background: 'rgba(255, 255, 255, 0.015)',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
-                borderRadius: '8px',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                cursor: 'pointer'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}>
+            skills.map((skill) => (
+              <div
+                key={skill.id}
+                className="antd-card"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  padding: '20px',
+                  background: 'rgba(255, 255, 255, 0.015)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{skill.name}</h4>
-                    <span style={{
-                      fontSize: '10px',
-                      padding: '1px 6px',
-                      borderRadius: '4px',
-                      backgroundColor: skill.source.startsWith('plugin') ? 'rgba(0, 242, 254, 0.1)' : 'rgba(255,255,255,0.06)',
-                      color: skill.source.startsWith('plugin') ? 'var(--antd-primary)' : 'rgba(255,255,255,0.65)',
-                      border: '1px solid rgba(255, 255, 255, 0.05)'
-                    }}>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        backgroundColor: skill.source.startsWith('plugin') ? 'rgba(0, 242, 254, 0.1)' : 'rgba(255,255,255,0.06)',
+                        color: skill.source.startsWith('plugin') ? 'var(--antd-primary)' : 'rgba(255,255,255,0.65)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                      }}
+                    >
                       {skill.source.toUpperCase()}
                     </span>
                   </div>
@@ -231,16 +577,19 @@ export default function AssetsView() {
                     {skill.description || '自定义开发辅助技能'}
                   </p>
                 </div>
-                <div style={{
-                  borderTop: '1px solid rgba(255,255,255,0.05)',
-                  paddingTop: '10px',
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  color: 'rgba(255,255,255,0.35)'
-                }} title={skill.path}>
+                <div
+                  style={{
+                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                    paddingTop: '10px',
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    color: 'rgba(255,255,255,0.35)',
+                  }}
+                  title={skill.path}
+                >
                   路径: {skill.path.replace(/\/Users\/[^\/]+/g, '~')}
                 </div>
               </div>
@@ -249,14 +598,11 @@ export default function AssetsView() {
         </div>
       )}
 
-      {/* 工具管线面板 */}
       {activeSubTab === 'pipelines' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '20px' }}>
-          
-          {/* 左栏：管线配置与选择 */}
           <div className="services-section" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>工具链管线快速调度</h3>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', display: 'block', marginBottom: '6px' }}>
@@ -274,11 +620,11 @@ export default function AssetsView() {
                     color: '#fff',
                     fontSize: '13px',
                     cursor: 'pointer',
-                    outline: 'none'
+                    outline: 'none',
                   }}
                 >
-                  {pipelines.map(p => (
-                    <option key={p} value={p}>{p}</option>
+                  {pipelines.map((pipeline) => (
+                    <option key={pipeline} value={pipeline}>{pipeline}</option>
                   ))}
                 </select>
               </div>
@@ -299,7 +645,7 @@ export default function AssetsView() {
                     border: '1px solid rgba(255,255,255,0.1)',
                     color: '#fff',
                     fontSize: '13px',
-                    outline: 'none'
+                    outline: 'none',
                   }}
                 />
               </div>
@@ -318,7 +664,7 @@ export default function AssetsView() {
                   border: 'none',
                   cursor: 'pointer',
                   fontWeight: 600,
-                  marginTop: '6px'
+                  marginTop: '6px',
                 }}
               >
                 <Play size={14} />
@@ -327,24 +673,25 @@ export default function AssetsView() {
             </div>
           </div>
 
-          {/* 右栏：执行日志与输出 */}
           <div className="services-section" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>调度终端日志 (Terminal Output)</h3>
-            
-            <div style={{
-              flex: 1,
-              backgroundColor: '#05070a',
-              borderRadius: '6px',
-              border: '1px solid rgba(255,255,255,0.08)',
-              padding: '12px',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              color: '#d1d9e0',
-              overflowY: 'auto',
-              minHeight: '260px',
-              maxHeight: '400px',
-              whiteSpace: 'pre-wrap'
-            }}>
+
+            <div
+              style={{
+                flex: 1,
+                backgroundColor: '#05070a',
+                borderRadius: '6px',
+                border: '1px solid rgba(255,255,255,0.08)',
+                padding: '12px',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                color: '#d1d9e0',
+                overflowY: 'auto',
+                minHeight: '260px',
+                maxHeight: '400px',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
               {pipelineRunning && (
                 <div style={{ color: 'var(--antd-primary)' }} className="blink-fast">
                   ⚙️ Agora Pipeline: 正在调度子进程执行该管线，载入上下文...
@@ -355,9 +702,7 @@ export default function AssetsView() {
                   ⚠️ 执行失败: {pipelineError}
                 </div>
               )}
-              {pipelineOutput && (
-                <div>{pipelineOutput}</div>
-              )}
+              {pipelineOutput && <div>{pipelineOutput}</div>}
               {!pipelineRunning && !pipelineError && !pipelineOutput && (
                 <div style={{ color: 'rgba(255,255,255,0.3)' }}>
                   等待管线调度。启动后，子系统反馈的流输出将在此滚动呈递。
@@ -365,11 +710,9 @@ export default function AssetsView() {
               )}
             </div>
           </div>
-
         </div>
       )}
 
-      {/* 自动化工作流面板 */}
       {activeSubTab === 'workflows' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {workflows.length === 0 ? (
@@ -377,60 +720,65 @@ export default function AssetsView() {
               <p className="text-muted">暂无已装载的自动化工作流</p>
             </div>
           ) : (
-            workflows.map(wf => (
-              <div key={wf.name} className="service-row" style={{
-                display: 'grid',
-                gridTemplateColumns: '1.5fr 1fr 140px',
-                alignItems: 'center',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid rgba(255,255,255,0.05)',
-                backgroundColor: 'rgba(255,255,255,0.015)'
-              }}>
+            workflows.map((workflow) => (
+              <div
+                key={workflow.name}
+                className="service-row"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.5fr 1fr 140px',
+                  alignItems: 'center',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  backgroundColor: 'rgba(255,255,255,0.015)',
+                }}
+              >
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{wf.name}</h4>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{workflow.name}</h4>
                   <p className="text-muted" style={{ margin: '4px 0 0 0', fontSize: '12px' }}>
-                    {wf.description || '分布式网格任务自动化编排工作流'}
+                    {workflow.description || '分布式网格任务自动化编排工作流'}
                   </p>
                 </div>
-                
+
                 <div className="text-muted" style={{ fontSize: '12px' }}>
-                  任务节点数: {wf.steps || 0}
+                  任务节点数: {workflow.steps || 0}
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                   <button
-                    onClick={() => handleTestWorkflow(wf.name)}
-                    disabled={wfTesting[wf.name]}
+                    onClick={() => void handleTestWorkflow(workflow.name)}
+                    disabled={wfTesting[workflow.name]}
                     className="antd-btn"
                     style={{
                       fontSize: '11px',
                       padding: '4px 10px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
                     }}
                   >
                     <Play size={12} />
-                    <span>{wfTesting[wf.name] ? '测试中' : '测试运行'}</span>
+                    <span>{wfTesting[workflow.name] ? '测试中' : '测试运行'}</span>
                   </button>
                 </div>
 
-                {/* 展开测试结果 */}
-                {wfTestResults[wf.name] && (
+                {wfTestResults[workflow.name] && (
                   <div style={{ gridColumn: 'span 3', marginTop: '12px' }}>
-                    <pre style={{
-                      padding: '12px',
-                      borderRadius: '6px',
-                      backgroundColor: 'rgba(0,0,0,0.3)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: '#00f2fe',
-                      fontSize: '11px',
-                      overflowX: 'auto',
-                      maxHeight: '180px',
-                      margin: 0
-                    }}>
-                      {JSON.stringify(wfTestResults[wf.name], null, 2)}
+                    <pre
+                      style={{
+                        padding: '12px',
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        color: '#00f2fe',
+                        fontSize: '11px',
+                        overflowX: 'auto',
+                        maxHeight: '180px',
+                        margin: 0,
+                      }}
+                    >
+                      {JSON.stringify(wfTestResults[workflow.name], null, 2)}
                     </pre>
                   </div>
                 )}
@@ -439,7 +787,6 @@ export default function AssetsView() {
           )}
         </div>
       )}
-
     </div>
   );
 }

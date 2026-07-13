@@ -35,6 +35,9 @@ export default function AreaChart({
   return (
     <div className="chart-container">
       <h3 className="chart-title">{title}</h3>
+      {data.length === 0 ? (
+        <div className="chart-empty-state" role="status">暂无真实数据</div>
+      ) : (
       <ResponsiveContainer width="100%" height={height}>
         <RechartsAreaChart
           data={data}
@@ -79,6 +82,7 @@ export default function AreaChart({
           />
         </RechartsAreaChart>
       </ResponsiveContainer>
+      )}
     </div>
   );
 }

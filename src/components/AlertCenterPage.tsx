@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   AlertCircle,
@@ -10,6 +10,9 @@ import {
   Settings,
   Plus,
 } from 'lucide-react';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import RuntimeOpsWorkbench from './RuntimeOpsWorkbench';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface Alert {
   id: string;
@@ -38,14 +41,38 @@ interface AlertRule {
 
 type TabType = 'active' | 'history' | 'rules';
 
-export default function AlertCenterPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('active');
+interface AlertCenterPageProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  initialTab?: TabType;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesAlertFocusQuery(values: Array<string | null | undefined>, query?: string) {
+  const normalizedQuery = query?.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
+}
+
+export default function AlertCenterPage({
+  onNavigate,
+  onOpenTarget,
+  initialTab = 'active',
+  focusPageId,
+  focusTaskQuery,
+}: AlertCenterPageProps) {
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [filterSource, setFilterSource] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,6 +102,20 @@ export default function AlertCenterPage() {
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!focusTaskQuery) return;
+    if (rules.some((rule) => matchesAlertFocusQuery([rule.id, rule.name, rule.condition, rule.level], focusTaskQuery))) {
+      setActiveTab('rules');
+      return;
+    }
+    const matchedAlert = alerts.find((alert) => (
+      matchesAlertFocusQuery([alert.id, alert.message, alert.source, alert.description, alert.level, alert.status], focusTaskQuery)
+    ));
+    if (matchedAlert) {
+      setActiveTab(matchedAlert.status === 'active' ? 'active' : 'history');
+    }
+  }, [alerts, focusTaskQuery, rules]);
 
   const handleAcknowledge = async (alertId: string) => {
     try {
@@ -149,6 +190,72 @@ export default function AlertCenterPage() {
   const historyAlerts = filteredAlerts.filter(a => a.status !== 'active');
 
   const stats = getLevelStats();
+  const actionableAlerts = (activeAlerts.length ? activeAlerts : alerts).slice(0, 3);
+  const diagnosticTargets = [
+    {
+      id: 'alert-performance',
+      title: '先看性能波动',
+      detail: '当告警来自资源或耗时异常时，先去性能页看趋势和受影响服务。',
+      actionLabel: '进入性能页',
+      actionType: 'navigate' as const,
+      actionValue: 'Performance',
+    },
+    {
+      id: 'alert-logs',
+      title: '再查日志证据',
+      detail: '把告警项对应的时间点和来源带到日志页，确认真实报错。',
+      actionLabel: '进入日志页',
+      actionType: 'navigate' as const,
+      actionValue: 'LogViewer',
+    },
+    {
+      id: 'alert-tasks',
+      title: '最后挂到任务中心',
+      detail: '高频告警、反复静默和长期未解决项，都要转成明确任务。',
+      actionLabel: '进入任务中心',
+      actionType: 'navigate' as const,
+      actionValue: 'TaskCenter',
+    },
+  ];
+  const focusedAlertCard = (() => {
+    const matchedAlert = alerts.find((alert) => (
+      matchesAlertFocusQuery([alert.id, alert.message, alert.source, alert.description, alert.level, alert.status], focusTaskQuery)
+    ));
+    if (matchedAlert) {
+      return {
+        kicker: matchedAlert.status === 'active' ? '活跃告警' : '历史告警',
+        title: matchedAlert.message,
+        detail: `${matchedAlert.source} · ${matchedAlert.level} · ${matchedAlert.status}`,
+        objectTarget: { tab: 'AlertCenter', taskQuery: matchedAlert.id, alertTab: matchedAlert.status === 'active' ? 'active' : 'history' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedAlert.id },
+      };
+    }
+
+    const matchedRule = rules.find((rule) => (
+      matchesAlertFocusQuery([rule.id, rule.name, rule.condition, rule.level, ...rule.channels], focusTaskQuery)
+    ));
+    if (matchedRule) {
+      return {
+        kicker: '告警规则',
+        title: matchedRule.name,
+        detail: `${matchedRule.condition} · ${matchedRule.level} · ${matchedRule.enabled ? '启用' : '禁用'}`,
+        objectTarget: { tab: 'AlertCenter', taskQuery: matchedRule.id, alertTab: 'rules' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedRule.id },
+      };
+    }
+
+    if (focusPageId === 'AlertCenter') {
+      return {
+        kicker: '当前页面',
+        title: '告警中心',
+        detail: '这页负责把活跃告警、历史、规则和后续证据链收成统一异常入口。',
+        objectTarget: { tab: 'SystemMap', pageId: 'AlertCenter' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'AlertCenter' },
+      };
+    }
+
+    return null;
+  })();
 
   if (loading) {
     return (
@@ -161,6 +268,130 @@ export default function AlertCenterPage() {
 
   return (
     <div className="alert-center-page">
+      <RuntimeOpsWorkbench currentPage="AlertCenter" onNavigate={onNavigate} />
+
+      <ActionSurfacePanel
+        title="告警动作区"
+        subtitle="先分级、再追性能与日志证据，最后把异常正式挂进任务承接。"
+        statusText={activeAlerts.length ? `${activeAlerts.length} 条活跃告警` : '当前无活跃告警'}
+        items={diagnosticTargets}
+        onNavigate={onNavigate}
+      />
+
+      {focusedAlertCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前告警承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前告警承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把系统地图、页面审计或任务里丢过来的上下文，直接翻成告警面当前该承接的对象。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedAlertCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedAlertCard.title}</strong>
+              <p>{focusedAlertCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开告警焦点对象 ${focusedAlertCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedAlertCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <AlertTriangle size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开告警焦点任务 ${focusedAlertCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedAlertCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <CheckCircle size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2>告警承接工作台</h2>
+            <p className="text-muted">把最高优先级告警、待追证据来源和后续页面放在一起，不让处理流程断在告警中心。</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge degraded">严重 {stats.critical}</span>
+            <span className="status-badge degraded">警告 {stats.warning + stats.error}</span>
+            <span className="status-badge online">历史 {historyAlerts.length}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>优先处理告警</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先处理活跃且级别更高的告警，再决定去性能还是日志面继续追。</p>
+            </div>
+            {actionableAlerts.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>当前没有需要处理的告警。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {actionableAlerts.map((alert) => (
+                  <button
+                    key={`alert-${alert.id}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`处理告警 ${alert.message}`}
+                    onClick={() => onNavigate?.(alert.source.includes('mesh') ? 'LogViewer' : 'Performance')}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{alert.message}</strong>
+                      <p>{alert.source} · {alert.level}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>{alert.description || '继续追性能与日志证据。'}</span>
+                    </div>
+                    <AlertTriangle size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>处理去向</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>性能、日志、系统地图和任务中心是最常见的后续页。</p>
+            </div>
+            {[
+              { id: 'Performance', label: '性能页', reason: '看资源与延迟趋势。', aria: '打开告警承接到性能页' },
+              { id: 'LogViewer', label: '日志页', reason: '看报错正文和时间点。', aria: '打开告警承接到日志页' },
+              { id: 'SystemMap', label: '系统地图', reason: '把重复告警挂回全站缺口。', aria: '打开告警承接到系统地图' },
+              { id: 'TaskCenter', label: '任务中心', reason: '把长期未收敛的告警转任务。', aria: '打开告警承接到任务中心' },
+            ].map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="action-surface-item"
+                aria-label={page.aria}
+                onClick={() => onNavigate?.(page.id)}
+                style={{ textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <strong>{page.label}</strong>
+                  <p>{page.reason}</p>
+                </div>
+                <CheckCircle size={14} />
+              </button>
+            ))}
+          </article>
+        </div>
+      </section>
+
       {/* 告警统计 */}
       <section className="alert-stats">
         <div className="stats-grid">
@@ -230,6 +461,18 @@ export default function AlertCenterPage() {
             <option value="error">错误</option>
             <option value="warning">警告</option>
             <option value="info">信息</option>
+          </select>
+        </div>
+        <div className="filter-group">
+          <Filter size={16} />
+          <select
+            value={filterSource}
+            onChange={(e) => setFilterSource(e.target.value)}
+          >
+            <option value="all">全部来源</option>
+            {[...new Set(alerts.map((alert) => alert.source))].map((source) => (
+              <option key={source} value={source}>{source}</option>
+            ))}
           </select>
         </div>
         <div className="filter-group">

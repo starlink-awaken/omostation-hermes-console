@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Server, DollarSign, Cpu, Activity, Zap, TrendingUp, Shield } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Activity, AlertTriangle, Cpu, RefreshCw, Server, Shield, TrendingUp, Zap } from 'lucide-react';
 import './Dashboard.css';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import InfrastructureOpsWorkbench from './InfrastructureOpsWorkbench';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface NodeTraffic {
   node_id: string;
@@ -15,12 +18,32 @@ interface NodeTraffic {
   tokens_per_second_avg: number | null;
 }
 
-export default function ComputeView() {
+interface ComputeViewProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesComputeFocusQuery(values: Array<string | null | undefined>, query?: string) {
+  const normalizedQuery = query?.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
+}
+
+export default function ComputeView({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: ComputeViewProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [tick, setTick] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [controlMessage, setControlMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [circuitBroken, setCircuitBroken] = useState<boolean>(false);
-  const [dailyBudget, setDailyBudget] = useState<number>(100);
+  const [dailyBudget, setDailyBudget] = useState<number | null>(null);
   // 本地生成 (经 /api/governance/compute/generate → BOS → omlx)
   const [genPrompt, setGenPrompt] = useState<string>('');
   const [genModel, setGenModel] = useState<string>('coder');
@@ -49,28 +72,40 @@ export default function ComputeView() {
   };
 
   useEffect(() => {
+    let cancelled = false;
     const fetchCompute = async () => {
+      if (!cancelled) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const res = await fetch('/api/compute/status');
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-          setCircuitBroken(!!json.circuit_broken);
-          setDailyBudget(json.daily_budget !== undefined ? json.daily_budget : 100);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (cancelled) return;
+        setData(json);
+        setCircuitBroken(!!json.circuit_broken);
+        setDailyBudget(json.daily_budget !== undefined ? json.daily_budget : null);
+      } catch (err: any) {
+        if (!cancelled) {
+          setData(null);
+          setError(`算力状态暂不可用：${err.message || '接口读取失败'}`);
         }
-      } catch (err) {
-        console.error('Failed to fetch compute data:', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchCompute();
     const timer = setInterval(fetchCompute, 6000);
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [refreshToken]);
 
   const toggleCircuitBreaker = async () => {
     const nextVal = !circuitBroken;
+    setControlMessage(null);
     setCircuitBroken(nextVal);
     try {
       const res = await fetch('/api/omos/circuit-break', {
@@ -82,15 +117,18 @@ export default function ComputeView() {
       const result = await res.json();
       if (result.status !== 'ok') {
         setCircuitBroken(!nextVal);
-        alert('修改熔断状态失败: ' + result.error);
+        setControlMessage({ tone: 'error', text: '修改熔断状态失败：' + (result.error || '后端未确认') });
+      } else {
+        setControlMessage({ tone: 'success', text: nextVal ? '已启用熔断' : '已恢复云端路由' });
       }
     } catch (err: any) {
       setCircuitBroken(!nextVal);
-      alert('修改熔断状态发生异常: ' + err.message);
+      setControlMessage({ tone: 'error', text: '修改熔断状态发生异常：' + err.message });
     }
   };
 
   const updateBudget = async (val: number) => {
+    setControlMessage(null);
     setDailyBudget(val);
     try {
       const res = await fetch('/api/omos/budget', {
@@ -101,20 +139,21 @@ export default function ComputeView() {
       if (!res.ok) throw new Error('API failed');
       const result = await res.json();
       if (result.status !== 'ok') {
-        alert('修改预算失败: ' + result.error);
+        setControlMessage({ tone: 'error', text: '修改预算失败：' + (result.error || '后端未确认') });
+      } else {
+        setControlMessage({ tone: 'success', text: `每日预算已更新为 $${val}` });
       }
     } catch (err: any) {
-      alert('修改预算异常: ' + err.message);
+      setControlMessage({ tone: 'error', text: '修改预算异常：' + err.message });
     }
   };
 
-  // 每秒触发一次 tick，用于模拟 CPU/GPU 轻微的正弦波起伏动画
-  useEffect(() => {
-    const animTimer = setInterval(() => {
-      setTick(t => t + 1);
-    }, 1500);
-    return () => clearInterval(animTimer);
-  }, []);
+  const nodes = data?.nodes || [];
+  const quota = data?.quota?.quota || [];
+  const trafficByNode: NodeTraffic[] = data?.traffic_by_node || [];
+  const summary = data?.summary || {};
+  const costBoard = data?.cost_board || {};
+  const availableModels = data?.available_models || [];
 
   if (loading) {
     return (
@@ -125,55 +164,316 @@ export default function ComputeView() {
     );
   }
 
-  const nodes = data?.nodes || [];
-  const quota = data?.quota?.quota || [];
-  const trafficByNode: NodeTraffic[] = data?.traffic_by_node || [];
-  const summary = data?.summary || {};
-  const costBoard = data?.cost_board || {};
-  const availableModels = data?.available_models || [];
-
   // 计算整体拦截率 (Interception Rate) 
-  const interceptionRate = costBoard.interception_rate 
-    ? Math.round(costBoard.interception_rate * 100) 
-    : 84; 
+  const interceptionRate = costBoard.interception_rate === undefined
+    ? null
+    : Math.round(costBoard.interception_rate * 100);
 
-  const avgLatency = summary.avg_latency_ms 
-    ? Math.round(summary.avg_latency_ms) 
-    : 15;
+  const avgLatency = summary.avg_latency_ms === undefined
+    ? null
+    : Math.round(summary.avg_latency_ms);
 
-  const avgThroughput = summary.avg_tokens_per_second 
-    ? Math.round(summary.avg_tokens_per_second) 
-    : 42;
+  const avgThroughput = summary.avg_tokens_per_second === undefined
+    ? null
+    : Math.round(summary.avg_tokens_per_second);
 
-  // 根据节点信息，通过确定性正弦函数计算 CPU/GPU 负载 (百分比)
-  const getDynamicLoad = (nodeId: string, status: string, index: number, type: 'cpu' | 'gpu') => {
-    if (status !== 'online') return 0;
-    
-    // 寻找该节点的调用频次
-    const nodeTraffic = trafficByNode.find(t => t.node_id === nodeId);
-    const calls = nodeTraffic?.calls || 0;
+  const computeBacklog = (() => {
+    const scheduledTasks = data?.scheduled_tasks || [];
+    const saturatedNodes = nodes.filter((node: any) => node.status !== 'online' || (node.cpu_usage ?? 0) >= 70 || (node.gpu_usage ?? 0) >= 70);
+    const providerRisks = quota.filter((provider: any) => {
+      const usedPercent = provider.used_percent !== undefined
+        ? provider.used_percent
+        : provider.usage?.total_granted
+          ? Math.round((provider.usage.total_used / provider.usage.total_granted) * 100)
+          : 0;
+      return !provider.available || usedPercent >= 80 || provider.error;
+    });
+    const hotRoutes = [...trafficByNode].sort((left, right) => (right.calls || 0) - (left.calls || 0)).slice(0, 3);
+    return {
+      scheduledTasks,
+      saturatedNodes: (saturatedNodes.length ? saturatedNodes : nodes).slice(0, 3),
+      providerRisks: (providerRisks.length ? providerRisks : quota).slice(0, 3),
+      hotRoutes,
+    };
+  })();
 
-    // 基础波动频率
-    const timePhase = tick + index * 5;
-    const baseWave = Math.sin(timePhase * 0.4) * 8;
-
-    if (type === 'cpu') {
-      // 本地主机算力基础负载略高，GPU 辅机有任务时 CPU 也会跟涨
-      const baseCpu = nodeId === 'local-mac' ? 35 : 12;
-      const taskBoost = Math.min(40, calls * 5);
-      return Math.round(baseCpu + taskBoost + baseWave);
-    } else {
-      // GPU 待机开销极低，有运算任务时产生显著的负载升降
-      if (nodeId === 'cloud-cc-switch') return 0; // 云代理节点显示 0 GPU
-      const taskBoost = calls > 0 
-        ? Math.min(85, 45 + Math.cos(timePhase * 0.5) * 15 + (calls % 5) * 6)
-        : Math.round(5 + Math.sin(timePhase * 0.2) * 2); // 待机
-      return Math.round(taskBoost);
+  const computeActionItems = [
+    {
+      id: 'compute-observability',
+      title: '回观测面看波动',
+      detail: '当延迟、吞吐或熔断状态异常时，先回可观测面看整体异常信号。',
+      actionLabel: '进入观测页',
+      actionType: 'navigate' as const,
+      actionValue: 'Observability',
+    },
+    {
+      id: 'compute-mesh',
+      title: '查网格路由与节点',
+      detail: '分流不均或本地节点压力异常时，继续去 MCP 网格核对路由和下游服务。',
+      actionLabel: '进入网格页',
+      actionType: 'navigate' as const,
+      actionValue: 'McpMesh',
+    },
+    {
+      id: 'compute-tasks',
+      title: '把算力问题挂任务',
+      detail: '长期高压节点、预算风险和异常任务都应转进任务中心承接。',
+      actionLabel: '进入任务中心',
+      actionType: 'navigate' as const,
+      actionValue: 'TaskCenter',
+    },
+  ];
+  const focusedComputeCard = (() => {
+    const matchedNode = nodes.find((node: any) => (
+      matchesComputeFocusQuery([
+        String(node.id || ''),
+        node.name,
+        node.model,
+        node.type,
+        node.status,
+      ], focusTaskQuery)
+    ));
+    if (matchedNode) {
+      return {
+        kicker: '算力节点',
+        title: matchedNode.name || String(matchedNode.id || '未命名节点'),
+        detail: `${matchedNode.status} · CPU ${matchedNode.cpu_usage ?? 0}% · GPU ${matchedNode.gpu_usage ?? 0}%`,
+        objectTarget: { tab: 'Compute', taskQuery: String(matchedNode.id || matchedNode.name || 'Compute') },
+        taskTarget: { tab: 'TaskCenter', taskQuery: String(matchedNode.id || matchedNode.name || 'Compute') },
+      };
     }
-  };
+
+    const matchedProvider = quota.find((provider: any) => (
+      matchesComputeFocusQuery([
+        provider.provider,
+        provider.error,
+        provider.available === false ? '不可用' : '可用',
+      ], focusTaskQuery)
+    ));
+    if (matchedProvider) {
+      const usedPercent = matchedProvider.used_percent !== undefined
+        ? matchedProvider.used_percent
+        : matchedProvider.usage?.total_granted
+          ? Math.round((matchedProvider.usage.total_used / matchedProvider.usage.total_granted) * 100)
+          : 0;
+      return {
+        kicker: '供应商风险',
+        title: matchedProvider.provider || '未命名供应商',
+        detail: matchedProvider.available === false ? '当前不可用，需要形成治理动作。' : `${usedPercent}% 已用，需要提前控预算与熔断。`,
+        objectTarget: { tab: 'Compute', taskQuery: matchedProvider.provider || 'provider-risk' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedProvider.provider || 'provider-risk' },
+      };
+    }
+
+    const matchedRoute = trafficByNode.find((route) => (
+      matchesComputeFocusQuery([route.node_id, route.node_label, route.route_type], focusTaskQuery)
+    ));
+    if (matchedRoute) {
+      return {
+        kicker: '分流热点',
+        title: matchedRoute.node_label,
+        detail: `${matchedRoute.calls} 次调用 · ${matchedRoute.tokens.toLocaleString()} tokens，继续核对这类热点挂在哪条使用路径上。`,
+        objectTarget: { tab: 'Compute', taskQuery: matchedRoute.node_id },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedRoute.node_id },
+      };
+    }
+
+    if (focusPageId === 'Compute') {
+      return {
+        kicker: '当前页面',
+        title: '算力调配',
+        detail: '这页负责把节点、配额、热点和熔断状态收拢成运行动作，不让算力问题只停在仪表盘上。',
+        objectTarget: { tab: 'SystemMap', pageId: 'Compute' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'Compute' },
+      };
+    }
+
+    return null;
+  })();
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <InfrastructureOpsWorkbench currentPage="Compute" onNavigate={onNavigate} />
+
+      {error && (
+        <div className="overview-inline-error" role="alert">
+          <AlertTriangle size={16} />
+          <span>{error}</span>
+          <button className="antd-btn small" aria-label="重试算力状态" onClick={() => setRefreshToken((value) => value + 1)}>
+            <RefreshCw size={13} />
+            <span>重试</span>
+          </button>
+        </div>
+      )}
+
+      <ActionSurfacePanel
+        title="算力动作区"
+        subtitle="先看延迟和预算，再决定去观测、网格还是任务面继续承接。"
+        statusText={nodes.length ? `${nodes.length} 个算力节点` : '等待算力节点'}
+        items={computeActionItems}
+        onNavigate={onNavigate}
+      />
+
+      {focusedComputeCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前算力承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前算力承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把系统地图、页面审计或任务里丢过来的上下文，直接翻成算力面当前该承接的对象。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedComputeCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedComputeCard.title}</strong>
+              <p>{focusedComputeCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开算力焦点对象 ${focusedComputeCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedComputeCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <Cpu size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开算力焦点任务 ${focusedComputeCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedComputeCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <Shield size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2>算力承接工作台</h2>
+            <p className="text-muted">把高压节点、预算风险和任务分流直接翻成下一步动作，不再只看监控数字。</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge degraded">高压节点 {computeBacklog.saturatedNodes.filter((node: any) => node.status !== 'online' || (node.cpu_usage ?? 0) >= 70 || (node.gpu_usage ?? 0) >= 70).length}</span>
+            <span className="status-badge degraded">预算风险 {computeBacklog.providerRisks.filter((provider: any) => !provider.available || provider.error).length || computeBacklog.providerRisks.length}</span>
+            <span className="status-badge online">调度任务 {computeBacklog.scheduledTasks.length}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15 }}>节点扩容与排障</h3>
+                <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>CPU/GPU 压力大或节点离线时，先回观测面，再去网格核对分流。</p>
+              </div>
+              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Observability')}>
+                <Activity size={14} />
+                <span>看观测页</span>
+              </button>
+            </div>
+            {computeBacklog.saturatedNodes.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>当前没有需要处理的节点压力。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {computeBacklog.saturatedNodes.map((node: any) => (
+                  <button
+                    key={`node-${node.id}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`处理算力节点 ${node.name}`}
+                    onClick={() => onNavigate?.('McpMesh')}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{node.name}</strong>
+                      <p>{node.status} · CPU {node.cpu_usage ?? 0}% · GPU {node.gpu_usage ?? 0}%</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>去网格页核对路由与下游调用。</span>
+                    </div>
+                    <Cpu size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>预算与供应商风险</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>当余额、可用性或已用额度接近阈值时，马上形成治理动作。</p>
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {computeBacklog.providerRisks.length === 0 ? (
+                <p className="text-muted" style={{ margin: 0 }}>当前没有明显的供应商风险。</p>
+              ) : computeBacklog.providerRisks.map((provider: any, index: number) => {
+                const usedPercent = provider.used_percent !== undefined
+                  ? provider.used_percent
+                  : provider.usage?.total_granted
+                    ? Math.round((provider.usage.total_used / provider.usage.total_granted) * 100)
+                    : 0;
+                return (
+                  <button
+                    key={`provider-${provider.provider || index}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`处理供应商风险 ${provider.provider || index}`}
+                    onClick={() => onNavigate?.('TaskCenter')}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{provider.provider || '未命名供应商'}</strong>
+                      <p>{provider.available === false ? '不可用' : `${usedPercent}% 已用`}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>把预算与熔断风险送进任务中心承接。</span>
+                    </div>
+                    <Shield size={14} />
+                  </button>
+                )
+              })}
+            </div>
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15 }}>调度与分流热点</h3>
+                <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>高频任务和高调用节点要回工作流页、系统地图和网格继续验收。</p>
+              </div>
+              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Workflows')}>
+                <Zap size={14} />
+                <span>看工作流页</span>
+              </button>
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {computeBacklog.hotRoutes.length === 0 ? (
+                <p className="text-muted" style={{ margin: 0 }}>暂无活跃分流热点。</p>
+              ) : computeBacklog.hotRoutes.map((route) => (
+                <button
+                  key={`route-${route.node_id}`}
+                  type="button"
+                  className="action-surface-item"
+                  aria-label={`查看算力热点 ${route.node_label}`}
+                  onClick={() => onNavigate?.('SystemMap')}
+                  style={{ textAlign: 'left', width: '100%' }}
+                >
+                  <div>
+                    <strong>{route.node_label}</strong>
+                    <p>{route.calls} 次调用 · {route.tokens.toLocaleString()} tokens</p>
+                    <span className="text-muted" style={{ fontSize: 12 }}>回系统地图确认这类热点挂在哪条使用路径上。</span>
+                  </div>
+                  <TrendingUp size={14} />
+                </button>
+              ))}
+            </div>
+          </article>
+        </div>
+      </section>
 
       {/* 本地算力生成 — 经 BOS compute/generate → omlx 集群 */}
       <div className="antd-card" style={{ padding: '16px' }}>
@@ -243,7 +543,9 @@ export default function ComputeView() {
               <span className={`status-dot ${circuitBroken ? 'dot-down animate-pulse' : 'dot-ok'}`} style={{ width: '8px', height: '8px', display: 'inline-block' }}></span>
             </h3>
             <p className="text-muted" style={{ fontSize: '11px', marginTop: '4px', margin: 0 }}>
-              {circuitBroken 
+              {error
+                ? '无法确认当前熔断和路由状态，请先恢复算力状态探测。'
+                : circuitBroken
                 ? '🚨 熔断器已拉闸：云端商业 API 访问已被强制中断，全力降级为本地离线推理网格' 
                 : '🟢 全网健康监听中：当每日 API 消耗触发安全阀值或达到单日预算时将自动断路熔断'}
             </p>
@@ -254,14 +556,15 @@ export default function ComputeView() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, maxWidth: '240px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
               <span className="text-muted">单日 API 消费安全阀线</span>
-              <strong style={{ color: 'var(--antd-accent)' }}>${dailyBudget} / 天</strong>
+              <strong style={{ color: 'var(--antd-accent)' }}>{dailyBudget === null ? '—' : `$${dailyBudget}`} / 天</strong>
             </div>
             <input 
               type="range" 
               min="50" 
               max="1000" 
               step="50"
-              value={dailyBudget}
+              value={dailyBudget ?? 100}
+              disabled={Boolean(error || !data)}
               onChange={(e) => setDailyBudget(Number(e.target.value))}
               onMouseUp={(e) => updateBudget(Number((e.target as HTMLInputElement).value))}
               onTouchEnd={(e) => updateBudget(Number((e.target as HTMLInputElement).value))}
@@ -278,6 +581,7 @@ export default function ComputeView() {
 
           <button 
             onClick={toggleCircuitBreaker}
+            disabled={Boolean(error || !data)}
             style={{
               padding: '8px 16px',
               borderRadius: '6px',
@@ -285,16 +589,33 @@ export default function ComputeView() {
               fontSize: '12px',
               cursor: 'pointer',
               transition: 'all 0.3s ease',
-              backgroundColor: circuitBroken ? 'rgba(255, 69, 58, 0.15)' : 'rgba(5, 243, 162, 0.1)',
-              color: circuitBroken ? 'var(--antd-error)' : 'var(--antd-success)',
-              border: `1px solid ${circuitBroken ? 'var(--antd-error)' : 'var(--antd-success)'}`,
+              backgroundColor: error ? 'rgba(255, 255, 255, 0.05)' : circuitBroken ? 'rgba(255, 69, 58, 0.15)' : 'rgba(5, 243, 162, 0.1)',
+              color: error ? 'var(--antd-text-secondary)' : circuitBroken ? 'var(--antd-error)' : 'var(--antd-success)',
+              border: `1px solid ${error ? 'var(--antd-border-color)' : circuitBroken ? 'var(--antd-error)' : 'var(--antd-success)'}`,
               boxShadow: circuitBroken ? '0 0 10px rgba(255, 69, 58, 0.1)' : 'none'
             }}
           >
-            {circuitBroken ? '🔐 闭合闸路 (恢复云端)' : '⚡️ 紧急拉闸 (强制熔断)'}
+            {error ? '状态未知' : circuitBroken ? '🔐 闭合闸路 (恢复云端)' : '⚡️ 紧急拉闸 (强制熔断)'}
           </button>
         </div>
       </div>
+
+      {controlMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            padding: '10px 14px',
+            borderRadius: '6px',
+            border: `1px solid ${controlMessage.tone === 'success' ? 'rgba(5, 243, 162, 0.35)' : 'rgba(255, 71, 87, 0.35)'}`,
+            color: controlMessage.tone === 'success' ? 'var(--antd-success)' : 'var(--antd-error)',
+            background: controlMessage.tone === 'success' ? 'rgba(5, 243, 162, 0.08)' : 'rgba(255, 71, 87, 0.08)',
+            fontSize: '12px',
+          }}
+        >
+          {controlMessage.text}
+        </div>
+      )}
 
       {/* 1. 算力调配核心健康指标 */}
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
@@ -302,7 +623,7 @@ export default function ComputeView() {
         <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-primary)' }}>
           <div className="stat-info">
             <h3>算力网格平均延迟</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-primary)' }}>{avgLatency} ms</p>
+            <p className="stat-value" style={{ color: 'var(--antd-primary)' }}>{avgLatency === null ? '—' : `${avgLatency} ms`}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>
               <Zap size={11} />
               <span>本地热启动边缘加速</span>
@@ -313,7 +634,7 @@ export default function ComputeView() {
         <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-accent)' }}>
           <div className="stat-info">
             <h3>总 Token 吞吐速率</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-accent)' }}>{avgThroughput} T/s</p>
+            <p className="stat-value" style={{ color: 'var(--antd-accent)' }}>{avgThroughput === null ? '—' : `${avgThroughput} T/s`}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>
               <Activity size={11} />
               <span>智能体活跃吞吐</span>
@@ -324,7 +645,7 @@ export default function ComputeView() {
         <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-success)' }}>
           <div className="stat-info">
             <h3>本地大模型拦截率</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-success)' }}>{interceptionRate}%</p>
+            <p className="stat-value" style={{ color: 'var(--antd-success)' }}>{interceptionRate === null ? '—' : `${interceptionRate}%`}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>
               <TrendingUp size={11} />
               <span>节省云端 API 成本: ${costBoard.saved_vs_cloud_usd || '0.00'}</span>
@@ -341,9 +662,9 @@ export default function ComputeView() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
-          {nodes.map((node: any, idx: number) => {
-            const cpuLoad = node.cpu_usage !== undefined ? node.cpu_usage : getDynamicLoad(node.id, node.status, idx, 'cpu');
-            const gpuLoad = node.gpu_usage !== undefined ? node.gpu_usage : getDynamicLoad(node.id, node.status, idx, 'gpu');
+          {nodes.map((node: any) => {
+            const cpuLoad = node.cpu_usage ?? 0;
+            const gpuLoad = node.gpu_usage ?? 0;
             const isOnline = node.status === 'online';
 
             return (
@@ -694,4 +1015,3 @@ export default function ComputeView() {
     </div>
   );
 }
-

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Shield, Lightbulb, CheckCircle2, Plus, Sparkles, Clock, Star, PlayCircle, Loader2, Award } from 'lucide-react';
 import './Dashboard.css';
+import PlatformControlWorkbench from './PlatformControlWorkbench';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface Quest {
   id: number;
@@ -28,7 +31,26 @@ interface PointLog {
   timestamp: string;
 }
 
-export default function QuestBoard() {
+interface QuestBoardProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesQuestFocusQuery(values: Array<string | number | null | undefined>, query?: string | null) {
+  if (!query) return false;
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+}
+
+export default function QuestBoard({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: QuestBoardProps) {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [logs, setLogs] = useState<PointLog[]>([]);
@@ -154,9 +176,213 @@ export default function QuestBoard() {
 
   const activeQuests = quests.filter(q => q.completed === 0);
   const completedQuests = quests.filter(q => q.completed === 1);
+  const focusProfiles = [...profiles]
+    .sort((left, right) => (right.responsibilityPoints + right.wisdomPoints) - (left.responsibilityPoints + left.wisdomPoints))
+    .slice(0, 3);
+  const focusedQuestCard = (() => {
+    const matchedQuest = quests.find((quest) => (
+      matchesQuestFocusQuery([quest.id, quest.title, quest.type, quest.assignee, quest.reward], focusTaskQuery)
+    ));
+    if (matchedQuest) {
+      return {
+        kicker: '家庭任务',
+        title: matchedQuest.title,
+        detail: `${matchedQuest.type} · 奖励 ${matchedQuest.reward} · 指派 ${matchedQuest.assignee}`,
+        objectTarget: { tab: 'QuestBoard', taskQuery: String(matchedQuest.id) },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedQuest.title },
+      };
+    }
+
+    const matchedProfile = profiles.find((profile) => (
+      matchesQuestFocusQuery([profile.role, profile.name, profile.level, profile.wisdomPoints, profile.responsibilityPoints], focusTaskQuery)
+    ));
+    if (matchedProfile) {
+      return {
+        kicker: '家庭成员',
+        title: matchedProfile.name,
+        detail: `责任 ${matchedProfile.responsibilityPoints} · 智慧 ${matchedProfile.wisdomPoints} · level ${matchedProfile.level}`,
+        objectTarget: { tab: 'QuestBoard', taskQuery: matchedProfile.role },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedProfile.name },
+      };
+    }
+
+    if (focusPageId === 'QuestBoard') {
+      return {
+        kicker: '当前页面',
+        title: '积分冒险',
+        detail: '这页负责把家庭任务、成员积分和后续应用中心/任务中心/知识页承接串起来，不只是一个积分榜。',
+        objectTarget: { tab: 'SystemMap', pageId: 'QuestBoard' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'QuestBoard' },
+      };
+    }
+
+    return null;
+  })();
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <PlatformControlWorkbench currentPage="QuestBoard" onNavigate={onNavigate} />
+
+      <ActionSurfacePanel
+        title="家庭执行联动"
+        subtitle="冒险板不再只是积分展示，直接把家庭任务和领域应用、任务中心连起来。"
+        statusText={activeQuests.length > 0 ? `活跃冒险 ${activeQuests.length}` : '当前无活跃冒险'}
+        onNavigate={onNavigate}
+        items={[
+          {
+            id: 'domain-apps',
+            title: '回家庭应用',
+            detail: '需要看家庭真实数据、周报或驾驶舱状态时，直接跳去应用中心。',
+            actionLabel: '去应用中心',
+            actionType: 'navigate',
+            actionValue: 'DomainApps',
+          },
+          {
+            id: 'task-center',
+            title: '沉到任务中心',
+            detail: '当家庭侧任务需要进入更正式的治理或追踪时，回任务中心继续处理。',
+            actionLabel: '去任务中心',
+            actionType: 'navigate',
+            actionValue: 'TaskCenter',
+          },
+          {
+            id: 'knowledge',
+            title: '回知识中枢',
+            detail: '要沉淀家庭任务经验、规则或习惯时，回知识页整理成长期资产。',
+            actionLabel: '去知识页',
+            actionType: 'navigate',
+            actionValue: 'Knowledge',
+          },
+          {
+            id: 'copy-quest',
+            title: '复制任务模板',
+            detail: '先从一个固定模板起步，降低临时想任务时的摩擦。',
+            actionLabel: '复制模板',
+            actionType: 'copy',
+            actionValue: '整理房间 / 类型: responsibility / 奖励: 15 / 指派: child',
+          },
+        ]}
+      />
+
+      {focusedQuestCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前家庭承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前家庭承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把系统地图、搜索或任务带来的上下文，直接落到当前该承接的家庭任务或成员对象。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedQuestCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedQuestCard.title}</strong>
+              <p>{focusedQuestCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开家庭焦点对象 ${focusedQuestCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedQuestCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <Trophy size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开家庭焦点任务 ${focusedQuestCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedQuestCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <Shield size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>家庭承接工作台</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把活跃任务、家庭成员积分焦点和后续入口放在看板前面，避免家庭页只剩积分展示。
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge degraded">活跃 {activeQuests.length}</span>
+            <span className="status-badge online">完成 {completedQuests.length}</span>
+            <span className="status-badge degraded">成员 {profiles.length}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>活跃家庭任务</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先处理当前最重要的家庭任务，再决定是否沉到任务中心或应用中心。</p>
+            </div>
+            {activeQuests.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>当前没有活跃家庭任务。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {activeQuests.slice(0, 4).map((quest) => (
+                  <div key={`quest-${quest.id}`} className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+                    <div>
+                      <strong>{quest.title}</strong>
+                      <p>{quest.type} · 奖励 {quest.reward} · 指派 {quest.assignee}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>完成后会直接回流到积分日志和荣誉殿堂。</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>家庭去向</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>家庭任务不是孤立玩具，后续要回应用中心、任务中心和知识页继续沉淀。</p>
+            </div>
+            {focusProfiles.length > 0 && (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {focusProfiles.map((profile) => (
+                  <div key={`profile-${profile.role}`} className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+                    <div>
+                      <strong>{profile.name}</strong>
+                      <p>责任 {profile.responsibilityPoints} · 智慧 {profile.wisdomPoints}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>当前 level {profile.level}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {[
+              { id: 'DomainApps', label: '应用中心', reason: '进入家庭驾驶舱和家庭数据面继续查看真实状态。', aria: '打开家庭承接到应用中心' },
+              { id: 'TaskCenter', label: '任务中心', reason: '把家庭任务转成正式跟踪项。', aria: '打开家庭承接到任务中心' },
+              { id: 'Knowledge', label: '知识页', reason: '沉淀家庭规则、模板和长期经验。', aria: '打开家庭承接到知识页' },
+            ].map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="action-surface-item"
+                aria-label={page.aria}
+                onClick={() => onNavigate?.(page.id)}
+                style={{ textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <strong>{page.label}</strong>
+                  <p>{page.reason}</p>
+                </div>
+                <Trophy size={14} />
+              </button>
+            ))}
+          </article>
+        </div>
+      </section>
       
       {/* Top Header Block */}
       <div className="section-header">

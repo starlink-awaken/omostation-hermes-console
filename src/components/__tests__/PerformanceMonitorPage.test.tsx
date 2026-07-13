@@ -1,0 +1,115 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+
+import PerformanceMonitorPage from '../PerformanceMonitorPage'
+
+vi.mock('../RuntimeOpsWorkbench', () => ({
+  default: () => <div>Runtime Workbench Mock</div>,
+}))
+
+vi.mock('../charts/AreaChart', () => ({ default: () => <div>Area Chart Mock</div> }))
+vi.mock('../charts/LineChart', () => ({ default: () => <div>Line Chart Mock</div> }))
+
+const okJson = (body: unknown, ok = true) => ({ ok, json: async () => body }) as Response
+
+describe('PerformanceMonitorPage', () => {
+  beforeEach(() => {
+    vi.mocked(fetch).mockReset()
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    })
+  })
+
+  it('shows a truthful retry state when the metrics API fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).startsWith('/api/metrics/system')) return Promise.resolve(okJson({}, false))
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<PerformanceMonitorPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('性能监控数据暂不可用')
+      expect(screen.getByText('性能承接工作台')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '重试性能指标' })).toBeInTheDocument()
+    })
+  })
+
+  it('surfaces performance follow-up actions for degraded services', async () => {
+    const onNavigate = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/metrics/system')) {
+        return Promise.resolve(okJson({
+          cpu: [{ timestamp: '10:00', value: 81 }],
+          memory: [{ timestamp: '10:00', value: 62 }],
+          disk: [{ timestamp: '10:00', value: 74 }],
+          network: [{ timestamp: '10:00', value: 33 }],
+        }))
+      }
+      return Promise.resolve(okJson({
+        items: [
+          { name: 'cockpit-api', status: 'degraded', cpu: 91, memory: 82, uptime: '3h' },
+        ],
+      }))
+    })
+
+    render(<PerformanceMonitorPage onNavigate={onNavigate} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('性能承接工作台')).toBeInTheDocument()
+      expect(screen.getAllByText('cockpit-api').length).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '查看性能服务 cockpit-api' }))
+    expect(onNavigate).toHaveBeenCalledWith('AlertCenter')
+
+    fireEvent.click(screen.getByRole('button', { name: '打开性能承接到日志页' }))
+    expect(onNavigate).toHaveBeenCalledWith('LogViewer')
+
+    expect(screen.getByRole('region', { name: '性能补位任务' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '复制性能补位任务 补齐性能页对 cockpit-api 的承接' }))
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('补齐性能页对 cockpit-api 的承接'))
+      expect(screen.getByText('已复制性能补位任务：补齐性能页对 cockpit-api 的承接')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开性能补位任务 补齐性能页对 cockpit-api 的承接' }))
+    expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+  })
+
+  it('surfaces focus handoff for a matched performance service', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/metrics/system')) {
+        return Promise.resolve(okJson({
+          cpu: [{ timestamp: '10:00', value: 81 }],
+          memory: [{ timestamp: '10:00', value: 62 }],
+          disk: [{ timestamp: '10:00', value: 74 }],
+          network: [{ timestamp: '10:00', value: 33 }],
+        }))
+      }
+      return Promise.resolve(okJson({
+        items: [
+          { name: 'cockpit-api', status: 'degraded', cpu: 91, memory: 82, uptime: '3h' },
+        ],
+      }))
+    })
+
+    render(<PerformanceMonitorPage onNavigate={onNavigate} onOpenTarget={onOpenTarget} focusTaskQuery="cockpit-api" />)
+
+    const focusRegion = await screen.findByRole('region', { name: '当前性能承接焦点' })
+    expect(within(focusRegion).getByText('cockpit-api')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开性能焦点对象 cockpit-api' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开性能焦点任务 cockpit-api' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Performance', taskQuery: 'cockpit-api' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'cockpit-api' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+})

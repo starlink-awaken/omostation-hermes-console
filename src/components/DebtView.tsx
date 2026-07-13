@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Search, ShieldAlert, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import './Dashboard.css';
+import GovernanceDomainWorkbench from './GovernanceDomainWorkbench';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface DebtItem {
   id: string;
@@ -12,7 +15,25 @@ interface DebtItem {
   dimension: string;
 }
 
-export default function DebtView() {
+interface DebtViewProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesDebtFocusQuery(values: Array<string | null | undefined>, query?: string) {
+  const normalizedQuery = query?.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
+}
+
+export default function DebtView({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: DebtViewProps) {
   const [data, setData] = useState<{ total: number; open: number; closed: number; items: DebtItem[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +63,11 @@ export default function DebtView() {
   useEffect(() => {
     fetchDebt();
   }, []);
+
+  useEffect(() => {
+    if (!focusTaskQuery) return;
+    setSearchQuery(focusTaskQuery);
+  }, [focusTaskQuery]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -84,9 +110,195 @@ export default function DebtView() {
 
     return matchesSearch && matchesSeverity && matchesDimension;
   });
+  const focusDebtItems = [...filteredItems]
+    .sort((left, right) => {
+      const weight = (severity: string) => (
+        severity.toLowerCase() === 'p0' ? 3
+          : severity.toLowerCase() === 'p1' ? 2
+            : severity.toLowerCase() === 'p2' ? 1
+              : 0
+      );
+      return weight(right.severity) - weight(left.severity);
+    })
+    .slice(0, 4);
+  const focusedDebtCard = (() => {
+    const matchedDebt = data.items.find((item) => (
+      matchesDebtFocusQuery([item.id, item.title, item.severity, item.lifecycle_state, item.owner, item.dimension], focusTaskQuery)
+    ));
+    if (matchedDebt) {
+      return {
+        kicker: '债务项',
+        title: matchedDebt.title,
+        detail: `${matchedDebt.severity.toUpperCase()} · ${matchedDebt.dimension} · ${matchedDebt.lifecycle_state} · owner ${matchedDebt.owner}`,
+        objectTarget: { tab: 'Debt', taskQuery: matchedDebt.id },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedDebt.id },
+      };
+    }
+
+    if (focusPageId === 'Debt') {
+      return {
+        kicker: '当前页面',
+        title: '技术债务',
+        detail: '这页负责把债务账本、影响维度和治理去向串起来，不让债务只剩表格筛选。',
+        objectTarget: { tab: 'SystemMap', pageId: 'Debt' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'Debt' },
+      };
+    }
+
+    return null;
+  })();
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <GovernanceDomainWorkbench currentPage="Debt" onNavigate={onNavigate} />
+
+      <ActionSurfacePanel
+        title="债务处理区"
+        subtitle="先筛债务，再快速回治理、系统地图和领域页，不用自己在导航里来回找。"
+        statusText={`open ${data.open} / total ${data.total}`}
+        onNavigate={onNavigate}
+        items={[
+          {
+            id: 'c2g',
+            title: '回治理决策',
+            detail: '高危债务需要重新排优先级或进入治理卡片时，直接回 C2G。',
+            actionLabel: '去 C2G',
+            actionType: 'navigate',
+            actionValue: 'C2G',
+          },
+          {
+            id: 'system-map',
+            title: '看项目影响',
+            detail: '债务要确认影响面时，回系统地图看项目组合和能力缺口。',
+            actionLabel: '去系统地图',
+            actionType: 'navigate',
+            actionValue: 'SystemMap',
+          },
+          {
+            id: 'domain-apps',
+            title: '查领域挂载',
+            detail: '安全或运行类债务常常会落到领域应用，直接去应用中心处理。',
+            actionLabel: '去应用中心',
+            actionType: 'navigate',
+            actionValue: 'DomainApps',
+          },
+          {
+            id: 'copy-filter',
+            title: '复制高危筛选提示',
+            detail: '先用一个固定搜索词起步，减少人工翻表的时间。',
+            actionLabel: '复制筛选词',
+            actionType: 'copy',
+            actionValue: 'severity:p0 lifecycle_state:open',
+          },
+        ]}
+      />
+
+      {focusedDebtCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前债务承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前债务承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把系统地图、页面审计或任务里丢过来的上下文，直接翻成债务面当前该承接的对象。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedDebtCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedDebtCard.title}</strong>
+              <p>{focusedDebtCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开债务焦点对象 ${focusedDebtCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedDebtCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <ShieldAlert size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开债务焦点任务 ${focusedDebtCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedDebtCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <CheckCircle size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>债务承接工作台</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把高危债务、影响维度和后续入口前置，避免债务页只剩筛选表格。
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge degraded">open {data.open}</span>
+            <span className="status-badge online">closed {data.closed}</span>
+            <span className="status-badge degraded">focus {focusDebtItems.length}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>优先债务</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先处理最该收口的债务项，再决定回治理、领域或系统地图。</p>
+            </div>
+            {focusDebtItems.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>当前没有需要额外处理的债务。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {focusDebtItems.map((item) => (
+                  <div key={`debt-${item.id}`} className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.severity.toUpperCase()} · {item.dimension} · {item.lifecycle_state}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>owner {item.owner}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>债务去向</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>债务账本本身不是终点，真正处理还要回治理、系统地图和任务中心。</p>
+            </div>
+            {[
+              { id: 'C2G', label: '治理决策', reason: '重新排优先级或进入治理卡片。', aria: '打开债务承接到治理页' },
+              { id: 'SystemMap', label: '系统地图', reason: '确认债务影响的项目、页面与能力缺口。', aria: '打开债务承接到系统地图' },
+              { id: 'TaskCenter', label: '任务中心', reason: '把长期债务变成可跟踪的执行项。', aria: '打开债务承接到任务中心' },
+            ].map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="action-surface-item"
+                aria-label={page.aria}
+                onClick={() => onNavigate?.(page.id)}
+                style={{ textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <strong>{page.label}</strong>
+                  <p>{page.reason}</p>
+                </div>
+                <ShieldAlert size={14} />
+              </button>
+            ))}
+          </article>
+        </div>
+      </section>
       
       {/* Overview stats */}
       <div className="stats-grid">
@@ -274,4 +486,3 @@ export default function DebtView() {
     </div>
   );
 }
-

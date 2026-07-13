@@ -9,10 +9,6 @@ import {
   Bell,
   RefreshCw,
   Download,
-  Upload,
-  Trash2,
-  Copy,
-  ExternalLink,
 } from 'lucide-react';
 
 interface QuickAction {
@@ -32,11 +28,11 @@ interface QuickActionsPanelProps {
 
 const DEFAULT_ACTIONS: QuickAction[] = [
   {
-    id: 'create-task',
-    label: '创建任务',
+    id: 'task-center',
+    label: '打开任务中心',
     icon: <Plus size={16} />,
     shortcut: 'Ctrl+N',
-    action: () => console.log('创建任务'),
+    action: () => window.location.hash = '#tasks',
     category: '任务',
   },
   {
@@ -52,7 +48,7 @@ const DEFAULT_ACTIONS: QuickAction[] = [
     label: '全局搜索',
     icon: <Search size={16} />,
     shortcut: 'Ctrl+K',
-    action: () => console.log('搜索'),
+    action: () => window.dispatchEvent(new Event('cockpit:focus-search')),
     category: '通用',
   },
   {
@@ -88,16 +84,9 @@ const DEFAULT_ACTIONS: QuickAction[] = [
   },
   {
     id: 'export',
-    label: '导出数据',
+    label: '导出运行快照',
     icon: <Download size={16} />,
-    action: () => console.log('导出'),
-    category: '数据',
-  },
-  {
-    id: 'import',
-    label: '导入数据',
-    icon: <Upload size={16} />,
-    action: () => console.log('导入'),
+    action: () => window.dispatchEvent(new Event('cockpit:export-snapshot')),
     category: '数据',
   },
   {

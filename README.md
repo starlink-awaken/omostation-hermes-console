@@ -13,7 +13,20 @@
 
     cockpit 挂载的 Web 控制台 UI.
 
-    ## Quick Start
+    ## Installation
+
+```bash
+# Clone the workspace recursively
+git clone --recursive https://github.com/starlink-awaken/omostation.git
+cd omostation/projects/cockpit-ui
+
+# Install dependencies with bun
+bun install
+```
+
+Requires Bun and Node.js (see `package.json`).
+
+## Quick Start
 
     ```bash
     bun install
@@ -45,3 +58,10 @@ bun run lint
 - [Changelog](CHANGELOG.md)
 - [License](LICENSE)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Contributors](CONTRIBUTORS.md)
+## Getting Help
+
+- [FAQ](docs/FAQ.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [API / Usage Reference](docs/API.md)
+- [Architecture Overview](docs/ARCHITECTURE.md)

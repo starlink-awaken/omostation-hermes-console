@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface HealthSummaryProps {
   healthScore: number;
@@ -9,6 +9,8 @@ interface HealthSummaryProps {
   activeTasks: number;
   todayRequests: number;
   todayRequestsChange: number;
+  dataQuality?: string;
+  degradedReasons?: string[];
 }
 
 export default function HealthSummarySection({
@@ -19,6 +21,8 @@ export default function HealthSummarySection({
   activeTasks,
   todayRequests,
   todayRequestsChange,
+  dataQuality = 'complete',
+  degradedReasons = [],
 }: HealthSummaryProps) {
   const getTrendIcon = (change: number) => {
     if (change > 0) return <TrendingUp size={16} className="text-success" />;
@@ -35,6 +39,12 @@ export default function HealthSummarySection({
   return (
     <section className="health-summary-section">
       <h2 className="section-title">系统健康总览</h2>
+      {dataQuality !== 'complete' && (
+        <div role="status" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12, padding: '10px 12px', border: '1px solid rgba(250, 173, 20, 0.35)', borderRadius: 'var(--antd-radius-md)', background: 'rgba(250, 173, 20, 0.08)', color: 'var(--antd-warning)', fontSize: 12 }}>
+          <AlertTriangle size={14} style={{ flex: '0 0 auto', marginTop: 1 }} />
+          <span>健康数据为{dataQuality === 'partial' ? '部分' : '不可用'}读数{degradedReasons.length > 0 ? `：${degradedReasons.join('；')}` : ''}。</span>
+        </div>
+      )}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon-wrapper pulse-success">

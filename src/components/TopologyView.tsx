@@ -12,6 +12,9 @@ import type { Node, Edge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Server, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import './Dashboard.css';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import InfrastructureOpsWorkbench from './InfrastructureOpsWorkbench';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 const ServiceNode = memo(({ data }: any) => {
   const getStatusIcon = (status: string) => {
@@ -73,99 +76,351 @@ const nodeTypes = {
   serviceNode: ServiceNode,
 };
 
-export default function TopologyView() {
+interface TopologyViewProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesTopologyFocusQuery(values: Array<string | null | undefined>, query?: string) {
+  const normalizedQuery = query?.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
+}
+
+function serviceStatus(service: any): 'online' | 'offline' | 'degraded' {
+  if (service.circuit === '断路' || service.status === 'offline' || service.status === 'stopped') return 'offline';
+  if (service.circuit === '半开' || service.status === 'degraded' || service.status === 'warning') return 'degraded';
+  if (service.health === 'unreachable' || service.health === 'unhealthy' || service.health === 'error') return 'offline';
+  if (service.health === 'degraded' || service.health === 'warning') return 'degraded';
+  if (service.port_listening === false) return 'offline';
+  return 'online';
+}
+
+function serviceLatency(service: any): string | undefined {
+  if (service.latency) return service.latency;
+  if (service.health && service.health !== 'healthy') return service.health;
+  return undefined;
+}
+
+function dependencyNames(service: any): string[] {
+  const candidates = [service.dependencies, service.depends_on, service.upstream];
+  return candidates.flatMap((value) => {
+    if (!Array.isArray(value)) return [];
+    return value.map((item) => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object') return item.name || item.id || item.service || item.target;
+      return null;
+    }).filter(Boolean) as string[];
+  });
+}
+
+export function buildTopology(rawServices: any[]): { nodes: Node[]; edges: Edge[] } {
+  const nodeKeys = new Map<string, string>();
+  rawServices.forEach((service) => {
+    const key = String(service.id || service.name || '');
+    if (!key) return;
+    nodeKeys.set(key, key);
+    if (service.name) nodeKeys.set(String(service.name), key);
+  });
+
+  const centerX = 350;
+  const centerY = 200;
+  const radius = Math.max(180, Math.min(320, rawServices.length * 32));
+  const nodes: Node[] = rawServices.map((service, index) => {
+    const key = String(service.id || service.name || `service-${index}`);
+    const angle = (index / Math.max(rawServices.length, 1)) * 2 * Math.PI - Math.PI / 2;
+    const status = serviceStatus(service);
+    return {
+      id: key,
+      type: 'serviceNode',
+      position: { x: centerX + radius * Math.cos(angle), y: centerY + radius * Math.sin(angle) },
+      data: { name: service.name || key, status, latency: serviceLatency(service), uptime: service.uptime },
+    };
+  });
+
+  const edges: Edge[] = [];
+  rawServices.forEach((service) => {
+    const target = String(service.id || service.name || '');
+    if (!target) return;
+    dependencyNames(service).forEach((dependency) => {
+      const source = nodeKeys.get(String(dependency));
+      if (!source || source === target) return;
+      const dependencyService = rawServices.find((item) => String(item.id || item.name || '') === source);
+      const dependencyStatus = serviceStatus(dependencyService || {});
+      edges.push({
+        id: `edge-${source}-${target}`,
+        source,
+        target,
+        animated: dependencyStatus === 'online',
+        style: { stroke: dependencyStatus === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)', strokeWidth: 2, opacity: 0.6 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: dependencyStatus === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)' },
+      });
+    });
+  });
+
+  return { nodes, edges };
+}
+
+export default function TopologyView({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: TopologyViewProps) {
+  const [services, setServices] = useState<any[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     const fetchServices = async () => {
       try {
         const response = await fetch('/api/services');
-        let rawServices = [];
-        if (response.ok) {
-          rawServices = await response.json();
-        } else {
-          // Fallback mock data
-          rawServices = [
-            { name: 'Agora Mesh', circuit: '闭合', uptime: '99.9%', latency: '12ms' },
-            { name: 'Minerva Research', circuit: '闭合', uptime: '99.5%', latency: '45ms' },
-            { name: 'SharedBrain Bridge', circuit: '断路', uptime: '0%', latency: '-' },
-            { name: 'LLM Gateway', circuit: '半开', uptime: '98.2%', latency: '850ms' },
-            { name: 'KOS Substrate', circuit: '闭合', uptime: '100%', latency: '2ms' },
-          ];
+        if (!response.ok) throw new Error('服务拓扑数据不可用');
+        const payload = await response.json();
+        const rawServices = Array.isArray(payload) ? payload : (Array.isArray(payload.items) ? payload.items : []);
+        if (rawServices.length === 0) {
+          setServices([]);
+          setNodes([]);
+          setEdges([]);
+          setError('暂无可用服务拓扑');
+          return;
         }
+        setError('');
+        setServices(rawServices);
 
-        const newNodes: Node[] = [];
-        const newEdges: Edge[] = [];
-        
-        const centerX = 350;
-        const centerY = 200;
-        const radius = 180;
-
-        const meshNode = rawServices.find((s: any) => s.name.includes('Agora')) || rawServices[0];
-        const otherNodes = rawServices.filter((s: any) => s !== meshNode);
-
-        // Add Mesh (Central Node)
-        if (meshNode) {
-          const status = meshNode.circuit === '断路' ? 'offline' : meshNode.circuit === '半开' ? 'degraded' : 'online';
-          newNodes.push({
-            id: meshNode.name,
-            type: 'serviceNode',
-            position: { x: centerX, y: centerY },
-            data: { name: meshNode.name, status, latency: meshNode.latency, uptime: meshNode.uptime }
-          });
-        }
-
-        // Add Others
-        otherNodes.forEach((svc: any, index: number) => {
-          const angle = (index / otherNodes.length) * 2 * Math.PI - Math.PI / 2; // Start from top
-          const x = centerX + radius * Math.cos(angle);
-          const y = centerY + radius * Math.sin(angle);
-          const status = svc.circuit === '断路' ? 'offline' : svc.circuit === '半开' ? 'degraded' : 'online';
-
-          newNodes.push({
-            id: svc.name,
-            type: 'serviceNode',
-            position: { x, y },
-            data: { name: svc.name, status, latency: svc.latency, uptime: svc.uptime }
-          });
-
-          // Connect to mesh
-          if (meshNode) {
-            newEdges.push({
-              id: `edge-${meshNode.name}-${svc.name}`,
-              source: meshNode.name,
-              target: svc.name,
-              animated: status === 'online', // animate flow if online
-              style: { stroke: status === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)', strokeWidth: 2, opacity: 0.6 },
-              markerEnd: { 
-                type: MarkerType.ArrowClosed, 
-                color: status === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)' 
-              }
-            });
-          }
-        });
-
-        setNodes(newNodes);
-        setEdges(newEdges);
+        const topology = buildTopology(rawServices);
+        setNodes(topology.nodes);
+        setEdges(topology.edges);
       } catch (error) {
         console.error('Failed to load topology:', error);
+        setServices([]);
+        setNodes([]);
+        setEdges([]);
+        setError(error instanceof Error ? error.message : '服务拓扑数据不可用');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchServices();
+    void fetchServices();
     const interval = setInterval(fetchServices, 5000);
     return () => clearInterval(interval);
-  }, [setNodes, setEdges]);
+  }, [retryToken, setNodes, setEdges]);
+
+  const attentionServices = services
+    .map((service) => ({
+      id: String(service.id || service.name || 'unknown'),
+      name: service.name || String(service.id || 'unknown'),
+      status: serviceStatus(service),
+      dependencyCount: dependencyNames(service).length,
+    }))
+    .filter((service) => service.status !== 'online' || service.dependencyCount === 0)
+    .slice(0, 4);
+  const topologyActionItems = [
+    {
+      id: 'topology-compute',
+      title: '回算力页确认基础设施',
+      detail: '离线或未连通节点先去算力与服务页确认启动、端口和资源状态。',
+      actionLabel: '进入算力页',
+      actionType: 'navigate' as const,
+      actionValue: 'Compute',
+    },
+    {
+      id: 'topology-mesh',
+      title: '回网格页核对依赖',
+      detail: '有关系但状态异常的节点，优先回网格页确认连接和路由约束。',
+      actionLabel: '进入网格页',
+      actionType: 'navigate' as const,
+      actionValue: 'McpMesh',
+    },
+    {
+      id: 'topology-logs',
+      title: '去日志页追证据',
+      detail: '当拓扑只显示异常节点而没有原因时，继续回日志页核对真实报错。',
+      actionLabel: '进入日志页',
+      actionType: 'navigate' as const,
+      actionValue: 'LogViewer',
+    },
+  ];
+  const focusedTopologyCard = (() => {
+    const matchedService = services
+      .map((service) => ({
+        id: String(service.id || service.name || 'unknown'),
+        name: service.name || String(service.id || 'unknown'),
+        status: serviceStatus(service),
+        dependencyCount: dependencyNames(service).length,
+      }))
+      .find((service) => (
+        matchesTopologyFocusQuery([service.id, service.name, service.status], focusTaskQuery)
+      ));
+
+    if (matchedService) {
+      const statusText = matchedService.status === 'offline'
+        ? '离线'
+        : matchedService.status === 'degraded'
+          ? '降级'
+          : '待补关系';
+      return {
+        kicker: '拓扑对象',
+        title: matchedService.name,
+        detail: `${statusText} · 依赖 ${matchedService.dependencyCount}，先在拓扑上确认范围，再决定去算力、网格或日志页深挖。`,
+        objectTarget: { tab: 'Topology', taskQuery: matchedService.id },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedService.id },
+      };
+    }
+
+    if (focusPageId === 'Topology') {
+      return {
+        kicker: '当前页面',
+        title: '全局拓扑',
+        detail: '这页负责把服务关系、异常节点和后续追查去向放在一张图里，不让运行问题只停在“知道有问题”。',
+        objectTarget: { tab: 'SystemMap', pageId: 'Topology' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'Topology' },
+      };
+    }
+
+    return null;
+  })();
 
   return (
-    <div className="antd-card animate-fade-in" style={{ width: '100%', height: 'calc(100vh - 200px)', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <InfrastructureOpsWorkbench currentPage="Topology" onNavigate={onNavigate} />
+
+      <ActionSurfacePanel
+        title="拓扑动作区"
+        subtitle="先确认异常节点和孤立依赖，再回算力、网格和日志页缩小真实根因。"
+        statusText={`${services.length} 节点 / ${edges.length} 关系 / ${attentionServices.length} 待确认`}
+        items={topologyActionItems}
+        onNavigate={onNavigate}
+      />
+
+      {focusedTopologyCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前拓扑承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前拓扑承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把系统地图、页面审计或任务里丢过来的上下文，直接翻成拓扑面当前该盯住的对象。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedTopologyCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedTopologyCard.title}</strong>
+              <p>{focusedTopologyCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开拓扑焦点对象 ${focusedTopologyCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedTopologyCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <Server size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开拓扑焦点任务 ${focusedTopologyCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedTopologyCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <AlertTriangle size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2>拓扑承接工作台</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把拓扑上的异常节点、孤立节点和后续追查页放在地图前面，避免只停在“看到关系”这一步。
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge online">节点 {services.length}</span>
+            <span className="status-badge degraded">关系 {edges.length}</span>
+            <span className="status-badge degraded">异常 {attentionServices.length}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>异常节点</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>离线、降级或没有依赖关系证据的节点优先处理。</p>
+            </div>
+            {attentionServices.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>当前没有需要额外确认的节点。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {attentionServices.map((service) => (
+                  <button
+                    key={`topology-${service.id}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`查看拓扑服务 ${service.name}`}
+                    onClick={() => onNavigate?.(service.status === 'offline' ? 'Compute' : 'McpMesh')}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{service.name}</strong>
+                      <p>{service.status === 'offline' ? '离线' : service.status === 'degraded' ? '降级' : '待补关系'} · 依赖 {service.dependencyCount}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>点击后去更适合承接的页面继续排查。</span>
+                    </div>
+                    <AlertTriangle size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>追查去向</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>拓扑图给出范围，真正承接还要回算力、网格和日志页继续缩小问题。</p>
+            </div>
+            {[
+              { id: 'Compute', label: '算力页', reason: '确认节点是否启动、端口是否监听。', aria: '打开拓扑承接到算力页' },
+              { id: 'McpMesh', label: '网格页', reason: '确认服务之间的连接与路由约束。', aria: '打开拓扑承接到网格页' },
+              { id: 'LogViewer', label: '日志页', reason: '把异常节点带回日志核对真实报错。', aria: '打开拓扑承接到日志页' },
+            ].map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="action-surface-item"
+                aria-label={page.aria}
+                onClick={() => onNavigate?.(page.id)}
+                style={{ textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <strong>{page.label}</strong>
+                  <p>{page.reason}</p>
+                </div>
+                <Server size={14} />
+              </button>
+            ))}
+          </article>
+        </div>
+      </section>
+
+      <div className="antd-card" style={{ width: '100%', height: 'calc(100vh - 260px)', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--antd-border-color)' }}>
-        <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>全局网络拓扑地图 (Sage View)</h2>
-        <p className="text-muted" style={{ fontSize: '12px', marginTop: '4px' }}>上帝视角：实时服务网格拓扑调用流、心跳响应与熔断状态</p>
+        <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>全局网络拓扑地图</h2>
+        <p className="text-muted" style={{ fontSize: '12px', marginTop: '4px' }}>只展示真实运行探针和服务声明的依赖关系，不根据节点名称推断调用流。</p>
+        {!loading && !error && edges.length === 0 && (
+          <p className="text-muted" style={{ fontSize: '12px', margin: '8px 0 0' }}>当前探针未提供显式关系证据，节点状态可见，连线暂不推断。</p>
+        )}
       </div>
       
       <div style={{ flex: 1, position: 'relative' }}>
@@ -173,6 +428,13 @@ export default function TopologyView() {
           <div className="loading-state" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <div className="spinner" aria-hidden="true" style={{ marginBottom: '16px' }}></div>
             <p className="text-muted">正在探测微服务网格拓扑...</p>
+          </div>
+        ) : error ? (
+          <div role="alert" className="empty-state" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
+            <AlertTriangle size={32} className="text-warning" />
+            <h3>{error}</h3>
+            <p className="text-muted">拓扑只展示真实运行探针，不使用静态或模拟服务数据。</p>
+            <button className="btn btn-outline" onClick={() => { setLoading(true); setRetryToken((value) => value + 1); }}>重试拓扑探测</button>
           </div>
         ) : (
           <ReactFlow 
@@ -192,6 +454,7 @@ export default function TopologyView() {
             }} />
           </ReactFlow>
         )}
+      </div>
       </div>
     </div>
   );

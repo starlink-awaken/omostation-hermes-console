@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Cpu, HardDrive, Wifi, Activity, RefreshCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Activity, AlertTriangle, Copy, Cpu, HardDrive, RefreshCw, Wifi } from 'lucide-react';
+import ActionSurfacePanel from './ActionSurfacePanel';
 import LineChart from './charts/LineChart';
 import AreaChart from './charts/AreaChart';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import RuntimeOpsWorkbench from './RuntimeOpsWorkbench';
 
 interface MetricData {
   timestamp: string;
@@ -18,45 +21,67 @@ interface SystemMetrics {
 interface ServiceStatus {
   name: string;
   status: 'online' | 'offline' | 'degraded';
-  cpu: number;
-  memory: number;
-  uptime: string;
+  cpu?: number | null;
+  memory?: number | null;
+  uptime?: string | number | null;
 }
 
-export default function PerformanceMonitorPage() {
+interface PerformanceMonitorPageProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesPerformanceFocusQuery(values: Array<string | number | null | undefined>, query?: string | null) {
+  if (!query) return false;
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+}
+
+export default function PerformanceMonitorPage({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: PerformanceMonitorPageProps) {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [services, setServices] = useState<ServiceStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | '7d'>('1h');
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
+      setRefreshing(true);
+      setError(null);
       try {
         const [metricsRes, servicesRes] = await Promise.all([
           fetch(`/api/metrics/system?range=${timeRange}`),
           fetch('/api/services/status'),
         ]);
 
-        if (metricsRes.ok) {
-          const data = await metricsRes.json();
-          setMetrics(data);
-        }
-
-        if (servicesRes.ok) {
-          const data = await servicesRes.json();
-          setServices(data.items || []);
-        }
+        if (!metricsRes.ok || !servicesRes.ok) throw new Error('性能监控数据暂不可用');
+        const [metricsData, servicesData] = await Promise.all([metricsRes.json(), servicesRes.json()]);
+        setMetrics(metricsData);
+        setServices(servicesData.items || []);
       } catch (error) {
         console.error('Failed to fetch performance data:', error);
+        setError(error instanceof Error ? error.message : '性能监控数据暂不可用');
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     };
 
     fetchData();
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
-  }, [timeRange]);
+  }, [timeRange, refreshToken]);
 
   const getStatusColor = (status: ServiceStatus['status']) => {
     switch (status) {
@@ -76,6 +101,101 @@ export default function PerformanceMonitorPage() {
     }
   };
 
+  const degradedServices = services.filter((service) => service.status !== 'online' || (service.cpu ?? 0) >= 80 || (service.memory ?? 0) >= 80);
+  const hotServices = (degradedServices.length ? degradedServices : services).slice(0, 3);
+  const leadPerformanceService = hotServices[0] || services[0] || null;
+  const performanceTaskDraft = (() => {
+    const serviceName = leadPerformanceService?.name || '性能监控';
+    const statusText = leadPerformanceService ? getStatusText(leadPerformanceService.status) : '待确认';
+    const cpuText = typeof leadPerformanceService?.cpu === 'number' ? `${leadPerformanceService.cpu}%` : '未提供';
+    const memoryText = typeof leadPerformanceService?.memory === 'number' ? `${leadPerformanceService.memory}%` : '未提供';
+    const title = `补齐性能页对 ${serviceName} 的承接`;
+    const checklist = [
+      `先看告警：确认 ${serviceName} 是否已经形成异常事件`,
+      `再看日志：把 ${serviceName} 的报错、超时或资源抖动拉成证据`,
+      `回任务中心：把 ${serviceName} 的持续治理动作挂成正式任务`,
+    ];
+    const description = leadPerformanceService
+      ? `${serviceName} 当前状态 ${statusText}，CPU ${cpuText}，内存 ${memoryText}。这不是只看曲线，要把异常服务一路带回告警、日志和任务承接。`
+      : '当前还没有明确的热点服务样本，先补一条性能异常承接链，保证后续问题不会只停在图表层。';
+    const copyText = [
+      `标题: ${title}`,
+      `对象: ${serviceName}`,
+      `任务描述: ${description}`,
+      '建议动作:',
+      ...checklist.map((item, index) => `${index + 1}. ${item}`),
+      '验收标准:',
+      `- ${serviceName} 的性能异常已进入告警或日志证据链`,
+      `- TaskCenter 可直接检索 ${serviceName} 的性能治理任务`,
+      '- 性能页不再只是图表展示，而有明确后续去向',
+    ].join('\n');
+
+    return {
+      title,
+      description,
+      checklist,
+      copyText,
+      taskTarget: { tab: 'TaskCenter', taskQuery: serviceName },
+      alertTarget: { tab: 'AlertCenter' },
+      logTarget: { tab: 'LogViewer' },
+    };
+  })();
+  const focusedPerformanceCard = (() => {
+    const matchedService = services.find((service) => (
+      matchesPerformanceFocusQuery(
+        [service.name, service.status, service.cpu, service.memory, service.uptime],
+        focusTaskQuery,
+      )
+    ));
+    if (matchedService) {
+      return {
+        kicker: '热点服务',
+        title: matchedService.name,
+        detail: `${getStatusText(matchedService.status)} · CPU ${typeof matchedService.cpu === 'number' ? `${matchedService.cpu}%` : '未提供'} · 内存 ${typeof matchedService.memory === 'number' ? `${matchedService.memory}%` : '未提供'}`,
+        objectTarget: { tab: 'Performance', taskQuery: matchedService.name },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedService.name },
+      };
+    }
+
+    if (focusPageId === 'Performance') {
+      return {
+        kicker: '当前页面',
+        title: '性能监控',
+        detail: '这页负责把性能波动、异常服务和后续告警/日志/任务承接串起来，不只是看曲线。',
+        objectTarget: { tab: 'SystemMap', pageId: 'Performance' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'Performance' },
+      };
+    }
+
+    return null;
+  })();
+  const performanceActionItems = [
+    {
+      id: 'perf-alerts',
+      title: '回告警中心收敛异常',
+      detail: '当监控出现明显波动时，先回告警中心确认当前异常级别和处理优先级。',
+      actionLabel: '进入告警页',
+      actionType: 'navigate' as const,
+      actionValue: 'AlertCenter',
+    },
+    {
+      id: 'perf-logs',
+      title: '去日志页追证据',
+      detail: '把有波动的服务继续带到日志页，确认具体报错与时间点。',
+      actionLabel: '进入日志页',
+      actionType: 'navigate' as const,
+      actionValue: 'LogViewer',
+    },
+    {
+      id: 'perf-tasks',
+      title: '挂任务继续治理',
+      detail: '持续高压、离线或降级服务需要正式进入任务承接。',
+      actionLabel: '进入任务中心',
+      actionType: 'navigate' as const,
+      actionValue: 'TaskCenter',
+    },
+  ];
+
   if (loading) {
     return (
       <div className="loading-state">
@@ -87,6 +207,206 @@ export default function PerformanceMonitorPage() {
 
   return (
     <div className="performance-monitor-page">
+      <RuntimeOpsWorkbench currentPage="Performance" onNavigate={onNavigate} />
+
+      <ActionSurfacePanel
+        title="性能动作区"
+        subtitle="先定位有波动的服务，再切告警和日志确认原因，最后把持续问题挂任务。"
+        statusText={services.length ? `${services.length} 个服务样本` : '等待性能数据'}
+        items={performanceActionItems}
+        onNavigate={onNavigate}
+      />
+
+      {focusedPerformanceCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前性能承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前性能承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把搜索、系统地图或告警页带来的上下文，直接落到性能面当前该盯住的服务。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedPerformanceCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedPerformanceCard.title}</strong>
+              <p>{focusedPerformanceCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开性能焦点对象 ${focusedPerformanceCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedPerformanceCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <AlertTriangle size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开性能焦点任务 ${focusedPerformanceCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedPerformanceCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <Activity size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2>性能承接工作台</h2>
+            <p className="text-muted">把热点服务、性能去向和下一步收口页摆到一起，不让图表只停在看趋势这一步。</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge degraded">异常服务 {degradedServices.length}</span>
+            <span className="status-badge online">样本服务 {services.length}</span>
+            <span className="status-badge degraded">时间范围 {timeRange}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>热点服务</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>优先处理离线、降级或资源使用偏高的服务。</p>
+            </div>
+            {hotServices.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>当前没有可追踪的服务样本。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {hotServices.map((service) => (
+                  <button
+                    key={`perf-${service.name}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`查看性能服务 ${service.name}`}
+                    onClick={() => onNavigate?.(service.status === 'online' ? 'LogViewer' : 'AlertCenter')}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{service.name}</strong>
+                      <p>{getStatusText(service.status)} · CPU {typeof service.cpu === 'number' ? `${service.cpu}%` : '未提供'} · 内存 {typeof service.memory === 'number' ? `${service.memory}%` : '未提供'}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>继续去告警或日志页确认成因。</span>
+                    </div>
+                    <AlertTriangle size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>追证据去向</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>性能波动一般要继续去告警、日志和系统地图三处收口。</p>
+            </div>
+            {[
+              { id: 'AlertCenter', label: '告警中心', reason: '确认当前是否已形成异常事件。', aria: '打开性能承接到告警页' },
+              { id: 'LogViewer', label: '日志页', reason: '查看报错、超时与时间点。', aria: '打开性能承接到日志页' },
+              { id: 'SystemMap', label: '系统地图', reason: '把性能问题挂回全站使用路径。', aria: '打开性能承接到系统地图' },
+            ].map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="action-surface-item"
+                aria-label={page.aria}
+                onClick={() => onNavigate?.(page.id)}
+                style={{ textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <strong>{page.label}</strong>
+                  <p>{page.reason}</p>
+                </div>
+                <Activity size={14} />
+              </button>
+            ))}
+          </article>
+        </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="性能补位任务">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>性能补位任务</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把当前热点服务直接翻成可追的补位任务，不让性能页停在“看到了波动”这一步。
+            </p>
+          </div>
+          <span className="status-badge degraded">任务草稿</span>
+        </div>
+        <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <strong>{performanceTaskDraft.title}</strong>
+            <p>{performanceTaskDraft.description}</p>
+            <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+              {performanceTaskDraft.checklist.map((item, index) => (
+                <small key={`${performanceTaskDraft.title}-${index}`} className="text-muted">{index + 1}. {item}</small>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`复制性能补位任务 ${performanceTaskDraft.title}`}
+              onClick={async () => {
+                await navigator.clipboard.writeText(performanceTaskDraft.copyText);
+                setDraftNotice(`已复制性能补位任务：${performanceTaskDraft.title}`);
+              }}
+            >
+              <Copy size={14} />
+              <span>复制补位任务</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`打开性能补位告警 ${performanceTaskDraft.title}`}
+              onClick={() => openCockpitNavigationTarget(performanceTaskDraft.alertTarget, onNavigate, onOpenTarget)}
+            >
+              <AlertTriangle size={14} />
+              <span>回告警中心</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`打开性能补位日志 ${performanceTaskDraft.title}`}
+              onClick={() => openCockpitNavigationTarget(performanceTaskDraft.logTarget, onNavigate, onOpenTarget)}
+            >
+              <Activity size={14} />
+              <span>去日志页</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`打开性能补位任务 ${performanceTaskDraft.title}`}
+              onClick={() => openCockpitNavigationTarget(performanceTaskDraft.taskTarget, onNavigate, onOpenTarget)}
+            >
+              <Activity size={14} />
+              <span>送进任务中心</span>
+            </button>
+          </div>
+        </article>
+        {draftNotice && (
+          <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{draftNotice}</p>
+        )}
+      </section>
+
+      {error && (
+        <div role="alert" className="inline-error-state">
+          <span>{error}</span>
+          <button className="btn btn-outline" aria-label="重试性能指标" onClick={() => setRefreshToken((value) => value + 1)}>
+            <RefreshCw size={14} />
+            重试
+          </button>
+        </div>
+      )}
+
       {/* 时间范围选择 */}
       <div className="time-range-selector">
         <button
@@ -113,9 +433,9 @@ export default function PerformanceMonitorPage() {
         >
           7天
         </button>
-        <button className="btn btn-outline">
-          <RefreshCw size={14} />
-          刷新
+        <button className="btn btn-outline" aria-label="刷新性能指标" onClick={() => setRefreshToken((value) => value + 1)} disabled={refreshing}>
+          <RefreshCw size={14} className={refreshing ? 'spinning' : ''} />
+          {refreshing ? '刷新中...' : '刷新'}
         </button>
       </div>
 
@@ -211,34 +531,22 @@ export default function PerformanceMonitorPage() {
               <div className="service-metrics">
                 <div className="metric">
                   <Cpu size={14} />
-                  <span>CPU: {service.cpu}%</span>
-                  <div className="metric-bar">
-                    <div
-                      className="metric-fill"
-                      style={{ 
-                        width: `${service.cpu}%`,
-                        backgroundColor: service.cpu > 80 ? '#e74c3c' : '#3b82f6',
-                      }}
-                    />
-                  </div>
+                  <span>CPU: {typeof service.cpu === 'number' ? `${service.cpu}%` : '未提供'}</span>
+                  {typeof service.cpu === 'number' && <div className="metric-bar">
+                    <div className="metric-fill" style={{ width: `${service.cpu}%`, backgroundColor: service.cpu > 80 ? '#e74c3c' : '#3b82f6' }} />
+                  </div>}
                 </div>
                 <div className="metric">
                   <HardDrive size={14} />
-                  <span>内存: {service.memory}%</span>
-                  <div className="metric-bar">
-                    <div
-                      className="metric-fill"
-                      style={{ 
-                        width: `${service.memory}%`,
-                        backgroundColor: service.memory > 80 ? '#e74c3c' : '#10b981',
-                      }}
-                    />
-                  </div>
+                  <span>内存: {typeof service.memory === 'number' ? `${service.memory}%` : '未提供'}</span>
+                  {typeof service.memory === 'number' && <div className="metric-bar">
+                    <div className="metric-fill" style={{ width: `${service.memory}%`, backgroundColor: service.memory > 80 ? '#e74c3c' : '#10b981' }} />
+                  </div>}
                 </div>
               </div>
               <div className="service-uptime">
                 <Activity size={14} />
-                <span>运行时间: {service.uptime}</span>
+                <span>运行时间: {service.uptime ?? '未提供'}</span>
               </div>
             </div>
           ))}

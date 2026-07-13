@@ -1,11 +1,34 @@
 import React, { useState } from 'react';
-import { Terminal, Play, Loader2, ShieldAlert } from 'lucide-react';
+import { Terminal, Play, Loader2, ShieldAlert, Copy } from 'lucide-react';
 import './Dashboard.css';
+import PlatformControlWorkbench from './PlatformControlWorkbench';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
-export default function SandboxTerminal() {
+interface SandboxTerminalProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesSandboxFocusQuery(values: Array<string | null | undefined>, query?: string | null) {
+  if (!query) return false;
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+}
+
+export default function SandboxTerminal({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: SandboxTerminalProps) {
   const [code, setCode] = useState('print("Hello from eCOS Sandbox!")\n');
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
 
   const handleExecute = async () => {
     setIsRunning(true);
@@ -28,7 +51,8 @@ export default function SandboxTerminal() {
       }
 
       if (data.success) {
-        setOutput(`[执行成功] 耗时: ${data.duration_ms.toFixed(2)}ms\n\n[标准输出]\n${data.stdout}\n\n[返回值]\n${JSON.stringify(data.output, null, 2)}`);
+        const duration = typeof data.duration_ms === 'number' ? `${data.duration_ms.toFixed(2)}ms` : '未提供';
+        setOutput(`[执行成功] 耗时: ${duration}\n\n[标准输出]\n${data.stdout || '（无标准输出）'}\n\n[返回值]\n${JSON.stringify(data.output ?? null, null, 2)}`);
       } else {
         setOutput(`[执行被拦截或失败]\n\n${data.error}`);
       }
@@ -39,8 +63,265 @@ export default function SandboxTerminal() {
     }
   };
 
+  const focusedSandboxCard = (() => {
+    if (matchesSandboxFocusQuery([code, output], focusTaskQuery)) {
+      return {
+        kicker: '当前实验',
+        title: focusTaskQuery || '沙箱实验',
+        detail: output
+          ? output.split('\n').slice(0, 2).join(' · ')
+          : '当前焦点已经命中沙箱代码或输出，可以继续在这里验证并决定去向。',
+        objectTarget: { tab: 'Sandbox', taskQuery: focusTaskQuery || 'Sandbox' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'Sandbox' },
+      };
+    }
+
+    if (focusPageId === 'Sandbox') {
+      return {
+        kicker: '当前页面',
+        title: '隔离沙箱',
+        detail: '这页负责把试验代码、运行输出和后续日志/引擎/任务承接串起来，不只是一个执行按钮。',
+        objectTarget: { tab: 'SystemMap', pageId: 'Sandbox' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'Sandbox' },
+      };
+    }
+
+    return null;
+  })();
+  const sandboxTaskDraft = (() => {
+    const experimentTitle = focusTaskQuery || code.split('\n')[0]?.trim() || '沙箱实验';
+    const title = `补齐沙箱实验 ${experimentTitle} 的收口`;
+    const description = output
+      ? `当前实验已经有输出，下一步要把结果带回日志、引擎或任务中心，而不是停在控制台里。`
+      : '当前实验还没有稳定输出，先运行一次，再决定要回引擎、日志还是任务中心。';
+    const checklist = [
+      '先确认实验输出是否足够支持下一步判断',
+      '如果实验异常，回日志页补完整证据',
+      '如果实验通过，回引擎页或任务中心把动作落成正式承接',
+    ];
+    const copyText = [
+      `标题: ${title}`,
+      `实验对象: ${experimentTitle}`,
+      `任务描述: ${description}`,
+      '建议动作:',
+      ...checklist.map((item, index) => `${index + 1}. ${item}`),
+      '验收标准:',
+      '- 沙箱输出已经被带到日志、引擎或任务中心之一',
+      `- TaskCenter 可直接检索 ${experimentTitle} 的实验后续任务`,
+      '- 沙箱页不再只是执行代码，而有明确收口去向',
+    ].join('\n');
+
+    return {
+      title,
+      description,
+      checklist,
+      copyText,
+      engineTarget: { tab: 'Engines' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: experimentTitle },
+    };
+  })();
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <PlatformControlWorkbench currentPage="Sandbox" onNavigate={onNavigate} />
+
+      <ActionSurfacePanel
+        title="沙箱动作区"
+        subtitle="先做小实验，再把结果带回调度、日志或任务中心，不用离开这个上下文自己找路。"
+        statusText={isRunning ? '执行中' : '可立即验证'}
+        onNavigate={onNavigate}
+        items={[
+          {
+            id: 'copy-code',
+            title: '复制当前代码',
+            detail: '把当前片段带去别处复用，或者发给任务/工作流上下文。',
+            actionLabel: '复制代码',
+            actionType: 'copy',
+            actionValue: code,
+          },
+          {
+            id: 'engines',
+            title: '回引擎页',
+            detail: '验证通过后，直接回调度页把更大的任务真正跑起来。',
+            actionLabel: '去引擎页',
+            actionType: 'navigate',
+            actionValue: 'Engines',
+          },
+          {
+            id: 'logs',
+            title: '看日志',
+            detail: '执行失败或结果异常时，直接去日志页找更完整的上下文。',
+            actionLabel: '去日志页',
+            actionType: 'navigate',
+            actionValue: 'LogViewer',
+          },
+          {
+            id: 'tasks',
+            title: '落到任务',
+            detail: '实验确认后，回任务中心把下一步动作沉到正式任务或草稿。',
+            actionLabel: '去任务中心',
+            actionType: 'navigate',
+            actionValue: 'TaskCenter',
+          },
+        ]}
+      />
+
+      {focusedSandboxCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前沙箱承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前沙箱承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把系统地图、搜索或任务里丢过来的上下文，直接翻成眼下这个实验该继续验证的对象。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedSandboxCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedSandboxCard.title}</strong>
+              <p>{focusedSandboxCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开沙箱焦点对象 ${focusedSandboxCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedSandboxCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <Terminal size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开沙箱焦点任务 ${focusedSandboxCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedSandboxCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <ShieldAlert size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>沙箱承接工作台</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              先看当前试验状态，再决定回引擎、日志还是任务中心继续收口，不让沙箱只剩执行器。
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge degraded">代码 {code.trim() ? 'ready' : 'empty'}</span>
+            <span className="status-badge online">输出 {output ? 'captured' : 'pending'}</span>
+            <span className={`status-badge ${isRunning ? 'degraded' : 'online'}`}>{isRunning ? '执行中' : '待执行'}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>实验状态</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>把当前沙箱实验抽成状态卡，方便立刻决定下一步。</p>
+            </div>
+            <div className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+              <div>
+                <strong>{isRunning ? '执行中' : '等待执行'}</strong>
+                <p>{output ? output.split('\n').slice(0, 2).join(' · ') : '还没有输出，先运行一次或修改代码后再看结果。'}</p>
+              </div>
+            </div>
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>实验去向</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>实验不是终点，结果要继续回引擎、日志或任务承接。</p>
+            </div>
+            {[
+              { id: 'Engines', label: '引擎页', reason: '把实验扩大成真正的运行编排。', aria: '打开沙箱承接到引擎页' },
+              { id: 'LogViewer', label: '日志页', reason: '执行异常或结果不稳时去追完整证据。', aria: '打开沙箱承接到日志页' },
+              { id: 'TaskCenter', label: '任务中心', reason: '把实验结论沉到正式任务或草稿。', aria: '打开沙箱承接到任务中心' },
+            ].map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="action-surface-item"
+                aria-label={page.aria}
+                onClick={() => onNavigate?.(page.id)}
+                style={{ textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <strong>{page.label}</strong>
+                  <p>{page.reason}</p>
+                </div>
+                <Terminal size={14} />
+              </button>
+            ))}
+          </article>
+        </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="沙箱补位任务">
+        <div className="section-header">
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>沙箱补位任务</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把当前实验直接翻成下一步要追的任务，不让沙箱只剩执行代码这一锤子。
+            </p>
+          </div>
+          <span className="status-badge degraded">任务草稿</span>
+        </div>
+        <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <strong>{sandboxTaskDraft.title}</strong>
+            <p>{sandboxTaskDraft.description}</p>
+            <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+              {sandboxTaskDraft.checklist.map((item, index) => (
+                <small key={`${sandboxTaskDraft.title}-${index}`} className="text-muted">{index + 1}. {item}</small>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`复制沙箱补位任务 ${sandboxTaskDraft.title}`}
+              onClick={async () => {
+                await navigator.clipboard.writeText(sandboxTaskDraft.copyText);
+                setDraftNotice(`已复制沙箱补位任务：${sandboxTaskDraft.title}`);
+              }}
+            >
+              <Copy size={14} />
+              <span>复制补位任务</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`打开沙箱补位引擎 ${sandboxTaskDraft.title}`}
+              onClick={() => openCockpitNavigationTarget(sandboxTaskDraft.engineTarget, onNavigate, onOpenTarget)}
+            >
+              <Terminal size={14} />
+              <span>回引擎页</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`打开沙箱补位任务 ${sandboxTaskDraft.title}`}
+              onClick={() => openCockpitNavigationTarget(sandboxTaskDraft.taskTarget, onNavigate, onOpenTarget)}
+            >
+              <ShieldAlert size={14} />
+              <span>送进任务中心</span>
+            </button>
+          </div>
+        </article>
+        {draftNotice && (
+          <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{draftNotice}</p>
+        )}
+      </section>
+
       <div className="section-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Terminal size={18} aria-hidden="true" className="text-accent" />

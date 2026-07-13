@@ -1,0 +1,102 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import ObservabilityView from '../ObservabilityView'
+
+vi.mock('../PlatformControlWorkbench', () => ({
+  default: () => <div>Platform Workbench Mock</div>,
+}))
+
+const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Response
+
+describe('ObservabilityView', () => {
+  beforeEach(() => {
+    vi.mocked(fetch).mockReset()
+  })
+
+  it('renders observability action links and routes to deeper pages', async () => {
+    const onNavigate = vi.fn()
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/v1/arch-health') {
+        return Promise.resolve(okJson({
+          system: { health_score: 88 },
+          git: { status: 'dirty', uncommitted: 3 },
+          governance: { health: 'watch' },
+        }))
+      }
+      if (url === '/api/bos/metrics') {
+        return Promise.resolve(okJson({
+          summary: { total_calls: 32, avg_latency: 780, success_count: 30 },
+          domains: [
+            { domain: 'governance', total: 12, success: 11, error: 1, avg_latency: 650 },
+          ],
+        }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<ObservabilityView onNavigate={onNavigate} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('观测动作区')).toBeInTheDocument()
+      expect(screen.getByText('观测承接工作台')).toBeInTheDocument()
+      expect(screen.getByText('追性能瓶颈')).toBeInTheDocument()
+      expect(screen.getByText('查日志证据')).toBeInTheDocument()
+      expect(screen.getByText('排 BOS 网格')).toBeInTheDocument()
+      expect(screen.getByText('BOS I0 网格链路流量')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /看性能页/ }))
+    expect(onNavigate).toHaveBeenCalledWith('Performance')
+
+    fireEvent.click(screen.getByRole('button', { name: /看告警页/ }))
+    expect(onNavigate).toHaveBeenCalledWith('AlertCenter')
+
+    fireEvent.click(screen.getByRole('button', { name: '查看异常域 governance' }))
+    expect(onNavigate).toHaveBeenCalledWith('LogViewer')
+  })
+
+  it('surfaces focus handoff for a matched observability domain', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/v1/arch-health') {
+        return Promise.resolve(okJson({
+          system: { health_score: 88 },
+          git: { status: 'dirty', uncommitted: 3 },
+          governance: { health: 'watch' },
+        }))
+      }
+      if (url === '/api/bos/metrics') {
+        return Promise.resolve(okJson({
+          summary: { total_calls: 32, avg_latency: 780, success_count: 30 },
+          domains: [
+            { domain: 'governance', total: 12, success: 11, error: 1, avg_latency: 650 },
+          ],
+        }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(
+      <ObservabilityView
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="governance"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前观测承接焦点' })
+    expect(within(focusRegion).getByText('governance')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开观测焦点对象 governance' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开观测焦点任务 governance' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Observability', taskQuery: 'governance' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'governance' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+})

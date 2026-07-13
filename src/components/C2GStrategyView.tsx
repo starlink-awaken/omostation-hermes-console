@@ -9,7 +9,8 @@ import {
   AlertTriangle,
   Play,
   Check,
-  Plus,
+  ArrowRight,
+  ClipboardList,
   RefreshCw,
   Trophy,
   X,
@@ -18,6 +19,9 @@ import {
   Sparkles
 } from 'lucide-react';
 import './Dashboard.css';
+import GovernanceDomainWorkbench from './GovernanceDomainWorkbench';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface OmoStatus {
   system?: {
@@ -70,7 +74,26 @@ interface DirectIoViolation {
   detail: string;
 }
 
-export default function C2GStrategyView() {
+interface C2GStrategyViewProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesC2GFocusQuery(values: Array<string | null | undefined>, query?: string | null) {
+  if (!query) return false;
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+}
+
+export default function C2GStrategyView({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: C2GStrategyViewProps) {
   const [status, setStatus] = useState<OmoStatus | null>(null);
   const [cards, setCards] = useState<CardItem[]>([]);
   const [check, setCheck] = useState<CardCheck | null>(null);
@@ -222,6 +245,14 @@ export default function C2GStrategyView() {
     fetchData();
   };
 
+  const openCardTask = (cardId?: string) => {
+    if (onOpenTarget) {
+      onOpenTarget({ tab: 'TaskCenter', taskQuery: cardId });
+      return;
+    }
+    onNavigate?.('TaskCenter');
+  };
+
   if (loading) {
     return (
       <div className="loading-state" role="status" aria-live="polite">
@@ -234,9 +265,250 @@ export default function C2GStrategyView() {
   const sysHealth = status?.system?.health_score ?? 95;
   const govHealth = status?.governance?.health_score ?? 98;
   const currentPhase = status?.system?.current_phase || 'Wave 2 (迭代研发期)';
+  const priorityCards = cards.slice(0, 4);
+  const activeProposals = proposals.filter((proposal) => proposal.status !== 'rejected').slice(0, 3);
+  const directIoViolations = violations.slice(0, 3);
+  const focusedC2GCard = (() => {
+    const matchedCard = cards.find((card) => (
+      matchesC2GFocusQuery([card.id, card.title, card.priority, card.domain, card.status], focusTaskQuery)
+    ));
+    if (matchedCard) {
+      return {
+        kicker: '治理卡片',
+        title: matchedCard.title,
+        detail: `${matchedCard.priority} · ${matchedCard.status} · ${matchedCard.domain}`,
+        objectTarget: { tab: 'C2G', taskQuery: matchedCard.id },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedCard.id },
+      };
+    }
+
+    const matchedProposal = proposals.find((proposal) => (
+      matchesC2GFocusQuery(
+        [proposal.id, proposal.type, proposal.debt_id, proposal.target_model, proposal.scope, proposal.status, proposal.description],
+        focusTaskQuery,
+      )
+    ));
+    if (matchedProposal) {
+      return {
+        kicker: '待审提案',
+        title: matchedProposal.type,
+        detail: `${matchedProposal.status} · ${matchedProposal.scope || matchedProposal.target_model || matchedProposal.debt_id || matchedProposal.id}`,
+        objectTarget: { tab: 'C2G', taskQuery: matchedProposal.id },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedProposal.debt_id || matchedProposal.id },
+      };
+    }
+
+    const matchedViolation = violations.find((violation) => (
+      matchesC2GFocusQuery([violation.file, violation.detail, String(violation.line)], focusTaskQuery)
+    ));
+    if (matchedViolation) {
+      return {
+        kicker: '违规项',
+        title: matchedViolation.file,
+        detail: `Line ${matchedViolation.line} · ${matchedViolation.detail}`,
+        objectTarget: { tab: 'C2G', taskQuery: matchedViolation.file },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedViolation.file },
+      };
+    }
+
+    if (focusPageId === 'C2G') {
+      return {
+        kicker: '当前页面',
+        title: 'C2G 战略中心',
+        detail: '这页负责把治理卡片、待审提案和违规入口串起来，不只是展示治理分数。',
+        objectTarget: { tab: 'SystemMap', pageId: 'C2G' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'C2G' },
+      };
+    }
+
+    return null;
+  })();
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <GovernanceDomainWorkbench currentPage="C2G" onNavigate={onNavigate} />
+
+      <ActionSurfacePanel
+        title="治理执行区"
+        subtitle="看完治理状态后，直接跳去系统地图、债务页或任务中心推进下一步。"
+        statusText={`卡片 ${cards.length} · 提案 ${proposals.length} · 违规 ${violations.length}`}
+        onNavigate={onNavigate}
+        items={[
+          {
+            id: 'system-map',
+            title: '回系统地图定范围',
+            detail: '治理问题需要先确认组合阻塞、项目缺口和路线图时，直接回系统地图。',
+            actionLabel: '去系统地图',
+            actionType: 'navigate',
+            actionValue: 'SystemMap',
+          },
+          {
+            id: 'debt',
+            title: '切到债务页',
+            detail: '治理卡片落到长期修复时，去债务账本确认 owner、级别和关闭路径。',
+            actionLabel: '去债务页',
+            actionType: 'navigate',
+            actionValue: 'Debt',
+          },
+          {
+            id: 'tasks',
+            title: '沉到任务中心',
+            detail: '需要把治理动作变成可跟踪任务时，直接回任务中心继续推进。',
+            actionLabel: '去任务中心',
+            actionType: 'navigate',
+            actionValue: 'TaskCenter',
+          },
+          {
+            id: 'copy-sync',
+            title: '复制治理同步命令',
+            detail: '做治理修正后，先用标准命令同步状态和证据。',
+            actionLabel: '复制命令',
+            actionType: 'copy',
+            actionValue: 'uv run --project "projects/omo" omo state sync --json',
+          },
+        ]}
+      />
+
+      {focusedC2GCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前治理承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前治理承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把系统地图、搜索或任务带来的上下文，直接翻成治理面当前该承接的卡片、提案或违规对象。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedC2GCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedC2GCard.title}</strong>
+              <p>{focusedC2GCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开治理焦点对象 ${focusedC2GCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedC2GCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <Compass size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开治理焦点任务 ${focusedC2GCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedC2GCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <ClipboardList size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>治理承接工作台</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把治理卡片、待决提案和违规入口摆在同一层，先决定动作再跳去债务、任务或系统地图继续推进。
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge degraded">卡片 {cards.length}</span>
+            <span className="status-badge degraded">提案 {proposals.length}</span>
+            <span className="status-badge online">违规 {violations.length}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>优先治理卡片</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先处理最紧的卡片，再把动作沉到任务中心或系统地图继续收口。</p>
+            </div>
+            {priorityCards.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>当前没有待处理治理卡片。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {priorityCards.map((card) => (
+                  <button
+                    key={`card-${card.id}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`查看治理卡片 ${card.title}`}
+                    onClick={() => openCardTask(card.id)}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{card.title}</strong>
+                      <p>{card.priority} · {card.status} · {card.domain}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>点击后打开该治理卡片相关任务。</span>
+                    </div>
+                    <ArrowRight size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>治理去向</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>提案和违规本身不是终点，后续还要回债务、系统地图和任务中心继续落地。</p>
+            </div>
+            {activeProposals.length > 0 && (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {activeProposals.map((proposal) => (
+                  <div key={`proposal-${proposal.id}`} className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+                    <div>
+                      <strong>{proposal.type}</strong>
+                      <p>{proposal.scope || proposal.target_model || proposal.debt_id || proposal.id}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>状态 {proposal.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {directIoViolations.length > 0 && (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {directIoViolations.map((violation, index) => (
+                  <div key={`violation-${index}`} className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+                    <div>
+                      <strong>{violation.file}</strong>
+                      <p>{violation.detail}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>行 {violation.line}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {[
+              { id: 'Debt', label: '债务页', reason: '需要明确 owner、严重度和关闭路径时进入债务账本。', aria: '打开治理承接到债务页' },
+              { id: 'SystemMap', label: '系统地图', reason: '确认治理动作影响的项目、页面和能力覆盖。', aria: '打开治理承接到系统地图' },
+              { id: 'TaskCenter', label: '任务中心', reason: '把治理决策变成真正可跟踪的后续动作。', aria: '打开治理承接到任务中心' },
+            ].map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="action-surface-item"
+                aria-label={page.aria}
+                onClick={() => onNavigate?.(page.id)}
+                style={{ textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <strong>{page.label}</strong>
+                  <p>{page.reason}</p>
+                </div>
+                <ArrowRight size={14} />
+              </button>
+            ))}
+          </article>
+        </div>
+      </section>
       
       {/* 顶部控制栏与健康雷达 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -457,9 +729,9 @@ export default function C2GStrategyView() {
                   {cards.length}
                 </span>
               </div>
-              <button className="antd-btn" style={{ fontSize: '11px', padding: '3px 8px' }} onClick={() => alert('通过 cockpit CLI 执行卡片增删改操作。')}>
-                <Plus size={12} style={{ marginRight: '2px' }} />
-                新建卡片
+              <button className="antd-btn" style={{ fontSize: '11px', padding: '3px 8px' }} onClick={() => openCardTask()}>
+                <ClipboardList size={12} style={{ marginRight: '2px' }} />
+                进入任务中心
               </button>
             </div>
 
@@ -523,8 +795,14 @@ export default function C2GStrategyView() {
 
                       {/* Action buttons */}
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button className="antd-btn" style={{ padding: '3px 8px', fontSize: '11px' }} onClick={() => alert(`已批准该治理提议 ${card.id}`)}>
-                          <Check size={11} />
+                        <button
+                          className="antd-btn"
+                          style={{ padding: '3px 8px', fontSize: '11px' }}
+                          aria-label="查看相关任务"
+                          title="在任务中心查看相关任务"
+                          onClick={() => openCardTask(card.id)}
+                        >
+                          <ArrowRight size={11} />
                         </button>
                       </div>
                     </div>

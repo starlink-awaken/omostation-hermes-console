@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Network, Globe, Play, Send, PlusCircle, Activity, Search, ShieldCheck } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Activity, Globe, Network, PlusCircle, Send, ShieldCheck } from 'lucide-react';
 import './Dashboard.css';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import InfrastructureOpsWorkbench from './InfrastructureOpsWorkbench';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+
+const MESH_DOMAINS = ['all', 'memory', 'governance', 'analysis', 'persona', 'capability'];
 
 interface BosService {
   uri: string;
@@ -16,7 +21,27 @@ interface BosHealth {
   metrics: any;
 }
 
-export default function McpMeshView() {
+interface McpMeshViewProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesMeshQuery(value?: string | null, query?: string) {
+  if (!value || !query) return false;
+  const haystack = value.trim().toLowerCase();
+  const needle = query.trim().toLowerCase();
+  if (!haystack || !needle) return false;
+  return haystack.includes(needle) || needle.includes(haystack);
+}
+
+export default function McpMeshView({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: McpMeshViewProps) {
   const [services, setServices] = useState<BosService[]>([]);
   const [health, setHealth] = useState<BosHealth | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +86,26 @@ export default function McpMeshView() {
     fetchData();
   }, []);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!focusTaskQuery) return;
+    const matchedService = services.find((service) =>
+      matchesMeshQuery(service.domain, focusTaskQuery)
+      || matchesMeshQuery(service.uri, focusTaskQuery)
+      || matchesMeshQuery(service.action, focusTaskQuery),
+    ) || null;
+    if (matchedService) {
+      setSelectedDomain(matchedService.domain);
+      setResolveUri(matchedService.uri);
+      return;
+    }
+    const matchedDomain = MESH_DOMAINS.find((domain) => domain !== 'all' && matchesMeshQuery(domain, focusTaskQuery)) || null;
+    if (matchedDomain) {
+      setSelectedDomain(matchedDomain);
+      setRegisterName(matchedDomain);
+    }
+  }, [focusTaskQuery, services]);
+
+  const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
     if (!registerName || !registerEndpoint) return;
     setRegisterStatus(null);
@@ -123,6 +167,104 @@ export default function McpMeshView() {
     }
   };
 
+  const filteredServices = services.filter((service) => selectedDomain === 'all' || service.domain === selectedDomain);
+  const domains = MESH_DOMAINS;
+
+  const meshBacklog = (() => {
+    const domainCounts = domains
+      .filter((domain) => domain !== 'all')
+      .map((domain) => ({ domain, count: services.filter((service) => service.domain === domain).length }))
+      .sort((left, right) => right.count - left.count);
+    const missingDomains = domainCounts.filter((entry) => entry.count === 0);
+    return {
+      domainCounts: domainCounts.slice(0, 3),
+      missingDomains: missingDomains.length ? missingDomains : domainCounts.slice(-2),
+      registrationCount: services.filter((service) => service.transport === 'http').length,
+    };
+  })();
+
+  const meshActionItems = [
+    {
+      id: 'mesh-observability',
+      title: '回观测面追异常',
+      detail: '域路由出现高延迟或错误时，先回观测面核对告警和日志证据。',
+      actionLabel: '进入观测页',
+      actionType: 'navigate' as const,
+      actionValue: 'Observability',
+    },
+    {
+      id: 'mesh-compute',
+      title: '查算力分流',
+      detail: '下游服务异常或热点不均时，继续到算力面看节点和预算状态。',
+      actionLabel: '进入算力页',
+      actionType: 'navigate' as const,
+      actionValue: 'Compute',
+    },
+    {
+      id: 'mesh-domain-apps',
+      title: '回应用中心补挂载',
+      detail: '缺失域路由或新增实例注册后，顺手回应用中心核对领域应用承接。',
+      actionLabel: '进入应用中心',
+      actionType: 'navigate' as const,
+      actionValue: 'DomainApps',
+    },
+  ];
+
+  const focusedMeshCard = useMemo(() => {
+    const matchedService = focusTaskQuery
+      ? services.find((service) =>
+        matchesMeshQuery(service.domain, focusTaskQuery)
+        || matchesMeshQuery(service.uri, focusTaskQuery)
+        || matchesMeshQuery(service.action, focusTaskQuery),
+      ) || null
+      : null;
+    const matchedDomain = focusTaskQuery
+      ? meshBacklog.domainCounts.find((entry) => matchesMeshQuery(entry.domain, focusTaskQuery))
+        || meshBacklog.missingDomains.find((entry) => matchesMeshQuery(entry.domain, focusTaskQuery))
+        || null
+      : null;
+
+    if (matchedService) {
+      return {
+        title: matchedService.uri,
+        meta: `从系统地图带回来的 ${matchedService.domain.toUpperCase()} 路由对象`,
+        state: `${matchedService.domain} · ${matchedService.transport} · ${matchedService.action}`,
+        nextAction: '继续核对该域路由、下游实例和跨页证据，不让问题停在 URI 解析器里。',
+        objectTarget: { tab: 'McpMesh', taskQuery: matchedService.domain } as CockpitNavigationTarget,
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedService.domain } as CockpitNavigationTarget,
+      };
+    }
+
+    if (matchedDomain) {
+      return {
+        title: matchedDomain.domain.toUpperCase(),
+        meta: '从全站审计带回来的网格域对象',
+        state: `${matchedDomain.count} 条路由 · 当前聚焦域`,
+        nextAction: matchedDomain.count === 0
+          ? '先补该域实例注册，再回应用中心和任务中心做承接。'
+          : '继续核对热点域的实例注册、观测证据和任务承接。',
+        objectTarget: { tab: 'McpMesh', taskQuery: matchedDomain.domain } as CockpitNavigationTarget,
+        taskTarget: {
+          tab: matchedDomain.count === 0 ? 'DomainApps' : 'TaskCenter',
+          taskQuery: matchedDomain.domain,
+        } as CockpitNavigationTarget,
+      };
+    }
+
+    if (focusPageId === 'McpMesh') {
+      return {
+        title: '网格与 MCP',
+        meta: '从页面闭环审计带回来的运行大盘页面',
+        state: `${services.length} 条路由 · ${meshBacklog.missingDomains.length} 个待补域`,
+        nextAction: '先把热点域、缺失域和跨页承接动作收口，再决定回观测、算力还是应用中心。',
+        objectTarget: { tab: 'SystemMap', pageId: 'McpMesh' } as CockpitNavigationTarget,
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'McpMesh' } as CockpitNavigationTarget,
+      };
+    }
+
+    return null;
+  }, [focusPageId, focusTaskQuery, meshBacklog.domainCounts, meshBacklog.missingDomains, services]);
+
   if (loading) {
     return (
       <div className="loading-state">
@@ -132,12 +274,9 @@ export default function McpMeshView() {
     );
   }
 
-  // 域过滤
-  const filteredServices = services.filter(s => selectedDomain === 'all' || s.domain === selectedDomain);
-  const domains = ['all', 'memory', 'governance', 'analysis', 'persona', 'capability'];
-
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <InfrastructureOpsWorkbench currentPage="McpMesh" onNavigate={onNavigate} />
       
       {/* 顶部统计面板 */}
       <div className="stats-grid">
@@ -164,6 +303,185 @@ export default function McpMeshView() {
           </div>
         </div>
       </div>
+
+      <ActionSurfacePanel
+        title="网格动作区"
+        subtitle="先看路由域和实例注册，再决定回观测、算力还是应用中心继续收口。"
+        statusText={services.length ? `${services.length} 条 BOS 路由` : '等待路由数据'}
+        items={meshActionItems}
+        onNavigate={onNavigate}
+      />
+
+      {focusedMeshCard && (
+        <section className="services-section" aria-label="当前网格承接焦点">
+          <div className="section-header">
+            <div>
+              <h2>当前网格承接焦点</h2>
+              <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+                网格页先把你刚定位到的域路由或页面对象承接住，再决定往任务中心、应用中心还是系统地图继续下钻。
+              </p>
+            </div>
+            <button
+              type="button"
+              className="antd-btn small"
+              aria-label="回系统地图继续定位"
+              onClick={() => onNavigate?.('SystemMap')}
+            >
+              <Network size={13} />
+              <span>回系统地图</span>
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+              <div>
+                <strong style={{ display: 'block', fontSize: 15 }}>{focusedMeshCard.title}</strong>
+                <small className="text-muted">{focusedMeshCard.meta}</small>
+              </div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div>
+                  <span className="text-muted" style={{ fontSize: 12 }}>当前状态</span>
+                  <strong style={{ display: 'block', marginTop: 4 }}>{focusedMeshCard.state}</strong>
+                </div>
+                <div>
+                  <span className="text-muted" style={{ fontSize: 12 }}>下一步</span>
+                  <strong style={{ display: 'block', marginTop: 4, fontSize: 13 }}>{focusedMeshCard.nextAction}</strong>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="antd-btn small"
+                  aria-label={`打开网格焦点对象 ${focusedMeshCard.title}`}
+                  onClick={() => openCockpitNavigationTarget(focusedMeshCard.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <Network size={13} />
+                  <span>看对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn small"
+                  aria-label={`打开网格焦点任务 ${focusedMeshCard.title}`}
+                  onClick={() => openCockpitNavigationTarget(focusedMeshCard.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <ShieldCheck size={13} />
+                  <span>看任务承接</span>
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2>网格承接工作台</h2>
+            <p className="text-muted">把热点域、待补域和实例注册承接成下一步动作，不让网格页只剩一堆路由表。</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge online">已注册路由 {services.length}</span>
+            <span className="status-badge degraded">待补域 {meshBacklog.missingDomains.length}</span>
+            <span className="status-badge degraded">HTTP 实例 {meshBacklog.registrationCount}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15 }}>热点路由域</h3>
+                <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先筛到热点域，再回观测面或日志页看真实异常证据。</p>
+              </div>
+              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Observability')}>
+                <Activity size={14} />
+                <span>看观测页</span>
+              </button>
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {meshBacklog.domainCounts.map((entry) => (
+                <button
+                  key={`domain-focus-${entry.domain}`}
+                  type="button"
+                  className="action-surface-item"
+                  aria-label={`筛选网格域 ${entry.domain}`}
+                  onClick={() => setSelectedDomain(entry.domain)}
+                  style={{ textAlign: 'left', width: '100%' }}
+                >
+                  <div>
+                    <strong>{entry.domain.toUpperCase()}</strong>
+                    <p>{entry.count} 条路由</p>
+                    <span className="text-muted" style={{ fontSize: 12 }}>先聚焦当前域，再看解析与注册情况。</span>
+                  </div>
+                  <Network size={14} />
+                </button>
+              ))}
+            </div>
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="section-header" style={{ marginBottom: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15 }}>待补域与注册</h3>
+                <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>缺失域不应该一直空着，直接转去应用中心和注册表单补位。</p>
+              </div>
+              <button type="button" className="antd-btn" onClick={() => onNavigate?.('DomainApps')}>
+                <PlusCircle size={14} />
+                <span>看应用中心</span>
+              </button>
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {meshBacklog.missingDomains.map((entry) => (
+                <button
+                  key={`missing-${entry.domain}`}
+                  type="button"
+                  className="action-surface-item"
+                  aria-label={`补网格域 ${entry.domain}`}
+                  onClick={() => {
+                    setRegisterName(entry.domain);
+                    setSelectedDomain('all');
+                  }}
+                  style={{ textAlign: 'left', width: '100%' }}
+                >
+                  <div>
+                    <strong>{entry.domain.toUpperCase()}</strong>
+                    <p>{entry.count === 0 ? '当前还没有路由注册' : '需要继续扩充实例注册'}</p>
+                    <span className="text-muted" style={{ fontSize: 12 }}>点击后直接预填注册表单名称。</span>
+                  </div>
+                  <PlusCircle size={14} />
+                </button>
+              ))}
+            </div>
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>跨页承接</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>网格问题最后要回算力、观测和任务面上，不该只停在解析器里。</p>
+            </div>
+            {[
+              { id: 'Compute', label: '算力页', reason: '查分流节点和预算风险。', aria: '打开网格承接到算力页' },
+              { id: 'TaskCenter', label: '任务中心', reason: '把缺失域和注册失败转成任务。', aria: '打开网格承接到任务中心' },
+              { id: 'Protocol', label: '协议面', reason: '核对路由约束和协议桥接。', aria: '打开网格承接到协议面' },
+            ].map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="action-surface-item"
+                aria-label={page.aria}
+                onClick={() => onNavigate?.(page.id)}
+                style={{ textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <strong>{page.label}</strong>
+                  <p>{page.reason}</p>
+                </div>
+                <ShieldCheck size={14} />
+              </button>
+            ))}
+          </article>
+        </div>
+      </section>
 
       {/* 在线解析与实例注册双栏分区 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px' }}>

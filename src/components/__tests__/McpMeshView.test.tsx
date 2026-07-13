@@ -1,0 +1,72 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+
+import McpMeshView from '../McpMeshView'
+
+vi.mock('../InfrastructureOpsWorkbench', () => ({
+  default: () => <div data-testid="infrastructure-workbench" />,
+}))
+
+const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Response
+
+describe('McpMeshView', () => {
+  beforeEach(() => {
+    vi.mocked(fetch).mockReset()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/bos/services') {
+        return Promise.resolve(okJson({
+          services: [
+            { uri: 'bos://memory/kos/search', domain: 'memory', action: 'search', transport: 'http' },
+            { uri: 'bos://governance/audit/run', domain: 'governance', action: 'audit', transport: 'stdio' },
+          ],
+        }))
+      }
+      if (url === '/api/bos/health') {
+        return Promise.resolve(okJson({
+          status: 'ok',
+          total_routes: 2,
+          domains: { memory: 1, governance: 1 },
+          metrics: {},
+        }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+  })
+
+  it('builds a mesh workbench that filters domains and opens follow-up pages', async () => {
+    const onNavigate = vi.fn()
+    render(<McpMeshView onNavigate={onNavigate} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('网格动作区')).toBeInTheDocument()
+      expect(screen.getByText('网格承接工作台')).toBeInTheDocument()
+      expect(screen.getByText('BOS URI 网格路由明细')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '筛选网格域 memory' }))
+    expect(screen.getByRole('option', { name: 'MEMORY' }).selected).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: '打开网格承接到任务中心' }))
+    expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+  })
+
+  it('surfaces focus handoff for a matched mesh domain', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    render(<McpMeshView onNavigate={onNavigate} onOpenTarget={onOpenTarget} focusTaskQuery="memory" />)
+
+    const focusRegion = await screen.findByRole('region', { name: '当前网格承接焦点' })
+    expect(focusRegion).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'MEMORY' }).selected).toBe(true)
+    expect(within(focusRegion).getByText('bos://memory/kos/search')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开网格焦点对象 bos://memory/kos/search' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开网格焦点任务 bos://memory/kos/search' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'McpMesh', taskQuery: 'memory' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'memory' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+})

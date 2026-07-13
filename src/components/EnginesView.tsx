@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Cpu, Play, Activity, List, GitCommit } from 'lucide-react';
 import WorkflowGraph from './WorkflowGraph';
+import PlatformControlWorkbench from './PlatformControlWorkbench';
+import ActionSurfacePanel from './ActionSurfacePanel';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface EventLog {
   id: string;
@@ -10,7 +13,25 @@ interface EventLog {
   payload: any;
 }
 
-export default function EnginesView() {
+interface EnginesViewProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  focusPageId?: string | null;
+  focusTaskQuery?: string;
+}
+
+function matchesEnginesFocusQuery(values: Array<string | null | undefined>, query?: string) {
+  const normalizedQuery = query?.trim().toLowerCase();
+  if (!normalizedQuery) return false;
+  return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
+}
+
+export default function EnginesView({
+  onNavigate,
+  onOpenTarget,
+  focusPageId,
+  focusTaskQuery,
+}: EnginesViewProps) {
   const [pipelines, setPipelines] = useState<string[]>([]);
   const [events, setEvents] = useState<EventLog[]>([]);
   const [activeSteps, setActiveSteps] = useState<string[]>([]);
@@ -23,6 +44,8 @@ export default function EnginesView() {
   
   const [planning, setPlanning] = useState(false);
   const [metaosPlan, setMetaosPlan] = useState<any>(null);
+  const recentEvents = events.slice(0, 4);
+  const focusPipelines = pipelines.slice(0, 4);
 
   const fetchData = async () => {
     try {
@@ -85,6 +108,14 @@ export default function EnginesView() {
       eventSource.close();
     };
   }, []);
+
+  useEffect(() => {
+    if (!focusTaskQuery) return;
+    const matchedPipeline = pipelines.find((pipeline) => matchesEnginesFocusQuery([pipeline], focusTaskQuery));
+    if (matchedPipeline) {
+      setSelectedPipeline(matchedPipeline);
+    }
+  }, [focusTaskQuery, pipelines]);
 
   const handleRunPipeline = async () => {
     if (!selectedPipeline) return;
@@ -161,8 +192,218 @@ export default function EnginesView() {
     );
   }
 
+  const focusedEnginesCard = (() => {
+    const matchedPipeline = pipelines.find((pipeline) => matchesEnginesFocusQuery([pipeline], focusTaskQuery));
+    if (matchedPipeline) {
+      return {
+        kicker: '执行管线',
+        title: matchedPipeline,
+        detail: selectedPipeline === matchedPipeline ? '当前已选中，可直接规划或调度。' : '这是当前上下文最相关的引擎管线，先带入执行器再继续。',
+        objectTarget: { tab: 'Engines', taskQuery: matchedPipeline },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedPipeline },
+      };
+    }
+
+    const matchedEvent = recentEvents.find((event) => (
+      matchesEnginesFocusQuery([event.id, event.type, event.source], focusTaskQuery)
+    ));
+    if (matchedEvent) {
+      return {
+        kicker: '执行事件',
+        title: matchedEvent.type,
+        detail: `${matchedEvent.source} · ${matchedEvent.time}`,
+        objectTarget: { tab: 'Engines', taskQuery: matchedEvent.source || matchedEvent.type },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedEvent.source || matchedEvent.type },
+      };
+    }
+
+    if (focusPageId === 'Engines') {
+      return {
+        kicker: '当前页面',
+        title: '引擎调度',
+        detail: '这页负责把管线、执行信号和后续入口串成引擎执行面，不让调度只剩表单和事件流。',
+        objectTarget: { tab: 'SystemMap', pageId: 'Engines' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: 'Engines' },
+      };
+    }
+
+    return null;
+  })();
+
   return (
-    <div className="engines-container animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <PlatformControlWorkbench currentPage="Engines" onNavigate={onNavigate} />
+
+      <ActionSurfacePanel
+        title="引擎协作区"
+        subtitle="调度前后直接跳去相关页面，不用自己在导航里来回翻。"
+        statusText={pipelines.length > 0 ? `${pipelines.length} 条管线` : '未发现管线'}
+        onNavigate={onNavigate}
+        items={[
+          {
+            id: 'assets',
+            title: '先挑能力资产',
+            detail: '调度前先回资产页确认技能、管线和工作流定义是否匹配目标。',
+            actionLabel: '去资产页',
+            actionType: 'navigate',
+            actionValue: 'Assets',
+          },
+          {
+            id: 'workflows',
+            title: '看历史编排',
+            detail: '任务已跑起来后，直接去工作流页看审批点和节点详情。',
+            actionLabel: '去工作流',
+            actionType: 'navigate',
+            actionValue: 'Workflows',
+          },
+          {
+            id: 'sandbox',
+            title: '做隔离验证',
+            detail: '调度前想先做小实验时，去 Sandbox 验证片段代码或思路。',
+            actionLabel: '去沙箱',
+            actionType: 'navigate',
+            actionValue: 'Sandbox',
+          },
+          {
+            id: 'suggestion',
+            title: '复制示例目标',
+            detail: '先从一个更像实战的目标起步，减少空表单发呆时间。',
+            actionLabel: '复制目标',
+            actionType: 'copy',
+            actionValue: '分析当前系统的性能指标与失败热点，并给出下一步治理动作',
+          },
+        ]}
+      />
+
+      {focusedEnginesCard && (
+        <section className="services-section overview-ops-panel" aria-label="当前引擎承接焦点">
+          <div className="section-header">
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16 }}>当前引擎承接焦点</h2>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+                把系统地图、页面审计或任务里丢过来的上下文，直接翻成引擎面当前该承接的对象。
+              </p>
+            </div>
+            <span className="status-badge online">{focusedEnginesCard.kicker}</span>
+          </div>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{focusedEnginesCard.title}</strong>
+              <p>{focusedEnginesCard.detail}</p>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开引擎焦点对象 ${focusedEnginesCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedEnginesCard.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <Cpu size={14} />
+                <span>打开对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开引擎焦点任务 ${focusedEnginesCard.title}`}
+                onClick={() => openCockpitNavigationTarget(focusedEnginesCard.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <GitCommit size={14} />
+                <span>打开任务</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
+      <section className="services-section">
+        <div className="section-header">
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>引擎承接工作台</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把可选管线、最近执行信号和下一步入口放一起，避免引擎页只剩表单和事件流。
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge online">管线 {pipelines.length}</span>
+            <span className="status-badge degraded">事件 {events.length}</span>
+            <span className="status-badge degraded">激活步骤 {activeSteps.length}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>优先管线</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先挑最常用或当前正在看的管线，直接带入执行器。</p>
+            </div>
+            {focusPipelines.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>当前没有可选管线。</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {focusPipelines.map((pipeline) => (
+                  <button
+                    key={`pipeline-${pipeline}`}
+                    type="button"
+                    className="action-surface-item"
+                    aria-label={`选择引擎管线 ${pipeline}`}
+                    onClick={() => setSelectedPipeline(pipeline)}
+                    style={{ textAlign: 'left', width: '100%' }}
+                  >
+                    <div>
+                      <strong>{pipeline}</strong>
+                      <p>{selectedPipeline === pipeline ? '当前已选中' : '点击后切为当前执行管线'}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>选定后就能直接规划或调度。</span>
+                    </div>
+                    <Play size={14} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>执行去向</h3>
+              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>执行前后要继续回资产、工作流和沙箱三处收口。</p>
+            </div>
+            {recentEvents.length > 0 && (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {recentEvents.map((event) => (
+                  <div key={`event-${event.id}`} className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+                    <div>
+                      <strong>{event.type}</strong>
+                      <p>{event.source}</p>
+                      <span className="text-muted" style={{ fontSize: 12 }}>{event.time}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {[
+              { id: 'Assets', label: '资产页', reason: '执行前确认技能、管线与工作流定义是否匹配。', aria: '打开引擎承接到资产页' },
+              { id: 'Workflows', label: '工作流页', reason: '执行后查看审批点、节点状态和失败链路。', aria: '打开引擎承接到工作流页' },
+              { id: 'Sandbox', label: '沙箱页', reason: '先做隔离验证，再把结果带回正式调度。', aria: '打开引擎承接到沙箱页' },
+            ].map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                className="action-surface-item"
+                aria-label={page.aria}
+                onClick={() => onNavigate?.(page.id)}
+                style={{ textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <strong>{page.label}</strong>
+                  <p>{page.reason}</p>
+                </div>
+                <GitCommit size={14} />
+              </button>
+            ))}
+          </article>
+        </div>
+      </section>
+
+      <div className="engines-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
       {/* Pipeline Runner */}
       <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div className="section-header" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -392,6 +633,7 @@ export default function EnginesView() {
             ))
           )}
         </div>
+      </div>
       </div>
     </div>
   );
