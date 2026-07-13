@@ -135,6 +135,17 @@ interface GuideMetrics {
   }>;
 }
 
+interface ProblemEntryCard {
+  id: string;
+  title: string;
+  signal: string;
+  detail: string;
+  primaryLabel: string;
+  primaryTarget: CockpitNavigationTarget;
+  secondaryLabel: string;
+  secondaryTarget: CockpitNavigationTarget;
+}
+
 const GUIDE_GROUPS: GuideGroup[] = [
   {
     id: 'entry',
@@ -693,6 +704,109 @@ export default function CockpitGuideView({
     return null;
   }, [focusPageId, focusProjectId, focusTaskQuery, metrics.closureDrafts, metrics.domainAttention, metrics.featuredDrafts, metrics.pageCoverageRows]);
 
+  const problemEntryCards = useMemo<ProblemEntryCard[]>(() => {
+    const firstAttentionPage = metrics.pageAttentionItems[0];
+    const firstGap = metrics.capabilityGaps[0];
+    const firstDomainAttention = metrics.domainAttention[0];
+    const firstWeakDimension = metrics.weakestDimensions[0];
+    const evidenceCount = metrics.draftSummary.verificationReady + metrics.draftSummary.playbook;
+    const capabilityDraft = metrics.featuredDrafts.find((draft) => draft.sourceType === 'system_map_capability_gap');
+    const coverageDraft = metrics.featuredDrafts.find((draft) => draft.sourceType === 'system_map_project_portfolio');
+
+    return [
+      {
+        id: 'page-gap',
+        title: '页面有了但不会用',
+        signal: metrics.attentionPages > 0 ? `${metrics.attentionPages} 页待补位` : '页面入口已基本接通',
+        detail: firstAttentionPage
+          ? `${firstAttentionPage.page?.title || firstAttentionPage.page_id} 还需要继续补路径、补映射或补任务承接。`
+          : '先从系统地图确认是不是页面职责、进入路径或任务承接没有接上。',
+        primaryLabel: '看页面补位',
+        primaryTarget: firstAttentionPage
+          ? { tab: 'SystemMap', pageId: firstAttentionPage.page_id }
+          : { tab: 'SystemMap' },
+        secondaryLabel: '看页面任务',
+        secondaryTarget: firstAttentionPage
+          ? { tab: 'TaskCenter', taskQuery: firstAttentionPage.page_id }
+          : { tab: 'TaskCenter', taskQuery: 'system_map_page_maturity' },
+      },
+      {
+        id: 'evidence-gap',
+        title: '能看不能证',
+        signal: evidenceCount > 0 ? `${evidenceCount} 条待补证` : '补证车道已相对收敛',
+        detail: metrics.closureDrafts[0]
+          ? `${metrics.closureDrafts[0].title} 还没沉成完整证据链，建议先走验证补证车道。`
+          : '先回任务中心和日志入口，把验证证据、操作清单和运行痕迹补齐。',
+        primaryLabel: '开补证车道',
+        primaryTarget: { tab: 'TaskCenter', taskQuery: 'system_map_verification_ready' },
+        secondaryLabel: '看日志证据',
+        secondaryTarget: { tab: 'LogViewer', taskQuery: 'verification' },
+      },
+      {
+        id: 'domain-risk',
+        title: '领域应用挂了或不稳',
+        signal: metrics.domainSummary.total > 0
+          ? `${metrics.domainSummary.highRisk} 高风险 / ${metrics.domainSummary.total} 总数`
+          : '领域挂载数据待接入',
+        detail: firstDomainAttention
+          ? `${firstDomainAttention.name} 当前是 ${firstDomainAttention.runtimeStatus}，需要回应用中心和任务中心一起收口。`
+          : '先确认家庭驾驶舱、OPC 和 family-hub 的挂载状态、安全门和入口可用性。',
+        primaryLabel: '看领域对象',
+        primaryTarget: firstDomainAttention
+          ? { tab: 'DomainApps', taskQuery: firstDomainAttention.id }
+          : { tab: 'DomainApps' },
+        secondaryLabel: '看领域任务',
+        secondaryTarget: firstDomainAttention
+          ? { tab: 'TaskCenter', taskQuery: firstDomainAttention.taskQuery }
+          : { tab: 'TaskCenter', taskQuery: 'system_map_domain_app' },
+      },
+      {
+        id: 'capability-gap',
+        title: '能力缺口还没收口',
+        signal: metrics.capabilityGaps.length > 0 ? `${metrics.capabilityGaps.length} 项显式缺口` : '暂无显式能力缺口',
+        detail: firstGap
+          ? `${firstGap.title} 还需要继续拆成页面、资产、协议或领域挂载动作。`
+          : '先从系统地图确认缺口落在页面能力、项目覆盖还是领域应用承接。',
+        primaryLabel: '看缺口总图',
+        primaryTarget: firstGap
+          ? { tab: 'SystemMap', gapId: firstGap.id }
+          : { tab: 'SystemMap' },
+        secondaryLabel: '看缺口任务',
+        secondaryTarget: capabilityDraft
+          ? { tab: 'TaskCenter', taskQuery: capabilityDraft.sourceId }
+          : { tab: 'TaskCenter', taskQuery: 'system_map_capability_gap' },
+      },
+      {
+        id: 'coverage-drop',
+        title: '覆盖维度在掉分',
+        signal: firstWeakDimension ? `${firstWeakDimension.score ?? 0}% 最低分` : '维度覆盖暂未暴露短板',
+        detail: firstWeakDimension
+          ? `${firstWeakDimension.title || firstWeakDimension.id} 失败 ${firstWeakDimension.failed ?? 0}，预警 ${firstWeakDimension.warning ?? 0}。`
+          : '先看项目覆盖和最弱维度，避免只补页面却没补治理链。',
+        primaryLabel: '看覆盖维度',
+        primaryTarget: firstWeakDimension
+          ? { tab: 'SystemMap', coverageDimensionId: firstWeakDimension.id }
+          : { tab: 'SystemMap' },
+        secondaryLabel: '看覆盖任务',
+        secondaryTarget: coverageDraft
+          ? { tab: 'TaskCenter', taskQuery: coverageDraft.sourceId }
+          : { tab: 'TaskCenter', taskQuery: 'system_map_project_portfolio' },
+      },
+    ];
+  }, [
+    metrics.attentionPages,
+    metrics.capabilityGaps,
+    metrics.closureDrafts,
+    metrics.domainAttention,
+    metrics.domainSummary.highRisk,
+    metrics.domainSummary.total,
+    metrics.draftSummary.playbook,
+    metrics.draftSummary.verificationReady,
+    metrics.featuredDrafts,
+    metrics.pageAttentionItems,
+    metrics.weakestDimensions,
+  ]);
+
   return (
     <div className="cockpit-guide-page">
       <section className="cockpit-guide-band antd-card" aria-label="Cockpit 导览总览">
@@ -955,6 +1069,54 @@ export default function CockpitGuideView({
               )}
             </div>
           </article>
+        </div>
+      </section>
+
+      <section className="cockpit-guide-section">
+        <div className="section-header">
+          <div>
+            <h2>按问题定位</h2>
+            <p className="text-muted">当你只知道“这里不够用”时，先按症状进，不用猜应该去哪个页面翻。</p>
+          </div>
+        </div>
+        <div className="cockpit-guide-focus-grid">
+          {problemEntryCards.map((card) => (
+            <article key={card.id} className="cockpit-guide-focus-card">
+              <div className="cockpit-guide-focus-head">
+                <strong>{card.title}</strong>
+                <span>{card.signal}</span>
+              </div>
+              <div className="cockpit-guide-focus-list">
+                <div className="cockpit-guide-focus-item" style={{ cursor: 'default' }}>
+                  <div>
+                    <strong>当前信号</strong>
+                    <small>{card.signal}</small>
+                  </div>
+                  <p>{card.detail}</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开问题入口 ${card.title}`}
+                  onClick={() => openCockpitNavigationTarget(card.primaryTarget, onNavigate, onOpenTarget)}
+                >
+                  <ArrowRight size={14} />
+                  <span>{card.primaryLabel}</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开问题任务 ${card.title}`}
+                  onClick={() => openCockpitNavigationTarget(card.secondaryTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>{card.secondaryLabel}</span>
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 

@@ -104,6 +104,14 @@ describe('CockpitGuideView', () => {
       expect(screen.getByRole('button', { name: '打开角色模式 日常值守模式' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开角色任务 建设补位模式' })).toBeInTheDocument()
       expect(screen.getByText('当前缺口与补位')).toBeInTheDocument()
+      expect(screen.getByText('按问题定位')).toBeInTheDocument()
+      expect(screen.getByText('页面有了但不会用')).toBeInTheDocument()
+      expect(screen.getByText('能看不能证')).toBeInTheDocument()
+      expect(screen.getByText('领域应用挂了或不稳')).toBeInTheDocument()
+      expect(screen.getByText('能力缺口还没收口')).toBeInTheDocument()
+      expect(screen.getByText('覆盖维度在掉分')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开问题入口 页面有了但不会用' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开问题任务 能看不能证' })).toBeInTheDocument()
       expect(screen.getByText('补位任务承接')).toBeInTheDocument()
       expect(screen.getByText('草稿车道')).toBeInTheDocument()
       expect(screen.getByText('推荐先做')).toBeInTheDocument()
@@ -243,6 +251,18 @@ describe('CockpitGuideView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'SystemMap',
       pageId: 'Performance',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开问题入口 页面有了但不会用' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      pageId: 'Performance',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开问题任务 能看不能证' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'LogViewer',
+      taskQuery: 'verification',
     }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开能力缺口 缺少领域应用承接' }))
