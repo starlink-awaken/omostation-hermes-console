@@ -774,9 +774,27 @@ function okJson(payload: unknown) {
   return { ok: true, json: async () => payload } as Response
 }
 
+function expectTaskCenterDraftCall(
+  onOpenTarget: ReturnType<typeof vi.fn>,
+  index: number,
+  taskQuery: string,
+  title: string,
+) {
+  const target = onOpenTarget.mock.calls[index]?.[0]
+  expect(target).toEqual(expect.objectContaining({
+    tab: 'TaskCenter',
+    taskQuery,
+    draftKey: expect.any(String),
+  }))
+  const raw = window.sessionStorage.getItem(target.draftKey)
+  expect(raw).toBeTruthy()
+  expect(JSON.parse(raw || '{}')).toEqual(expect.objectContaining({ title }))
+}
+
 describe('SystemMapView', () => {
   beforeEach(() => {
     vi.mocked(fetch).mockReset()
+    window.sessionStorage.clear()
     vi.mocked(fetch).mockImplementation(async (input) => {
       const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
       if (url === '/api/cockpit/system-map') return okJson(systemMapPayload)
@@ -943,7 +961,7 @@ describe('SystemMapView', () => {
 
     fireEvent.click(within(screen.getByRole('region', { name: '当前聚焦页面' })).getByText('查看页面草稿'))
 
-    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'Home' })
+    expectTaskCenterDraftCall(onOpenTarget, 0, 'Home', '页面能力：补齐 首页')
 
     fireEvent.click(screen.getAllByRole('button', { name: '查看剖面' })[1])
 
@@ -955,7 +973,7 @@ describe('SystemMapView', () => {
 
     fireEvent.click(within(screen.getByRole('region', { name: '当前聚焦页面' })).getByText('查看清单'))
 
-    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'daily-health-check' })
+    expectTaskCenterDraftCall(onOpenTarget, 1, 'daily-health-check', '操作清单：每日体检')
 
     fireEvent.click(screen.getAllByRole('button', { name: /进入页面/ })[0])
 
@@ -982,7 +1000,7 @@ describe('SystemMapView', () => {
 
     fireEvent.click(within(screen.getByRole('region', { name: '当前聚焦能力域' })).getByText('查看清单'))
 
-    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'daily-health-check' })
+    expectTaskCenterDraftCall(onOpenTarget, 0, 'daily-health-check', '操作清单：每日体检')
 
     fireEvent.click(screen.getAllByRole('button', { name: '查看剖面' })[0])
 
@@ -1104,7 +1122,7 @@ describe('SystemMapView', () => {
     expect(onNavigate).toHaveBeenCalledWith('Home')
 
     fireEvent.click(screen.getByRole('button', { name: /打开建设草稿 页面能力：补齐 首页/ }))
-    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'Home' })
+    expectTaskCenterDraftCall(onOpenTarget, 0, 'Home', '页面能力：补齐 首页')
   })
 
   it('builds a unified construction control tower across pages, domains, verification, and roadmap', async () => {
@@ -1129,7 +1147,7 @@ describe('SystemMapView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'DomainApps', taskQuery: 'family-hub' })
 
     fireEvent.click(screen.getByRole('button', { name: /打开验证补证 cockpit/ }))
-    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit' })
+    expectTaskCenterDraftCall(onOpenTarget, 1, 'cockpit', '验证补证：cockpit')
 
     fireEvent.click(screen.getByRole('button', { name: /打开优先项目 kairon/ }))
 
@@ -1190,11 +1208,11 @@ describe('SystemMapView', () => {
 
     fireEvent.click(screen.getByText('查看项目草稿'))
 
-    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'kairon' })
+    expectTaskCenterDraftCall(onOpenTarget, 0, 'kairon', '项目组合：修复 kairon')
 
     fireEvent.click(screen.getByRole('button', { name: '打开系统地图闭环对象 kairon · 项目闭环' }))
 
-    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'kairon' })
+    expectTaskCenterDraftCall(onOpenTarget, 1, 'kairon', '项目组合：修复 kairon')
 
     fireEvent.click(screen.getByText('查看覆盖维度'))
 

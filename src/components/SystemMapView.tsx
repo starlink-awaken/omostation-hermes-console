@@ -19,6 +19,13 @@ import {
 } from 'lucide-react';
 import './Dashboard.css';
 import SummaryTileGrid from './common/SummaryTileGrid';
+import { type CockpitNavigationTarget } from './cockpitNavigation';
+import {
+  findTaskDraftForTarget,
+  persistTaskCenterDraft,
+  taskDraftToIncomingDraft,
+  type TaskDraftRecord,
+} from './taskDraftHandoff';
 
 type CockpitPage = {
   id: string;
@@ -492,6 +499,7 @@ type DraftTask = {
   title: string;
   description?: string;
   priority?: string;
+  tags?: string[];
   read_only?: boolean;
   source?: DraftTaskSource;
   draft?: {
@@ -623,16 +631,7 @@ type SystemMapPayload = {
 
 interface SystemMapViewProps {
   onNavigate: (tab: string) => void;
-  onOpenTarget?: (target: {
-    tab: string;
-    projectId?: string | null;
-    usagePathId?: string | null;
-    gapId?: string | null;
-    coverageDimensionId?: string | null;
-    pageId?: string | null;
-    featureDomainId?: string | null;
-    taskQuery?: string;
-  }) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
   focusProjectId?: string | null;
   focusUsagePathId?: string | null;
   focusGapId?: string | null;
@@ -794,33 +793,25 @@ function shortDate(value: string): string {
 }
 
 function openSystemMapTarget(
-  target: {
-    tab: string;
-    projectId?: string | null;
-    usagePathId?: string | null;
-    gapId?: string | null;
-    coverageDimensionId?: string | null;
-    pageId?: string | null;
-    featureDomainId?: string | null;
-    taskQuery?: string;
-  },
+  target: CockpitNavigationTarget,
   onNavigate: (tab: string) => void,
-  onOpenTarget?: (target: {
-    tab: string;
-    projectId?: string | null;
-    usagePathId?: string | null;
-    gapId?: string | null;
-    coverageDimensionId?: string | null;
-    pageId?: string | null;
-    featureDomainId?: string | null;
-    taskQuery?: string;
-  }) => void,
+  onOpenTarget?: (target: CockpitNavigationTarget) => void,
 ) {
   if (onOpenTarget) {
     onOpenTarget(target);
     return;
   }
   onNavigate(target.tab);
+}
+
+function withTaskDraftHandoff(
+  target: CockpitNavigationTarget,
+  draftTasks: TaskDraftRecord[],
+): CockpitNavigationTarget {
+  const matchedDraft = findTaskDraftForTarget(target, draftTasks);
+  const incomingDraft = matchedDraft ? taskDraftToIncomingDraft(matchedDraft) : null;
+  const draftKey = target.draftKey || (incomingDraft ? persistTaskCenterDraft(incomingDraft) : null);
+  return draftKey ? { ...target, draftKey } : target;
 }
 
 function sourceTarget(ref: SourceRef): string {
@@ -1046,13 +1037,7 @@ function ProjectDetailPanel({
   page?: CockpitPage;
   onClose: () => void;
   onNavigate: (tab: string) => void;
-  onOpenTarget?: (target: {
-    tab: string;
-    projectId?: string | null;
-    usagePathId?: string | null;
-    gapId?: string | null;
-    taskQuery?: string;
-  }) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
   onFocusCoverage: (dimensionId: string) => void;
   onFocusUsagePath: (usagePathId: string) => void;
   onFocusPageMaturity: (pageId: string) => void;
@@ -1202,7 +1187,7 @@ function ProjectDetailPanel({
           <div className="system-map-page-focus-actions-grid">
             <button
               className="system-map-page-focus-action"
-              onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: project.id }, onNavigate, onOpenTarget)}
+              onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: project.id }, relatedDrafts), onNavigate, onOpenTarget)}
             >
               <span>查看项目草稿</span>
               <small>{project.id}</small>
@@ -1239,7 +1224,7 @@ function ProjectDetailPanel({
               <button
                 className="system-map-page-focus-action"
                 key={`project-playbook-${playbook.id}`}
-                onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: playbook.id }, onNavigate, onOpenTarget)}
+                onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: playbook.id }, relatedDrafts), onNavigate, onOpenTarget)}
               >
                 <span>查看操作清单</span>
                 <small>{playbook.title}</small>
@@ -1249,7 +1234,7 @@ function ProjectDetailPanel({
               <button
                 className="system-map-page-focus-action"
                 key={`project-draft-${draft.id}`}
-                onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: project.id }, onNavigate, onOpenTarget)}
+                onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: project.id }, relatedDrafts), onNavigate, onOpenTarget)}
               >
                 <span>查看补证草稿</span>
                 <small>{draft.title}</small>
@@ -2282,21 +2267,21 @@ export default function SystemMapView({
                     type="button"
                     className="antd-btn"
                     aria-label={`打开系统地图闭环对象 ${row.title}`}
-                    onClick={() => openSystemMapTarget(row.primaryTarget, onNavigate, onOpenTarget)}
+                    onClick={() => openSystemMapTarget(withTaskDraftHandoff(row.primaryTarget, draftTasks), onNavigate, onOpenTarget)}
                   >
                     <ArrowRight size={14} />
                     <span>{row.primaryLabel}</span>
                   </button>
                   {row.secondaryTarget && row.secondaryLabel && (
-                    <button
-                      type="button"
-                      className="antd-btn"
-                      aria-label={`打开系统地图闭环动作 ${row.title}`}
-                      onClick={() => openSystemMapTarget(row.secondaryTarget || { tab: 'SystemMap' }, onNavigate, onOpenTarget)}
-                    >
-                      <ClipboardCheck size={14} />
-                      <span>{row.secondaryLabel}</span>
-                    </button>
+                  <button
+                    type="button"
+                    className="antd-btn"
+                    aria-label={`打开系统地图闭环动作 ${row.title}`}
+                    onClick={() => openSystemMapTarget(withTaskDraftHandoff(row.secondaryTarget || { tab: 'SystemMap' }, draftTasks), onNavigate, onOpenTarget)}
+                  >
+                    <ClipboardCheck size={14} />
+                    <span>{row.secondaryLabel}</span>
+                  </button>
                   )}
                 </div>
               </article>
@@ -2779,7 +2764,7 @@ export default function SystemMapView({
                     key={`control-verify-draft-${item.task.id}`}
                     className="system-map-build-item"
                     aria-label={`打开验证补证 ${item.task.source?.id || item.task.id}`}
-                    onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: item.task.source?.id || item.task.id }, onNavigate, onOpenTarget)}
+                    onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: item.task.source?.id || item.task.id }, draftTasks), onNavigate, onOpenTarget)}
                   >
                     <strong>{item.task.title}</strong>
                     <span>{item.project?.id || item.task.source?.id} · {draftSourceLabel(item.task.source?.type)}</span>
@@ -2956,7 +2941,7 @@ export default function SystemMapView({
                   key={`build-draft-${task.id}`}
                   className="system-map-build-item"
                   aria-label={`打开建设草稿 ${task.title}`}
-                  onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: task.source?.id || task.id }, onNavigate, onOpenTarget)}
+                  onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: task.source?.id || task.id }, draftTasks), onNavigate, onOpenTarget)}
                 >
                   <strong>{task.title}</strong>
                   <span>{draftSourceLabel(task.source?.type)} · {task.priority || 'medium'}</span>
@@ -3129,7 +3114,7 @@ export default function SystemMapView({
                     <button
                       className="system-map-page-focus-action"
                       key={`page-playbook-${playbook.id}`}
-                      onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: playbook.id }, onNavigate, onOpenTarget)}
+                      onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: playbook.id }, draftTasks), onNavigate, onOpenTarget)}
                     >
                       <span>查看清单</span>
                       <small>{playbook.title}</small>
@@ -3139,7 +3124,7 @@ export default function SystemMapView({
                     <button
                       className="system-map-page-focus-action"
                       key={`page-draft-${draft.id}`}
-                      onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: selectedPageMaturity.page.id }, onNavigate, onOpenTarget)}
+                      onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: selectedPageMaturity.page.id }, draftTasks), onNavigate, onOpenTarget)}
                     >
                       <span>查看页面草稿</span>
                       <small>{draft.title}</small>
@@ -3422,7 +3407,7 @@ export default function SystemMapView({
                     <button
                       className="system-map-page-focus-action"
                       key={`feature-playbook-${playbook.id}`}
-                      onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: playbook.id }, onNavigate, onOpenTarget)}
+                      onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: playbook.id }, draftTasks), onNavigate, onOpenTarget)}
                     >
                       <span>查看清单</span>
                       <small>{playbook.title}</small>
@@ -3432,7 +3417,7 @@ export default function SystemMapView({
                     <button
                       className="system-map-page-focus-action"
                       key={`feature-draft-${draft.id}`}
-                      onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: selectedFeatureDomain.cockpit_page }, onNavigate, onOpenTarget)}
+                      onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: selectedFeatureDomain.cockpit_page }, draftTasks), onNavigate, onOpenTarget)}
                     >
                       <span>查看页面草稿</span>
                       <small>{draft.title}</small>
