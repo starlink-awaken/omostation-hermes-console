@@ -16,15 +16,25 @@ interface FeedEvent {
   timestamp: string;
 }
 
-export function DashboardPage() {
+type KnowledgeDashboardSubTab = 'monitor' | 'memory' | 'agents' | 'calibration' | 'logs';
+
+interface DashboardPageProps {
+  initialSubTab?: KnowledgeDashboardSubTab;
+}
+
+export function DashboardPage({ initialSubTab = 'monitor' }: DashboardPageProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [subTab, setSubTab] = useState<'monitor' | 'memory' | 'agents' | 'calibration' | 'logs'>('monitor');
+  const [subTab, setSubTab] = useState<KnowledgeDashboardSubTab>(initialSubTab);
   
   const [stats, setStats] = useState({ connected_agents: 0, requests_today: 0, active_tokens: 0 });
   const [health, setHealth] = useState({ expiring_soon: 0, error_rate: '0%' });
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [sseStatus, setSseStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    setSubTab(initialSubTab);
+  }, [initialSubTab]);
 
   const loadStatsAndHealth = async () => {
     try {

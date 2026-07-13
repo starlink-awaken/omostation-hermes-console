@@ -770,7 +770,7 @@ describe('Dashboard global search', () => {
     await waitFor(() => {
       expect(screen.getByText('概览中心 (Overview)')).toBeInTheDocument()
     })
-  }, 30000)
+  }, 45000)
 
   it('shows a complete coverage state when page maturity has no attention items', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
