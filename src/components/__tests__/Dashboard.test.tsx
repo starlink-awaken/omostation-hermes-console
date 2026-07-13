@@ -616,7 +616,7 @@ describe('Dashboard global search', () => {
     fireEvent.click(screen.getByRole('button', { name: /侧边推进 任务承接：项目组合：修复 mesh-router/ }))
 
     await waitFor(() => {
-      expect(screen.getByText(/TaskCenter Mock mesh-router/)).toBeInTheDocument()
+      expect(screen.getByText(/TaskCenter Mock mesh-router 项目组合：修复 mesh-router/)).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: /打开成熟度缺口页面 性能监控/ }))
@@ -688,7 +688,7 @@ describe('Dashboard global search', () => {
     fireEvent.click(screen.getByText('任务草稿：能力缺口：处理 部分项目仍需补齐状态面'))
 
     await waitFor(() => {
-      expect(screen.getByText(/TaskCenter Mock project-native-surface/)).toBeInTheDocument()
+      expect(screen.getByText(/TaskCenter Mock project-native-surface 能力缺口：处理 部分项目仍需补齐状态面/)).toBeInTheDocument()
     })
 
     fireEvent.change(search, { target: { value: 'Performance' } })
@@ -700,7 +700,7 @@ describe('Dashboard global search', () => {
     fireEvent.click(screen.getByText('任务草稿：页面能力：补齐 性能监控'))
 
     await waitFor(() => {
-      expect(screen.getByText(/TaskCenter Mock Performance/)).toBeInTheDocument()
+      expect(screen.getByText(/TaskCenter Mock Performance 页面能力：补齐 性能监控/)).toBeInTheDocument()
     })
 
     fireEvent.change(search, { target: { value: '家庭驾驶舱' } })

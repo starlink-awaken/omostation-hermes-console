@@ -741,6 +741,50 @@ function taskDraftToIncomingDraft(task: SearchTaskDraft): TaskCenterIncomingDraf
   };
 }
 
+function normalizeDraftMatchValue(value?: string | null): string {
+  return (value || '').trim().toLowerCase();
+}
+
+function findTaskDraftForTarget(
+  target: CockpitNavigationTarget,
+  drafts: SearchTaskDraft[],
+): SearchTaskDraft | null {
+  if (target.tab !== 'TaskCenter' || target.draftKey) return null;
+
+  const query = normalizeDraftMatchValue(target.taskQuery);
+  const projectId = normalizeDraftMatchValue(target.projectId);
+  const gapId = normalizeDraftMatchValue(target.gapId);
+  const pageId = normalizeDraftMatchValue(target.pageId);
+  const usagePathId = normalizeDraftMatchValue(target.usagePathId);
+
+  const scored = drafts
+    .map((task) => {
+      let score = 0;
+      const taskId = normalizeDraftMatchValue(task.id);
+      const sourceId = normalizeDraftMatchValue(task.source?.id);
+      const title = normalizeDraftMatchValue(task.title);
+      const sourceTitle = normalizeDraftMatchValue(task.source?.title);
+
+      if (query) {
+        if (sourceId === query) score += 8;
+        if (title === query) score += 7;
+        if (taskId === query) score += 6;
+        if (sourceTitle === query) score += 5;
+      }
+
+      if (projectId && sourceId === projectId) score += 8;
+      if (gapId && sourceId === gapId) score += 8;
+      if (pageId && sourceId === pageId) score += 8;
+      if (usagePathId && sourceId === usagePathId) score += 8;
+
+      return { task, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score);
+
+  return scored[0]?.task || null;
+}
+
 function DashboardViewFallback({ label }: { label: string }) {
   return (
     <div className="loading-state dashboard-view-fallback" role="status" aria-label={`${label} 加载中`}>
@@ -2742,6 +2786,9 @@ export default function Dashboard() {
   };
 
   const openContextTarget = (target: CockpitNavigationTarget) => {
+    const matchedDraft = findTaskDraftForTarget(target, shellTaskDrafts);
+    const incomingDraft = matchedDraft ? taskDraftToIncomingDraft(matchedDraft) : null;
+    const resolvedDraftKey = target.draftKey || (incomingDraft ? persistTaskCenterDraft(incomingDraft) : null);
     setFocusedProjectId(target.projectId || null);
     setFocusedUsagePathId(target.usagePathId || null);
     setFocusedGapId(target.gapId || null);
@@ -2749,10 +2796,13 @@ export default function Dashboard() {
     setFocusedPageId(target.pageId || null);
     setFocusedFeatureDomainId(target.featureDomainId || null);
     setTaskSearchSeed(target.taskQuery || '');
-    setTaskDraftKey(target.draftKey || null);
+    setTaskDraftKey(resolvedDraftKey);
     setAlertTab(target.alertTab || null);
     setActiveTabState(target.tab);
-    writeNavigationHash(target);
+    writeNavigationHash({
+      ...target,
+      draftKey: resolvedDraftKey || undefined,
+    });
   };
 
   useEffect(() => {
