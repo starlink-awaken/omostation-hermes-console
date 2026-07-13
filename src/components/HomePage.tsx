@@ -121,6 +121,17 @@ interface FocusActionDraft {
   description?: string;
 }
 
+interface SymptomRouteCard {
+  id: string;
+  title: string;
+  signal: string;
+  detail: string;
+  primaryLabel: string;
+  primaryTarget: CockpitNavigationTarget;
+  secondaryLabel: string;
+  secondaryTarget: CockpitNavigationTarget;
+}
+
 interface UsagePathPage {
   id: string;
   title: string;
@@ -580,6 +591,168 @@ function WorkModeSection({
               >
                 <ClipboardCheck size={13} />
                 <span>看承接任务</span>
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SymptomTriageSection({
+  architecture,
+  focus,
+  onTabChange,
+  onOpenTarget,
+}: {
+  architecture: SiteArchitecture;
+  focus: OperatingFocus;
+  onTabChange?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+}) {
+  const pageDraft = focus.actionDrafts.find((draft) => draft.sourceType === 'system_map_page_maturity') || null;
+  const verificationDraft = focus.actionDrafts.find((draft) => draft.sourceType === 'system_map_verification_ready') || null;
+  const capabilityDraft = focus.actionDrafts.find((draft) => draft.sourceType === 'system_map_capability_gap') || null;
+  const domainAttention = focus.domainAttention[0] || null;
+  const weakestDimension = focus.weakestDimensions[0] || null;
+  const verificationDimension = focus.weakestDimensions.find((dimension) => dimension.id === 'verification')
+    || focus.weakestDimensions.find((dimension) => dimension.title.includes('验证'))
+    || null;
+
+  const cards: SymptomRouteCard[] = [
+    {
+      id: 'page-adoption',
+      title: '页面有了但不会用',
+      signal: focus.pageMaturityDrafts > 0 || architecture.pageWatch > 0
+        ? `${focus.pageMaturityDrafts} 页面草稿 · ${architecture.pageWatch} 待收口`
+        : '页面入口基本已接通',
+      detail: pageDraft
+        ? `${pageDraft.title} 还没完全接到使用路径或承接任务，先回页面剖面继续补。`
+        : '先看系统地图里的页面剖面，确认是缺路径、缺能力域，还是缺任务承接。',
+      primaryLabel: '看页面剖面',
+      primaryTarget: pageDraft
+        ? { tab: 'SystemMap', pageId: pageDraft.sourceId }
+        : { tab: 'SystemMap' },
+      secondaryLabel: '看页面任务',
+      secondaryTarget: pageDraft
+        ? { tab: 'TaskCenter', taskQuery: pageDraft.sourceId }
+        : { tab: 'TaskCenter', taskQuery: 'system_map_page_maturity' },
+    },
+    {
+      id: 'verification-gap',
+      title: '能看不能证',
+      signal: focus.verificationGapProjects > 0 || focus.verificationDrafts > 0
+        ? `验证缺口 ${focus.verificationGapProjects} · 草稿 ${focus.verificationDrafts}`
+        : '验证补证暂时收敛',
+      detail: verificationDraft
+        ? `${verificationDraft.title} 还没沉成完整证据链，先去验证车道补证。`
+        : '先看验证维度和 TaskCenter 补证草稿，别让问题只停在现象层。',
+      primaryLabel: '看验证维度',
+      primaryTarget: verificationDimension
+        ? { tab: 'SystemMap', coverageDimensionId: verificationDimension.id }
+        : { tab: 'TaskCenter', taskQuery: '验证' },
+      secondaryLabel: '看补证任务',
+      secondaryTarget: verificationDraft
+        ? { tab: 'TaskCenter', taskQuery: verificationDraft.sourceId }
+        : { tab: 'TaskCenter', taskQuery: '验证' },
+    },
+    {
+      id: 'domain-instability',
+      title: '领域挂载不稳',
+      signal: architecture.highRiskDomainApps > 0 || focus.domainAttention.length > 0
+        ? `高风险 ${architecture.highRiskDomainApps} · 待收口 ${focus.domainAttention.length}`
+        : '领域挂载暂时平稳',
+      detail: domainAttention
+        ? `${domainAttention.name} 当前 ${domainAttention.runtimeStatus}，建议回应用中心和任务中心一起收口。`
+        : '先看应用中心，确认家庭、OPC、family-hub 的入口、安全和运行态。',
+      primaryLabel: '看领域对象',
+      primaryTarget: domainAttention
+        ? { tab: 'DomainApps', taskQuery: domainAttention.id }
+        : { tab: 'DomainApps' },
+      secondaryLabel: '看领域任务',
+      secondaryTarget: domainAttention
+        ? { tab: 'TaskCenter', taskQuery: domainAttention.id }
+        : { tab: 'TaskCenter', taskQuery: 'system_map_domain_app' },
+    },
+    {
+      id: 'capability-closure',
+      title: '能力缺口还没收口',
+      signal: focus.capabilityGapDrafts > 0
+        ? `${focus.capabilityGapDrafts} 条缺口草稿`
+        : '暂无显式能力缺口草稿',
+      detail: capabilityDraft
+        ? `${capabilityDraft.title} 还需要继续拆成页面、协议、领域或验证动作。`
+        : '先从系统地图回看缺口定义，确认到底卡在页面、项目组合还是领域承接。',
+      primaryLabel: '看缺口总图',
+      primaryTarget: capabilityDraft
+        ? { tab: 'SystemMap', gapId: capabilityDraft.sourceId }
+        : { tab: 'SystemMap' },
+      secondaryLabel: '看缺口任务',
+      secondaryTarget: capabilityDraft
+        ? { tab: 'TaskCenter', taskQuery: capabilityDraft.sourceId }
+        : { tab: 'TaskCenter', taskQuery: 'system_map_capability_gap' },
+    },
+    {
+      id: 'coverage-drop',
+      title: '覆盖矩阵在掉分',
+      signal: weakestDimension
+        ? `${weakestDimension.title} ${weakestDimension.score}%`
+        : `项目覆盖 ${architecture.projectCoverageScore}%`,
+      detail: weakestDimension
+        ? `${weakestDimension.nextAction} 先修最薄弱维度，再看相关项目和任务。`
+        : '先看系统地图的覆盖矩阵，确认是不是运行、验证或页面成熟度在拖后腿。',
+      primaryLabel: '看覆盖维度',
+      primaryTarget: weakestDimension
+        ? { tab: 'SystemMap', coverageDimensionId: weakestDimension.id }
+        : { tab: 'SystemMap' },
+      secondaryLabel: '看修复任务',
+      secondaryTarget: weakestDimension?.attentionProjects?.[0]
+        ? { tab: 'TaskCenter', taskQuery: weakestDimension.attentionProjects[0].id }
+        : { tab: 'TaskCenter', taskQuery: 'system_map_project_portfolio' },
+    },
+  ];
+
+  return (
+    <section className="services-section home-operating-focus">
+      <div className="section-header">
+        <div>
+          <h2>按症状定位</h2>
+          <p className="text-muted">当你只知道 cockpit 这里“不够用”时，先按症状进，不用猜该翻哪一页。</p>
+        </div>
+        <button className="antd-btn small" aria-label="打开首页症状分诊总图" onClick={() => onTabChange?.('Guide')}>
+          <Map size={13} />
+          <span>看导览分诊</span>
+          <ArrowRight size={13} />
+        </button>
+      </div>
+      <div className="home-focus-repair-grid">
+        {cards.map((card) => (
+          <article key={card.id} className="home-focus-lane-card">
+            <span>症状分诊</span>
+            <strong>{card.title}</strong>
+            <small>{card.signal}</small>
+            <p>{card.detail}</p>
+            <div className="home-focus-lane-chips">
+              <em>{card.primaryLabel}</em>
+              <em>{card.secondaryLabel}</em>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+              <button
+                className="antd-btn small"
+                aria-label={`打开首页症状对象 ${card.title}`}
+                onClick={() => openCockpitNavigationTarget(card.primaryTarget, onTabChange, onOpenTarget)}
+              >
+                <ArrowRight size={13} />
+                <span>{card.primaryLabel}</span>
+              </button>
+              <button
+                className="antd-btn small"
+                aria-label={`打开首页症状任务 ${card.title}`}
+                onClick={() => openCockpitNavigationTarget(card.secondaryTarget, onTabChange, onOpenTarget)}
+              >
+                <ClipboardCheck size={13} />
+                <span>{card.secondaryLabel}</span>
               </button>
             </div>
           </article>
@@ -2129,6 +2302,13 @@ export default function HomePage({
       <QuickActionsSection onTabChange={onTabChange} />
 
       <WorkModeSection
+        architecture={siteArchitecture}
+        focus={operatingFocus}
+        onTabChange={onTabChange}
+        onOpenTarget={onOpenTarget}
+      />
+
+      <SymptomTriageSection
         architecture={siteArchitecture}
         focus={operatingFocus}
         onTabChange={onTabChange}

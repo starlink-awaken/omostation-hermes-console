@@ -280,6 +280,12 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(screen.getByText('今日操作焦点')).toBeInTheDocument()
       expect(screen.getByText('按工作模式进入')).toBeInTheDocument()
+      expect(screen.getByText('按症状定位')).toBeInTheDocument()
+      expect(screen.getByText('页面有了但不会用')).toBeInTheDocument()
+      expect(screen.getByText('能看不能证')).toBeInTheDocument()
+      expect(screen.getByText('领域挂载不稳')).toBeInTheDocument()
+      expect(screen.getByText('能力缺口还没收口')).toBeInTheDocument()
+      expect(screen.getByText('覆盖矩阵在掉分')).toBeInTheDocument()
       expect(screen.getByText('日常值守模式')).toBeInTheDocument()
       expect(screen.getByText('治理巡检模式')).toBeInTheDocument()
       expect(screen.getByText('建设补位模式')).toBeInTheDocument()
@@ -359,6 +365,8 @@ describe('HomePage', () => {
       expect(screen.getByRole('button', { name: '打开首页建设任务 Family Hub' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开首页建设对象 验证补证：cockpit' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开首页建设任务 mesh-router' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开首页症状对象 页面有了但不会用' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开首页症状任务 能看不能证' })).toBeInTheDocument()
     }, { timeout: 8000 })
 
     fireEvent.click(screen.getByRole('button', { name: /打开系统地图/ }))
@@ -368,6 +376,12 @@ describe('HomePage', () => {
     expect(onTabChange).toHaveBeenCalledWith('Home')
 
     fireEvent.click(screen.getByRole('button', { name: /打开工作模式任务 建设补位模式/ }))
+    expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
+
+    fireEvent.click(screen.getByRole('button', { name: /打开首页症状对象 页面有了但不会用/ }))
+    expect(onTabChange).toHaveBeenCalledWith('SystemMap')
+
+    fireEvent.click(screen.getByRole('button', { name: /打开首页症状任务 能看不能证/ }))
     expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
 
     fireEvent.click(screen.getByRole('button', { name: /打开首页页面建设 Home/ }))
@@ -573,6 +587,41 @@ describe('HomePage', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', pageId: 'Performance' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Performance' })
     expect(onTabChange).not.toHaveBeenCalled()
+  })
+
+  it('routes homepage symptom triage cards to exact cockpit targets', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/health/summary') {
+        return Promise.resolve(okJson({ health_score: 90, health_score_change: 1, active_services: 2, total_services: 3, active_tasks: 1, today_requests: 20, today_requests_change: 2 }))
+      }
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      if (url === '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80') return Promise.resolve(okJson(taskPayload))
+      if (url.startsWith('/api/tasks')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/alerts')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/metrics')) return Promise.resolve(okJson({ health_score: [], requests: [], error_rate: [] }))
+      if (url.startsWith('/api/omos/thoughts')) return Promise.resolve(okJson({ status: 'ok', thoughts: [] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<HomePage onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '打开首页症状对象 页面有了但不会用' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开首页症状对象 页面有了但不会用' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开首页症状任务 能看不能证' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开首页症状对象 领域挂载不稳' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开首页症状任务 能力缺口还没收口' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开首页症状对象 覆盖矩阵在掉分' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', pageId: 'Performance' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'cockpit' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(3, { tab: 'DomainApps', taskQuery: 'family-hub' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(4, { tab: 'TaskCenter', taskQuery: 'project-native-surface' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(5, { tab: 'SystemMap', coverageDimensionId: 'runtime_probe' })
   })
 
   it('does not present synthetic health data when the homepage APIs are unavailable', async () => {
