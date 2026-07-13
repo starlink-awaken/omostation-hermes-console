@@ -236,6 +236,19 @@ describe('Dashboard global search', () => {
               draft: { kind: 'project_portfolio_task' },
             },
             {
+              id: 'verification-ready-cockpit',
+              title: '验证补证：cockpit',
+              description: '把已有验证命令补成正式证据。',
+              tags: ['verification-ready', 'draft', 'cockpit'],
+              source: { type: 'system_map_verification_ready', id: 'cockpit', title: 'cockpit 验证补证' },
+              draft: {
+                kind: 'verification_ready_task',
+                evidence_fields: [
+                  { label: '验证命令', value: 'uv run pytest -q' },
+                ],
+              },
+            },
+            {
               id: 'domain-app-family-hub',
               title: '领域应用：处理 family-hub 服务',
               description: '按登记启动命令拉起服务。',
@@ -629,7 +642,18 @@ describe('Dashboard global search', () => {
     fireEvent.click(screen.getByText('任务草稿：项目组合：修复 mesh-router'))
 
     await waitFor(() => {
-      expect(screen.getByText(/TaskCenter Mock mesh-router/)).toBeInTheDocument()
+      expect(screen.getByText(/TaskCenter Mock mesh-router 项目组合：修复 mesh-router/)).toBeInTheDocument()
+    })
+
+    fireEvent.change(search, { target: { value: '补证' } })
+    await waitFor(() => {
+      expect(screen.getByText('任务草稿：验证补证：cockpit')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('任务草稿：验证补证：cockpit'))
+
+    await waitFor(() => {
+      expect(screen.getByText(/TaskCenter Mock cockpit 验证补证：cockpit/)).toBeInTheDocument()
     })
 
     fireEvent.change(search, { target: { value: 'family-hub' } })

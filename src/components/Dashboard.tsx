@@ -77,6 +77,7 @@ interface SearchTarget {
     coverageDimensionId?: string;
     pageId?: string;
     featureDomainId?: string;
+    draftId?: string;
   };
 }
 
@@ -159,6 +160,7 @@ interface SearchTaskDraft {
   id: string;
   title?: string;
   description?: string;
+  priority?: string;
   tags?: string[];
   source?: {
     type?: string;
@@ -167,6 +169,17 @@ interface SearchTaskDraft {
   };
   draft?: {
     kind?: string;
+    copy_text?: string;
+    step_count?: number;
+    guard?: string;
+    evidence_fields?: {
+      label?: string;
+      value?: string;
+      page_id?: string;
+      step_id?: string;
+      evidence?: string;
+      done_when?: string;
+    }[];
   };
 }
 
@@ -648,6 +661,84 @@ function readTaskCenterDraft(key?: string | null): TaskCenterIncomingDraft | nul
     console.error(error);
     return null;
   }
+}
+
+function taskDraftSourceTarget(task: SearchTaskDraft): CockpitNavigationTarget | null {
+  if (!task.source?.type) return null;
+  if (task.source.type === 'system_map_project_portfolio') {
+    return { tab: 'SystemMap', projectId: task.source.id || null };
+  }
+  if (task.source.type === 'system_map_verification_ready') {
+    return { tab: 'SystemMap', projectId: task.source.id || null };
+  }
+  if (task.source.type === 'system_map_domain_app') {
+    return { tab: 'DomainApps', taskQuery: task.source.id || task.title || '' };
+  }
+  if (task.source.type === 'system_map_capability_gap') {
+    return { tab: 'SystemMap', gapId: task.source.id || null };
+  }
+  if (task.source.type === 'system_map_page_maturity') {
+    return { tab: task.source.id || 'SystemMap', pageId: task.source.id || null };
+  }
+  if (task.source.type === 'system_map_playbook') {
+    const pageIds = (task.draft?.evidence_fields || [])
+      .map((field) => field.page_id)
+      .filter(Boolean) as string[];
+    const preferredPage = pageIds.find((pageId) => pageId !== 'Home' && pageId !== 'SystemMap') || pageIds[0];
+    return { tab: preferredPage || 'SystemMap', pageId: preferredPage || null };
+  }
+  return null;
+}
+
+function taskDraftToIncomingDraft(task: SearchTaskDraft): TaskCenterIncomingDraft | null {
+  const sourceTarget = taskDraftSourceTarget(task);
+  if (!sourceTarget) return null;
+
+  const evidenceChecklist = (task.draft?.evidence_fields || [])
+    .map((field, index) => {
+      const head = field.label || field.page_id || field.step_id || `步骤 ${index + 1}`;
+      const detail = field.value || field.evidence || field.done_when || '确认该项已完成';
+      return `${head}：${detail}`;
+    })
+    .filter(Boolean)
+    .slice(0, 4);
+
+  const fallbackChecklist = task.source?.type === 'system_map_project_portfolio'
+    ? ['回系统地图核对项目阻塞原因', '确认最近验证或运行证据', '把修复动作沉到任务中心']
+    : task.source?.type === 'system_map_verification_ready'
+      ? ['确认验证命令仍可执行', '补 workflow / closeout 证据', '把验证结果回填到正式承接链']
+      : task.source?.type === 'system_map_domain_app'
+        ? ['回应用中心检查运行态与安全门', '确认入口 URL、认证与新鲜度状态', '把领域处理动作沉到任务中心']
+        : task.source?.type === 'system_map_capability_gap'
+          ? ['回系统地图确认缺口边界', '拆成页面、项目、命令或探针动作', '把缺口收口动作沉到任务中心']
+          : task.source?.type === 'system_map_page_maturity'
+            ? ['回来源页面核对当前用途和缺口', '补齐路径、能力域或任务承接', '把页面补位动作沉到任务中心']
+            : ['回来源页确认执行路径', '补执行证据和 done_when', '把下一步动作沉到任务中心'];
+
+  const checklist = evidenceChecklist.length > 0 ? evidenceChecklist : fallbackChecklist;
+  const title = task.title || task.source?.title || task.id;
+  const description = task.description || task.source?.title || '把这条草稿继续承接成正式动作。';
+  const tags = [...new Set([
+    'cockpit',
+    'task-draft-handoff',
+    ...(task.tags || []).slice(0, 6),
+  ])];
+  const copyText = task.draft?.copy_text || [
+    `标题: ${title}`,
+    `来源: ${task.source?.title || task.source?.id || '任务草稿'}`,
+    `任务描述: ${description}`,
+    '建议动作:',
+    ...checklist.map((item, index) => `${index + 1}. ${item}`),
+  ].join('\n');
+
+  return {
+    title,
+    description,
+    tags,
+    checklist,
+    copyText,
+    sourceTarget,
+  };
 }
 
 function DashboardViewFallback({ label }: { label: string }) {
@@ -2740,6 +2831,11 @@ export default function Dashboard() {
   }, []);
 
   const openSearchTarget = (target: SearchTarget) => {
+    const matchedDraft = target.context?.draftId
+      ? shellTaskDrafts.find((task) => task.id === target.context?.draftId) || null
+      : null;
+    const incomingDraft = matchedDraft ? taskDraftToIncomingDraft(matchedDraft) : null;
+    const draftKey = incomingDraft ? persistTaskCenterDraft(incomingDraft) : null;
     openContextTarget({
       tab: target.tab,
       projectId: target.context?.projectId || null,
@@ -2749,6 +2845,7 @@ export default function Dashboard() {
       pageId: target.context?.pageId || null,
       featureDomainId: target.context?.featureDomainId || null,
       taskQuery: target.context?.taskQuery || '',
+      draftKey,
     });
     setSearchQuery('');
   };
@@ -3163,6 +3260,7 @@ export default function Dashboard() {
           drafts
             .filter((task) =>
               task.source?.type === 'system_map_project_portfolio'
+              || task.source?.type === 'system_map_verification_ready'
               || task.source?.type === 'system_map_playbook'
               || task.source?.type === 'system_map_domain_app'
               || task.source?.type === 'system_map_capability_gap'
@@ -3171,6 +3269,8 @@ export default function Dashboard() {
             .forEach((task) => {
               const group = task.source?.type === 'system_map_project_portfolio'
                 ? '项目组合草稿'
+                : task.source?.type === 'system_map_verification_ready'
+                  ? '验证补证草稿'
                 : task.source?.type === 'system_map_domain_app'
                   ? '领域应用草稿'
                   : task.source?.type === 'system_map_capability_gap'
@@ -3183,7 +3283,10 @@ export default function Dashboard() {
                 tab: 'TaskCenter',
                 label: `任务草稿：${task.title || task.id}`,
                 group,
-                context: { taskQuery: task.source?.id || task.title || task.id },
+                context: {
+                  taskQuery: task.source?.id || task.title || task.id,
+                  draftId: task.id,
+                },
                 keywords: [
                   task.id,
                   task.title || '',
@@ -3191,6 +3294,7 @@ export default function Dashboard() {
                   task.source?.id || '',
                   task.source?.title || '',
                   task.draft?.kind || '',
+                  ...(task.source?.type === 'system_map_verification_ready' ? ['verification', '验证', '补证', '验证补证'] : []),
                   ...(task.tags || []),
                   ...(task.source?.type === 'system_map_capability_gap' ? ['gap', '缺口', '能力缺口', '能力不足'] : []),
                   ...(task.source?.type === 'system_map_page_maturity' ? ['page', '页面', '页面能力', '成熟度', '能力不足'] : []),
