@@ -8,6 +8,11 @@ const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Resp
 describe('ProtocolWorkbenchView', () => {
   beforeEach(() => {
     vi.mocked(fetch).mockReset()
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    })
   })
 
   it('renders protocol layer summary and related navigation', async () => {
@@ -114,5 +119,70 @@ describe('ProtocolWorkbenchView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Assets', taskQuery: 'Assets' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Assets' })
     expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('renders protocol surface map and draft actions', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockResolvedValue(okJson({
+      summary: {
+        workflow_definitions: 9,
+        workflow_actions: 18,
+        workflow_backends: 3,
+        recent_runs: 1,
+        ready_layers: 1,
+        watch_layers: 2,
+        page_score: 88,
+      },
+      layers: [
+        {
+          id: 'model-driven',
+          title: 'Model Driven Layer',
+          status: 'watch',
+          role: '承接模型驱动定义。',
+          facts: ['bridge stale'],
+          next_action: '补齐 workflow 对接证据。',
+        },
+      ],
+      recent_workflows: [
+        { id: 'wf-2', task: '协议回归检查', status: 'running', updated_at: '2026-07-10T06:00:00Z' },
+      ],
+      commands: [
+        { id: 'protocol-audit', label: '协议巡检命令', value: 'cockpit protocol audit', detail: '补齐协议运行证据。' },
+      ],
+      related_pages: [
+        { id: 'Workflows', title: '工作流编排', reason: '查看最近 workflow 承接情况。' },
+        { id: 'SystemMap', title: '系统地图', reason: '回到治理面确认收口。' },
+      ],
+      roadmap_item: { id: 'protocol-roadmap', title: '协议收口计划', priority: 'P1', problem: '治理收口还不完整。' },
+      playbook: { id: 'protocol-playbook', title: '协议巡检手册', goal: '按固定节奏跑协议层检查。' },
+    }))
+
+    render(
+      <ProtocolWorkbenchView
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="audit"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('协议维度地图')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '当前协议子面板' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '协议补位任务' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '切换协议子面板 治理收口' }))
+    expect(screen.getByText('补齐协议承接：治理收口')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '打开协议相关对象 治理收口' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', taskQuery: 'audit' })
+
+    fireEvent.click(screen.getByRole('button', { name: '复制协议补位任务 补齐协议承接：治理收口' }))
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalled()
+      expect(screen.getByText('已复制协议补位任务：补齐协议承接：治理收口')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开协议补位任务 补齐协议承接：治理收口' }))
+    expect(onOpenTarget).toHaveBeenLastCalledWith({ tab: 'TaskCenter', taskQuery: 'audit' })
   })
 })

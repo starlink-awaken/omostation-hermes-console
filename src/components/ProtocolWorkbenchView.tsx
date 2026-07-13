@@ -57,6 +57,17 @@ type ProtocolPayload = {
   } | null;
 };
 
+type ProtocolSurfaceId = 'layers' | 'workflows' | 'evidence' | 'governance';
+
+type ProtocolSurfaceCard = {
+  id: ProtocolSurfaceId;
+  title: string;
+  summary: string;
+  detail: string;
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 interface ProtocolWorkbenchViewProps {
   onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
@@ -116,6 +127,13 @@ function matchesProtocolFocusQuery(values: Array<string | null | undefined>, que
   return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
 }
 
+function inferProtocolSurface(query?: string): ProtocolSurfaceId {
+  if (matchesProtocolFocusQuery(['workflow', 'run', '编排', '运行', '调度'], query)) return 'workflows';
+  if (matchesProtocolFocusQuery(['command', 'copy', 'evidence', 'audit', '命令', '补证', '审计'], query)) return 'evidence';
+  if (matchesProtocolFocusQuery(['governance', 'roadmap', 'systemmap', 'system map', 'task', '治理', '路线图', '任务'], query)) return 'governance';
+  return 'layers';
+}
+
 export default function ProtocolWorkbenchView({
   onNavigate,
   onOpenTarget,
@@ -125,6 +143,7 @@ export default function ProtocolWorkbenchView({
   const [payload, setPayload] = useState<ProtocolPayload>(EMPTY_PAYLOAD);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [protocolDraftNotice, setProtocolDraftNotice] = useState<string | null>(null);
 
   const load = async () => {
     const data = await fetchJson<ProtocolPayload>('/api/cockpit/protocol-hub', EMPTY_PAYLOAD);
@@ -171,6 +190,52 @@ export default function ProtocolWorkbenchView({
     payload.related_pages.find((page) => /systemmap|system map|overview|task|治理|总览/i.test(`${page.id} ${page.title} ${page.reason}`))?.id
     ?? 'SystemMap'
   ), [payload.related_pages]);
+
+  const protocolSurfaces = useMemo<ProtocolSurfaceCard[]>(() => ([
+    {
+      id: 'layers',
+      title: '协议层桥',
+      summary: '看 ecos、MOF、model-driven 和 workflow 的桥接是否完整。',
+      detail: '适合先确认定义层有没有断层，再决定去资产面还是继续巡检 workflow。',
+      objectTarget: { tab: assetsTarget, taskQuery: focusTaskQuery || 'protocol-layer' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'protocol-layer' },
+    },
+    {
+      id: 'workflows',
+      title: '最近编排',
+      summary: '核对最近 workflow 有没有真的承接协议层。',
+      detail: '定义存在不代表能跑，最近运行记录能证明它是活的还是纸面系统。',
+      objectTarget: { tab: workflowTarget, taskQuery: focusTaskQuery || 'workflow' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'workflow' },
+    },
+    {
+      id: 'evidence',
+      title: '补证命令',
+      summary: '复制检查命令，给协议页补执行证据。',
+      detail: '当页面里只有定义没有运行痕迹，先补证据再回来看状态变化。',
+      objectTarget: { tab: 'Protocol', taskQuery: focusTaskQuery || 'protocol-evidence' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'protocol-evidence' },
+    },
+    {
+      id: 'governance',
+      title: '治理收口',
+      summary: '把路线图、playbook 和治理面串成最后承接。',
+      detail: '协议问题最后都得落进治理或任务中心，不然只是看见问题，没有闭环。',
+      objectTarget: { tab: governanceTarget, taskQuery: focusTaskQuery || 'protocol-governance' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'protocol-governance' },
+    },
+  ]), [assetsTarget, focusTaskQuery, governanceTarget, workflowTarget]);
+  const inferredProtocolSurface = useMemo(() => inferProtocolSurface(focusTaskQuery), [focusTaskQuery]);
+  const [activeProtocolSurfaceId, setActiveProtocolSurfaceId] = useState<ProtocolSurfaceId>(inferredProtocolSurface);
+
+  useEffect(() => {
+    setActiveProtocolSurfaceId(inferredProtocolSurface);
+  }, [inferredProtocolSurface]);
+
+  const activeProtocolSurface = useMemo(
+    () => protocolSurfaces.find((surface) => surface.id === activeProtocolSurfaceId) || protocolSurfaces[0],
+    [activeProtocolSurfaceId, protocolSurfaces],
+  );
 
   const protocolBacklog = useMemo(() => {
     const watchLayers = payload.layers.filter((layer) => layer.status !== 'ready');
@@ -278,6 +343,7 @@ export default function ProtocolWorkbenchView({
 
     return null;
   }, [
+    activeProtocolSurfaceId,
     assetsTarget,
     focusPageId,
     focusTaskQuery,
@@ -290,6 +356,38 @@ export default function ProtocolWorkbenchView({
     payload.roadmap_item,
     workflowTarget,
   ]);
+
+  const protocolTaskDraft = useMemo(() => {
+    const focusLabel = focusTaskQuery || activeProtocolSurface.title;
+    const title = `补齐协议承接：${activeProtocolSurface.title}`;
+    const description = `把 ${focusLabel} 对应的问题从协议页继续送往 ${activeProtocolSurface.objectTarget.tab} 和任务中心，不要停在命令或定义展示。`;
+    const checklist = [
+      `先在 ${activeProtocolSurface.title} 确认当前问题卡在定义、运行、证据还是治理收口`,
+      `把关联对象带到 ${activeProtocolSurface.objectTarget.tab} 继续验证或补证`,
+      '把下一步动作送进任务中心，保证协议问题可以追踪、复盘、继续执行',
+    ];
+    const copyTextValue = [
+      `标题: ${title}`,
+      `焦点对象: ${focusLabel}`,
+      `协议子面板: ${activeProtocolSurface.title}`,
+      `任务描述: ${description}`,
+      '建议动作:',
+      ...checklist.map((item, index) => `${index + 1}. ${item}`),
+      '验收标准:',
+      `- ${activeProtocolSurface.title} 不再只是查看入口，而有明确对象与任务承接`,
+      `- ${activeProtocolSurface.objectTarget.tab} 与 TaskCenter 至少有一条明确跳转链`,
+      '- 当前协议问题已经沉成可继续推进的正式动作',
+    ].join('\n');
+
+    return {
+      title,
+      description,
+      checklist,
+      copyText: copyTextValue,
+      objectTarget: activeProtocolSurface.objectTarget,
+      taskTarget: activeProtocolSurface.taskTarget,
+    };
+  }, [activeProtocolSurface, focusTaskQuery]);
 
   if (loading) {
     return (
@@ -395,6 +493,146 @@ export default function ProtocolWorkbenchView({
           </article>
         </section>
       )}
+
+      <section className="services-section" aria-label="协议维度地图">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>协议维度地图</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              把协议面的桥接层、最近编排、补证命令和治理收口直接摆出来，减少只看到定义却不知道下一步去哪的断层。
+            </p>
+          </div>
+          <span className="status-badge online">4 个子面板</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+          {protocolSurfaces.map((surface) => (
+            <article key={surface.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>{surface.id}</small>
+                <strong style={{ fontSize: 15 }}>{surface.title}</strong>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{surface.summary}</p>
+              </div>
+              <div style={{ minHeight: 54, padding: '10px 12px', borderRadius: 'var(--antd-radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <small className="text-muted" style={{ display: 'block', marginBottom: 4 }}>怎么用</small>
+                <span style={{ fontSize: 12, lineHeight: 1.6 }}>{surface.detail}</span>
+              </div>
+              <button
+                type="button"
+                className="antd-btn small"
+                aria-label={`切换协议子面板 ${surface.title}`}
+                onClick={() => setActiveProtocolSurfaceId(surface.id)}
+              >
+                <Route size={13} />
+                <span>{surface.id === activeProtocolSurfaceId ? '当前查看' : '切到此层'}</span>
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="当前协议子面板">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>当前协议子面板</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              先确认当前正在看的协议层，再把相关对象和任务送到真正的承接页。
+            </p>
+          </div>
+          <span className="status-badge degraded">{activeProtocolSurface.title}</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <strong>{activeProtocolSurface.title}</strong>
+              <p>{activeProtocolSurface.detail}</p>
+            </div>
+          </article>
+          <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 10 }}>
+            <div style={{ display: 'grid', gap: 4 }}>
+              <strong style={{ fontSize: 15 }}>相关去向</strong>
+              <small className="text-muted">这层最常见的对象承接与任务收口。</small>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开协议相关对象 ${activeProtocolSurface.title}`}
+                onClick={() => openCockpitNavigationTarget(activeProtocolSurface.objectTarget, onNavigate, onOpenTarget)}
+              >
+                <ClipboardCheck size={14} />
+                <span>打开相关对象</span>
+              </button>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label={`打开协议相关任务 ${activeProtocolSurface.title}`}
+                onClick={() => openCockpitNavigationTarget(activeProtocolSurface.taskTarget, onNavigate, onOpenTarget)}
+              >
+                <GitBranch size={14} />
+                <span>打开承接任务</span>
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="协议补位任务">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>协议补位任务</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              把当前协议层直接翻成一条可复制、可送往任务中心的补位动作，避免协议面停在浏览或抄命令状态。
+            </p>
+          </div>
+          <span className="status-badge degraded">草稿就绪</span>
+        </div>
+        <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <strong>{protocolTaskDraft.title}</strong>
+            <p>{protocolTaskDraft.description}</p>
+            <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+              {protocolTaskDraft.checklist.map((item, index) => (
+                <small key={`${protocolTaskDraft.title}-${index}`} className="text-muted">{index + 1}. {item}</small>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`复制协议补位任务 ${protocolTaskDraft.title}`}
+              onClick={async () => {
+                await copyText(protocolTaskDraft.copyText);
+                setProtocolDraftNotice(`已复制协议补位任务：${protocolTaskDraft.title}`);
+              }}
+            >
+              <Copy size={14} />
+              <span>复制补位任务</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`打开协议补位对象 ${protocolTaskDraft.title}`}
+              onClick={() => openCockpitNavigationTarget(protocolTaskDraft.objectTarget, onNavigate, onOpenTarget)}
+            >
+              <Layers size={14} />
+              <span>打开相关对象</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`打开协议补位任务 ${protocolTaskDraft.title}`}
+              onClick={() => openCockpitNavigationTarget(protocolTaskDraft.taskTarget, onNavigate, onOpenTarget)}
+            >
+              <Route size={14} />
+              <span>送进任务中心</span>
+            </button>
+          </div>
+        </article>
+        {protocolDraftNotice && (
+          <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{protocolDraftNotice}</p>
+        )}
+      </section>
 
       <ActionSurfacePanel
         title="协议处理区"
