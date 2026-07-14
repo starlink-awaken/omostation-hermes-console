@@ -80,6 +80,17 @@ type ResearchDetailPayload = {
   half_life?: { days?: number; status?: string; [key: string]: unknown };
 };
 
+type ResearchClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 interface ResearchHubViewProps {
   onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
@@ -238,9 +249,8 @@ export default function ResearchHubView({
 
   const publicationTarget = useMemo(() => (
     payload.related_pages.find((page) => /overview|概览|发布|strategy|作战|systemmap|system map/i.test(`${page.id} ${page.title} ${page.reason}`))?.id
-    ?? payload.pipeline.at(-1)?.id
     ?? 'Overview'
-  ), [payload.pipeline, payload.related_pages]);
+  ), [payload.related_pages]);
 
   const researchWorkbench = useMemo(() => {
     const contextCandidates = payload.recent.filter((item) => item.source_count < 3 || item.tags.length === 0 || !item.agent);
@@ -256,6 +266,70 @@ export default function ResearchHubView({
       publishItems: (publishCandidates.length ? publishCandidates : payload.recent).slice(0, 3),
     };
   }, [payload.recent]);
+
+  const researchClosureRows = useMemo<ResearchClosureRow[]>(() => {
+    const firstRecent = payload.recent[0];
+    const firstContext = researchWorkbench.contextItems[0];
+    const firstTask = researchWorkbench.taskItems[0];
+    const firstPublish = researchWorkbench.publishItems[0];
+
+    return [
+      {
+        id: 'detail',
+        title: '研究对象详情',
+        summary: '先打开研究对象详情，确认正文、时间线、追问和发布证据，再决定往哪一页继续走。',
+        signal: firstRecent ? `最近对象 ${firstRecent.topic}` : `活跃研究 ${payload.summary.active}`,
+        nextAction: firstRecent ? `先打开 ${firstRecent.topic} 的详情，确认它是缺上下文、缺任务还是缺发布回流。` : '先发起一条研究对象，再建立详情承接。',
+        statusTone: firstRecent ? 'degraded' : 'online',
+        objectTarget: { tab: 'Research', taskQuery: firstRecent ? String(firstRecent.id) : 'Research' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstRecent ? String(firstRecent.id) : 'Research' },
+      },
+      {
+        id: 'context',
+        title: '知识补上下文',
+        summary: '来源、标签或负责人偏薄时，先回知识页补上下文，让研究对象不再孤立。',
+        signal: researchWorkbench.contextCount > 0 ? `待补上下文 ${researchWorkbench.contextCount}` : `知识就绪 ${payload.summary.active}`,
+        nextAction: firstContext ? `把 ${firstContext.topic} 送去知识页补来源、标签和负责人。` : '当前研究上下文较完整，抽查一条知识承接是否仍然可用。',
+        statusTone: researchWorkbench.contextCount > 0 ? 'degraded' : 'online',
+        objectTarget: { tab: knowledgeTarget, taskQuery: firstContext ? String(firstContext.id) : 'research-context' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstContext ? String(firstContext.id) : 'research-context' },
+      },
+      {
+        id: 'task',
+        title: '研究任务正式收口',
+        summary: '有追问和下一步动作的研究对象，不能只停在研究页，需要送进任务中心继续执行。',
+        signal: researchWorkbench.taskCount > 0 ? `待落任务 ${researchWorkbench.taskCount}` : `追问总数 ${payload.summary.follow_ups}`,
+        nextAction: firstTask ? `把 ${firstTask.topic} 的下一步动作送进任务中心，补责任人和验收口。` : '当前没有明显待落任务对象，抽查研究到任务中心的链路是否还通。',
+        statusTone: researchWorkbench.taskCount > 0 ? 'degraded' : 'online',
+        objectTarget: { tab: taskTarget, taskQuery: firstTask ? String(firstTask.id) : 'research-task' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstTask ? String(firstTask.id) : 'research-task' },
+      },
+      {
+        id: 'publish',
+        title: '发布回流与复盘',
+        summary: '研究做完不是结束，还要回到发布/概览面完成回流、复盘和下一轮动作沉淀。',
+        signal: researchWorkbench.publishCount > 0 ? `待发布回流 ${researchWorkbench.publishCount}` : `已发布 ${payload.summary.published}`,
+        nextAction: firstPublish ? `从 ${firstPublish.topic} 开始，回发布面做回流和复盘。` : '当前没有待发布对象，抽查已发布研究的回流是否完整。',
+        statusTone: researchWorkbench.publishCount > 0 ? 'degraded' : 'online',
+        objectTarget: { tab: publicationTarget, taskQuery: firstPublish ? String(firstPublish.id) : 'research-publish' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstPublish ? String(firstPublish.id) : 'research-publish' },
+      },
+    ];
+  }, [
+    knowledgeTarget,
+    payload.recent,
+    payload.summary.active,
+    payload.summary.follow_ups,
+    payload.summary.published,
+    publicationTarget,
+    researchWorkbench.contextCount,
+    researchWorkbench.contextItems,
+    researchWorkbench.publishCount,
+    researchWorkbench.publishItems,
+    researchWorkbench.taskCount,
+    researchWorkbench.taskItems,
+    taskTarget,
+  ]);
 
   const focusedResearchCard = useMemo(() => {
     const matchedResearch = payload.recent.find((item) => (
@@ -306,6 +380,19 @@ export default function ResearchHubView({
       };
     }
 
+    const matchedClosure = researchClosureRows.find((row) => (
+      matchesResearchFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '研究闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
+      };
+    }
+
     if (focusPageId === 'Research') {
       return {
         kicker: '当前页面',
@@ -317,7 +404,7 @@ export default function ResearchHubView({
     }
 
     return null;
-  }, [focusPageId, focusTaskQuery, payload.commands, payload.recent, payload.related_pages]);
+  }, [focusPageId, focusTaskQuery, payload.commands, payload.recent, payload.related_pages, researchClosureRows]);
 
   if (loading) {
     return (
@@ -466,6 +553,57 @@ export default function ResearchHubView({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="研究闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>研究闭环总表</h2>
+            <p className="text-muted">把详情、知识、任务和发布回流并排摆出来，研究页才不只是对象列表和正文抽屉。</p>
+          </div>
+          <span className="status-badge online">{researchClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {researchClosureRows.map((row) => (
+            <article
+              key={`research-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开研究闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <Search size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开研究闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <GitBranch size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">

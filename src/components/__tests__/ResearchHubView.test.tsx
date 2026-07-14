@@ -58,6 +58,7 @@ describe('ResearchHubView', () => {
 
     await waitFor(() => {
       expect(screen.getByText('研究主旅程')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '研究闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('研究承接工作台')).toBeInTheDocument()
       expect(screen.getByText('活跃研究')).toBeInTheDocument()
       expect(screen.getByText('3')).toBeInTheDocument()
@@ -73,6 +74,9 @@ describe('ResearchHubView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /落任务 家庭系统研究/ }))
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+
+    fireEvent.click(screen.getByRole('button', { name: '打开研究闭环对象 发布回流与复盘' }))
+    expect(onNavigate).toHaveBeenCalledWith('Overview')
   })
 
   it('opens a research object detail with timeline and publications', async () => {
@@ -209,5 +213,78 @@ describe('ResearchHubView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Research', taskQuery: '7' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '7' })
     expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces research closure routing when focus hits publish loop', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/cockpit/research-hub') {
+        return Promise.resolve(okJson({
+          summary: {
+            total: 5,
+            active: 3,
+            archived: 1,
+            quarantined: 1,
+            published: 2,
+            follow_ups: 6,
+            agents: 2,
+          },
+          recent: [
+            {
+              id: 7,
+              topic: '家庭系统研究',
+              summary: '梳理家庭驾驶舱和 family-hub 的边界',
+              created_at: '2026-07-07T06:00:00Z',
+              source_count: 4,
+              tags: ['family', 'opc'],
+              agent: 'Alice',
+              status: 'active',
+              follow_up_count: 2,
+              last_event: { label: '已发布', created_at: '2026-07-07T07:00:00Z' },
+              next_action: '继续发布为简报。',
+            },
+          ],
+          commands: [],
+          pipeline: [
+            { id: 'Research', title: '研究中枢', summary: '看活跃研究。' },
+            { id: 'Knowledge', title: '知识中枢', summary: '补知识上下文。' },
+          ],
+          related_pages: [
+            { id: 'Overview', title: '概览页', reason: '研究发布后需要回概览做复盘。' },
+          ],
+        }))
+      }
+      if (String(input) === '/api/cockpit/research-hub/7') {
+        return Promise.resolve(okJson({
+          status: 'ok',
+          item: {
+            id: 7,
+            topic: '家庭系统研究',
+            summary: '梳理家庭驾驶舱和 family-hub 的边界',
+            full_text: '研究正文',
+            created_at: '2026-07-07T06:00:00Z',
+            source_count: 4,
+            tags: ['family', 'opc'],
+            follow_ups: [],
+            agent: 'Alice',
+            status: 'active',
+          },
+          timeline: [],
+          dossier: { parents: [], children: [], publications: [] },
+        }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<ResearchHubView onOpenTarget={onOpenTarget} focusTaskQuery="发布回流与复盘" />)
+
+    const focusRegion = await screen.findByRole('region', { name: '当前研究承接焦点' })
+    expect(within(focusRegion).getByText('发布回流与复盘')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开研究焦点对象 发布回流与复盘' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开研究焦点任务 发布回流与复盘' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Overview', taskQuery: '7' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '7' })
   })
 })
