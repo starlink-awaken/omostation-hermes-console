@@ -133,6 +133,23 @@ interface GuideMetrics {
     missingUsagePath: boolean;
     missingFeatureDomain: boolean;
   }>;
+  dimensionCoverageRows: Array<{
+    id: string;
+    title: string;
+    description: string;
+    status: string;
+    score: number | null;
+    ready: number;
+    warning: number;
+    failed: number;
+    attentionProjects: Array<{
+      id: string;
+      status?: string;
+      nextAction?: string;
+    }>;
+    nextAction: string;
+    taskQuery: string;
+  }>;
 }
 
 interface ProblemEntryCard {
@@ -298,6 +315,7 @@ const DEFAULT_METRICS: GuideMetrics = {
   featuredDrafts: [],
   closureDrafts: [],
   pageCoverageRows: [],
+  dimensionCoverageRows: [],
 };
 
 function staticPageCount() {
@@ -323,6 +341,18 @@ function pageCoverageStatusText(status: string) {
   if (status === 'ready') return '已接通';
   if (status === 'watch') return '待收口';
   return '待补位';
+}
+
+function dimensionStatusClass(status: string) {
+  if (status === 'ready') return 'ready';
+  if (status === 'warning' || status === 'watch') return 'watch';
+  return 'gap';
+}
+
+function dimensionStatusText(status: string) {
+  if (status === 'ready') return '已接通';
+  if (status === 'warning' || status === 'watch') return '待收口';
+  return '待修复';
 }
 
 function guideDraftTypeLabel(type?: string) {
@@ -374,6 +404,17 @@ export default function CockpitGuideView({
           read_only?: boolean;
           source?: { type?: string; id?: string };
         }>).filter((item) => item.read_only && item.source?.type);
+        const dimensionSummaryItems = ((payload.project_capability_coverage?.dimension_summary || []) as Array<{
+          id: string;
+          title?: string;
+          description?: string;
+          status?: string;
+          score?: number;
+          ready?: number;
+          warning?: number;
+          failed?: number;
+          attention_projects?: Array<{ id: string; status?: string; next_action?: string }>;
+        }>);
         const usagePathMap = new Map<string, string[]>();
         const playbookMap = new Map<string, string[]>();
         const featureDomainMap = new Map<string, string[]>();
@@ -577,6 +618,42 @@ export default function CockpitGuideView({
               };
             })
           )),
+          dimensionCoverageRows: dimensionSummaryItems
+            .map((item) => {
+              const attentionProjects = (item.attention_projects || []).map((project) => ({
+                id: project.id,
+                status: project.status,
+                nextAction: project.next_action,
+              }));
+              return {
+                id: item.id,
+                title: item.title || item.id,
+                description: item.description || '从系统地图确认这个维度在项目矩阵里的覆盖质量。',
+                status: item.status || (item.failed ? 'failed' : item.warning ? 'warning' : 'ready'),
+                score: item.score ?? null,
+                ready: item.ready ?? 0,
+                warning: item.warning ?? 0,
+                failed: item.failed ?? 0,
+                attentionProjects,
+                nextAction: attentionProjects[0]?.nextAction
+                  || (item.failed
+                    ? `先回系统地图处理 ${item.failed} 个失败格子。`
+                    : item.warning
+                      ? `先确认 ${item.warning} 个预警格子是否已经在收口。`
+                      : '保持这个维度的覆盖质量和验证证据新鲜。'),
+                taskQuery: attentionProjects[0]?.id
+                  || (item.id.includes('verification')
+                    ? '验证'
+                    : item.id.includes('runtime')
+                      ? '运行'
+                      : item.id),
+              };
+            })
+            .sort((left, right) => {
+              const leftRisk = (left.failed * 3) + (left.warning * 2) - left.ready;
+              const rightRisk = (right.failed * 3) + (right.warning * 2) - right.ready;
+              return rightRisk - leftRisk;
+            }),
         });
       } catch (error) {
         if (alive) {
@@ -625,6 +702,17 @@ export default function CockpitGuideView({
       rows: metrics.pageCoverageRows.filter((row) => row.groupId === group.id),
     }))
   ), [metrics.pageCoverageRows]);
+
+  const dimensionCoverageSummary = useMemo(() => {
+    const rows = metrics.dimensionCoverageRows;
+    return {
+      total: rows.length,
+      ready: rows.filter((row) => row.status === 'ready').length,
+      warning: rows.filter((row) => row.status === 'warning' || row.status === 'watch').length,
+      failed: rows.filter((row) => row.status !== 'ready' && row.status !== 'warning' && row.status !== 'watch').length,
+      attentionProjects: rows.reduce((total, row) => total + row.attentionProjects.length, 0),
+    };
+  }, [metrics.dimensionCoverageRows]);
 
   const focusedGuideCard = useMemo(() => {
     const pageRow = focusPageId
@@ -1526,6 +1614,79 @@ export default function CockpitGuideView({
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="cockpit-guide-section">
+        <div className="section-header">
+          <div>
+            <h2>维度覆盖总表</h2>
+            <p className="text-muted">把跨项目的运行、验证、入口、命令等维度直接拉平，看清哪条能力链在掉分，而不是只盯页面。</p>
+          </div>
+        </div>
+        <div className="cockpit-guide-coverage-summary">
+          <span><strong>{dimensionCoverageSummary.total}</strong> 条维度</span>
+          <span><strong>{dimensionCoverageSummary.ready}</strong> 已接通</span>
+          <span><strong>{dimensionCoverageSummary.warning}</strong> 待收口</span>
+          <span><strong>{dimensionCoverageSummary.failed}</strong> 待修复</span>
+          <span><strong>{dimensionCoverageSummary.attentionProjects}</strong> 个注意项目</span>
+        </div>
+        <div className="cockpit-guide-coverage-list">
+          {metrics.dimensionCoverageRows.map((row) => (
+            <div key={`dimension-row-${row.id}`} className={`cockpit-guide-coverage-row ${dimensionStatusClass(row.status)}`}>
+              <div className="cockpit-guide-coverage-row-head">
+                <div>
+                  <strong>{row.title}</strong>
+                  <small>{row.id} · {dimensionStatusText(row.status)} · {row.score ?? 0}%</small>
+                </div>
+                <span className={`cockpit-guide-coverage-status ${dimensionStatusClass(row.status)}`}>
+                  {dimensionStatusText(row.status)}
+                </span>
+              </div>
+              <p>{row.description}</p>
+              <div className="cockpit-guide-coverage-meta">
+                <span>就绪 {row.ready} 项</span>
+                <span>预警 {row.warning} 项</span>
+                <span>失败 {row.failed} 项</span>
+                <span>注意项目 {row.attentionProjects.length} 个</span>
+              </div>
+              <div className="cockpit-guide-coverage-tags">
+                {row.attentionProjects.slice(0, 3).map((project) => (
+                  <span key={`${row.id}-attention-${project.id}`}>项目 · {project.id}</span>
+                ))}
+                {row.attentionProjects.length === 0 && (
+                  <em>当前没有显式注意项目</em>
+                )}
+              </div>
+              <div className="cockpit-guide-coverage-next">
+                <strong>下一步</strong>
+                <p>{row.nextAction}</p>
+              </div>
+              <div className="cockpit-guide-coverage-actions">
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开维度覆盖 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', coverageDimensionId: row.id }, onNavigate, onOpenTarget)}
+                >
+                  <MapIcon size={14} />
+                  <span>看维度覆盖</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开维度任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: row.taskQuery }, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>看修复任务</span>
+                </button>
+              </div>
+            </div>
+          ))}
+          {metrics.dimensionCoverageRows.length === 0 && (
+            <div className="cockpit-guide-focus-empty">当前还没有维度覆盖数据。</div>
+          )}
         </div>
       </section>
 

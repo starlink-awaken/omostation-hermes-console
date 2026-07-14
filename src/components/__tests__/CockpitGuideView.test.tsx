@@ -29,6 +29,36 @@ describe('CockpitGuideView', () => {
           { id: 'runtime_probe', title: '运行探针', score: 21, failed: 10, warning: 5 },
         ],
       },
+      project_capability_coverage: {
+        dimension_summary: [
+          {
+            id: 'verification',
+            title: '验证证据',
+            description: '项目是否留下最近验证证据。',
+            status: 'failed',
+            score: 48,
+            ready: 6,
+            warning: 2,
+            failed: 4,
+            attention_projects: [
+              { id: 'Overview', status: 'failed', next_action: '先把概览中心的验证补证沉成正式 closeout。' },
+            ],
+          },
+          {
+            id: 'runtime_probe',
+            title: '运行探针',
+            description: '项目是否具备运行探针和活体证据。',
+            status: 'warning',
+            score: 21,
+            ready: 5,
+            warning: 5,
+            failed: 1,
+            attention_projects: [
+              { id: 'McpMesh', status: 'warning', next_action: '先确认网格与 MCP 的运行态证据。' },
+            ],
+          },
+        ],
+      },
       domain_apps: {
         summary: { total: 2, running: 1, high_risk: 1, external_mounts: 1, score: 72 },
         attention_items: [
@@ -120,6 +150,10 @@ describe('CockpitGuideView', () => {
       expect(screen.getByText('补证入口')).toBeInTheDocument()
       expect(screen.getByText('全站覆盖总表')).toBeInTheDocument()
       expect(screen.getByText((_, node) => node?.textContent === '26 页总览')).toBeInTheDocument()
+      expect(screen.getByText('维度覆盖总表')).toBeInTheDocument()
+      expect(screen.getByText((_, node) => node?.textContent === '2 条维度')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开维度覆盖 验证证据' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开维度任务 验证证据' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '回来源页 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补证车道 验证补证' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补证任务 验证补证：补齐 概览中心' })).toBeInTheDocument()
@@ -163,6 +197,36 @@ describe('CockpitGuideView', () => {
         summary: { score: 61 },
         weakest_dimensions: [
           { id: 'runtime_probe', title: '运行探针', score: 21, failed: 4, warning: 2 },
+        ],
+      },
+      project_capability_coverage: {
+        dimension_summary: [
+          {
+            id: 'verification',
+            title: '验证证据',
+            description: '项目是否留下最近验证证据。',
+            status: 'failed',
+            score: 42,
+            ready: 2,
+            warning: 1,
+            failed: 3,
+            attention_projects: [
+              { id: 'Overview', status: 'failed', next_action: '先给概览中心补验证证据。' },
+            ],
+          },
+          {
+            id: 'runtime_probe',
+            title: '运行探针',
+            description: '项目是否具备运行探针和活体证据。',
+            status: 'warning',
+            score: 21,
+            ready: 4,
+            warning: 2,
+            failed: 1,
+            attention_projects: [
+              { id: 'McpMesh', status: 'warning', next_action: '先给网格与 MCP 补运行探针。' },
+            ],
+          },
         ],
       },
       domain_apps: {
@@ -287,6 +351,18 @@ describe('CockpitGuideView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'SystemMap',
       pageId: 'DomainApps',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开维度覆盖 验证证据' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      coverageDimensionId: 'verification',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开维度任务 验证证据' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'TaskCenter',
+      taskQuery: 'Overview',
     }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开任务车道 页面能力' }))
