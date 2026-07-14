@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Trophy, Shield, Lightbulb, CheckCircle2, Plus, Sparkles, Clock, Star, PlayCircle, Loader2, Award } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Trophy, Shield, Lightbulb, CheckCircle2, Plus, Sparkles, Clock, Star, PlayCircle, Loader2, Award, ClipboardCheck, Route } from 'lucide-react';
 import './Dashboard.css';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -37,6 +37,17 @@ interface QuestBoardProps {
   focusPageId?: string | null;
   focusTaskQuery?: string;
 }
+
+type QuestClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
 
 function matchesQuestFocusQuery(values: Array<string | number | null | undefined>, query?: string | null) {
   if (!query) return false;
@@ -153,32 +164,59 @@ export default function QuestBoard({
     }
   };
 
-  if (loading) {
-    return (
-      <div className="loading-state" role="status" aria-live="polite">
-        <div className="spinner" aria-hidden="true"></div>
-        <p>正在读取 QuestBoard 积分系统...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="antd-card" style={{ padding: '32px', textAlign: 'center', margin: '24px 0' }}>
-        <p style={{ color: 'var(--antd-error)', fontSize: '16px', marginBottom: '16px', fontWeight: 600 }}>⚠️ 积分系统加载失败</p>
-        <p className="text-muted" style={{ marginBottom: '24px' }}>{error}</p>
-        <button className="antd-btn antd-btn-primary" onClick={() => { setLoading(true); setError(null); fetchBoardData(); }}>
-          重新连接
-        </button>
-      </div>
-    );
-  }
-
   const activeQuests = quests.filter(q => q.completed === 0);
   const completedQuests = quests.filter(q => q.completed === 1);
   const focusProfiles = [...profiles]
     .sort((left, right) => (right.responsibilityPoints + right.wisdomPoints) - (left.responsibilityPoints + left.wisdomPoints))
     .slice(0, 3);
+  const questClosureRows = useMemo<QuestClosureRow[]>(() => {
+    const firstActiveQuest = activeQuests[0];
+    const firstCompletedQuest = completedQuests[0];
+    const topProfile = focusProfiles[0];
+    const latestLog = logs[0];
+    return [
+      {
+        id: 'family-app',
+        title: '家庭驾驶舱挂载',
+        summary: '先回家庭驾驶舱看真实状态、周报和家庭数据，再决定激励动作是不是该继续推进。',
+        signal: firstActiveQuest ? `活跃任务 ${firstActiveQuest.title}` : `成员 ${profiles.length} · 等待新任务`,
+        nextAction: '去应用中心确认家庭驾驶舱入口、运行态和真实家庭数据面是不是还通着。',
+        statusTone: firstActiveQuest ? 'degraded' : 'online',
+        objectTarget: { tab: 'DomainApps', taskQuery: 'family-dashboard-app' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstActiveQuest?.title || 'family-dashboard-app' },
+      },
+      {
+        id: 'task-center',
+        title: '家庭任务正式收口',
+        summary: '家庭任务一旦变成长期跟踪项，就不能只留在积分面，需要送进任务中心继续承接。',
+        signal: activeQuests.length > 0 ? `待收口 ${activeQuests.length}` : `已完成 ${completedQuests.length}`,
+        nextAction: '把当前最重要的家庭任务沉到任务中心，补追踪、责任人和后续检查。',
+        statusTone: activeQuests.length > 0 ? 'degraded' : 'online',
+        objectTarget: { tab: 'TaskCenter', taskQuery: firstActiveQuest?.title || firstCompletedQuest?.title || 'family' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstActiveQuest?.title || firstCompletedQuest?.title || 'family' },
+      },
+      {
+        id: 'knowledge',
+        title: '家庭规则知识沉淀',
+        summary: '完成的家庭任务、积分日志和习惯模式，需要沉成长期可复用的规则和模板。',
+        signal: latestLog ? `最近日志 ${latestLog.action}` : `已完成 ${completedQuests.length}`,
+        nextAction: '把家庭规则、奖励模版和复盘经验整理进知识页，避免每次重新想一遍。',
+        statusTone: completedQuests.length > 0 || logs.length > 0 ? 'degraded' : 'online',
+        objectTarget: { tab: 'Knowledge', taskQuery: firstCompletedQuest?.title || latestLog?.action || 'family-rules' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstCompletedQuest?.title || latestLog?.action || 'family-rules' },
+      },
+      {
+        id: 'settings',
+        title: '奖励规则与配置',
+        summary: '积分面要稳定可用，最终还得回设置页确认配置、实例接入和领域安全门。',
+        signal: topProfile ? `${topProfile.name} Lv${topProfile.level}` : '等待成员配置',
+        nextAction: '回设置页核对家庭相关挂载、安全门和控制面承接，避免积分规则漂在空中。',
+        statusTone: profiles.length > 0 ? 'degraded' : 'online',
+        objectTarget: { tab: 'Settings', taskQuery: topProfile?.name || 'QuestBoard' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: topProfile?.name || 'QuestBoard' },
+      },
+    ];
+  }, [activeQuests, completedQuests, focusProfiles, logs, profiles.length]);
   const focusedQuestCard = (() => {
     const matchedQuest = quests.find((quest) => (
       matchesQuestFocusQuery([quest.id, quest.title, quest.type, quest.assignee, quest.reward], focusTaskQuery)
@@ -206,6 +244,19 @@ export default function QuestBoard({
       };
     }
 
+    const matchedClosure = questClosureRows.find((row) => (
+      matchesQuestFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '家庭闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
+      };
+    }
+
     if (focusPageId === 'QuestBoard') {
       return {
         kicker: '当前页面',
@@ -218,6 +269,27 @@ export default function QuestBoard({
 
     return null;
   })();
+
+  if (loading) {
+    return (
+      <div className="loading-state" role="status" aria-live="polite">
+        <div className="spinner" aria-hidden="true"></div>
+        <p>正在读取 QuestBoard 积分系统...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="antd-card" style={{ padding: '32px', textAlign: 'center', margin: '24px 0' }}>
+        <p style={{ color: 'var(--antd-error)', fontSize: '16px', marginBottom: '16px', fontWeight: 600 }}>⚠️ 积分系统加载失败</p>
+        <p className="text-muted" style={{ marginBottom: '24px' }}>{error}</p>
+        <button className="antd-btn antd-btn-primary" onClick={() => { setLoading(true); setError(null); fetchBoardData(); }}>
+          重新连接
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -364,6 +436,7 @@ export default function QuestBoard({
               { id: 'DomainApps', label: '应用中心', reason: '进入家庭驾驶舱和家庭数据面继续查看真实状态。', aria: '打开家庭承接到应用中心' },
               { id: 'TaskCenter', label: '任务中心', reason: '把家庭任务转成正式跟踪项。', aria: '打开家庭承接到任务中心' },
               { id: 'Knowledge', label: '知识页', reason: '沉淀家庭规则、模板和长期经验。', aria: '打开家庭承接到知识页' },
+              { id: 'Settings', label: '设置页', reason: '核对家庭挂载配置、安全门和控制面承接。', aria: '打开家庭承接到设置页' },
             ].map((page) => (
               <button
                 key={page.id}
@@ -381,6 +454,59 @@ export default function QuestBoard({
               </button>
             ))}
           </article>
+        </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="家庭闭环总表">
+        <div className="section-header">
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>家庭闭环总表</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把家庭驾驶舱、任务中心、知识沉淀和设置配置并排摆出来，保证积分面能接住真实家庭场景，不悬空。
+            </p>
+          </div>
+          <span className="status-badge online">{questClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {questClosureRows.map((row) => (
+            <article
+              key={row.id}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开家庭闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ClipboardCheck size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开家庭闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
       

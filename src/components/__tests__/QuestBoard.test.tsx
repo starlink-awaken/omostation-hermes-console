@@ -44,6 +44,7 @@ describe('QuestBoard', () => {
     await waitFor(() => {
       expect(screen.getByText('家庭执行联动')).toBeInTheDocument()
       expect(screen.getByText('家庭承接工作台')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '家庭闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('回家庭应用')).toBeInTheDocument()
       expect(screen.getByText('沉到任务中心')).toBeInTheDocument()
       expect(screen.getAllByText('整理客厅').length).toBeGreaterThan(0)
@@ -54,6 +55,12 @@ describe('QuestBoard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开家庭承接到知识页' }))
     expect(onNavigate).toHaveBeenCalledWith('Knowledge')
+
+    fireEvent.click(screen.getByRole('button', { name: '打开家庭承接到设置页' }))
+    expect(onNavigate).toHaveBeenCalledWith('Settings')
+
+    fireEvent.click(screen.getByRole('button', { name: '打开家庭闭环对象 奖励规则与配置' }))
+    expect(onNavigate).toHaveBeenCalledWith('Settings')
 
     fireEvent.click(screen.getByRole('button', { name: /复制模板/ }))
     await waitFor(() => {
@@ -93,5 +100,37 @@ describe('QuestBoard', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'QuestBoard', taskQuery: '1' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '整理客厅' })
     expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces family closure routing when focus hits settings handoff', async () => {
+    const onOpenTarget = vi.fn()
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/omos/quests') {
+        return Promise.resolve(okJson({
+          status: 'ok',
+          quests: [
+            { id: 1, title: '整理客厅', type: 'responsibility', reward: 15, completed: 0, assignee: 'child' },
+          ],
+          profiles: [
+            { role: 'child', name: '孩子', level: 3, wisdomPoints: 12, responsibilityPoints: 24 },
+          ],
+          logs: [],
+        }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<QuestBoard onOpenTarget={onOpenTarget} focusTaskQuery="奖励规则" />)
+
+    const focusRegion = await screen.findByRole('region', { name: '当前家庭承接焦点' })
+    expect(within(focusRegion).getByText('奖励规则与配置')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开家庭焦点对象 奖励规则与配置' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开家庭焦点任务 奖励规则与配置' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Settings', taskQuery: '孩子' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '孩子' })
   })
 })
