@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './Dashboard.css';
-import { Activity, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Activity, AlertTriangle, ClipboardCheck, Route, ShieldCheck } from 'lucide-react';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
@@ -17,6 +17,17 @@ function matchesObservabilityFocusQuery(values: Array<string | null | undefined>
   if (!normalizedQuery) return false;
   return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
 }
+
+type ObservabilityClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
 
 export default function ObservabilityView({
   onNavigate,
@@ -58,6 +69,57 @@ export default function ObservabilityView({
     };
   }, [archData, bosData]);
 
+  const observabilityClosureRows = useMemo<ObservabilityClosureRow[]>(() => {
+    const firstDomain = observabilityBacklog.degradedDomains[0];
+    const governanceWatching = observabilityBacklog.governanceHealth !== 'fresh';
+    return [
+      {
+        id: 'domain-log',
+        title: '异常域追日志证据',
+        summary: '先把高错误率或高延迟的 BOS 域落到日志证据，再决定是路由问题还是应用问题。',
+        signal: firstDomain ? `${firstDomain.domain} · 失败 ${firstDomain.error || 0}` : `异常域 ${observabilityBacklog.degradedDomains.length}`,
+        nextAction: firstDomain
+          ? `先看 ${firstDomain.domain} 的日志与时间点，再回网格核对路由。`
+          : '当前没有明显异常域，抽查日志链路是否还能支撑追证据。',
+        statusTone: firstDomain ? 'degraded' : 'online',
+        objectTarget: { tab: 'LogViewer', taskQuery: firstDomain?.domain || 'observability' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstDomain?.domain || 'observability' },
+      },
+      {
+        id: 'mesh-route',
+        title: '网格路由复核',
+        summary: '域级流量异常不只看日志，还要回网格确认路由、下游服务和 BOS 链路是不是稳定。',
+        signal: firstDomain ? `待复核 ${firstDomain.domain}` : `总调用 ${bosData?.summary?.total_calls ?? 0}`,
+        nextAction: firstDomain
+          ? `回 MCP 网格看 ${firstDomain.domain} 的路由与下游服务，再决定问题落点。`
+          : '当前没有热点异常域，抽查一条 BOS 路由链是否仍然通畅。',
+        statusTone: firstDomain ? 'degraded' : 'online',
+        objectTarget: { tab: 'McpMesh', taskQuery: firstDomain?.domain || 'mesh' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstDomain?.domain || 'mesh' },
+      },
+      {
+        id: 'alert-performance',
+        title: '告警与性能收口',
+        summary: '观测问题最终要回告警和性能页收口，确认是否已形成需要处理的正式异常项。',
+        signal: observabilityBacklog.healthScore !== null ? `健康度 ${observabilityBacklog.healthScore}` : '等待健康评分',
+        nextAction: '先回告警中心看异常项，再去性能页核趋势和热点，别让观测只停在当前页。',
+        statusTone: observabilityBacklog.degradedDomains.length > 0 || governanceWatching ? 'degraded' : 'online',
+        objectTarget: { tab: 'AlertCenter', taskQuery: focusTaskQuery || 'observability' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'observability' },
+      },
+      {
+        id: 'systemmap-task',
+        title: '系统地图与任务中心回挂',
+        summary: '观测异常最后要回挂全站覆盖面和任务承接，不然只能看到问题，看不到治理落点。',
+        signal: governanceWatching ? `治理 ${observabilityBacklog.governanceHealth}` : `Git ${observabilityBacklog.gitDirty ? 'dirty' : 'clean'}`,
+        nextAction: '把观测异常挂回系统地图和任务中心，补项目、页面和治理层的后续动作。',
+        statusTone: governanceWatching || observabilityBacklog.gitDirty ? 'degraded' : 'online',
+        objectTarget: { tab: 'SystemMap', pageId: 'Observability' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'Observability' },
+      },
+    ];
+  }, [bosData?.summary?.total_calls, focusTaskQuery, observabilityBacklog.degradedDomains, observabilityBacklog.gitDirty, observabilityBacklog.governanceHealth, observabilityBacklog.healthScore]);
+
   const focusedObservabilityCard = useMemo(() => {
     const domains = Array.isArray(bosData?.domains) ? bosData.domains : [];
     const matchedDomain = domains.find((domain: any) => (
@@ -91,6 +153,19 @@ export default function ObservabilityView({
       };
     }
 
+    const matchedClosure = observabilityClosureRows.find((row) => (
+      matchesObservabilityFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '观测闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
+      };
+    }
+
     if (focusPageId === 'Observability') {
       return {
         kicker: '当前页面',
@@ -102,7 +177,7 @@ export default function ObservabilityView({
     }
 
     return null;
-  }, [archData, bosData, focusPageId, focusTaskQuery]);
+  }, [archData, bosData, focusPageId, focusTaskQuery, observabilityClosureRows]);
 
   if (loading) {
     return (
@@ -197,6 +272,57 @@ export default function ObservabilityView({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="观测闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>观测闭环总表</h2>
+            <p className="text-muted">把异常域、网格、告警、性能和治理回挂并排摆出来，观测页才不只是看数字和点按钮。</p>
+          </div>
+          <span className="status-badge online">{observabilityClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {observabilityClosureRows.map((row) => (
+            <article
+              key={`observability-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开观测闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ClipboardCheck size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开观测闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">

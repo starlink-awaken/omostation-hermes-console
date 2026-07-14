@@ -40,6 +40,7 @@ describe('ObservabilityView', () => {
 
     await waitFor(() => {
       expect(screen.getByText('观测动作区')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '观测闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('观测承接工作台')).toBeInTheDocument()
       expect(screen.getByText('追性能瓶颈')).toBeInTheDocument()
       expect(screen.getByText('查日志证据')).toBeInTheDocument()
@@ -55,6 +56,9 @@ describe('ObservabilityView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '查看异常域 governance' }))
     expect(onNavigate).toHaveBeenCalledWith('LogViewer')
+
+    fireEvent.click(screen.getByRole('button', { name: '打开观测闭环对象 网格路由复核' }))
+    expect(onNavigate).toHaveBeenCalledWith('McpMesh')
   })
 
   it('surfaces focus handoff for a matched observability domain', async () => {
@@ -98,5 +102,47 @@ describe('ObservabilityView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Observability', taskQuery: 'governance' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'governance' })
     expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces observability closure routing when focus hits governance tasking', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/v1/arch-health') {
+        return Promise.resolve(okJson({
+          system: { health_score: 88 },
+          git: { status: 'dirty', uncommitted: 3 },
+          governance: { health: 'watch' },
+        }))
+      }
+      if (url === '/api/bos/metrics') {
+        return Promise.resolve(okJson({
+          summary: { total_calls: 32, avg_latency: 780, success_count: 30 },
+          domains: [
+            { domain: 'governance', total: 12, success: 11, error: 1, avg_latency: 650 },
+          ],
+        }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(
+      <ObservabilityView
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="系统地图与任务中心回挂"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前观测承接焦点' })
+    expect(within(focusRegion).getByText('系统地图与任务中心回挂')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开观测焦点对象 系统地图与任务中心回挂' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开观测焦点任务 系统地图与任务中心回挂' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', pageId: 'Observability' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '系统地图与任务中心回挂' })
   })
 })
