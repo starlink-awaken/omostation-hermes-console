@@ -111,6 +111,7 @@ describe('AlertCenterPage', () => {
       expect(screen.getAllByText('Mesh degradation').length).toBeGreaterThan(0)
     })
 
+    expect(screen.getByRole('region', { name: '告警闭环总表' })).toBeInTheDocument()
     expect(screen.getAllByText('High memory usage').length).toBeGreaterThan(0)
     expect(screen.getByText('告警承接工作台')).toBeInTheDocument()
     expect(screen.getByText('运行诊断工作台')).toBeInTheDocument()
@@ -211,6 +212,30 @@ describe('AlertCenterPage', () => {
     fireEvent.click(within(focusRegion).getByRole('button', { name: '打开告警焦点任务 Mesh degradation' }))
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'AlertCenter', taskQuery: 'alert-1', alertTab: 'active' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'alert-1' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces alert closure routing when focus hits system map handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+    mockAlertCenterFetch()
+
+    render(
+      <AlertCenterPage
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="系统地图与任务回挂"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前告警承接焦点' })
+    expect(within(focusRegion).getByText('系统地图与任务回挂')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开告警焦点对象 系统地图与任务回挂' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开告警焦点任务 系统地图与任务回挂' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', pageId: 'AlertCenter' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'alert-1' })
     expect(onNavigate).not.toHaveBeenCalled()
   })

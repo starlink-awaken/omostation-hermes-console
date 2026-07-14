@@ -49,6 +49,17 @@ interface AlertCenterPageProps {
   focusTaskQuery?: string;
 }
 
+type AlertClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesAlertFocusQuery(values: Array<string | null | undefined>, query?: string) {
   const normalizedQuery = query?.trim().toLowerCase();
   if (!normalizedQuery) return false;
@@ -191,6 +202,63 @@ export default function AlertCenterPage({
 
   const stats = getLevelStats();
   const actionableAlerts = (activeAlerts.length ? activeAlerts : alerts).slice(0, 3);
+  const allActiveAlerts = alerts.filter((alert) => alert.status === 'active');
+  const allHistoryAlerts = alerts.filter((alert) => alert.status !== 'active');
+  const firstActiveAlert = allActiveAlerts[0] || alerts[0] || null;
+  const firstHistoryAlert = allHistoryAlerts[0] || null;
+  const firstRule = rules[0] || null;
+  const alertClosureRows: AlertClosureRow[] = [
+    {
+      id: 'severity-triage',
+      title: '告警分级与优先处理',
+      summary: '告警页首先要接住的是优先级，不然活跃告警一多，用户还是得自己猜先处理谁。',
+      signal: firstActiveAlert ? `活跃 ${allActiveAlerts.length}` : '当前无活跃告警',
+      nextAction: firstActiveAlert
+        ? `优先围绕 ${firstActiveAlert.message} 定级，再决定先去性能还是日志页追证。`
+        : '当前没有活跃告警，抽查一次告警到后续页的承接链是否仍然可用。',
+      statusTone: firstActiveAlert ? 'degraded' : 'online',
+      objectTarget: { tab: 'AlertCenter', taskQuery: firstActiveAlert?.id || 'alert-triage', alertTab: 'active' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstActiveAlert?.id || 'alert-triage' },
+    },
+    {
+      id: 'evidence-correlation',
+      title: '性能日志证据联动',
+      summary: '告警只有级别还不够，必须回性能和日志页把时间点、来源和异常正文连起来。',
+      signal: firstActiveAlert ? `${firstActiveAlert.source} · ${firstActiveAlert.level}` : '待抽查证据链',
+      nextAction: firstActiveAlert
+        ? `把 ${firstActiveAlert.source} 的异常带去性能和日志页，确认趋势和真实报错是否对上。`
+        : '当前没有明显待追告警，抽查告警到性能/日志的证据联动链路。',
+      statusTone: firstActiveAlert ? 'degraded' : 'online',
+      objectTarget: { tab: 'Performance', taskQuery: firstActiveAlert?.source || 'alert-performance' },
+      taskTarget: { tab: 'LogViewer', taskQuery: firstActiveAlert?.source || 'alert-logs' },
+    },
+    {
+      id: 'rules-governance',
+      title: '规则治理与历史复盘',
+      summary: '规则和历史不是摆设，它们决定告警是不是在瞎响，还是已经被正确治理过。',
+      signal: firstRule ? `规则 ${rules.length}` : `历史 ${allHistoryAlerts.length}`,
+      nextAction: firstRule
+        ? `先核对 ${firstRule.name} 的条件和通道，再回历史看它是不是造成了误报或漏报。`
+        : firstHistoryAlert
+          ? `先复盘 ${firstHistoryAlert.message} 的处理结果，再决定是否要补规则。`
+          : '当前没有规则或历史样本，补一条最小可验证规则并确认历史页可用。',
+      statusTone: firstRule || firstHistoryAlert ? 'degraded' : 'online',
+      objectTarget: { tab: 'AlertCenter', taskQuery: firstRule?.id || firstHistoryAlert?.id || 'alert-rules', alertTab: firstRule ? 'rules' : 'history' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstRule?.id || firstHistoryAlert?.id || 'alert-rules' },
+    },
+    {
+      id: 'systemmap-task',
+      title: '系统地图与任务回挂',
+      summary: '反复出现或长期静默的告警，不能只留在告警页，要回系统地图挂缺口，再由任务中心长期跟。',
+      signal: firstActiveAlert ? `待回挂 ${allActiveAlerts.length}` : `历史 ${allHistoryAlerts.length}`,
+      nextAction: firstActiveAlert
+        ? '把重复告警正式回挂到系统地图，再把长期治理动作沉到任务中心。'
+        : '当前没有活跃告警，抽查告警历史回系统地图和任务中心的收口链路。',
+      statusTone: alerts.length > 0 ? 'degraded' : 'online',
+      objectTarget: { tab: 'SystemMap', pageId: 'AlertCenter' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstActiveAlert?.id || firstHistoryAlert?.id || 'AlertCenter' },
+    },
+  ];
   const diagnosticTargets = [
     {
       id: 'alert-performance',
@@ -241,6 +309,19 @@ export default function AlertCenterPage({
         detail: `${matchedRule.condition} · ${matchedRule.level} · ${matchedRule.enabled ? '启用' : '禁用'}`,
         objectTarget: { tab: 'AlertCenter', taskQuery: matchedRule.id, alertTab: 'rules' },
         taskTarget: { tab: 'TaskCenter', taskQuery: matchedRule.id },
+      };
+    }
+
+    const matchedClosure = alertClosureRows.find((row) => (
+      matchesAlertFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '告警闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
       };
     }
 
@@ -317,6 +398,58 @@ export default function AlertCenterPage({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="告警闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>告警闭环总表</h2>
+            <p className="text-muted">把分级、证据、规则治理和系统地图/任务回挂并排摆出来，告警页才不只是事件列表和按钮。</p>
+          </div>
+          <span className="status-badge online">{alertClosureRows.length} 条闭环</span>
+        </div>
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          {alertClosureRows.map((row) => (
+            <article
+              key={`alert-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开告警闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <AlertTriangle size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开告警闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <CheckCircle size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">
