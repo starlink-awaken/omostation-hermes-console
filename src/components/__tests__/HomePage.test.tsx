@@ -292,6 +292,8 @@ describe('HomePage', () => {
       expect(screen.getByText('领域挂载模式')).toBeInTheDocument()
       expect(screen.getByText('功能架构总览')).toBeInTheDocument()
       expect(screen.getByText('工作带补位')).toBeInTheDocument()
+      expect(screen.getByText('全站闭环总表')).toBeInTheDocument()
+      expect(screen.getByText('断链页面优先表')).toBeInTheDocument()
       expect(screen.getByText('能力缺失与待建设')).toBeInTheDocument()
       expect(screen.getByText('场景作战面')).toBeInTheDocument()
       expect(screen.getByText('覆盖缺口雷达')).toBeInTheDocument()
@@ -303,7 +305,7 @@ describe('HomePage', () => {
       expect(screen.getByText('页面维度')).toBeInTheDocument()
       expect(screen.getByText('能力域热点')).toBeInTheDocument()
       expect(screen.getByText('覆盖状态')).toBeInTheDocument()
-      expect(screen.getByText('路线图')).toBeInTheDocument()
+      expect(screen.getAllByText('路线图').length).toBeGreaterThan(0)
       expect(screen.getByText('项目运行面')).toBeInTheDocument()
       expect(screen.getByText('覆盖矩阵')).toBeInTheDocument()
       expect(screen.getAllByText('页面成熟度').length).toBeGreaterThan(0)
@@ -325,6 +327,8 @@ describe('HomePage', () => {
       expect(screen.getAllByText('系统配置').length).toBeGreaterThan(0)
       expect(screen.getByRole('button', { name: '打开工作带补位 开发工具' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开工作带任务 开发工具' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开全站闭环对象 Home' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开全站闭环任务 Home' })).toBeInTheDocument()
       expect(screen.getByText(/阻塞项目 9 个/)).toBeInTheDocument()
       expect(screen.getByText('按场景进入')).toBeInTheDocument()
       expect(screen.getByText('首页建设控制台')).toBeInTheDocument()
@@ -427,6 +431,12 @@ describe('HomePage', () => {
     expect(onTabChange).toHaveBeenCalledWith('SystemMap')
 
     fireEvent.click(screen.getByRole('button', { name: /打开工作带任务 开发工具/ }))
+    expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
+
+    fireEvent.click(screen.getByRole('button', { name: /打开全站闭环对象 Home/ }))
+    expect(onTabChange).toHaveBeenCalledWith('SystemMap')
+
+    fireEvent.click(screen.getByRole('button', { name: /打开全站闭环任务 Home/ }))
     expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
 
     fireEvent.click(screen.getByRole('button', { name: /打开日常体检/ }))
@@ -535,6 +545,8 @@ describe('HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /打开首页建设任务 mesh-router/ }))
     fireEvent.click(screen.getByRole('button', { name: /打开工作带补位 开发工具/ }))
     fireEvent.click(screen.getByRole('button', { name: /打开工作带任务 开发工具/ }))
+    fireEvent.click(screen.getByRole('button', { name: /打开全站闭环对象 Home/ }))
+    fireEvent.click(screen.getByRole('button', { name: /打开全站闭环任务 Home/ }))
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'TaskCenter', taskQuery: '页面' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'SystemMap', projectId: 'mesh-router' })
@@ -560,6 +572,8 @@ describe('HomePage', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(22, { tab: 'TaskCenter', taskQuery: 'mesh-router' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(23, { tab: 'SystemMap', pageId: 'Performance' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(24, { tab: 'TaskCenter', taskQuery: 'Performance' })
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', pageId: 'Home' })
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'Home' })
     expect(onTabChange).not.toHaveBeenCalled()
   }, 30000)
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowRight, ClipboardCheck, Layers3, Map, Route, ShieldAlert } from 'lucide-react';
 import HealthSummarySection from './home/HealthSummarySection';
 import AlertFeedSection from './home/AlertFeedSection';
@@ -212,6 +212,18 @@ interface ArchitectureLaneSummary {
   taskTarget: CockpitNavigationTarget;
 }
 
+interface SiteClosureRow {
+  id: string;
+  pageId: string;
+  title: string;
+  group: string;
+  missingItems: string[];
+  linkedItems: string[];
+  nextAction: string;
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+}
+
 interface SiteArchitecture {
   projects: number;
   pages: number;
@@ -335,6 +347,30 @@ function buildPageGroups(pages: CockpitPageMeta[]): PageGroupSummary[] {
     });
 }
 
+function normalizeSearchText(value?: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[()\-_/.,:;]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function draftMatchesPage(draft: DraftTaskSummary, pageId: string, pageTitle: string): boolean {
+  if (draft.source?.id === pageId) return true;
+  const normalizedPageId = normalizeSearchText(pageId);
+  const normalizedPageTitle = normalizeSearchText(pageTitle);
+  const draftTitle = normalizeSearchText(draft.title);
+  const draftDescription = normalizeSearchText(draft.description);
+  const draftSourceTitle = normalizeSearchText(draft.source?.title);
+  return [draftTitle, draftDescription, draftSourceTitle].some((value) =>
+    Boolean(value) && (
+      value.includes(normalizedPageId)
+      || value.includes(normalizedPageTitle)
+      || normalizedPageTitle.includes(value)
+    ),
+  );
+}
+
 function buildArchitectureLaneSummaries({
   cockpitPages,
   featureDomains,
@@ -419,6 +455,88 @@ function buildArchitectureLaneSummaries({
             ? { tab: 'TaskCenter', taskQuery: primaryPageId }
             : { tab: 'TaskCenter', taskQuery: group },
       };
+    });
+}
+
+function buildSiteClosureRows({
+  cockpitPages,
+  featureDomains,
+  usagePaths,
+  playbooks,
+  roadmapItems,
+  draftItems,
+}: {
+  cockpitPages: CockpitPageMeta[];
+  featureDomains: FeatureDomain[];
+  usagePaths: UsagePath[];
+  playbooks: OperatingPlaybook[];
+  roadmapItems: Array<{ cockpit_page?: string; status?: string }>;
+  draftItems: DraftTaskSummary[];
+}): SiteClosureRow[] {
+  const pageIds = new Set<string>();
+  cockpitPages.forEach((page) => page.id && pageIds.add(page.id));
+  usagePaths.forEach((path) => (path.pages || []).forEach((page) => page.id && pageIds.add(page.id)));
+  playbooks.forEach((playbook) => (playbook.steps || []).forEach((step) => {
+    const pageId = step.page_id || step.page?.id;
+    if (pageId) pageIds.add(pageId);
+  }));
+  featureDomains.forEach((domain) => {
+    if (domain.cockpit_page) pageIds.add(domain.cockpit_page);
+    (domain.providers || []).forEach((provider) => provider && pageIds.add(provider));
+  });
+  roadmapItems.forEach((item) => item.cockpit_page && pageIds.add(item.cockpit_page));
+
+  return [...pageIds]
+    .map((pageId) => {
+      const pageMeta = cockpitPages.find((page) => page.id === pageId);
+      const pageTitle = pageMeta?.title || pageId;
+      const hasPath = usagePaths.some((path) => path.pages?.some((page) => page.id === pageId));
+      const matchedDomains = featureDomains.filter((domain) => domain.cockpit_page === pageId || domain.providers?.includes(pageId));
+      const matchedPlaybooks = playbooks.filter((playbook) => (playbook.steps || []).some((step) => (step.page_id || step.page?.id) === pageId));
+      const matchedRoadmapItems = roadmapItems.filter((item) => item.cockpit_page === pageId && item.status !== 'shipped');
+      const matchedDraft = draftItems.find((draft) => draftMatchesPage(draft, pageId, pageTitle)) || null;
+
+      const missingItems: string[] = [];
+      const linkedItems: string[] = [];
+      if (hasPath) linkedItems.push('路径');
+      else missingItems.push('路径');
+      if (matchedDomains.length > 0) linkedItems.push('能力域');
+      else missingItems.push('能力域');
+      if (matchedPlaybooks.length > 0) linkedItems.push('操作清单');
+      else missingItems.push('操作清单');
+      if (matchedRoadmapItems.length > 0) linkedItems.push('路线图');
+      else missingItems.push('路线图');
+      if (matchedDraft) linkedItems.push('任务');
+      else missingItems.push('任务');
+
+      const nextAction = !hasPath
+        ? '先把页面挂进使用路径。'
+        : matchedDomains.length === 0
+          ? '补能力域映射。'
+          : matchedPlaybooks.length === 0
+            ? '补操作清单入口。'
+            : matchedRoadmapItems.length === 0
+              ? '补路线图条目。'
+              : !matchedDraft
+                ? '补任务草稿。'
+                : '继续把页面闭环做实。';
+
+      return {
+        id: `home-site-closure-${pageId}`,
+        pageId,
+        title: pageTitle,
+        group: pageMeta?.group || '未分组',
+        missingItems,
+        linkedItems,
+        nextAction,
+        objectTarget: { tab: 'SystemMap', pageId },
+        taskTarget: { tab: 'TaskCenter', taskQuery: matchedDraft?.source?.id || pageId },
+      };
+    })
+    .sort((left, right) => {
+      const missingDelta = right.missingItems.length - left.missingItems.length;
+      if (missingDelta !== 0) return missingDelta;
+      return left.title.localeCompare(right.title, 'zh-CN');
     });
 }
 
@@ -1338,6 +1456,99 @@ function CoverageRadarSection({
   );
 }
 
+function SiteClosureBoardSection({
+  rows,
+  onTabChange,
+  onOpenTarget,
+}: {
+  rows: SiteClosureRow[];
+  onTabChange?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+}) {
+  const attentionRows = rows.filter((row) => row.missingItems.length > 0);
+  const visibleRows = attentionRows.slice(0, 6);
+  const summaryItems = [
+    ['待补页面', attentionRows.length],
+    ['缺路径', attentionRows.filter((row) => row.missingItems.includes('路径')).length],
+    ['缺能力域', attentionRows.filter((row) => row.missingItems.includes('能力域')).length],
+    ['缺清单', attentionRows.filter((row) => row.missingItems.includes('操作清单')).length],
+    ['缺路线图', attentionRows.filter((row) => row.missingItems.includes('路线图')).length],
+    ['缺任务', attentionRows.filter((row) => row.missingItems.includes('任务')).length],
+  ];
+
+  return (
+    <section className="services-section home-architecture">
+      <div className="section-header">
+        <div>
+          <h2>全站闭环总表</h2>
+          <p className="text-muted">把每个 cockpit 页面在路径、能力域、操作清单、路线图、任务五个维度上缺哪块直接摊开，先看断链，再回对象页收口。</p>
+        </div>
+        <button className="antd-btn small" aria-label="打开全站闭环总图" onClick={() => onTabChange?.('SystemMap')}>
+          <Map size={13} />
+          <span>回系统地图</span>
+          <ArrowRight size={13} />
+        </button>
+      </div>
+
+      <div className="home-architecture-kpis">
+        {summaryItems.map(([label, value]) => (
+          <div key={label} className="home-architecture-kpi">
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="home-architecture-grid">
+        <article className="home-architecture-panel">
+          <div className="home-architecture-panel-head">
+            <div>
+              <strong>断链页面优先表</strong>
+              <small>优先处理缺口最多的页面，别只看总分不看具体卡点。</small>
+            </div>
+            <span className={`status-badge ${attentionRows.length > 0 ? 'degraded' : 'online'}`}>{attentionRows.length}</span>
+          </div>
+          <div className="home-architecture-list">
+            {visibleRows.map((row) => (
+              <article key={row.id} className="home-architecture-item home-architecture-lane">
+                <strong>{row.title}</strong>
+                <span>{row.group} · 已接 {row.linkedItems.join('、') || '暂无'} · 待补 {row.missingItems.join('、') || '无'}</span>
+                <small>{row.nextAction}</small>
+                <div className="home-focus-lane-chips">
+                  {row.missingItems.map((item) => (
+                    <em key={`${row.id}-${item}`}>{item}</em>
+                  ))}
+                </div>
+                <div className="home-architecture-lane-actions">
+                  <button
+                    className="antd-btn small"
+                    aria-label={`打开全站闭环对象 ${row.pageId}`}
+                    onClick={() => openCockpitNavigationTarget(row.objectTarget, onTabChange, onOpenTarget)}
+                  >
+                    <ArrowRight size={13} />
+                    <span>看对象</span>
+                  </button>
+                  <button
+                    className="antd-btn small secondary"
+                    aria-label={`打开全站闭环任务 ${row.pageId}`}
+                    onClick={() => openCockpitNavigationTarget(row.taskTarget, onTabChange, onOpenTarget)}
+                  >
+                    <ClipboardCheck size={13} />
+                    <span>看任务</span>
+                  </button>
+                </div>
+              </article>
+            ))}
+            {visibleRows.length === 0 && (
+              <div className="home-focus-empty">当前所有页面都已具备闭环链路</div>
+            )}
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function CrossLayerHotspotsSection({
   architecture,
   focus,
@@ -2239,9 +2450,19 @@ export default function HomePage({
   const [cockpitPages, setCockpitPages] = useState<CockpitPageMeta[]>([]);
   const [usagePaths, setUsagePaths] = useState<UsagePath[]>([]);
   const [playbooks, setPlaybooks] = useState<OperatingPlaybook[]>([]);
+  const [roadmapItems, setRoadmapItems] = useState<Array<{ cockpit_page?: string; status?: string }>>([]);
+  const [readOnlyDrafts, setReadOnlyDrafts] = useState<DraftTaskSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [homeError, setHomeError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const siteClosureRows = useMemo(() => buildSiteClosureRows({
+    cockpitPages,
+    featureDomains: siteArchitecture.featureDomains,
+    usagePaths,
+    playbooks,
+    roadmapItems,
+    draftItems: readOnlyDrafts,
+  }), [cockpitPages, playbooks, readOnlyDrafts, roadmapItems, siteArchitecture.featureDomains, usagePaths]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -2305,12 +2526,16 @@ export default function HomePage({
           const systemSummary = systemMap.summary || {};
           const cockpitPages = systemMap.cockpit_pages || [];
           const featureDomains = systemMap.feature_domains || [];
+          const roadmapItems = systemMap.roadmap?.items || [];
           let draftItems: DraftTaskSummary[] = [];
           if (draftTasksRes.ok) {
             const draftData = await draftTasksRes.json();
             draftItems = draftData.items || [];
           }
+          const readOnlyDraftItems = draftItems.filter((item) => item.read_only);
           setCockpitPages(cockpitPages);
+          setRoadmapItems(roadmapItems);
+          setReadOnlyDrafts(readOnlyDraftItems);
           setSiteArchitecture({
             projects: systemSummary.projects || 0,
             pages: systemSummary.cockpit_pages || cockpitPages.length || 0,
@@ -2341,14 +2566,13 @@ export default function HomePage({
               cockpitPages,
               featureDomains,
               usagePaths: systemMap.usage_paths || [],
-              roadmapItems: systemMap.roadmap?.items || [],
+              roadmapItems,
               draftItems,
               domainAttentionItems: systemMap.domain_apps?.attention_items || [],
             }),
           });
           setUsagePaths(systemMap.usage_paths || []);
           setPlaybooks(systemMap.playbooks || []);
-          const readOnlyDraftItems = draftItems.filter((item) => item.read_only);
           const countDrafts = (sourceType: string) => readOnlyDraftItems.filter((item) => item.source?.type === sourceType).length;
           const actionDrafts = readOnlyDraftItems
             .filter((item) => item.source?.type && DRAFT_SOURCE_LABELS[item.source.type])
@@ -2495,6 +2719,8 @@ export default function HomePage({
 
       {/* 全站功能架构 */}
       <FunctionalArchitectureSection architecture={siteArchitecture} onTabChange={onTabChange} onOpenTarget={onOpenTarget} />
+
+      <SiteClosureBoardSection rows={siteClosureRows} onTabChange={onTabChange} onOpenTarget={onOpenTarget} />
 
       {/* 覆盖与缺口总览 */}
       <CoverageRadarSection
