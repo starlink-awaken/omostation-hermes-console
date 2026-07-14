@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Activity, GitBranch } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Activity, ClipboardCheck, GitBranch, Route, ShieldAlert } from 'lucide-react';
 import './Dashboard.css';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -12,11 +12,79 @@ interface SettingsViewProps {
   focusTaskQuery?: string;
 }
 
+type SettingsDomainSecurityCheck = {
+  id: string;
+  status: 'passed' | 'warn' | 'failed';
+  title: string;
+  detail: string;
+  evidence: string;
+  next_action: string;
+};
+
+type SettingsDomainApp = {
+  id: string;
+  name: string;
+  risk_level?: string;
+  auth?: {
+    type?: string | null;
+  };
+  freshness?: {
+    status?: string | null;
+  };
+  runtime?: {
+    launch?: {
+      url?: string | null;
+    };
+    api?: {
+      url?: string | null;
+    };
+  };
+  security_summary?: {
+    posture?: string;
+  };
+  security_checks: SettingsDomainSecurityCheck[];
+};
+
+type SettingsDomainAppsPayload = {
+  summary?: {
+    total?: number;
+    security_attention_apps?: number;
+    high_risk?: number;
+  };
+  items: SettingsDomainApp[];
+};
+
+type SettingsSecurityRouteRow = {
+  id: string;
+  title: string;
+  summary: string;
+  evidence: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded' | 'offline';
+  statusLabel: string;
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesSettingsFocusQuery(values: Array<string | null | undefined>, query?: string | null) {
   if (!query) return false;
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) return false;
   return values.some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+}
+
+function securityRouteTone(status: SettingsDomainSecurityCheck['status'] | 'missing_auth' | 'high_risk'): SettingsSecurityRouteRow['statusTone'] {
+  if (status === 'failed' || status === 'missing_auth') return 'offline';
+  if (status === 'warn' || status === 'high_risk') return 'degraded';
+  return 'online';
+}
+
+function securityRouteLabel(status: SettingsDomainSecurityCheck['status'] | 'missing_auth' | 'high_risk') {
+  if (status === 'failed') return '失败';
+  if (status === 'warn') return '警告';
+  if (status === 'missing_auth') return '缺认证';
+  if (status === 'high_risk') return '高风险';
+  return '通过';
 }
 
 export default function SettingsView({
@@ -26,6 +94,7 @@ export default function SettingsView({
   focusTaskQuery,
 }: SettingsViewProps) {
   const [metrics, setMetrics] = useState<any>(null);
+  const [domainApps, setDomainApps] = useState<SettingsDomainAppsPayload | null>(null);
   const [instanceUrl, setInstanceUrl] = useState('');
   const [instanceService, setInstanceService] = useState('');
   const [registerResult, setRegisterResult] = useState<any>(null);
@@ -55,6 +124,82 @@ export default function SettingsView({
       detail: registerResult?.error ? '先处理注册错误，再去网格确认实例接入。' : '注册完成后回网格和应用中心确认实例挂载。',
     },
   ];
+  const settingsSecurityRoutes = useMemo<SettingsSecurityRouteRow[]>(() => {
+    const items = domainApps?.items || [];
+    const routes = items.flatMap((app) => {
+      const checkRoutes = app.security_checks
+        .filter((check) => check.status !== 'passed')
+        .slice(0, 2)
+        .map((check) => ({
+          id: `${app.id}-${check.id}`,
+          title: `${app.name} · ${check.title}`,
+          summary: check.detail || '先回应用中心确认安全门，再决定继续放行还是阻断挂载。',
+          evidence: check.evidence || `认证 ${app.auth?.type || '未声明'} · 新鲜度 ${app.freshness?.status || '未知'}`,
+          nextAction: check.next_action || '把这条安全门送进任务中心持续跟踪。',
+          statusTone: securityRouteTone(check.status),
+          statusLabel: securityRouteLabel(check.status),
+          objectTarget: { tab: 'DomainApps', taskQuery: app.id },
+          taskTarget: { tab: 'TaskCenter', taskQuery: check.id || app.id },
+        }));
+
+      if (checkRoutes.length > 0) return checkRoutes;
+
+      if (!app.auth?.type) {
+        return [{
+          id: `${app.id}-missing-auth`,
+          title: `${app.name} · 认证方式未声明`,
+          summary: '控制面能看到入口，不代表这个挂载已经有清晰认证边界。',
+          evidence: `入口 ${app.runtime?.launch?.url || app.runtime?.api?.url || '待补'} · 认证 未声明`,
+          nextAction: '先补认证方式和入口声明，再继续判断是否允许挂载。',
+          statusTone: securityRouteTone('missing_auth'),
+          statusLabel: securityRouteLabel('missing_auth'),
+          objectTarget: { tab: 'DomainApps', taskQuery: app.id },
+          taskTarget: { tab: 'TaskCenter', taskQuery: app.id },
+        }];
+      }
+
+      if (app.risk_level === 'high' || app.security_summary?.posture === 'attention') {
+        return [{
+          id: `${app.id}-high-risk`,
+          title: `${app.name} · 高风险挂载`,
+          summary: '这种领域入口可以先挂载，但不能跳过控制面上的安全与配置复核。',
+          evidence: `认证 ${app.auth?.type || '未声明'} · 新鲜度 ${app.freshness?.status || '未知'}`,
+          nextAction: '回应用中心复核写入边界、认证方式和真实数据暴露面。',
+          statusTone: securityRouteTone('high_risk'),
+          statusLabel: securityRouteLabel('high_risk'),
+          objectTarget: { tab: 'DomainApps', taskQuery: app.id },
+          taskTarget: { tab: 'TaskCenter', taskQuery: app.id },
+        }];
+      }
+
+      return [];
+    }).slice(0, 4);
+
+    if (routes.length > 0) return routes;
+
+    return [{
+      id: 'domain-security-steady',
+      title: '领域挂载控制面',
+      summary: '当前没有明显阻断项，但设置页仍要持续承接领域应用的认证、入口和安全门。',
+      evidence: `已登记 ${items.length} 个领域应用`,
+      nextAction: '回应用中心抽查一个领域应用的挂载状态和安全门。',
+      statusTone: 'online',
+      statusLabel: '待抽查',
+      objectTarget: { tab: 'DomainApps' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: 'domain-apps' },
+    }];
+  }, [domainApps]);
+
+  const domainSecuritySummary = useMemo(() => {
+    const items = domainApps?.items || [];
+    return {
+      total: domainApps?.summary?.total ?? items.length,
+      attention: settingsSecurityRoutes.filter((item) => item.statusTone !== 'online').length,
+      highRisk: domainApps?.summary?.high_risk ?? items.filter((app) => app.risk_level === 'high').length,
+      authReady: items.filter((app) => Boolean(app.auth?.type)).length,
+    };
+  }, [domainApps, settingsSecurityRoutes]);
+
   const focusedSettingsCard = (() => {
     const matchedFocus = registrationFocus.find((item) => (
       matchesSettingsFocusQuery([item.label, item.value, item.detail], focusTaskQuery)
@@ -66,6 +211,19 @@ export default function SettingsView({
         detail: `${matchedFocus.value} · ${matchedFocus.detail}`,
         objectTarget: { tab: 'Settings', taskQuery: matchedFocus.label },
         taskTarget: { tab: 'TaskCenter', taskQuery: matchedFocus.label },
+      };
+    }
+
+    const matchedSecurityRoute = settingsSecurityRoutes.find((item) => (
+      matchesSettingsFocusQuery([item.title, item.summary, item.evidence, item.nextAction], focusTaskQuery)
+    ));
+    if (matchedSecurityRoute) {
+      return {
+        kicker: '领域安全门',
+        title: matchedSecurityRoute.title,
+        detail: `${matchedSecurityRoute.statusLabel} · ${matchedSecurityRoute.nextAction}`,
+        objectTarget: matchedSecurityRoute.objectTarget,
+        taskTarget: matchedSecurityRoute.taskTarget,
       };
     }
 
@@ -99,8 +257,17 @@ export default function SettingsView({
     } catch (e) {}
   };
 
+  const fetchDomainApps = async () => {
+    try {
+      const res = await fetch('/api/domain-apps');
+      if (!res.ok) return;
+      setDomainApps(await res.json());
+    } catch (e) {}
+  };
+
   useEffect(() => {
     fetchMetrics();
+    fetchDomainApps();
     const interval = setInterval(fetchMetrics, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -264,6 +431,65 @@ export default function SettingsView({
               </button>
             ))}
           </article>
+        </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="领域接通与安全门">
+        <div className="section-header">
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>领域接通与安全门</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              设置页不只接实例注册，也要接住家庭驾驶舱、OPC、family-hub 这类领域挂载的认证、配置和安全门。
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span className="status-badge online">已登记 {domainSecuritySummary.total}</span>
+            <span className="status-badge degraded">待处理 {domainSecuritySummary.attention}</span>
+            <span className="status-badge degraded">高风险 {domainSecuritySummary.highRisk}</span>
+            <span className="status-badge online">认证已声明 {domainSecuritySummary.authReady}</span>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {settingsSecurityRoutes.map((route) => (
+            <article
+              key={route.id}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{route.title}</strong>
+                  <span className={`status-badge ${route.statusTone}`}>{route.statusLabel}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{route.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">当前证据</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{route.evidence}</span>
+                <small className="text-muted">下一步：{route.nextAction}</small>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开领域安全对象 ${route.title}`}
+                  onClick={() => openCockpitNavigationTarget(route.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ClipboardCheck size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开领域安全任务 ${route.title}`}
+                  onClick={() => openCockpitNavigationTarget(route.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 
