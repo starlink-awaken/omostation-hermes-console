@@ -171,6 +171,10 @@ describe('CockpitGuideView', () => {
       expect(screen.getByRole('button', { name: '打开对象任务 cockpit' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开对象承接 family-hub 服务' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开对象任务 页面能力：补齐 性能监控' })).toBeInTheDocument()
+      expect(screen.getByText('执行闭环总表')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开执行主链 日常值守闭环' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开执行证据 补证与执行闭环' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开执行步骤 日常值守闭环 首页' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '回来源页 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补证车道 验证补证' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补证任务 验证补证：补齐 概览中心' })).toBeInTheDocument()
@@ -403,6 +407,21 @@ describe('CockpitGuideView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'TaskCenter',
       taskQuery: 'cockpit',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开执行主链 日常值守闭环' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'Home',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开执行证据 补证与执行闭环' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'Workflows',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开执行步骤 补证与执行闭环 工作流' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'Workflows',
     }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开任务车道 页面能力' }))

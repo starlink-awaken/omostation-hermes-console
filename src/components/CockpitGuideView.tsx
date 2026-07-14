@@ -408,6 +408,20 @@ function guideDraftObjectTarget(draft: { sourceType: string; sourceId: string })
   return { tab: 'TaskCenter', taskQuery: draft.sourceId };
 }
 
+function executionStepTarget(step: string, fallback?: CockpitNavigationTarget): CockpitNavigationTarget {
+  if (step === '首页') return { tab: 'Home' };
+  if (step === '告警中心') return { tab: 'AlertCenter' };
+  if (step === '任务中心') return { tab: 'TaskCenter' };
+  if (step === '日志查看器') return { tab: 'LogViewer', taskQuery: 'verification' };
+  if (step === '系统地图') return { tab: 'SystemMap' };
+  if (step === '应用中心') return { tab: 'DomainApps' };
+  if (step === '积分冒险') return { tab: 'QuestBoard' };
+  if (step === '底层设置') return { tab: 'Settings' };
+  if (step === '工作流') return { tab: 'Workflows' };
+  if (step === '协议工作台') return { tab: 'Protocol' };
+  return fallback || { tab: 'SystemMap' };
+}
+
 function matchesGuideFocusQuery(value?: string | null, query?: string) {
   if (!value || !query) return false;
   const haystack = value.trim().toLowerCase();
@@ -831,6 +845,77 @@ export default function CockpitGuideView({
     drafts: objectCoverageRows.filter((row) => row.kind.includes('草稿')).length,
     ready: objectCoverageRows.filter((row) => row.statusClass === 'ready').length,
   }), [objectCoverageRows]);
+
+  const executionChainRows = useMemo(() => {
+    const firstPage = metrics.pageAttentionItems[0];
+    const firstDomain = metrics.domainAttention[0];
+    const firstProject = metrics.priorityProjects[0];
+    const firstWeakDimension = metrics.weakestDimensions[0];
+    const firstClosureDraft = metrics.closureDrafts[0];
+    const evidenceCount = metrics.draftSummary.verificationReady + metrics.draftSummary.playbook;
+
+    return [
+      {
+        id: 'daily-loop',
+        title: '日常值守闭环',
+        signal: metrics.attentionPages > 0 ? `${metrics.attentionPages} 页待补位` : '入口链基本接通',
+        summary: '先从首页看健康和提醒，再把告警、任务和日志串起来，避免发现异常后断在半路。',
+        nextAction: firstPage
+          ? `${firstPage.page?.title || firstPage.page_id} 还没完全接通，值守时顺手把它补进路径和任务承接。`
+          : '先按首页 -> 告警 -> 任务 -> 日志这条链走一遍，确认日常入口真的可用。',
+        steps: ['首页', '告警中心', '任务中心', '日志查看器'],
+        primaryTarget: { tab: 'Home' } as CockpitNavigationTarget,
+        secondaryTarget: { tab: 'LogViewer', taskQuery: 'verification' } as CockpitNavigationTarget,
+      },
+      {
+        id: 'evidence-loop',
+        title: '补证与执行闭环',
+        signal: evidenceCount > 0 ? `${evidenceCount} 条待补证` : '补证车道相对收敛',
+        summary: '任务中心负责承接动作，日志、工作流和协议页负责把执行痕迹与证据补完整。',
+        nextAction: firstClosureDraft
+          ? `${firstClosureDraft.title} 还需要继续补日志、workflow 或协议证据。`
+          : '先回任务中心和工作流页确认 closeout、验证和协议桥接有没有真正落证。',
+        steps: ['任务中心', '日志查看器', '工作流', '协议工作台'],
+        primaryTarget: { tab: 'TaskCenter', taskQuery: 'system_map_verification_ready' } as CockpitNavigationTarget,
+        secondaryTarget: { tab: 'Workflows' } as CockpitNavigationTarget,
+      },
+      {
+        id: 'domain-loop',
+        title: '领域挂载闭环',
+        signal: metrics.domainSummary.total > 0 ? `${metrics.domainSummary.highRisk} 高风险 / ${metrics.domainSummary.total} 总数` : '领域挂载数据待接入',
+        summary: '应用中心负责挂载对象，任务中心负责承接动作，领域页和设置页负责把入口真正接通。',
+        nextAction: firstDomain
+          ? `${firstDomain.name} 当前 ${firstDomain.runtimeStatus}，先回应用中心确认入口、安全门和后续动作。`
+          : '先确认家庭驾驶舱、OPC 和 family-hub 的入口、认证和运行态是不是都还通着。',
+        steps: ['应用中心', '任务中心', '积分冒险', '底层设置'],
+        primaryTarget: firstDomain ? { tab: 'DomainApps', taskQuery: firstDomain.id } : { tab: 'DomainApps' } as CockpitNavigationTarget,
+        secondaryTarget: firstDomain ? { tab: 'TaskCenter', taskQuery: firstDomain.taskQuery } : { tab: 'TaskCenter', taskQuery: 'system_map_domain_app' } as CockpitNavigationTarget,
+      },
+      {
+        id: 'project-loop',
+        title: '项目覆盖修复闭环',
+        signal: firstWeakDimension ? `${firstWeakDimension.title || firstWeakDimension.id} ${firstWeakDimension.score ?? 0}%` : '项目覆盖暂未暴露短板',
+        summary: '先看最弱维度，再定位具体项目，最后回任务中心继续承接修复，不让项目问题只停在矩阵里。',
+        nextAction: firstProject
+          ? `${firstProject.id} 当前优先缺口是“${firstProject.primaryGap || '待补说明'}”，建议先回项目对象和任务承接。`
+          : '先从系统地图最弱维度下钻到项目，再把修复动作送进任务中心。',
+        steps: ['系统地图', '任务中心'],
+        primaryTarget: firstWeakDimension ? { tab: 'SystemMap', coverageDimensionId: firstWeakDimension.id } : { tab: 'SystemMap' } as CockpitNavigationTarget,
+        secondaryTarget: firstProject ? { tab: 'TaskCenter', taskQuery: firstProject.id } : { tab: 'TaskCenter', taskQuery: 'system_map_project_portfolio' } as CockpitNavigationTarget,
+      },
+    ];
+  }, [
+    metrics.attentionPages,
+    metrics.closureDrafts,
+    metrics.domainAttention,
+    metrics.domainSummary.highRisk,
+    metrics.domainSummary.total,
+    metrics.draftSummary.playbook,
+    metrics.draftSummary.verificationReady,
+    metrics.pageAttentionItems,
+    metrics.priorityProjects,
+    metrics.weakestDimensions,
+  ]);
 
   const focusedGuideCard = useMemo(() => {
     const pageRow = focusPageId
@@ -1864,6 +1949,66 @@ export default function CockpitGuideView({
           {objectCoverageRows.length === 0 && (
             <div className="cockpit-guide-focus-empty">当前还没有对象承接数据。</div>
           )}
+        </div>
+      </section>
+
+      <section className="cockpit-guide-section">
+        <div className="section-header">
+          <div>
+            <h2>执行闭环总表</h2>
+            <p className="text-muted">把发现问题、定位对象、承接任务和补证入口整理成几条真的可走的工作流，避免 cockpit 只会展示不会推进。</p>
+          </div>
+        </div>
+        <div className="cockpit-guide-coverage-list">
+          {executionChainRows.map((row) => (
+            <div key={row.id} className="cockpit-guide-coverage-row watch">
+              <div className="cockpit-guide-coverage-row-head">
+                <div>
+                  <strong>{row.title}</strong>
+                  <small>{row.signal}</small>
+                </div>
+                <span className="cockpit-guide-coverage-status watch">执行链</span>
+              </div>
+              <p>{row.summary}</p>
+              <div className="cockpit-guide-coverage-tags">
+                {row.steps.map((step) => (
+                  <button
+                    key={`${row.id}-${step}`}
+                    type="button"
+                    className="cockpit-guide-step-chip"
+                    aria-label={`打开执行步骤 ${row.title} ${step}`}
+                    onClick={() => openCockpitNavigationTarget(executionStepTarget(step, row.primaryTarget), onNavigate, onOpenTarget)}
+                  >
+                    {step}
+                  </button>
+                ))}
+              </div>
+              <div className="cockpit-guide-coverage-next">
+                <strong>下一步</strong>
+                <p>{row.nextAction}</p>
+              </div>
+              <div className="cockpit-guide-coverage-actions">
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开执行主链 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.primaryTarget, onNavigate, onOpenTarget)}
+                >
+                  <ArrowRight size={14} />
+                  <span>开主链</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开执行证据 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.secondaryTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>看证据/任务</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
