@@ -45,6 +45,7 @@ describe('ComputeView', () => {
     render(<ComputeView />)
 
     await waitFor(() => {
+      expect(screen.getByRole('region', { name: '算力闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('128 ms')).toBeInTheDocument()
       expect(screen.getByText('36 T/s')).toBeInTheDocument()
       expect(screen.getByText('50%')).toBeInTheDocument()
@@ -111,6 +112,39 @@ describe('ComputeView', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Compute', taskQuery: 'openai' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'openai' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces compute closure routing when focus hits local generation handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockResolvedValue(okJson({
+      summary: { avg_latency_ms: 128, avg_tokens_per_second: 36 },
+      cost_board: { interception_rate: 0.5, saved_vs_cloud_usd: 1.2 },
+      nodes: [{ id: 'local-mac', name: '本地主机', status: 'online', cpu_usage: 17, gpu_usage: 0 }],
+      quota: { quota: [] },
+      available_models: [],
+      traffic_by_node: [],
+      circuit_broken: false,
+      daily_budget: 100,
+    }))
+
+    render(
+      <ComputeView
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="本地生成与实验验收"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前算力承接焦点' })
+    expect(within(focusRegion).getByText('本地生成与实验验收')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开算力焦点对象 本地生成与实验验收' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开算力焦点任务 本地生成与实验验收' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Sandbox', taskQuery: '本地算力生成' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '本地算力生成' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
 })

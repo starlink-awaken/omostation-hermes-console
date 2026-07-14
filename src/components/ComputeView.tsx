@@ -25,6 +25,17 @@ interface ComputeViewProps {
   focusTaskQuery?: string;
 }
 
+type ComputeClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesComputeFocusQuery(values: Array<string | null | undefined>, query?: string) {
   const normalizedQuery = query?.trim().toLowerCase();
   if (!normalizedQuery) return false;
@@ -223,6 +234,80 @@ export default function ComputeView({
       actionValue: 'TaskCenter',
     },
   ];
+
+  const saturatedNodeCount = nodes.filter((node: any) => (
+    node.status !== 'online' || (node.cpu_usage ?? 0) >= 70 || (node.gpu_usage ?? 0) >= 70
+  )).length;
+  const providerRiskCount = quota.filter((provider: any) => {
+    const usedPercent = provider.used_percent !== undefined
+      ? provider.used_percent
+      : provider.usage?.total_granted
+        ? Math.round((provider.usage.total_used / provider.usage.total_granted) * 100)
+        : 0;
+    return !provider.available || usedPercent >= 80 || provider.error;
+  }).length;
+  const topSaturatedNode = saturatedNodeCount > 0 ? computeBacklog.saturatedNodes[0] : null;
+  const topProviderRisk = providerRiskCount > 0 ? computeBacklog.providerRisks[0] : null;
+  const topHotRoute = computeBacklog.hotRoutes[0] || null;
+  const topScheduledTask = computeBacklog.scheduledTasks[0] || null;
+  const localGenerateSignal = genResult
+    ? `已生成 ${genModel || 'coder'}`
+    : `模型 ${genModel || 'coder'}`;
+  const computeClosureRows: ComputeClosureRow[] = [
+    {
+      id: 'node-mesh',
+      title: '节点压力与网格排障',
+      summary: '算力页最先要接住的，是高压节点和离线节点，不然 CPU/GPU 数字再全也只是报表。',
+      signal: topSaturatedNode ? `高压 ${saturatedNodeCount}` : `节点稳定 ${nodes.length}`,
+      nextAction: topSaturatedNode
+        ? `先打开 ${topSaturatedNode.name} 对应的网格视图，确认路由、下游调用和资源占用。`
+        : '当前没有明显高压节点，抽查网格链路是否还能承接一次节点排障。',
+      statusTone: topSaturatedNode ? 'degraded' : 'online',
+      objectTarget: { tab: 'McpMesh', taskQuery: String(topSaturatedNode?.id || topHotRoute?.node_id || 'compute-node-mesh') },
+      taskTarget: { tab: 'TaskCenter', taskQuery: String(topSaturatedNode?.id || topSaturatedNode?.name || 'compute-node-mesh') },
+    },
+    {
+      id: 'budget-governance',
+      title: '预算熔断与供应商治理',
+      summary: '供应商不可用、额度逼近阈值或熔断已拉闸时，要从算力页直接送进治理动作，而不是停在预算数字上。',
+      signal: circuitBroken ? '熔断已开' : topProviderRisk ? `风险 ${providerRiskCount}` : '预算平稳',
+      nextAction: circuitBroken
+        ? '先确认熔断是否仍需保持，再把供应商治理动作沉到任务中心持续跟踪。'
+        : topProviderRisk
+          ? `围绕 ${topProviderRisk.provider || '当前供应商'} 核对额度、可用性和后续治理动作。`
+          : '当前没有明显预算风险，抽查一次预算闸阀和供应商告警链路是否仍然可用。',
+      statusTone: circuitBroken || topProviderRisk ? 'degraded' : 'online',
+      objectTarget: { tab: 'Observability', taskQuery: String(topProviderRisk?.provider || 'compute-budget') },
+      taskTarget: { tab: 'TaskCenter', taskQuery: String(topProviderRisk?.provider || 'compute-budget') },
+    },
+    {
+      id: 'workflow-hotspots',
+      title: '热点流量与工作流回挂',
+      summary: '高频节点和调度热点最终要回工作流和全站路径，不然只能看到流量，还是不知道谁在持续烧算力。',
+      signal: topHotRoute ? `热点 ${topHotRoute.calls}` : `调度 ${computeBacklog.scheduledTasks.length}`,
+      nextAction: topHotRoute
+        ? `继续追 ${topHotRoute.node_label} 的工作流来源，再回系统地图确认它挂在哪条使用路径上。`
+        : topScheduledTask
+          ? `打开 ${topScheduledTask.id || topScheduledTask.name || '调度任务'} 的运行链，确认它为什么会占住算力。`
+          : '当前没有明显热点，抽查工作流与算力热点的互跳链路是否还能走通。',
+      statusTone: topHotRoute || topScheduledTask ? 'degraded' : 'online',
+      objectTarget: { tab: 'Workflows', taskQuery: String(topHotRoute?.node_id || topScheduledTask?.id || 'compute-workflow') },
+      taskTarget: { tab: 'TaskCenter', taskQuery: String(topHotRoute?.node_id || topScheduledTask?.id || 'compute-workflow') },
+    },
+    {
+      id: 'local-generation',
+      title: '本地生成与实验验收',
+      summary: '本地生成不该只停在输出框里，结果要带去沙箱复现，再沉到任务中心形成可验证动作。',
+      signal: localGenerateSignal,
+      nextAction: genResult
+        ? '把这次生成结果带去沙箱验证，再决定是否沉成正式任务。'
+        : '先发起一次本地生成，确认模型可用后再去沙箱和任务中心收口。',
+      statusTone: genResult ? 'degraded' : 'online',
+      objectTarget: { tab: 'Sandbox', taskQuery: '本地算力生成' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: '本地算力生成' },
+    },
+  ];
+
   const focusedComputeCard = (() => {
     const matchedNode = nodes.find((node: any) => (
       matchesComputeFocusQuery([
@@ -275,6 +360,19 @@ export default function ComputeView({
         detail: `${matchedRoute.calls} 次调用 · ${matchedRoute.tokens.toLocaleString()} tokens，继续核对这类热点挂在哪条使用路径上。`,
         objectTarget: { tab: 'Compute', taskQuery: matchedRoute.node_id },
         taskTarget: { tab: 'TaskCenter', taskQuery: matchedRoute.node_id },
+      };
+    }
+
+    const matchedClosure = computeClosureRows.find((row) => (
+      matchesComputeFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '算力闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
       };
     }
 
@@ -353,6 +451,57 @@ export default function ComputeView({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="算力闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>算力闭环总表</h2>
+            <p className="text-muted">把节点排障、预算治理、热点回挂和本地生成验收四条线并排摊开，算力页才不只是看 CPU/GPU 和成本数字。</p>
+          </div>
+          <span className="status-badge online">{computeClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {computeClosureRows.map((row) => (
+            <article
+              key={`compute-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开算力闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <Server size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开算力闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Shield size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">
