@@ -69,6 +69,18 @@ interface KnowledgeExecutionWorkbenchProps {
   onNavigate?: (tab: string) => void;
 }
 
+type ExecutionRouteCard = {
+  id: string;
+  title: string;
+  objectTab: string;
+  taskTab: string;
+  tone: 'online' | 'degraded' | 'offline';
+  signal: string;
+  summary: string;
+  nextAction: string;
+  current: boolean;
+};
+
 const EXECUTION_STEPS = [
   {
     id: 'Knowledge',
@@ -255,6 +267,69 @@ export default function KnowledgeExecutionWorkbench({
           ? '工作流到执行工作台'
           : '任务到执行工作台';
 
+  const executionRoutes = useMemo<ExecutionRouteCard[]>(() => {
+    const capabilityCount = skills.length + pipelines.length + workflowDefinitions.length;
+    const knowledgeSignal = `${systemMap.usage_paths?.length || 0} 路径 · ${(systemMap.playbooks || []).length} 清单 · ${(systemMap.gaps || []).length} 缺口`;
+    const capabilitySignal = `${skills.length} 技能 · ${pipelines.length} 管线 · ${workflowDefinitions.length} 工作流`;
+    const workflowSignal = `${summary.approvalCount} 待审批 · ${summary.runningWorkflows} 运行中`;
+    const taskSignal = `${summary.pendingTasks + summary.runningTasks} 执行项 · ${summary.draftTasks} 草稿`;
+
+    return [
+      {
+        id: 'Knowledge',
+        title: '知识锚点',
+        objectTab: 'Knowledge',
+        taskTab: 'TaskCenter',
+        tone: (systemMap.usage_paths || []).length > 0 || (systemMap.gaps || []).length > 0 ? 'degraded' : 'offline',
+        signal: knowledgeSignal,
+        summary: summary.usagePath?.title || summary.gap?.title || '先把高频路径、清单和缺口收进知识面。',
+        nextAction: summary.usagePath?.intent || summary.gap?.next || '补一条稳定使用路径，再决定往哪个对象面分发。',
+        current: currentPage === 'Knowledge',
+      },
+      {
+        id: 'Assets',
+        title: '能力与自动化',
+        objectTab: 'Assets',
+        taskTab: 'TaskCenter',
+        tone: capabilityCount > 0 ? 'online' : 'offline',
+        signal: capabilitySignal,
+        summary: skills[0]?.name || workflowDefinitions[0]?.name || pipelines[0] || '能力目录还偏薄。',
+        nextAction: capabilityCount > 0
+          ? '把当前路径挂到合适的技能、管线或自动化工作流上。'
+          : '先补技能说明、管线入口和工作流定义，避免知识页只能描述问题。',
+        current: currentPage === 'Assets',
+      },
+      {
+        id: 'Workflows',
+        title: '执行编排',
+        objectTab: 'Workflows',
+        taskTab: 'TaskCenter',
+        tone: summary.approvalCount > 0 || summary.runningWorkflows > 0 ? 'degraded' : workflows.length > 0 ? 'online' : 'offline',
+        signal: workflowSignal,
+        summary: summary.latestWorkflow?.task || summary.latestWorkflow?.id || '还没有最近工作流记录。',
+        nextAction: summary.approvalCount > 0
+          ? `先处理 ${summary.approvalCount} 条待审批工作流，别让路径卡在人工门控。`
+          : summary.latestWorkflow
+            ? '核对最近一次编排是否真的承接了知识面和资产面的意图。'
+            : '至少产出一条可回放的工作流样本，让自动化层有实证。',
+        current: currentPage === 'Workflows',
+      },
+      {
+        id: 'TaskCenter',
+        title: '任务落地',
+        objectTab: 'TaskCenter',
+        taskTab: 'TaskCenter',
+        tone: summary.pendingTasks + summary.runningTasks + summary.draftTasks > 0 ? 'degraded' : 'online',
+        signal: taskSignal,
+        summary: summary.latestTask?.title || summary.roadmapItem?.title || '当前还没有在途任务。',
+        nextAction: summary.latestTask
+          ? '回任务中心收口对象入口、证据字段和真正的下一步。'
+          : summary.roadmapItem?.problem || '把路线图或操作清单继续沉到任务中心。',
+        current: currentPage === 'TaskCenter',
+      },
+    ];
+  }, [currentPage, pipelines, skills, summary, systemMap.gaps, systemMap.playbooks, systemMap.usage_paths, workflowDefinitions, workflows.length]);
+
   return (
     <section className="knowledge-execution-workbench antd-card">
       <div className="section-header" style={{ marginBottom: 0 }}>
@@ -310,6 +385,70 @@ export default function KnowledgeExecutionWorkbench({
           </button>
         ))}
       </div>
+
+      <section className="services-section" role="region" aria-label="执行闭环总表" style={{ marginTop: 16 }}>
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>执行闭环总表</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把知识、能力、编排和任务四层承接面放到一张表里，先看该回哪个对象面，再决定落到哪个任务面。
+            </p>
+          </div>
+          <span className="status-badge degraded">
+            闭环面 {executionRoutes.filter((route) => route.tone !== 'offline').length} / {executionRoutes.length}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          {executionRoutes.map((route) => (
+            <article key={route.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <strong style={{ fontSize: 15 }}>{route.title}</strong>
+                  <span className={`status-badge ${route.current ? 'online' : route.tone}`}>
+                    {route.current ? '当前页' : route.tone === 'online' ? '可用' : route.tone === 'degraded' ? '待收口' : '待补'}
+                  </span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>{route.signal}</p>
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div style={{ display: 'grid', gap: 4, padding: 12, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
+                  <span className="text-muted" style={{ fontSize: 12 }}>当前对象</span>
+                  <strong>{route.summary}</strong>
+                  <small className="text-muted" style={{ fontSize: 12 }}>{route.nextAction}</small>
+                </div>
+                <div style={{ display: 'grid', gap: 4, padding: 12, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
+                  <span className="text-muted" style={{ fontSize: 12 }}>回写路径</span>
+                  <strong>{route.objectTab} {'->'} {route.taskTab}</strong>
+                  <small className="text-muted" style={{ fontSize: 12 }}>先看对象面，再把动作沉到任务面。</small>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <button
+                  type="button"
+                  className="antd-btn small"
+                  aria-label={`打开闭环对象 ${route.title}`}
+                  onClick={() => onNavigate?.(route.objectTab)}
+                >
+                  <BookOpen size={13} />
+                  <span>看对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn small"
+                  aria-label={`打开闭环任务 ${route.title}`}
+                  onClick={() => onNavigate?.(route.taskTab)}
+                >
+                  <ClipboardList size={13} />
+                  <span>看任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="knowledge-execution-grid">
         <div className="knowledge-execution-panel">

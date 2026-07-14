@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import KnowledgeExecutionWorkbench from '../KnowledgeExecutionWorkbench'
 
 const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Response
@@ -104,14 +104,28 @@ describe('KnowledgeExecutionWorkbench', () => {
 
     await waitFor(() => {
       expect(screen.getByText('知识到执行工作台')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '执行闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('1 条待审批')).toBeInTheDocument()
       expect(screen.getByText('5 项能力')).toBeInTheDocument()
-      expect(screen.getByText('日常体检')).toBeInTheDocument()
+      expect(screen.getAllByText('日常体检').length).toBeGreaterThan(0)
       expect(screen.getByText('知识页还缺执行导流')).toBeInTheDocument()
     })
 
+    const board = screen.getByRole('region', { name: '执行闭环总表' })
+    expect(within(board).getByText('知识锚点')).toBeInTheDocument()
+    expect(within(board).getByText('能力与自动化')).toBeInTheDocument()
+    expect(within(board).getByText('执行编排')).toBeInTheDocument()
+    expect(within(board).getByText('任务落地')).toBeInTheDocument()
+    expect(within(board).getByText('1 路径 · 1 清单 · 1 缺口')).toBeInTheDocument()
+
     fireEvent.click(screen.getByText(/有 1 条工作流在等人工放行/))
     expect(onNavigate).toHaveBeenCalledWith('Workflows')
+
+    fireEvent.click(within(board).getByRole('button', { name: '打开闭环对象 执行编排' }))
+    expect(onNavigate).toHaveBeenCalledWith('Workflows')
+
+    fireEvent.click(within(board).getByRole('button', { name: '打开闭环任务 能力与自动化' }))
+    expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
 
     fireEvent.click(screen.getByRole('button', { name: /去任务中心/ }))
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
