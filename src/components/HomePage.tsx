@@ -8,6 +8,7 @@ import GovernanceOverviewSection from './home/GovernanceOverviewSection';
 import QuickActionsSection from './home/QuickActionsSection';
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
 import SummaryTileGrid from './common/SummaryTileGrid';
 
 interface HealthSummary {
@@ -219,6 +220,22 @@ interface SiteClosureRow {
   group: string;
   missingItems: string[];
   linkedItems: string[];
+  nextAction: string;
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+}
+
+interface NavigationCoverageRow {
+  id: string;
+  pageId: string;
+  title: string;
+  group: string;
+  purpose: string;
+  registeredInSystemMap: boolean;
+  hasUsagePath: boolean;
+  hasPlaybook: boolean;
+  hasTaskDraft: boolean;
+  missingItems: string[];
   nextAction: string;
   objectTarget: CockpitNavigationTarget;
   taskTarget: CockpitNavigationTarget;
@@ -538,6 +555,62 @@ function buildSiteClosureRows({
       if (missingDelta !== 0) return missingDelta;
       return left.title.localeCompare(right.title, 'zh-CN');
     });
+}
+
+function buildNavigationCoverageRows({
+  cockpitPages,
+  usagePaths,
+  playbooks,
+  draftItems,
+}: {
+  cockpitPages: CockpitPageMeta[];
+  usagePaths: UsagePath[];
+  playbooks: OperatingPlaybook[];
+  draftItems: DraftTaskSummary[];
+}): NavigationCoverageRow[] {
+  const registeredPageIds = new Set(cockpitPages.map((page) => page.id));
+
+  return COCKPIT_PAGE_REGISTRY.map((page) => {
+    const hasUsagePath = usagePaths.some((path) => path.pages?.some((item) => item.id === page.id));
+    const hasPlaybook = playbooks.some((playbook) => (playbook.steps || []).some((step) => (step.page_id || step.page?.id) === page.id));
+    const matchedDraft = draftItems.find((draft) => draftMatchesPage(draft, page.id, page.title)) || null;
+    const missingItems: string[] = [];
+
+    if (!registeredPageIds.has(page.id)) missingItems.push('地图登记');
+    if (!hasUsagePath) missingItems.push('使用路径');
+    if (!hasPlaybook) missingItems.push('操作清单');
+    if (!matchedDraft) missingItems.push('任务承接');
+
+    const nextAction = !registeredPageIds.has(page.id)
+      ? '先把这个页面登记进系统地图和站内治理视图。'
+      : !hasUsagePath
+        ? '补一条使用路径，说明这个页面什么时候进、解决什么问题。'
+        : !hasPlaybook
+          ? '补操作清单步骤，让页面进入稳定日用闭环。'
+          : !matchedDraft
+            ? '补一个只读任务草稿，给页面留明确承接入口。'
+            : '继续把页面承接链条做细。';
+
+    return {
+      id: `home-nav-coverage-${page.id}`,
+      pageId: page.id,
+      title: page.title,
+      group: page.group,
+      purpose: page.purpose,
+      registeredInSystemMap: registeredPageIds.has(page.id),
+      hasUsagePath,
+      hasPlaybook,
+      hasTaskDraft: Boolean(matchedDraft),
+      missingItems,
+      nextAction,
+      objectTarget: { tab: page.id, pageId: page.id },
+      taskTarget: { tab: 'TaskCenter', taskQuery: matchedDraft?.source?.id || page.id },
+    };
+  }).sort((left, right) => {
+    const missingDelta = right.missingItems.length - left.missingItems.length;
+    if (missingDelta !== 0) return missingDelta;
+    return left.title.localeCompare(right.title, 'zh-CN');
+  });
 }
 
 interface HomePageProps {
@@ -1549,6 +1622,109 @@ function SiteClosureBoardSection({
   );
 }
 
+function NavigationCoverageSection({
+  rows,
+  onTabChange,
+  onOpenTarget,
+}: {
+  rows: NavigationCoverageRow[];
+  onTabChange?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+}) {
+  const attentionRows = rows.filter((row) => row.missingItems.length > 0);
+  const visibleRows = attentionRows.slice(0, 8);
+  const summaryItems = [
+    ['导航页面', rows.length],
+    ['地图已登记', rows.filter((row) => row.registeredInSystemMap).length],
+    ['路径已挂', rows.filter((row) => row.hasUsagePath).length],
+    ['清单已挂', rows.filter((row) => row.hasPlaybook).length],
+    ['任务已承接', rows.filter((row) => row.hasTaskDraft).length],
+    ['待补页面', attentionRows.length],
+  ];
+
+  return (
+    <section className="services-section home-architecture">
+      <div className="section-header">
+        <div>
+          <h2>导航页面覆盖总表</h2>
+          <p className="text-muted">拿真实导航页做底账，对照系统地图、使用路径、操作清单和任务承接，专门抓“页面明明在，治理面却没登记全”的盲区。</p>
+        </div>
+        <button className="antd-btn small" aria-label="打开导航页面覆盖总图" onClick={() => onTabChange?.('Guide')}>
+          <Map size={13} />
+          <span>回站内导览</span>
+          <ArrowRight size={13} />
+        </button>
+      </div>
+
+      <div className="home-architecture-kpis">
+        {summaryItems.map(([label, value]) => (
+          <div key={label} className="home-architecture-kpi">
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="home-architecture-grid">
+        <article className="home-architecture-panel">
+          <div className="home-architecture-panel-head">
+            <div>
+              <strong>待补导航页面</strong>
+              <small>先补没登记、没路径、没清单、没任务的页面，整个站的使用闭环才会真的完整。</small>
+            </div>
+            <span className={`status-badge ${attentionRows.length > 0 ? 'degraded' : 'online'}`}>{attentionRows.length}</span>
+          </div>
+          <div className="home-architecture-list">
+            {visibleRows.map((row) => (
+              <article key={row.id} className="home-architecture-item home-architecture-lane">
+                <strong>{row.title}</strong>
+                <span>
+                  {row.group}
+                  {' · '}
+                  地图 {row.registeredInSystemMap ? '已登记' : '待登记'}
+                  {' · '}
+                  路径 {row.hasUsagePath ? '已挂' : '待挂'}
+                  {' · '}
+                  清单 {row.hasPlaybook ? '已挂' : '待挂'}
+                  {' · '}
+                  任务 {row.hasTaskDraft ? '已承接' : '待承接'}
+                </span>
+                <small>{row.nextAction}</small>
+                <div className="home-focus-lane-chips">
+                  {row.missingItems.map((item) => (
+                    <em key={`${row.id}-${item}`}>{item}</em>
+                  ))}
+                </div>
+                <div className="home-architecture-lane-actions">
+                  <button
+                    className="antd-btn small"
+                    aria-label={`打开导航覆盖对象 ${row.pageId}`}
+                    onClick={() => openCockpitNavigationTarget(row.objectTarget, onTabChange, onOpenTarget)}
+                  >
+                    <ArrowRight size={13} />
+                    <span>进入页面</span>
+                  </button>
+                  <button
+                    className="antd-btn small secondary"
+                    aria-label={`打开导航覆盖任务 ${row.pageId}`}
+                    onClick={() => openCockpitNavigationTarget(row.taskTarget, onTabChange, onOpenTarget)}
+                  >
+                    <ClipboardCheck size={13} />
+                    <span>看任务</span>
+                  </button>
+                </div>
+              </article>
+            ))}
+            {visibleRows.length === 0 && (
+              <div className="home-focus-empty">当前所有导航页面都已挂上治理与使用承接</div>
+            )}
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function CrossLayerHotspotsSection({
   architecture,
   focus,
@@ -2463,6 +2639,12 @@ export default function HomePage({
     roadmapItems,
     draftItems: readOnlyDrafts,
   }), [cockpitPages, playbooks, readOnlyDrafts, roadmapItems, siteArchitecture.featureDomains, usagePaths]);
+  const navigationCoverageRows = useMemo(() => buildNavigationCoverageRows({
+    cockpitPages,
+    usagePaths,
+    playbooks,
+    draftItems: readOnlyDrafts,
+  }), [cockpitPages, playbooks, readOnlyDrafts, usagePaths]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -2721,6 +2903,8 @@ export default function HomePage({
       <FunctionalArchitectureSection architecture={siteArchitecture} onTabChange={onTabChange} onOpenTarget={onOpenTarget} />
 
       <SiteClosureBoardSection rows={siteClosureRows} onTabChange={onTabChange} onOpenTarget={onOpenTarget} />
+
+      <NavigationCoverageSection rows={navigationCoverageRows} onTabChange={onTabChange} onOpenTarget={onOpenTarget} />
 
       {/* 覆盖与缺口总览 */}
       <CoverageRadarSection

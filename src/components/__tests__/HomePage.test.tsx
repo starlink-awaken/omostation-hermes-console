@@ -293,6 +293,8 @@ describe('HomePage', () => {
       expect(screen.getByText('功能架构总览')).toBeInTheDocument()
       expect(screen.getByText('工作带补位')).toBeInTheDocument()
       expect(screen.getByText('全站闭环总表')).toBeInTheDocument()
+      expect(screen.getByText('导航页面覆盖总表')).toBeInTheDocument()
+      expect(screen.getByText('待补导航页面')).toBeInTheDocument()
       expect(screen.getByText('断链页面优先表')).toBeInTheDocument()
       expect(screen.getByText('能力缺失与待建设')).toBeInTheDocument()
       expect(screen.getByText('场景作战面')).toBeInTheDocument()
@@ -319,6 +321,7 @@ describe('HomePage', () => {
       expect(screen.getByText('优先补位')).toBeInTheDocument()
       expect(screen.getAllByText('Family Hub').length).toBeGreaterThan(0)
       expect(screen.getAllByText('22').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('25').length).toBeGreaterThan(0)
       expect(screen.getAllByText('19').length).toBeGreaterThan(0)
       expect(screen.getAllByText('知识摄取与持久化').length).toBeGreaterThan(0)
       expect(screen.getAllByText('治理与合规').length).toBeGreaterThan(0)
@@ -329,6 +332,8 @@ describe('HomePage', () => {
       expect(screen.getByRole('button', { name: '打开工作带任务 开发工具' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开全站闭环对象 Home' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开全站闭环任务 Home' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开导航覆盖对象 Guide' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开导航覆盖任务 Guide' })).toBeInTheDocument()
       expect(screen.getByText(/阻塞项目 9 个/)).toBeInTheDocument()
       expect(screen.getByText('按场景进入')).toBeInTheDocument()
       expect(screen.getByText('首页建设控制台')).toBeInTheDocument()
@@ -439,6 +444,12 @@ describe('HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /打开全站闭环任务 Home/ }))
     expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
 
+    fireEvent.click(screen.getByRole('button', { name: /打开导航覆盖对象 Guide/ }))
+    expect(onTabChange).toHaveBeenCalledWith('Guide')
+
+    fireEvent.click(screen.getByRole('button', { name: /打开导航覆盖任务 Guide/ }))
+    expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
+
     fireEvent.click(screen.getByRole('button', { name: /打开日常体检/ }))
     expect(onTabChange).toHaveBeenCalledWith('AlertCenter')
 
@@ -499,6 +510,36 @@ describe('HomePage', () => {
     expect(fetch).toHaveBeenCalledWith('/api/cockpit/system-map')
     expect(fetch).toHaveBeenCalledWith('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80')
   }, 30000)
+
+  it('routes navigation coverage rows to exact page and task targets', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/health/summary') {
+        return Promise.resolve(okJson({ health_score: 90, health_score_change: 1, active_services: 2, total_services: 3, active_tasks: 1, today_requests: 20, today_requests_change: 2 }))
+      }
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      if (url === '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80') return Promise.resolve(okJson(taskPayload))
+      if (url.startsWith('/api/tasks')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/alerts')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/metrics')) return Promise.resolve(okJson({ health_score: [], requests: [], error_rate: [] }))
+      if (url.startsWith('/api/omos/thoughts')) return Promise.resolve(okJson({ status: 'ok', thoughts: [] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<HomePage onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '打开导航覆盖对象 Guide' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开导航覆盖任务 Guide' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开导航覆盖对象 Guide' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开导航覆盖任务 Guide' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Guide', pageId: 'Guide' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Guide' })
+  })
 
   it('opens homepage focus items with their source context', async () => {
     const onTabChange = vi.fn()
