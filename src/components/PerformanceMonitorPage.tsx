@@ -33,6 +33,17 @@ interface PerformanceMonitorPageProps {
   focusTaskQuery?: string;
 }
 
+type PerformanceClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesPerformanceFocusQuery(values: Array<string | number | null | undefined>, query?: string | null) {
   if (!query) return false;
   const normalizedQuery = query.trim().toLowerCase();
@@ -104,6 +115,7 @@ export default function PerformanceMonitorPage({
   const degradedServices = services.filter((service) => service.status !== 'online' || (service.cpu ?? 0) >= 80 || (service.memory ?? 0) >= 80);
   const hotServices = (degradedServices.length ? degradedServices : services).slice(0, 3);
   const leadPerformanceService = hotServices[0] || services[0] || null;
+  const firstDegradedService = degradedServices[0] || null;
   const performanceTaskDraft = (() => {
     const serviceName = leadPerformanceService?.name || '性能监控';
     const statusText = leadPerformanceService ? getStatusText(leadPerformanceService.status) : '待确认';
@@ -140,6 +152,56 @@ export default function PerformanceMonitorPage({
       logTarget: { tab: 'LogViewer' },
     };
   })();
+  const performanceClosureRows: PerformanceClosureRow[] = [
+    {
+      id: 'hotspot-triage',
+      title: '热点服务与异常分级',
+      summary: '性能页最先要接住的，是离线、降级和高压服务，不然曲线再漂亮也只是在看热闹。',
+      signal: firstDegradedService ? `${firstDegradedService.name} · ${getStatusText(firstDegradedService.status)}` : `样本 ${services.length}`,
+      nextAction: firstDegradedService
+        ? `优先围绕 ${firstDegradedService.name} 定位 CPU/内存异常，再决定先去告警还是日志页。`
+        : '当前没有明显异常服务，抽查一次性能页到后续证据页的承接链路。',
+      statusTone: firstDegradedService ? 'degraded' : 'online',
+      objectTarget: { tab: 'Performance', taskQuery: firstDegradedService?.name || 'performance-hotspot' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstDegradedService?.name || 'performance-hotspot' },
+    },
+    {
+      id: 'alerts-correlation',
+      title: '告警联动与事件确认',
+      summary: '性能波动如果不回告警页确认事件级别，很容易在图表层面反复看，最后还是不知道先救哪一个。',
+      signal: firstDegradedService ? `告警候选 ${firstDegradedService.name}` : '待抽查告警联动',
+      nextAction: firstDegradedService
+        ? `带着 ${firstDegradedService.name} 回告警中心，确认它有没有形成正式异常事件。`
+        : '当前没有明显热点服务，抽查性能到告警页的联动链路是否仍然可用。',
+      statusTone: firstDegradedService ? 'degraded' : 'online',
+      objectTarget: { tab: 'AlertCenter', taskQuery: firstDegradedService?.name || 'performance-alerts' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstDegradedService?.name || 'performance-alerts' },
+    },
+    {
+      id: 'logs-systemmap',
+      title: '日志追证与系统地图回挂',
+      summary: '性能问题最后要回日志抓正文，再回系统地图挂到具体页面或路径上，不然只能知道慢，不知道卡哪。',
+      signal: leadPerformanceService ? `追证 ${leadPerformanceService.name}` : '待抽查回挂',
+      nextAction: leadPerformanceService
+        ? `把 ${leadPerformanceService.name} 带去日志页抓证据，再回系统地图确认它影响哪条使用路径。`
+        : '当前没有明确热点对象，抽查性能到日志和系统地图的回挂链路。',
+      statusTone: leadPerformanceService ? 'degraded' : 'online',
+      objectTarget: { tab: 'LogViewer', taskQuery: leadPerformanceService?.name || 'performance-logs' },
+      taskTarget: { tab: 'SystemMap', pageId: 'Performance' },
+    },
+    {
+      id: 'task-closeout',
+      title: '任务承接与持续治理',
+      summary: '真正需要反复盯的性能问题，最后都得进任务中心，不然每次都是重新看图重新猜。',
+      signal: leadPerformanceService ? `待承接 ${leadPerformanceService.name}` : '当前无热点对象',
+      nextAction: leadPerformanceService
+        ? `把 ${leadPerformanceService.name} 的性能治理动作正式送进任务中心持续追。`
+        : '当前没有明确热点对象，抽查性能补位任务链路是否还能顺利落到任务中心。',
+      statusTone: leadPerformanceService ? 'degraded' : 'online',
+      objectTarget: { tab: 'Performance', taskQuery: leadPerformanceService?.name || 'performance-task-closeout' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: leadPerformanceService?.name || 'performance-task-closeout' },
+    },
+  ];
   const focusedPerformanceCard = (() => {
     const matchedService = services.find((service) => (
       matchesPerformanceFocusQuery(
@@ -154,6 +216,19 @@ export default function PerformanceMonitorPage({
         detail: `${getStatusText(matchedService.status)} · CPU ${typeof matchedService.cpu === 'number' ? `${matchedService.cpu}%` : '未提供'} · 内存 ${typeof matchedService.memory === 'number' ? `${matchedService.memory}%` : '未提供'}`,
         objectTarget: { tab: 'Performance', taskQuery: matchedService.name },
         taskTarget: { tab: 'TaskCenter', taskQuery: matchedService.name },
+      };
+    }
+
+    const matchedClosure = performanceClosureRows.find((row) => (
+      matchesPerformanceFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '性能闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
       };
     }
 
@@ -256,6 +331,57 @@ export default function PerformanceMonitorPage({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="性能闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>性能闭环总表</h2>
+            <p className="text-muted">把热点服务、告警联动、日志追证、系统地图回挂和任务承接并排摆出来，性能页才不只是曲线板。</p>
+          </div>
+          <span className="status-badge online">{performanceClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {performanceClosureRows.map((row) => (
+            <article
+              key={`performance-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开性能闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <AlertTriangle size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开性能闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Activity size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">

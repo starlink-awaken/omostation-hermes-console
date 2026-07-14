@@ -32,6 +32,7 @@ describe('PerformanceMonitorPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('性能监控数据暂不可用')
+      expect(screen.getByRole('region', { name: '性能闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('性能承接工作台')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '重试性能指标' })).toBeInTheDocument()
     })
@@ -110,6 +111,45 @@ describe('PerformanceMonitorPage', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Performance', taskQuery: 'cockpit-api' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'cockpit-api' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces performance closure routing when focus hits log handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/metrics/system')) {
+        return Promise.resolve(okJson({
+          cpu: [{ timestamp: '10:00', value: 81 }],
+          memory: [{ timestamp: '10:00', value: 62 }],
+          disk: [{ timestamp: '10:00', value: 74 }],
+          network: [{ timestamp: '10:00', value: 33 }],
+        }))
+      }
+      return Promise.resolve(okJson({
+        items: [
+          { name: 'cockpit-api', status: 'degraded', cpu: 91, memory: 82, uptime: '3h' },
+        ],
+      }))
+    })
+
+    render(
+      <PerformanceMonitorPage
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="日志追证与系统地图回挂"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前性能承接焦点' })
+    expect(within(focusRegion).getByText('日志追证与系统地图回挂')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开性能焦点对象 日志追证与系统地图回挂' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开性能焦点任务 日志追证与系统地图回挂' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'LogViewer', taskQuery: 'cockpit-api' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'SystemMap', pageId: 'Performance' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
 })
