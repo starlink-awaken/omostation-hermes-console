@@ -49,6 +49,7 @@ interface PriorityProject {
   layer: string;
   status: string;
   score: number;
+  cockpit_page?: string;
   primary_gap: string;
   next_action: string;
   triage_commands: number;
@@ -2497,6 +2498,127 @@ function ConstructionLoopSection({
   );
 }
 
+function ProjectEntryInboxSection({
+  focus,
+  cockpitPages,
+  onTabChange,
+  onOpenTarget,
+}: {
+  focus: OperatingFocus;
+  cockpitPages: CockpitPageMeta[];
+  onTabChange?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+}) {
+  const rows = focus.priorityProjects.slice(0, 5).map((project) => {
+    const entryPageId = project.cockpit_page || 'SystemMap';
+    const entryPage = cockpitPages.find((page) => page.id === entryPageId)
+      || COCKPIT_PAGE_REGISTRY.find((page) => page.id === entryPageId)
+      || null;
+
+    return {
+      id: project.id,
+      title: project.id,
+      layer: project.layer,
+      status: project.status,
+      score: project.score,
+      entryPageId,
+      entryPageTitle: entryPage?.title || entryPageId,
+      entryPageGroup: entryPage?.group || '项目总控',
+      primaryGap: project.primary_gap,
+      nextAction: project.next_action,
+      entryTarget: { tab: entryPageId } as CockpitNavigationTarget,
+      objectTarget: { tab: 'SystemMap', projectId: project.id } as CockpitNavigationTarget,
+      taskTarget: { tab: 'TaskCenter', taskQuery: project.id } as CockpitNavigationTarget,
+    };
+  });
+
+  const summaryItems = [
+    ['重点项目', rows.length],
+    ['已映射入口', rows.filter((row) => row.entryPageId !== 'SystemMap').length],
+    ['阻塞项目', rows.filter((row) => row.status === 'blocked').length],
+    ['风险项目', rows.filter((row) => row.status === 'at_risk').length],
+  ];
+
+  return (
+    <section className="services-section home-architecture">
+      <div className="section-header">
+        <div>
+          <h2>重点项目入口</h2>
+          <p className="text-muted">把重点项目直接翻译成 cockpit 的入口页、项目覆盖面和任务承接入口，避免项目维度只躺在矩阵里。</p>
+        </div>
+        <button className="antd-btn small" aria-label="打开重点项目总图" onClick={() => onTabChange?.('SystemMap')}>
+          <Map size={13} />
+          <span>回系统地图</span>
+          <ArrowRight size={13} />
+        </button>
+      </div>
+
+      <div className="home-architecture-kpis">
+        {summaryItems.map(([label, value]) => (
+          <div key={label} className="home-architecture-kpi">
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="home-architecture-grid">
+        <article className="home-architecture-panel">
+          <div className="home-architecture-panel-head">
+            <div>
+              <strong>项目入口收件箱</strong>
+              <small>每个项目直接给出入口页、项目面和任务承接，不再自己猜该从哪进。</small>
+            </div>
+            <span className={`status-badge ${rows.some((row) => row.status !== 'healthy') ? 'degraded' : 'online'}`}>
+              {rows.length}
+            </span>
+          </div>
+          <div className="home-architecture-list">
+            {rows.map((row) => (
+              <article key={`project-entry-${row.id}`} className="home-architecture-item home-architecture-lane">
+                <strong>{row.title}</strong>
+                <span>{row.layer} · {focusStatusText(row.status)} · {row.score}%</span>
+                <small>入口页 {row.entryPageTitle} · 工作带 {row.entryPageGroup}</small>
+                <p className="home-architecture-copy">{row.primaryGap || row.nextAction}</p>
+                <small>{row.nextAction}</small>
+                <div className="home-architecture-lane-actions">
+                  <button
+                    className="antd-btn small"
+                    aria-label={`打开项目入口页 ${row.id}`}
+                    onClick={() => openCockpitNavigationTarget(row.entryTarget, onTabChange, onOpenTarget)}
+                  >
+                    <ArrowRight size={13} />
+                    <span>入口页</span>
+                  </button>
+                  <button
+                    className="antd-btn small secondary"
+                    aria-label={`打开项目覆盖页 ${row.id}`}
+                    onClick={() => openCockpitNavigationTarget(row.objectTarget, onTabChange, onOpenTarget)}
+                  >
+                    <Map size={13} />
+                    <span>项目面</span>
+                  </button>
+                  <button
+                    className="antd-btn small secondary"
+                    aria-label={`打开项目任务 ${row.id}`}
+                    onClick={() => openCockpitNavigationTarget(row.taskTarget, onTabChange, onOpenTarget)}
+                  >
+                    <ClipboardCheck size={13} />
+                    <span>任务</span>
+                  </button>
+                </div>
+              </article>
+            ))}
+            {rows.length === 0 && (
+              <div className="home-focus-empty">当前没有重点项目入口数据</div>
+            )}
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function FocusedHomeClosureSection({
   focus,
   cockpitPages,
@@ -3079,6 +3201,13 @@ export default function HomePage({
       />
 
       <ConstructionLoopSection
+        focus={operatingFocus}
+        cockpitPages={cockpitPages}
+        onTabChange={onTabChange}
+        onOpenTarget={onOpenTarget}
+      />
+
+      <ProjectEntryInboxSection
         focus={operatingFocus}
         cockpitPages={cockpitPages}
         onTabChange={onTabChange}

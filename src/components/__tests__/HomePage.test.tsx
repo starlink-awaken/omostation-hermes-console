@@ -185,6 +185,7 @@ const systemMapPayload = {
       {
         id: 'mesh-router',
         layer: 'L0',
+        cockpit_page: 'SystemMap',
         status: 'blocked',
         score: 50,
         primary_gap: '基础状态未就绪',
@@ -194,6 +195,7 @@ const systemMapPayload = {
       {
         id: 'toolbox',
         layer: 'L1-L3',
+        cockpit_page: 'DomainApps',
         status: 'blocked',
         score: 50,
         primary_gap: '基础状态未就绪',
@@ -342,6 +344,7 @@ describe('HomePage', () => {
       expect(screen.getByText('按场景进入')).toBeInTheDocument()
       expect(screen.getByText('首页建设控制台')).toBeInTheDocument()
       expect(screen.getByText('建设闭环承接')).toBeInTheDocument()
+      expect(screen.getByText('重点项目入口')).toBeInTheDocument()
       expect(screen.getByText('页面能力建设')).toBeInTheDocument()
       expect(screen.getAllByText('领域挂载合同').length).toBeGreaterThan(0)
       expect(screen.getAllByText('页面能力补位').length).toBeGreaterThan(0)
@@ -381,6 +384,9 @@ describe('HomePage', () => {
       expect(screen.getByRole('button', { name: '打开首页建设任务 Family Hub' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开首页建设对象 验证补证：cockpit' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开首页建设任务 mesh-router' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开项目入口页 mesh-router' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开项目覆盖页 toolbox' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开项目任务 toolbox' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开首页症状对象 页面有了但不会用' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开首页症状任务 能看不能证' })).toBeInTheDocument()
     }, { timeout: 8000 })
@@ -425,6 +431,15 @@ describe('HomePage', () => {
     expect(onTabChange).toHaveBeenCalledWith('SystemMap')
 
     fireEvent.click(screen.getByRole('button', { name: /打开首页建设任务 mesh-router/ }))
+    expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
+
+    fireEvent.click(screen.getByRole('button', { name: /打开项目入口页 mesh-router/ }))
+    expect(onTabChange).toHaveBeenCalledWith('SystemMap')
+
+    fireEvent.click(screen.getByRole('button', { name: /打开项目覆盖页 toolbox/ }))
+    expect(onTabChange).toHaveBeenCalledWith('SystemMap')
+
+    fireEvent.click(screen.getByRole('button', { name: /打开项目任务 toolbox/ }))
     expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
 
     fireEvent.click(screen.getByRole('button', { name: /打开页面分组 入口/ }))
@@ -579,6 +594,39 @@ describe('HomePage', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Settings', pageId: 'Settings' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Settings' })
+  })
+
+  it('routes project entry inbox rows to exact page, coverage, and task targets', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/health/summary') {
+        return Promise.resolve(okJson({ health_score: 90, health_score_change: 1, active_services: 2, total_services: 3, active_tasks: 1, today_requests: 20, today_requests_change: 2 }))
+      }
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      if (url === '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80') return Promise.resolve(okJson(taskPayload))
+      if (url.startsWith('/api/tasks')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/alerts')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/metrics')) return Promise.resolve(okJson({ health_score: [], requests: [], error_rate: [] }))
+      if (url.startsWith('/api/omos/thoughts')) return Promise.resolve(okJson({ status: 'ok', thoughts: [] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<HomePage onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '打开项目入口页 mesh-router' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开项目覆盖页 toolbox' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开项目任务 toolbox' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开项目入口页 mesh-router' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开项目覆盖页 toolbox' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开项目任务 toolbox' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'SystemMap', projectId: 'toolbox' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(3, { tab: 'TaskCenter', taskQuery: 'toolbox' })
   })
 
   it('opens homepage focus items with their source context', async () => {
