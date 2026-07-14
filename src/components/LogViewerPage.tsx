@@ -21,6 +21,17 @@ interface LogViewerPageProps {
   focusTaskQuery?: string;
 }
 
+type LogClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesLogFocusQuery(values: Array<string | null | undefined>, query?: string | null) {
   if (!query) return false;
   const normalizedQuery = query.trim().toLowerCase();
@@ -114,6 +125,60 @@ export default function LogViewerPage({
   });
   const criticalLogs = filteredLogs.filter((log) => log.level === 'error' || log.level === 'fatal');
   const hotSources = [...new Set((criticalLogs.length ? criticalLogs : filteredLogs).map((log) => log.source))].slice(0, 3);
+  const closureCriticalLogs = logs.filter((log) => log.level === 'error' || log.level === 'fatal');
+  const closureHotSources = [...new Set((closureCriticalLogs.length ? closureCriticalLogs : logs).map((log) => log.source))].slice(0, 3);
+  const firstCriticalLog = closureCriticalLogs[0] || logs[0] || null;
+  const firstHotSource = closureHotSources[0] || null;
+  const logClosureRows: LogClosureRow[] = [
+    {
+      id: 'alerts-correlation',
+      title: '告警关联与异常定级',
+      summary: '日志里看到 error/fatal 还不够，先回告警中心确认它是不是已经形成正式异常事件。',
+      signal: firstCriticalLog ? `高优 ${closureCriticalLogs.length}` : '暂无高优错误',
+      nextAction: firstCriticalLog
+        ? `围绕 ${firstCriticalLog.source} 回告警中心核对事件级别和处理状态。`
+        : '当前没有明显高优错误，抽查一次日志到告警中心的承接链是否还能走通。',
+      statusTone: firstCriticalLog ? 'degraded' : 'online',
+      objectTarget: { tab: 'AlertCenter', taskQuery: firstCriticalLog?.source || 'logs-alerts' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstCriticalLog?.source || 'logs-alerts' },
+    },
+    {
+      id: 'performance-correlation',
+      title: '性能波动与时间点追证',
+      summary: '很多日志报错是性能抖动的结果，不把时间点带去性能页，容易一直在文字层面转圈。',
+      signal: firstHotSource ? `来源 ${firstHotSource}` : `日志 ${filteredLogs.length}`,
+      nextAction: firstHotSource
+        ? `结合 ${firstHotSource} 的报错时间点去性能页看资源和延迟波动。`
+        : '当前没有明显热点来源，抽查一次日志到性能页的时间点联动是否还可用。',
+      statusTone: firstHotSource ? 'degraded' : 'online',
+      objectTarget: { tab: 'Performance', taskQuery: firstHotSource || 'logs-performance' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstHotSource || 'logs-performance' },
+    },
+    {
+      id: 'systemmap-handoff',
+      title: '系统地图缺口回挂',
+      summary: '重复错误不能只留在日志页，它们要回系统地图挂成全站缺口，才能进入真正的治理视角。',
+      signal: firstCriticalLog ? `待回挂 ${closureCriticalLogs.length}` : '待抽查回挂',
+      nextAction: firstCriticalLog
+        ? `把 ${firstCriticalLog.source} 反复出现的问题回挂到系统地图，确认影响的是哪条路径和哪页。`
+        : '当前没有明显重复错误，抽查一次日志到系统地图的缺口回挂链路。',
+      statusTone: firstCriticalLog ? 'degraded' : 'online',
+      objectTarget: { tab: 'SystemMap', pageId: 'LogViewer' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstCriticalLog?.source || 'LogViewer' },
+    },
+    {
+      id: 'task-closeout',
+      title: '任务承接与长期追踪',
+      summary: '日志是证据，不是终点。真正需要反复看的错误源，最后都得沉进任务中心持续跟。',
+      signal: firstHotSource ? `待承接 ${closureHotSources.length}` : '当前无热点源',
+      nextAction: firstHotSource
+        ? `把 ${firstHotSource} 相关的追查动作沉到任务中心，别靠人工记忆继续盯。`
+        : '当前没有明显热点源，抽查一次日志问题到任务中心的 closeout 链路。',
+      statusTone: firstHotSource ? 'degraded' : 'online',
+      objectTarget: { tab: 'LogViewer', taskQuery: firstHotSource || 'logs-task-closeout' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstHotSource || 'logs-task-closeout' },
+    },
+  ];
   const focusedLogCard = (() => {
     const matchedLog = logs.find((log) => (
       matchesLogFocusQuery([log.source, log.level, log.message], focusTaskQuery)
@@ -125,6 +190,19 @@ export default function LogViewerPage({
         detail: `${matchedLog.level.toUpperCase()} · ${matchedLog.message}`,
         objectTarget: { tab: 'LogViewer', taskQuery: matchedLog.source },
         taskTarget: { tab: 'TaskCenter', taskQuery: matchedLog.source },
+      };
+    }
+
+    const matchedClosure = logClosureRows.find((row) => (
+      matchesLogFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '日志闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
       };
     }
 
@@ -271,6 +349,57 @@ export default function LogViewerPage({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="日志闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>日志闭环总表</h2>
+            <p className="text-muted">把告警定级、性能追证、系统地图回挂和任务承接并排摆出来，日志页才不只是滚动刷文本。</p>
+          </div>
+          <span className="status-badge online">{logClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {logClosureRows.map((row) => (
+            <article
+              key={`log-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开日志闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <Search size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开日志闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <AlertTriangle size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">

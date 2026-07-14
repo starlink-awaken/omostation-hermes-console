@@ -38,6 +38,7 @@ describe('LogViewerPage', () => {
     render(<LogViewerPage onNavigate={onNavigate} />)
 
     await waitFor(() => {
+      expect(screen.getByRole('region', { name: '日志闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('日志承接工作台')).toBeInTheDocument()
       expect(screen.getByText('database timeout')).toBeInTheDocument()
     })
@@ -68,6 +69,35 @@ describe('LogViewerPage', () => {
     fireEvent.click(within(focusRegion).getByRole('button', { name: '打开日志焦点任务 cockpit-api' }))
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'LogViewer', taskQuery: 'cockpit-api' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'cockpit-api' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces log closure routing when focus hits system map handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockResolvedValue(okJson({
+      items: [
+        { timestamp: '2026-07-11T10:00:00Z', level: 'error', source: 'cockpit-api', message: 'database timeout' },
+        { timestamp: '2026-07-11T10:01:00Z', level: 'info', source: 'worker', message: 'job completed' },
+      ],
+    }))
+
+    render(
+      <LogViewerPage
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="系统地图缺口回挂"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前日志承接焦点' })
+    expect(within(focusRegion).getByText('系统地图缺口回挂')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开日志焦点对象 系统地图缺口回挂' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开日志焦点任务 系统地图缺口回挂' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', pageId: 'LogViewer' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'cockpit-api' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
