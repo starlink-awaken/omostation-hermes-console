@@ -47,6 +47,7 @@ describe('WorkflowsView', () => {
     render(<WorkflowsView />)
 
     await waitFor(() => {
+      expect(screen.getByRole('region', { name: '工作流闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('工作流承接工作台')).toBeInTheDocument()
       expect(screen.getAllByText('发布治理变更').length).toBeGreaterThan(0)
     })
@@ -81,6 +82,29 @@ describe('WorkflowsView', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Workflows', taskQuery: 'wf-approval-42' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'wf-approval-42' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces workflow closure routing when focus hits system map handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    render(
+      <WorkflowsView
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="系统地图与任务收口"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前工作流承接焦点' })
+    expect(within(focusRegion).getByText('系统地图与任务收口')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开工作流焦点对象 系统地图与任务收口' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开工作流焦点任务 系统地图与任务收口' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', pageId: 'Workflows' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '系统地图与任务收口' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
 })

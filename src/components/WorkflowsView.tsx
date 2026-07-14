@@ -32,6 +32,17 @@ interface WorkflowsViewProps {
   focusTaskQuery?: string;
 }
 
+type WorkflowClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesWorkflowFocusQuery(values: Array<string | null | undefined>, query?: string) {
   const normalizedQuery = query?.trim().toLowerCase();
   if (!normalizedQuery) return false;
@@ -173,6 +184,62 @@ export default function WorkflowsView({
     },
   ]), []);
 
+  const workflowClosureRows = useMemo<WorkflowClosureRow[]>(() => {
+    const firstAwaiting = workflowSummary.awaitingApproval[0];
+    const firstRuntime = [...workflowSummary.running, ...workflowSummary.stalled][0];
+    const firstCompleted = workflowSummary.completed[0];
+    const selectedNode = selectedWf?.nodes?.find((node) => node.status === 'awaiting_approval') || selectedWf?.nodes?.[0];
+
+    return [
+      {
+        id: 'approval-hitl',
+        title: '待授权与 HITL 放行',
+        summary: '先把卡在 RED 门控的工作流拉出来授权，不让它们沉在历史列表里。',
+        signal: firstAwaiting ? `待授权 ${workflowSummary.awaitingApproval.length}` : '当前无待授权',
+        nextAction: firstAwaiting
+          ? `优先处理 ${firstAwaiting.id}，确认人工放行是否合理，再继续往后跑。`
+          : '当前没有待授权流，抽查最近一次授权链是否还能走通。',
+        statusTone: firstAwaiting ? 'degraded' : 'online',
+        objectTarget: { tab: 'Workflows', taskQuery: firstAwaiting?.id || 'approval' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstAwaiting?.id || 'approval' },
+      },
+      {
+        id: 'runtime-evidence',
+        title: '运行中与补证追踪',
+        summary: '运行中或异常流不能只看状态，要继续追节点、输出和证据，确认问题卡在哪一步。',
+        signal: firstRuntime ? `待补证 ${workflowSummary.running.length + workflowSummary.stalled.length}` : '当前无待补证',
+        nextAction: firstRuntime
+          ? `打开 ${firstRuntime.id} 的详情，确认节点输出、异常状态和补证方向。`
+          : '当前没有运行中或异常流，抽查最近一次详情展开链路是否仍然可用。',
+        statusTone: firstRuntime ? 'degraded' : 'online',
+        objectTarget: { tab: 'Workflows', taskQuery: firstRuntime?.id || selectedNode?.id || 'runtime' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstRuntime?.id || selectedNode?.id || 'runtime' },
+      },
+      {
+        id: 'assets-protocol',
+        title: '回资产与协议补位',
+        summary: '工作流问题最后常常是定义面的问题，要回资产库和协议面补技能、桥接和约束。',
+        signal: selectedNode ? `节点 ${selectedNode.id}` : `已完成 ${workflowSummary.completed.length}`,
+        nextAction: selectedNode
+          ? `围绕 ${selectedNode.id} 回资产和协议面核对定义、桥接和治理边界。`
+          : '当前没有已展开节点，优先从最近一次工作流回资产和协议面做定义复核。',
+        statusTone: selectedNode ? 'degraded' : 'online',
+        objectTarget: { tab: 'Assets', taskQuery: selectedNode?.id || firstCompleted?.id || 'workflow-assets' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: selectedNode?.id || firstCompleted?.id || 'workflow-assets' },
+      },
+      {
+        id: 'systemmap-task',
+        title: '系统地图与任务收口',
+        summary: '工作流异常最终要挂回系统地图和任务中心，不然只能看到运行症状，看不到全站落点。',
+        signal: firstCompleted ? `已完成 ${workflowSummary.completed.length}` : `总记录 ${workflows.length}`,
+        nextAction: '把工作流异常或待跟进项正式送进任务中心，并回系统地图确认架构落点。',
+        statusTone: workflows.length > 0 ? 'degraded' : 'online',
+        objectTarget: { tab: 'SystemMap', pageId: 'Workflows' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || firstAwaiting?.id || firstRuntime?.id || 'Workflows' },
+      },
+    ];
+  }, [focusTaskQuery, selectedWf?.nodes, workflowSummary.awaitingApproval, workflowSummary.completed, workflowSummary.running, workflowSummary.stalled, workflows.length]);
+
   const focusedWorkflowCard = useMemo(() => {
     const matchedWorkflow = workflows.find((workflow) => (
       matchesWorkflowFocusQuery([workflow.id, workflow.task, workflow.status], focusTaskQuery)
@@ -202,6 +269,19 @@ export default function WorkflowsView({
       };
     }
 
+    const matchedClosure = workflowClosureRows.find((row) => (
+      matchesWorkflowFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '工作流闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
+      };
+    }
+
     if (focusPageId === 'Workflows') {
       return {
         kicker: '当前页面',
@@ -213,7 +293,7 @@ export default function WorkflowsView({
     }
 
     return null;
-  }, [focusPageId, focusTaskQuery, selectedWf, workflows]);
+  }, [focusPageId, focusTaskQuery, selectedWf, workflowClosureRows, workflows]);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -305,6 +385,57 @@ export default function WorkflowsView({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="工作流闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>工作流闭环总表</h2>
+            <p className="text-muted">把待授权、运行补证、资产协议补位和系统地图/任务收口并排摆出来，工作流页才不只是历史记录和授权按钮。</p>
+          </div>
+          <span className="status-badge online">{workflowClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {workflowClosureRows.map((row) => (
+            <article
+              key={`workflow-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开工作流闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <Play size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开工作流闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <FileText size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">
