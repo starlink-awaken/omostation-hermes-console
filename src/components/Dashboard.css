@@ -6808,6 +6808,21 @@ button.system-map-gap {
   transform: translateY(-1px);
 }
 
+.home-architecture-lane {
+  cursor: default;
+}
+
+.home-architecture-lane:hover {
+  transform: none;
+}
+
+.home-architecture-lane-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
 .home-architecture-footnote {
   margin-top: -2px;
 }

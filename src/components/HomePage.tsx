@@ -200,6 +200,18 @@ interface ArchitectureRoadmapLane {
   count: number;
 }
 
+interface ArchitectureLaneSummary {
+  id: string;
+  title: string;
+  pageCount: number;
+  usageCount: number;
+  domainCount: number;
+  attentionCount: number;
+  nextAction: string;
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+}
+
 interface SiteArchitecture {
   projects: number;
   pages: number;
@@ -222,6 +234,7 @@ interface SiteArchitecture {
   pageGroups: PageGroupSummary[];
   featureDomains: FeatureDomain[];
   roadmapLanes: ArchitectureRoadmapLane[];
+  laneSummaries: ArchitectureLaneSummary[];
 }
 
 const HOME_DRAFT_TASKS_URL = '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80';
@@ -300,6 +313,7 @@ const DEFAULT_SITE_ARCHITECTURE: SiteArchitecture = {
   pageGroups: [],
   featureDomains: [],
   roadmapLanes: [],
+  laneSummaries: [],
 };
 
 const PAGE_GROUP_ORDER = ['入口', '运行大盘', '智能与知识', '系统治理', '开发工具', '领域应用', '系统配置'];
@@ -318,6 +332,93 @@ function buildPageGroups(pages: CockpitPageMeta[]): PageGroupSummary[] {
       const leftIndex = PAGE_GROUP_ORDER.indexOf(left.group);
       const rightIndex = PAGE_GROUP_ORDER.indexOf(right.group);
       return (leftIndex === -1 ? PAGE_GROUP_ORDER.length : leftIndex) - (rightIndex === -1 ? PAGE_GROUP_ORDER.length : rightIndex);
+    });
+}
+
+function buildArchitectureLaneSummaries({
+  cockpitPages,
+  featureDomains,
+  usagePaths,
+  roadmapItems,
+  draftItems,
+  domainAttentionItems,
+}: {
+  cockpitPages: CockpitPageMeta[];
+  featureDomains: FeatureDomain[];
+  usagePaths: UsagePath[];
+  roadmapItems: Array<{ cockpit_page?: string; problem?: string; title?: string; status?: string }>;
+  draftItems: DraftTaskSummary[];
+  domainAttentionItems: Array<{ id?: string; name?: string; next_action?: string }>;
+}): ArchitectureLaneSummary[] {
+  const groupPages = new globalThis.Map<string, globalThis.Map<string, string>>();
+
+  const registerGroupPage = (group?: string, pageId?: string, pageTitle?: string) => {
+    if (!group || !pageId) return;
+    const existing = groupPages.get(group) || new globalThis.Map<string, string>();
+    existing.set(pageId, pageTitle || pageId);
+    groupPages.set(group, existing);
+  };
+
+  cockpitPages.forEach((page) => registerGroupPage(page.group, page.id, page.title));
+  usagePaths.forEach((path) => {
+    (path.pages || []).forEach((page) => registerGroupPage(page.group, page.id, page.title));
+  });
+
+  return [...groupPages.entries()]
+    .sort((left, right) => {
+      const leftIndex = PAGE_GROUP_ORDER.indexOf(left[0]);
+      const rightIndex = PAGE_GROUP_ORDER.indexOf(right[0]);
+      return (leftIndex === -1 ? PAGE_GROUP_ORDER.length : leftIndex) - (rightIndex === -1 ? PAGE_GROUP_ORDER.length : rightIndex);
+    })
+    .map(([group, pages]) => {
+      const pageIds = [...pages.keys()];
+      const matchingUsagePaths = usagePaths.filter((path) =>
+        (path.pages || []).some((page) => page.id && pageIds.includes(page.id)),
+      );
+      const matchingDomains = featureDomains.filter((domain) =>
+        (domain.cockpit_page && pageIds.includes(domain.cockpit_page))
+        || (domain.providers || []).some((provider) => pageIds.includes(provider)),
+      );
+      const matchingRoadmapItems = roadmapItems.filter((item) =>
+        item.cockpit_page && pageIds.includes(item.cockpit_page) && item.status !== 'shipped',
+      );
+      const pageDrafts = draftItems.filter((item) =>
+        item.read_only
+        && item.source?.type === 'system_map_page_maturity'
+        && item.source.id
+        && pageIds.includes(item.source.id),
+      );
+      const laneAttentionCount = pageDrafts.length
+        + matchingRoadmapItems.length
+        + (group === '领域应用' ? domainAttentionItems.length : 0);
+      const primaryPageDraft = pageDrafts[0];
+      const primaryRoadmap = matchingRoadmapItems[0];
+      const primaryDomainAttention = group === '领域应用' ? domainAttentionItems[0] : null;
+      const primaryPageId = primaryPageDraft?.source?.id || primaryRoadmap?.cockpit_page || pageIds[0] || null;
+      const nextAction = primaryPageDraft?.description
+        || primaryRoadmap?.problem
+        || primaryDomainAttention?.next_action
+        || `先回 ${group} 这条工作带确认页面、路径和能力域是否都挂上了。`;
+
+      return {
+        id: group,
+        title: group,
+        pageCount: pageIds.length,
+        usageCount: matchingUsagePaths.length,
+        domainCount: matchingDomains.length,
+        attentionCount: laneAttentionCount,
+        nextAction,
+        objectTarget: primaryDomainAttention
+          ? { tab: 'DomainApps', taskQuery: primaryDomainAttention.id || primaryDomainAttention.name || 'domain' }
+          : primaryPageId
+            ? { tab: 'SystemMap', pageId: primaryPageId }
+            : { tab: 'SystemMap' },
+        taskTarget: primaryDomainAttention
+          ? { tab: 'TaskCenter', taskQuery: primaryDomainAttention.id || primaryDomainAttention.name || 'domain' }
+          : primaryPageId
+            ? { tab: 'TaskCenter', taskQuery: primaryPageId }
+            : { tab: 'TaskCenter', taskQuery: group },
+      };
     });
 }
 
@@ -904,9 +1005,11 @@ function ScenarioWorkbenchSection({
 function FunctionalArchitectureSection({
   architecture,
   onTabChange,
+  onOpenTarget,
 }: {
   architecture: SiteArchitecture;
   onTabChange?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
 }) {
   const architectureSummaryTiles = [
     { id: 'projects', title: '项目', value: architecture.projects },
@@ -1035,6 +1138,48 @@ function FunctionalArchitectureSection({
             ))}
             {architecture.featureDomains.length === 0 && (
               <div className="home-focus-empty">暂无能力域摘要</div>
+            )}
+          </div>
+        </article>
+
+        <article className="home-architecture-panel">
+          <div className="home-architecture-panel-head">
+            <div>
+              <strong>工作带补位</strong>
+              <small>首页直接看哪条工作带还在掉链子，少走一层再定位。</small>
+            </div>
+            <span className={`status-badge ${architecture.laneSummaries.some((lane) => lane.attentionCount > 0) ? 'degraded' : 'online'}`}>
+              {architecture.laneSummaries.filter((lane) => lane.attentionCount > 0).length}
+            </span>
+          </div>
+          <div className="home-architecture-list">
+            {architecture.laneSummaries.map((lane) => (
+              <article key={lane.id} className="home-architecture-item home-architecture-lane">
+                <strong>{lane.title}</strong>
+                <span>页面 {lane.pageCount} · 使用链 {lane.usageCount} · 能力域 {lane.domainCount} · 待处理 {lane.attentionCount}</span>
+                <small>{lane.nextAction}</small>
+                <div className="home-architecture-lane-actions">
+                  <button
+                    className="antd-btn small"
+                    aria-label={`打开工作带补位 ${lane.title}`}
+                    onClick={() => openCockpitNavigationTarget(lane.objectTarget, onTabChange, onOpenTarget)}
+                  >
+                    <ArrowRight size={13} />
+                    <span>看对象</span>
+                  </button>
+                  <button
+                    className="antd-btn small secondary"
+                    aria-label={`打开工作带任务 ${lane.title}`}
+                    onClick={() => openCockpitNavigationTarget(lane.taskTarget, onTabChange, onOpenTarget)}
+                  >
+                    <Route size={13} />
+                    <span>看任务</span>
+                  </button>
+                </div>
+              </article>
+            ))}
+            {architecture.laneSummaries.length === 0 && (
+              <div className="home-focus-empty">暂无工作带补位摘要</div>
             )}
           </div>
         </article>
@@ -2160,6 +2305,11 @@ export default function HomePage({
           const systemSummary = systemMap.summary || {};
           const cockpitPages = systemMap.cockpit_pages || [];
           const featureDomains = systemMap.feature_domains || [];
+          let draftItems: DraftTaskSummary[] = [];
+          if (draftTasksRes.ok) {
+            const draftData = await draftTasksRes.json();
+            draftItems = draftData.items || [];
+          }
           setCockpitPages(cockpitPages);
           setSiteArchitecture({
             projects: systemSummary.projects || 0,
@@ -2187,14 +2337,17 @@ export default function HomePage({
               title: lane.title,
               count: lane.items?.length || 0,
             })),
+            laneSummaries: buildArchitectureLaneSummaries({
+              cockpitPages,
+              featureDomains,
+              usagePaths: systemMap.usage_paths || [],
+              roadmapItems: systemMap.roadmap?.items || [],
+              draftItems,
+              domainAttentionItems: systemMap.domain_apps?.attention_items || [],
+            }),
           });
           setUsagePaths(systemMap.usage_paths || []);
           setPlaybooks(systemMap.playbooks || []);
-          let draftItems: DraftTaskSummary[] = [];
-          if (draftTasksRes.ok) {
-            const draftData = await draftTasksRes.json();
-            draftItems = draftData.items || [];
-          }
           const readOnlyDraftItems = draftItems.filter((item) => item.read_only);
           const countDrafts = (sourceType: string) => readOnlyDraftItems.filter((item) => item.source?.type === sourceType).length;
           const actionDrafts = readOnlyDraftItems
@@ -2341,7 +2494,7 @@ export default function HomePage({
       />
 
       {/* 全站功能架构 */}
-      <FunctionalArchitectureSection architecture={siteArchitecture} onTabChange={onTabChange} />
+      <FunctionalArchitectureSection architecture={siteArchitecture} onTabChange={onTabChange} onOpenTarget={onOpenTarget} />
 
       {/* 覆盖与缺口总览 */}
       <CoverageRadarSection
