@@ -28,6 +28,17 @@ interface McpMeshViewProps {
   focusTaskQuery?: string;
 }
 
+type MeshClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesMeshQuery(value?: string | null, query?: string) {
   if (!value || !query) return false;
   const haystack = value.trim().toLowerCase();
@@ -210,6 +221,69 @@ export default function McpMeshView({
     },
   ];
 
+  const topDomain = meshBacklog.domainCounts[0] || null;
+  const firstMissingDomain = meshBacklog.missingDomains[0] || null;
+  const firstService = filteredServices[0] || services[0] || null;
+  const resolveSignal = resolveResult
+    ? '已完成一次解析'
+    : resolving
+      ? '解析中'
+      : resolveError
+        ? '解析待修'
+        : `待验证 ${resolveUri.split('/')[2] || 'URI'}`;
+  const meshClosureRows: MeshClosureRow[] = [
+    {
+      id: 'domain-observability',
+      title: '热点域与观测追证',
+      summary: '热点域不能只在路由表里看数量，最后要回观测和日志看真实延迟、错误和告警证据。',
+      signal: topDomain ? `${topDomain.domain.toUpperCase()} ${topDomain.count} 条` : `总路由 ${services.length}`,
+      nextAction: topDomain
+        ? `先围绕 ${topDomain.domain.toUpperCase()} 域回观测面核对异常，再决定是否扩实例或改路由。`
+        : '当前没有明显热点域，抽查一条网格路由到观测面的承接链是否仍然可用。',
+      statusTone: topDomain ? 'degraded' : 'online',
+      objectTarget: { tab: 'Observability', taskQuery: topDomain?.domain || 'mesh-observability' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: topDomain?.domain || 'mesh-observability' },
+    },
+    {
+      id: 'domain-app-mount',
+      title: '缺失域与应用补挂',
+      summary: '缺失域不是单纯的网格空位，它通常意味着领域入口、挂载对象或服务注册还没真正接上。',
+      signal: firstMissingDomain ? `待补 ${meshBacklog.missingDomains.length}` : '域覆盖完整',
+      nextAction: firstMissingDomain
+        ? `先补 ${firstMissingDomain.domain.toUpperCase()} 域注册，再回应用中心核对对应领域入口是否已经挂上。`
+        : '当前没有缺失域，抽查应用中心与网格域之间的映射关系是否还是一致的。',
+      statusTone: firstMissingDomain ? 'degraded' : 'online',
+      objectTarget: { tab: 'DomainApps', taskQuery: firstMissingDomain?.domain || 'mesh-domain-apps' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstMissingDomain?.domain || 'mesh-domain-apps' },
+    },
+    {
+      id: 'protocol-compute',
+      title: '协议桥接与算力分流',
+      summary: '网格问题经常不是单页问题，要回协议面核对约束，再去算力面确认分流和下游节点是不是健康。',
+      signal: firstService ? `${firstService.domain.toUpperCase()} · ${firstService.transport}` : `HTTP ${meshBacklog.registrationCount}`,
+      nextAction: firstService
+        ? `围绕 ${firstService.uri} 回协议面核对桥接约束，再去算力面确认它压到了哪些节点。`
+        : '当前没有已注册服务，先补一条实例注册，再确认协议与算力链路是否承接得住。',
+      statusTone: firstService ? 'degraded' : 'online',
+      objectTarget: { tab: 'Protocol', taskQuery: firstService?.domain || 'mesh-protocol' },
+      taskTarget: { tab: 'Compute', taskQuery: firstService?.domain || 'mesh-compute' },
+    },
+    {
+      id: 'resolve-task-closeout',
+      title: '解析验收与任务收口',
+      summary: 'URI 解析器和实例注册不是终点，验证过的解析结果要沉成任务，不然下次还是靠人脑记住。',
+      signal: resolveSignal,
+      nextAction: resolveResult
+        ? '把这次解析和注册验收结果送进任务中心，补清楚后续处理动作。'
+        : registerStatus
+          ? '注册刚成功，继续做一次解析验收，再把结果沉到任务中心。'
+          : '先完成一次 URI 解析或实例注册验收，再把后续动作正式送进任务中心。',
+      statusTone: resolveResult || registerStatus ? 'degraded' : 'online',
+      objectTarget: { tab: 'McpMesh', taskQuery: resolveUri || registerName || 'mesh-resolve' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: resolveUri || registerName || 'mesh-resolve' },
+    },
+  ];
+
   const focusedMeshCard = useMemo(() => {
     const matchedService = focusTaskQuery
       ? services.find((service) =>
@@ -248,6 +322,25 @@ export default function McpMeshView({
           tab: matchedDomain.count === 0 ? 'DomainApps' : 'TaskCenter',
           taskQuery: matchedDomain.domain,
         } as CockpitNavigationTarget,
+      };
+    }
+
+    const matchedClosure = focusTaskQuery
+      ? meshClosureRows.find((row) => (
+        matchesMeshQuery(row.title, focusTaskQuery)
+        || matchesMeshQuery(row.summary, focusTaskQuery)
+        || matchesMeshQuery(row.signal, focusTaskQuery)
+        || matchesMeshQuery(row.nextAction, focusTaskQuery)
+      )) || null
+      : null;
+    if (matchedClosure) {
+      return {
+        title: matchedClosure.title,
+        meta: '从网格闭环总表带回来的收口对象',
+        state: matchedClosure.signal,
+        nextAction: matchedClosure.nextAction,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
       };
     }
 
@@ -372,6 +465,57 @@ export default function McpMeshView({
           </div>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="网格闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>网格闭环总表</h2>
+            <p className="text-muted">把热点域追证、缺失域补挂、协议/算力联动和解析验收任务一起摆出来，网格页才不只是路由与注册表。</p>
+          </div>
+          <span className="status-badge online">{meshClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {meshClosureRows.map((row) => (
+            <article
+              key={`mesh-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开网格闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <Network size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开网格闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <ShieldCheck size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">

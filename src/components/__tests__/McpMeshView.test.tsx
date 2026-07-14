@@ -39,6 +39,7 @@ describe('McpMeshView', () => {
     render(<McpMeshView onNavigate={onNavigate} />)
 
     await waitFor(() => {
+      expect(screen.getByRole('region', { name: '网格闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('网格动作区')).toBeInTheDocument()
       expect(screen.getByText('网格承接工作台')).toBeInTheDocument()
       expect(screen.getByText('BOS URI 网格路由明细')).toBeInTheDocument()
@@ -67,6 +68,29 @@ describe('McpMeshView', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'McpMesh', taskQuery: 'memory' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'memory' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces mesh closure routing when focus hits missing domain handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    render(
+      <McpMeshView
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="缺失域与应用补挂"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前网格承接焦点' })
+    expect(within(focusRegion).getByText('缺失域与应用补挂')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开网格焦点对象 缺失域与应用补挂' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开网格焦点任务 缺失域与应用补挂' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'DomainApps', taskQuery: 'analysis' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'analysis' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
 })
