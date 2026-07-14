@@ -301,6 +301,7 @@ describe('TaskCenterPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('region', { name: '当前任务来源工作台' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '执行路由架构总表' })).toBeInTheDocument()
       expect(screen.getByRole('region', { name: '任务来源带总表' })).toBeInTheDocument()
       expect(screen.getByText('任务承接工作台')).toBeInTheDocument()
       expect(screen.getByText('领域任务承接台')).toBeInTheDocument()
@@ -342,6 +343,55 @@ describe('TaskCenterPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开任务承接到协议面' }))
     expect(onNavigate).toHaveBeenCalledWith('Protocol')
+  })
+
+  it('builds an execution routing board that opens object routes and filters lane tasks', async () => {
+    const onOpenTarget = vi.fn()
+    mockTaskCenterFetch([
+      playbookDraft,
+      projectPortfolioDraft,
+      verificationReadyDraft,
+      domainAppDraft,
+      capabilityGapDraft,
+      pageMaturityDraft,
+    ])
+
+    render(<TaskCenterPage onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      const board = screen.getByRole('region', { name: '执行路由架构总表' })
+      expect(board).toBeInTheDocument()
+      expect(within(board).getByText('路由车道 6 / 6')).toBeInTheDocument()
+      expect(within(board).getByText('活跃车道')).toBeInTheDocument()
+      expect(within(board).getAllByText('对象入口').length).toBeGreaterThan(0)
+      expect(within(board).getByText('来源证据')).toBeInTheDocument()
+      expect(within(board).getByText('验证补证')).toBeInTheDocument()
+      expect(within(board).getByText('领域应用')).toBeInTheDocument()
+      expect(within(board).getAllByText('证据 3 条 · 验证补证：cockpit').length).toBeGreaterThan(0)
+    })
+
+    const board = screen.getByRole('region', { name: '执行路由架构总表' })
+
+    fireEvent.click(within(board).getByRole('button', { name: '打开执行路由 验证补证' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'cockpit' })
+
+    fireEvent.click(within(board).getByRole('button', { name: '过滤执行路由 页面能力' }))
+    expect(screen.getByPlaceholderText('搜索任务...')).toHaveValue('页面')
+
+    await waitFor(() => {
+      const tasksList = document.querySelector('.tasks-list')
+      expect(tasksList).not.toBeNull()
+      expect(within(tasksList as HTMLElement).getByText('页面能力：补齐 性能监控')).toBeInTheDocument()
+      expect(within(tasksList as HTMLElement).queryByText('验证补证：cockpit')).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(within(board).getByRole('button', { name: '查看执行路由代表任务 领域应用' }))
+
+    await waitFor(() => {
+      expect(screen.getAllByText('领域应用：处理 family-hub 服务').length).toBeGreaterThan(0)
+      expect(screen.getByText('当前任务来源工作台')).toBeInTheDocument()
+      expect(screen.getAllByText('family-hub 服务 · @家庭生活').length).toBeGreaterThan(0)
+    })
   })
 
   it('refreshes the task list when the refresh action is clicked', async () => {

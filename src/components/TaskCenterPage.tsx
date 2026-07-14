@@ -146,6 +146,23 @@ function sourceTypeSearchKeyword(type: DraftSourceType): string {
   return '清单';
 }
 
+function sourceTypeDefaultTarget(type: DraftSourceType, task?: Task | null): TaskNavigationTarget {
+  if (type === 'system_map_domain_app') {
+    return { tab: 'DomainApps', taskQuery: task?.source?.id || '领域' };
+  }
+  if (type === 'system_map_capability_gap') {
+    return { tab: 'SystemMap', gapId: task?.source?.id || null };
+  }
+  if (type === 'system_map_page_maturity') {
+    return { tab: task?.source?.id || 'SystemMap' };
+  }
+  if (type === 'system_map_playbook') {
+    const target = task ? resolveTaskTarget(task) : null;
+    return { tab: target?.tab || 'SystemMap' };
+  }
+  return { tab: 'SystemMap', projectId: task?.source?.id || null };
+}
+
 function resolveTaskTarget(task: Task): TaskNavigationTarget | null {
   if (!task.read_only || !task.source?.type) return null;
   if (task.source.type === 'system_map_project_portfolio') {
@@ -357,6 +374,10 @@ export default function TaskCenterPage({
         );
         return priorityWeight(right.priority) - priorityWeight(left.priority);
       });
+    const topTask = laneTasks[0] || null;
+    const topTaskTarget = topTask ? resolveTaskTarget(topTask) : null;
+    const evidenceCount = laneTasks.reduce((total, task) => total + (task.draft?.evidence_fields?.length || 0), 0);
+    const sourceIds = Array.from(new Set(laneTasks.map((task) => task.source?.id).filter(Boolean) as string[]));
     return {
       type,
       title: sourceTypeLabel(type),
@@ -364,12 +385,21 @@ export default function TaskCenterPage({
       description: sourceTypeDescription(type),
       hint: sourceTypeHint(type),
       keyword: sourceTypeSearchKeyword(type),
-      topTask: laneTasks[0] || null,
+      topTask,
+      topTaskTarget: topTaskTarget || sourceTypeDefaultTarget(type, topTask),
+      evidenceCount,
+      sourceIds,
+      nextAction: topTask?.description || sourceCompletionHint(topTask || { source: { type, id: '', title: '' } } as Task),
     };
   });
   const activeLane = activeSourceFilter === 'all'
     ? null
     : laneSummaries.find((lane) => lane.type === activeSourceFilter) || null;
+  const routingSummary = {
+    populated: laneSummaries.filter((lane) => lane.count > 0).length,
+    evidence: laneSummaries.reduce((total, lane) => total + lane.evidenceCount, 0),
+    mapped: laneSummaries.filter((lane) => lane.topTaskTarget?.tab && lane.count > 0).length,
+  };
   const focusTasks = [...filteredTasks]
     .sort((left, right) => {
       const weight = (priority?: Task['priority']) => (
@@ -663,6 +693,112 @@ export default function TaskCenterPage({
           </div>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="执行路由架构总表">
+        <div className="section-header">
+          <div>
+            <h2>执行路由架构总表</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把每类草稿任务的来源车道、对象入口、证据密度和下一步摊开，先决定该回哪个对象面，再继续筛任务。
+            </p>
+          </div>
+          <span className="status-badge degraded">
+            路由车道 {routingSummary.populated} / {laneSummaries.length}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 16 }}>
+          {[
+            { label: '活跃车道', value: `${routingSummary.populated}`, helper: '当前至少有一条任务的来源类型。', tone: 'degraded' },
+            { label: '对象入口', value: `${routingSummary.mapped}`, helper: '已经能直达对象面的来源车道。', tone: routingSummary.mapped === routingSummary.populated ? 'online' : 'degraded' },
+            { label: '来源证据', value: `${routingSummary.evidence}`, helper: '草稿里累计带上的 evidence 字段数。', tone: 'online' },
+            { label: '当前筛选', value: activeLane ? activeLane.title : '全部', helper: activeLane ? activeLane.hint : '还未锁定某条处理车道。', tone: activeLane ? 'degraded' : 'online' },
+          ].map((item) => (
+            <article key={item.label} className="antd-card" style={{ padding: 16, display: 'grid', gap: 6 }}>
+              <span className="text-muted" style={{ fontSize: 12 }}>{item.label}</span>
+              <strong style={{ fontSize: 20 }}>{item.value}</strong>
+              <small className={`text-muted ${item.tone}`} style={{ fontSize: 12 }}>{item.helper}</small>
+            </article>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+          {laneSummaries.map((lane) => (
+            <article key={`route-${lane.type}`} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <strong style={{ fontSize: 15 }}>{lane.title}</strong>
+                  <span className={`status-badge ${lane.count > 0 ? 'degraded' : 'online'}`}>待处理 {lane.count}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>{lane.description}</p>
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div style={{ display: 'grid', gap: 4, padding: 12, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
+                  <span className="text-muted" style={{ fontSize: 12 }}>对象入口</span>
+                  <strong>{lane.topTaskTarget.tab}</strong>
+                  <small className="text-muted" style={{ fontSize: 12 }}>{lane.hint}</small>
+                </div>
+                <div style={{ display: 'grid', gap: 4, padding: 12, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
+                  <span className="text-muted" style={{ fontSize: 12 }}>代表对象</span>
+                  <strong>{lane.sourceIds.slice(0, 2).join(' · ') || '当前没有对象'}</strong>
+                  <small className="text-muted" style={{ fontSize: 12 }}>
+                    证据 {lane.evidenceCount} 条 · {lane.topTask?.title || '继续等待来源草稿进入这条车道'}
+                  </small>
+                </div>
+                <div style={{ display: 'grid', gap: 4, padding: 12, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
+                  <span className="text-muted" style={{ fontSize: 12 }}>下一步</span>
+                  <strong style={{ fontSize: 13, lineHeight: 1.5 }}>{lane.nextAction}</strong>
+                  <small className="text-muted" style={{ fontSize: 12 }}>过滤词：{lane.keyword}</small>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <button
+                  className="antd-btn small"
+                  aria-label={`打开执行路由 ${lane.title}`}
+                  onClick={() => {
+                    if (lane.topTask) {
+                      openTaskSource(lane.topTask);
+                      return;
+                    }
+                    if (onOpenTarget) {
+                      onOpenTarget(lane.topTaskTarget);
+                      return;
+                    }
+                    onNavigate?.(lane.topTaskTarget.tab);
+                  }}
+                >
+                  <Eye size={13} />
+                  <span>看对象</span>
+                </button>
+                <button
+                  className="antd-btn small"
+                  aria-label={`过滤执行路由 ${lane.title}`}
+                  onClick={() => {
+                    setActiveSourceFilter(lane.type);
+                    setSearchQuery(lane.keyword);
+                    if (lane.topTask) setSelectedTask(lane.topTask);
+                  }}
+                >
+                  <RefreshCw size={13} />
+                  <span>过滤任务</span>
+                </button>
+                {lane.topTask && (
+                  <button
+                    className="antd-btn small"
+                    aria-label={`查看执行路由代表任务 ${lane.title}`}
+                    onClick={() => setSelectedTask(lane.topTask as Task)}
+                  >
+                    <Copy size={13} />
+                    <span>看代表任务</span>
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section" role="region" aria-label="任务来源带总表">
         <div className="section-header">
