@@ -301,23 +301,32 @@ describe('TaskCenterPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('region', { name: '当前任务来源工作台' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '任务来源带总表' })).toBeInTheDocument()
       expect(screen.getByText('任务承接工作台')).toBeInTheDocument()
       expect(screen.getByText('领域任务承接台')).toBeInTheDocument()
       expect(screen.getByText('任务闭环控制台')).toBeInTheDocument()
-      expect(screen.getByText('系统地图修复')).toBeInTheDocument()
-      expect(screen.getByText('领域挂载')).toBeInTheDocument()
+      expect(screen.getAllByText('系统地图修复').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('领域挂载').length).toBeGreaterThan(0)
       expect(screen.getAllByText('领域应用：处理 family-hub 服务').length).toBeGreaterThan(0)
       expect(screen.getByText('承接对象')).toBeInTheDocument()
       expect(screen.getAllByText('family-hub').length).toBeGreaterThan(0)
       expect(screen.getByText('闭环入口')).toBeInTheDocument()
       expect(screen.getByText('相关对象快照')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开来源带 领域挂载' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开来源带任务 领域挂载' })).toBeInTheDocument()
     })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开来源带 领域挂载' }))
+    expect(onNavigate).toHaveBeenCalledWith('DomainApps')
 
     fireEvent.click(screen.getByRole('button', { name: '打开闭环入口 领域挂载' }))
     expect(onNavigate).toHaveBeenCalledWith('DomainApps')
 
     fireEvent.click(screen.getByRole('button', { name: '打开领域承接 family-hub' }))
     expect(onNavigate).toHaveBeenCalledWith('DomainApps')
+
+    fireEvent.click(screen.getByRole('button', { name: '打开来源带任务 领域挂载' }))
+    expect(screen.getByPlaceholderText('搜索任务...')).toHaveValue('family-hub')
 
     fireEvent.click(screen.getByRole('button', { name: '查看任务 领域应用：处理 family-hub 服务' }))
 
@@ -522,6 +531,7 @@ describe('TaskCenterPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('处理车道')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '任务来源带总表' })).toBeInTheDocument()
       expect(screen.getAllByText('操作清单：每日 5 分钟体检').length).toBeGreaterThan(0)
       expect(screen.getAllByText('项目组合：修复 kairon').length).toBeGreaterThan(0)
       expect(screen.getAllByText('验证补证：cockpit').length).toBeGreaterThan(0)
@@ -559,6 +569,8 @@ describe('TaskCenterPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: '打开执行页面' })[0])
     fireEvent.click(screen.getAllByRole('button', { name: '查看闭环任务 验证补证：cockpit' })[0])
     fireEvent.click(screen.getByRole('button', { name: '打开当前闭环来源' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开来源带 系统地图修复' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开来源带任务 系统地图修复' }))
 
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'cockpit' })
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'kairon' })
@@ -568,6 +580,8 @@ describe('TaskCenterPage', () => {
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Performance' })
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'AlertCenter' })
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'cockpit' })
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'kairon' })
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'kairon' })
   })
 
   it('renders project portfolio drafts with evidence fields', async () => {

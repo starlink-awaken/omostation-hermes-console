@@ -441,6 +441,32 @@ export default function TaskCenterPage({
       sourceTitle: task.source?.title || task.description || '领域应用态势',
       nextAction: task.description || sourceCompletionHint(task),
     })) || [];
+  const sourceBandRows = closeLoopGroups.map((group) => {
+    const firstTask = group.tasks[0] || null;
+    const target = firstTask ? resolveTaskTarget(firstTask) : null;
+    const relatedLane = firstTask?.source?.type
+      ? laneSummaries.find((lane) => lane.type === firstTask.source?.type) || null
+      : null;
+    const tone = group.tasks.length === 0 ? 'online' : group.id === 'live' ? 'degraded' : 'warning';
+
+    return {
+      id: group.id,
+      title: group.title,
+      tone,
+      count: group.tasks.length,
+      summary: group.description,
+      signal: relatedLane
+        ? `${relatedLane.title} · ${relatedLane.count} 条`
+        : group.id === 'live'
+          ? `真实任务 ${group.tasks.length} 条`
+          : `目标面 ${group.targetTab}`,
+      nextAction: firstTask?.description || sourceCompletionHint(firstTask || { status: 'pending' } as Task),
+      objectTarget: target || { tab: group.targetTab, taskQuery: group.keyword },
+      taskTarget: group.targetTab === 'TaskCenter'
+        ? { tab: 'TaskCenter', taskQuery: group.keyword }
+        : { tab: 'TaskCenter', taskQuery: firstTask?.source?.id || group.keyword },
+    };
+  });
   const taskActionItems = [
     {
       id: 'task-system-map',
@@ -637,6 +663,73 @@ export default function TaskCenterPage({
           </div>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="任务来源带总表">
+        <div className="section-header">
+          <div>
+            <h2>任务来源带总表</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              先看任务属于系统地图修复、页面补位、领域挂载还是在途执行，再决定回哪个面继续收口，不让任务中心重新变成杂物堆。
+            </p>
+          </div>
+          <span className="status-badge degraded">
+            来源带 {sourceBandRows.filter((row) => row.count > 0).length}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          {sourceBandRows.map((row) => (
+            <article key={row.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.tone}`}>待处理 {row.count}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 4, padding: 12, border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8 }}>
+                <span className="text-muted" style={{ fontSize: 12 }}>当前信号</span>
+                <strong>{row.signal}</strong>
+                <small className="text-muted" style={{ fontSize: 12 }}>{row.nextAction}</small>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <button
+                  className="antd-btn small"
+                  aria-label={`打开来源带 ${row.title}`}
+                  onClick={() => {
+                    if (onOpenTarget) {
+                      onOpenTarget(row.objectTarget);
+                      return;
+                    }
+                    onNavigate?.(row.objectTarget.tab);
+                  }}
+                >
+                  <Eye size={13} />
+                  <span>看对象</span>
+                </button>
+                <button
+                  className="antd-btn small"
+                  aria-label={`打开来源带任务 ${row.title}`}
+                  onClick={() => {
+                    if (onOpenTarget) {
+                      onOpenTarget(row.taskTarget);
+                      return;
+                    }
+                    if (row.taskTarget.tab === 'TaskCenter' && row.taskTarget.taskQuery) {
+                      setSearchQuery(row.taskTarget.taskQuery);
+                      return;
+                    }
+                    onNavigate?.(row.taskTarget.tab);
+                  }}
+                >
+                  <RefreshCw size={13} />
+                  <span>看任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {focusTask && (
         <section className="services-section" role="region" aria-label="当前任务来源工作台">
