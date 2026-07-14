@@ -59,6 +59,7 @@ describe('KnowledgeHubView', () => {
     expect(await screen.findByText('知识维度地图')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: '当前知识子面板' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: '知识补位任务' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '知识闭环总表' })).toBeInTheDocument()
     expect(screen.getByText('GBrain Mock monitor')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '切换知识子面板 访问日志' }))
@@ -75,6 +76,32 @@ describe('KnowledgeHubView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开知识补位任务 补齐知识承接：访问日志' }))
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'knowledge-logs' })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开知识闭环对象 日志证据与任务收口' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'LogViewer', taskQuery: 'knowledge' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces knowledge closure routing when focus hits protocol handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    render(
+      <KnowledgeHubView
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="智能体与协议联动"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前知识承接焦点' })
+    expect(within(focusRegion).getByText('智能体与协议联动')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开知识焦点对象 智能体与协议联动' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开知识焦点任务 智能体与协议联动' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Workflows', taskQuery: '智能体与协议联动' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '智能体与协议联动' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
 })

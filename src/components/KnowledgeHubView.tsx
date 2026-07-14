@@ -22,6 +22,17 @@ type KnowledgeSurfaceCard = {
   taskTarget: CockpitNavigationTarget;
 };
 
+type KnowledgeClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesKnowledgeFocusQuery(values: Array<string | null | undefined>, query?: string) {
   const normalizedQuery = query?.trim().toLowerCase();
   if (!normalizedQuery) return false;
@@ -101,6 +112,60 @@ export default function KnowledgeHubView({
     [knowledgeSubTab, knowledgeSurfaces],
   );
 
+  const knowledgeClosureRows = useMemo<KnowledgeClosureRow[]>(() => {
+    const memorySurface = knowledgeSurfaces.find((surface) => surface.id === 'memory') || knowledgeSurfaces[1];
+    const agentsSurface = knowledgeSurfaces.find((surface) => surface.id === 'agents') || knowledgeSurfaces[2];
+    const calibrationSurface = knowledgeSurfaces.find((surface) => surface.id === 'calibration') || knowledgeSurfaces[3];
+    const logsSurface = knowledgeSurfaces.find((surface) => surface.id === 'logs') || knowledgeSurfaces[4];
+
+    return [
+      {
+        id: 'research-memory',
+        title: '研究回流到知识',
+        summary: '研究对象的结论、追问和上下文要先回知识面，不然研究和执行会断开。',
+        signal: matchesKnowledgeFocusQuery(['research', 'study', 'publication', 'insight', '家庭系统研究'], focusTaskQuery)
+          ? `当前焦点 ${focusTaskQuery}`
+          : '等待研究回流',
+        nextAction: `先从 ${memorySurface.title} 承接研究对象，再把上下文送给后续执行链。`,
+        statusTone: matchesKnowledgeFocusQuery(['research', 'study', 'publication', 'insight', '家庭系统研究'], focusTaskQuery) ? 'degraded' : 'online',
+        objectTarget: { tab: 'Research', taskQuery: focusTaskQuery || 'research' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'research' },
+      },
+      {
+        id: 'memory-assets',
+        title: '知识供给到资产',
+        summary: '知识补位之后，要继续确认技能、工作流和资产有没有真的拿到可执行上下文。',
+        signal: knowledgeSubTab === 'memory' ? '当前在记忆交互' : '等待知识供给',
+        nextAction: `从 ${memorySurface.title} 去 Assets/Workflows 验证知识供给是否足够支撑执行。`,
+        statusTone: knowledgeSubTab === 'memory' ? 'degraded' : 'online',
+        objectTarget: { tab: 'Assets', taskQuery: focusTaskQuery || 'knowledge-assets' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'knowledge-assets' },
+      },
+      {
+        id: 'agents-protocol',
+        title: '智能体与协议联动',
+        summary: '当知识问题已经涉及 agent 接入、编排或校准，就不能只留在知识页，要继续看工作流和协议面。',
+        signal: knowledgeSubTab === 'agents' || knowledgeSubTab === 'calibration'
+          ? `当前在 ${knowledgeSubTab === 'agents' ? agentsSurface.title : calibrationSurface.title}`
+          : '等待智能体联动',
+        nextAction: `回 ${agentsSurface.title} 或 ${calibrationSurface.title}，确认智能体职责、校准与协议约束是否收紧。`,
+        statusTone: knowledgeSubTab === 'agents' || knowledgeSubTab === 'calibration' ? 'degraded' : 'online',
+        objectTarget: { tab: knowledgeSubTab === 'calibration' ? 'Protocol' : 'Workflows', taskQuery: focusTaskQuery || 'knowledge-agents' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'knowledge-agents' },
+      },
+      {
+        id: 'logs-task',
+        title: '日志证据与任务收口',
+        summary: '知识链失败、延迟或权限异常时，要先抓日志证据，再回任务中心做正式收口。',
+        signal: knowledgeSubTab === 'logs' ? `当前在 ${logsSurface.title}` : '等待日志补证',
+        nextAction: `先看 ${logsSurface.title} 里的请求轨迹，再把问题正式送进任务中心。`,
+        statusTone: knowledgeSubTab === 'logs' ? 'degraded' : 'online',
+        objectTarget: { tab: 'LogViewer', taskQuery: focusTaskQuery || 'knowledge' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'knowledge-logs' },
+      },
+    ];
+  }, [focusTaskQuery, knowledgeSubTab, knowledgeSurfaces]);
+
   const focusedKnowledgeCard = useMemo(() => {
     if (matchesKnowledgeFocusQuery(['research', 'study', 'publication', 'insight', '家庭系统研究'], focusTaskQuery)) {
       return {
@@ -132,6 +197,19 @@ export default function KnowledgeHubView({
       };
     }
 
+    const matchedClosure = knowledgeClosureRows.find((row) => (
+      matchesKnowledgeFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '知识闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
+      };
+    }
+
     if (focusPageId === 'Knowledge') {
       return {
         kicker: '当前页面',
@@ -143,7 +221,7 @@ export default function KnowledgeHubView({
     }
 
     return null;
-  }, [focusPageId, focusTaskQuery]);
+  }, [focusPageId, focusTaskQuery, knowledgeClosureRows]);
 
   const knowledgeTaskDraft = useMemo(() => {
     const focusLabel = focusTaskQuery || activeKnowledgeSurface.title;
@@ -359,6 +437,59 @@ export default function KnowledgeHubView({
         {knowledgeDraftNotice && (
           <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{knowledgeDraftNotice}</p>
         )}
+      </section>
+
+      <section className="services-section" role="region" aria-label="知识闭环总表">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>知识闭环总表</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              把研究回流、知识供给、智能体协议联动和日志收口并排摆出来，知识页才能真正承接站内上下文主轴。
+            </p>
+          </div>
+          <span className="status-badge online">{knowledgeClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {knowledgeClosureRows.map((row) => (
+            <article
+              key={`knowledge-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开知识闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <Database size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开知识闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <GitBranch size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
 
       <div className="services-section" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
