@@ -68,6 +68,12 @@ type ProtocolSurfaceCard = {
   taskTarget: CockpitNavigationTarget;
 };
 
+type ProtocolClosureRow = ProtocolSurfaceCard & {
+  signal: string;
+  handoff: string;
+  statusTone: 'online' | 'degraded';
+};
+
 interface ProtocolWorkbenchViewProps {
   onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
@@ -248,6 +254,48 @@ export default function ProtocolWorkbenchView({
       pageItems: payload.related_pages.slice(0, 3),
     };
   }, [payload.layers, payload.recent_workflows, payload.related_pages]);
+
+  const protocolClosureRows = useMemo<ProtocolClosureRow[]>(() => ([
+    {
+      ...protocolSurfaces[0],
+      signal: protocolBacklog.watchCount ? `观察层 ${protocolBacklog.watchCount}` : `就绪层 ${payload.summary.ready_layers}`,
+      handoff: `对象去 ${assetsTarget}，任务去 TaskCenter，先把桥接层卡点定位清楚。`,
+      statusTone: protocolBacklog.watchCount ? 'degraded' : 'online',
+    },
+    {
+      ...protocolSurfaces[1],
+      signal: protocolBacklog.activeRunCount ? `未闭环运行 ${protocolBacklog.activeRunCount}` : `最近运行 ${payload.summary.recent_runs}`,
+      handoff: `对象去 ${workflowTarget}，任务去 TaskCenter，确认 workflow 是真跑过还是只挂在定义里。`,
+      statusTone: protocolBacklog.activeRunCount ? 'degraded' : 'online',
+    },
+    {
+      ...protocolSurfaces[2],
+      signal: payload.commands.length ? `补证命令 ${payload.commands.length}` : '暂无补证命令',
+      handoff: '先复制检查命令，再把补证动作送进 TaskCenter，避免协议页停在浏览层。',
+      statusTone: payload.commands.length ? 'degraded' : 'online',
+    },
+    {
+      ...protocolSurfaces[3],
+      signal: [payload.roadmap_item, payload.playbook].filter(Boolean).length
+        ? `治理锚点 ${[payload.roadmap_item, payload.playbook].filter(Boolean).length}`
+        : `承接页 ${protocolBacklog.pageItems.length}`,
+      handoff: `对象去 ${governanceTarget}，任务去 TaskCenter，把协议问题沉成治理项或明确执行动作。`,
+      statusTone: payload.roadmap_item || payload.playbook || protocolBacklog.pageItems.length ? 'degraded' : 'online',
+    },
+  ]), [
+    assetsTarget,
+    governanceTarget,
+    payload.commands.length,
+    payload.playbook,
+    payload.roadmap_item,
+    payload.summary.ready_layers,
+    payload.summary.recent_runs,
+    protocolBacklog.activeRunCount,
+    protocolBacklog.pageItems.length,
+    protocolBacklog.watchCount,
+    protocolSurfaces,
+    workflowTarget,
+  ]);
 
   const focusedProtocolCard = useMemo(() => {
     const matchedCommand = payload.commands.find((command) => (
@@ -573,6 +621,59 @@ export default function ProtocolWorkbenchView({
               </button>
             </div>
           </article>
+        </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="协议闭环总表">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>协议闭环总表</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              把每个协议子面板的当前信号、对象承接和任务收口并排摆出来，避免知道问题在哪，却不知道下一跳该落哪。
+            </p>
+          </div>
+          <span className="status-badge online">{protocolClosureRows.length} 条路由</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {protocolClosureRows.map((row) => (
+            <article
+              key={`protocol-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">承接路径</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.handoff}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开协议闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ClipboardCheck size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开协议闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 

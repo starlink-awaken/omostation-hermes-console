@@ -167,14 +167,19 @@ describe('ProtocolWorkbenchView', () => {
     await waitFor(() => {
       expect(screen.getByText('协议维度地图')).toBeInTheDocument()
       expect(screen.getByRole('region', { name: '当前协议子面板' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '协议闭环总表' })).toBeInTheDocument()
       expect(screen.getByRole('region', { name: '协议补位任务' })).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: '切换协议子面板 治理收口' }))
     expect(screen.getByText('补齐协议承接：治理收口')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '打开协议相关对象 治理收口' }))
+    const closureRegion = screen.getByRole('region', { name: '协议闭环总表' })
+    fireEvent.click(within(closureRegion).getByRole('button', { name: '打开协议闭环对象 治理收口' }))
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', taskQuery: 'audit' })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开协议相关对象 治理收口' }))
+    expect(onOpenTarget).toHaveBeenLastCalledWith({ tab: 'SystemMap', taskQuery: 'audit' })
 
     fireEvent.click(screen.getByRole('button', { name: '复制协议补位任务 补齐协议承接：治理收口' }))
     await waitFor(() => {
