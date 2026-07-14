@@ -234,6 +234,11 @@ describe('CockpitGuideView', () => {
       expect(screen.getByText((_, node) => node?.textContent === '2 条维度')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开维度覆盖 验证证据' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开维度任务 验证证据' })).toBeInTheDocument()
+      expect(screen.getByText('项目入口总表')).toBeInTheDocument()
+      expect(screen.getByText((_, node) => node?.textContent === '1 个重点项目')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开项目入口 cockpit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开项目覆盖 cockpit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开项目任务 cockpit' })).toBeInTheDocument()
       expect(screen.getByText('对象承接总表')).toBeInTheDocument()
       expect(screen.getByText((_, node) => node?.textContent === '7 个对象')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开对象承接 cockpit' })).toBeInTheDocument()
@@ -516,6 +521,23 @@ describe('CockpitGuideView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'TaskCenter',
       taskQuery: 'Overview',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开项目入口 cockpit' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开项目覆盖 cockpit' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      projectId: 'cockpit',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开项目任务 cockpit' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit',
     }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开对象承接 cockpit' }))

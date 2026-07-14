@@ -265,6 +265,7 @@ const GUIDE_GROUPS: GuideGroup[] = GUIDE_GROUP_BLUEPRINTS.map((group) => ({
   ...group,
   pages: COCKPIT_PAGE_REGISTRY.filter((page) => group.registryGroups.includes(page.group)),
 }));
+const GUIDE_PAGES_BY_ID = new globalThis.Map(COCKPIT_PAGE_REGISTRY.map((page) => [page.id, page] as const));
 
 const GUIDE_PATHS: GuidePath[] = [
   {
@@ -1081,6 +1082,48 @@ export default function CockpitGuideView({
       attentionProjects: rows.reduce((total, row) => total + row.attentionProjects.length, 0),
     };
   }, [metrics.dimensionCoverageRows]);
+
+  const projectEntryRows = useMemo(() => (
+    metrics.priorityProjects.map((project) => {
+      const entryPage = GUIDE_PAGES_BY_ID.get(project.cockpitPage || '') || null;
+      const relatedDrafts = [...metrics.featuredDrafts, ...metrics.closureDrafts]
+        .filter((draft) => (
+          draft.sourceId === project.id
+          || (project.cockpitPage ? draft.sourceId === project.cockpitPage : false)
+        ));
+      const relatedDimensions = metrics.dimensionCoverageRows
+        .filter((row) => row.attentionProjects.some((item) => item.id === project.id || item.id === project.cockpitPage))
+        .slice(0, 3)
+        .map((row) => row.title);
+
+      return {
+        id: project.id,
+        title: project.id,
+        statusClass: guideProjectStatusClass(project.status),
+        statusText: guideProjectStatusText(project.status),
+        layer: project.layer || '项目',
+        score: project.score ?? 0,
+        entryPageId: project.cockpitPage || 'SystemMap',
+        entryPageTitle: entryPage?.title || project.cockpitPage || '系统地图',
+        entryPageGroup: entryPage?.group || '项目总控',
+        relatedDimensions,
+        relatedDrafts,
+        nextAction: project.nextAction || project.primaryGap || '先确认这个项目当前最影响使用面的缺口。',
+        summary: project.primaryGap || '先回项目覆盖面确认入口、承接和验证是否都接通。',
+        entryTarget: { tab: project.cockpitPage || 'SystemMap' } as CockpitNavigationTarget,
+        coverageTarget: { tab: 'SystemMap', projectId: project.id } as CockpitNavigationTarget,
+        taskTarget: { tab: 'TaskCenter', taskQuery: project.id } as CockpitNavigationTarget,
+      };
+    })
+  ), [metrics.closureDrafts, metrics.dimensionCoverageRows, metrics.featuredDrafts, metrics.priorityProjects]);
+
+  const projectEntrySummary = useMemo(() => ({
+    total: projectEntryRows.length,
+    mapped: projectEntryRows.filter((row) => row.entryPageId !== 'SystemMap').length,
+    atRisk: projectEntryRows.filter((row) => row.statusText === '项目风险').length,
+    blocked: projectEntryRows.filter((row) => row.statusText === '项目阻塞').length,
+    withDrafts: projectEntryRows.filter((row) => row.relatedDrafts.length > 0).length,
+  }), [projectEntryRows]);
 
   const objectCoverageRows = useMemo(() => {
     const projectRows = metrics.priorityProjects.map((project) => ({
@@ -2638,6 +2681,91 @@ export default function CockpitGuideView({
           ))}
           {metrics.dimensionCoverageRows.length === 0 && (
             <div className="cockpit-guide-focus-empty">当前还没有维度覆盖数据。</div>
+          )}
+        </div>
+      </section>
+
+      <section className="cockpit-guide-section">
+        <div className="section-header">
+          <div>
+            <h2>项目入口总表</h2>
+            <p className="text-muted">把重点项目直接翻译成 cockpit 的入口页、项目覆盖面和任务承接入口，不再让“项目该从哪进”埋在矩阵和对象卡片里。</p>
+          </div>
+        </div>
+        <div className="cockpit-guide-coverage-summary">
+          <span><strong>{projectEntrySummary.total}</strong> 个重点项目</span>
+          <span><strong>{projectEntrySummary.mapped}</strong> 个已映射入口页</span>
+          <span><strong>{projectEntrySummary.atRisk}</strong> 个项目风险</span>
+          <span><strong>{projectEntrySummary.blocked}</strong> 个项目阻塞</span>
+          <span><strong>{projectEntrySummary.withDrafts}</strong> 个带承接草稿</span>
+        </div>
+        <div className="cockpit-guide-coverage-list">
+          {projectEntryRows.map((row) => (
+            <div key={`project-entry-${row.id}`} className={`cockpit-guide-coverage-row ${row.statusClass}`}>
+              <div className="cockpit-guide-coverage-row-head">
+                <div>
+                  <strong>{row.title}</strong>
+                  <small>{row.layer} · 入口 {row.entryPageTitle} · {row.score}%</small>
+                </div>
+                <span className={`cockpit-guide-coverage-status ${row.statusClass}`}>
+                  {row.statusText}
+                </span>
+              </div>
+              <p>{row.summary}</p>
+              <div className="cockpit-guide-coverage-meta">
+                <span>入口页 {row.entryPageTitle}</span>
+                <span>工作带 {row.entryPageGroup}</span>
+                <span>承接草稿 {row.relatedDrafts.length} 条</span>
+                <span>关联维度 {row.relatedDimensions.length} 条</span>
+              </div>
+              <div className="cockpit-guide-coverage-tags">
+                {row.relatedDimensions.map((item) => (
+                  <span key={`${row.id}-dimension-${item}`}>维度 · {item}</span>
+                ))}
+                {row.relatedDrafts.slice(0, 2).map((draft) => (
+                  <span key={`${row.id}-draft-${draft.id}`}>草稿 · {guideDraftTypeLabel(draft.sourceType)}</span>
+                ))}
+                {row.relatedDimensions.length === 0 && row.relatedDrafts.length === 0 && (
+                  <em>当前还没有显式关联维度或草稿</em>
+                )}
+              </div>
+              <div className="cockpit-guide-coverage-next">
+                <strong>下一步</strong>
+                <p>{row.nextAction}</p>
+              </div>
+              <div className="cockpit-guide-coverage-actions">
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开项目入口 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.entryTarget, onNavigate, onOpenTarget)}
+                >
+                  <Compass size={14} />
+                  <span>进入口页</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开项目覆盖 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.coverageTarget, onNavigate, onOpenTarget)}
+                >
+                  <MapIcon size={14} />
+                  <span>看项目面</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开项目任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>看任务</span>
+                </button>
+              </div>
+            </div>
+          ))}
+          {projectEntryRows.length === 0 && (
+            <div className="cockpit-guide-focus-empty">当前还没有重点项目入口数据。</div>
           )}
         </div>
       </section>
