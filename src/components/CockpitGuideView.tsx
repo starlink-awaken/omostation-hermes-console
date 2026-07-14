@@ -158,6 +158,22 @@ interface GuideMetrics {
     missingUsagePath: boolean;
     missingFeatureDomain: boolean;
   }>;
+  featureDomainRows: Array<{
+    id: string;
+    title: string;
+    english?: string;
+    cockpitPage?: string;
+    status: string;
+    providerCount: number;
+    capabilityCount: number;
+    linkedPages: string[];
+    usagePaths: string[];
+    capabilityItems: string[];
+    nextAction: string;
+    taskQuery: string;
+    missingCockpitPage: boolean;
+    missingCapabilityItems: boolean;
+  }>;
   dimensionCoverageRows: Array<{
     id: string;
     title: string;
@@ -342,6 +358,7 @@ const DEFAULT_METRICS: GuideMetrics = {
   closureDrafts: [],
   usageCoverageRows: [],
   pageCoverageRows: [],
+  featureDomainRows: [],
   dimensionCoverageRows: [],
 };
 
@@ -786,6 +803,61 @@ export default function CockpitGuideView({
               };
             })
           )),
+          featureDomainRows: ((payload.feature_domains || []) as Array<{
+            id: string;
+            title?: string;
+            english?: string;
+            cockpit_page?: string;
+            capability_items?: string[];
+            providers?: string[];
+          }>).map((domain) => {
+            const providerIds = (domain.providers || []).filter(Boolean);
+            const linkedPages = [...new Set(
+              providerIds
+                .filter((provider) => isGuidePageId(provider))
+                .map((provider) =>
+                  GUIDE_GROUPS.flatMap((group) => group.pages).find((page) => page.id === provider)?.title || provider,
+                ),
+            )];
+            const usagePaths = [...new Set(providerIds.flatMap((provider) => usagePathMap.get(provider) || []))];
+            const capabilityItems = (domain.capability_items || []).filter(Boolean);
+            const linkedDraft = draftItems.find((item) =>
+              item.source?.id === domain.id
+              || (domain.title ? item.title?.includes(domain.title) : false),
+            );
+            const missingCockpitPage = !domain.cockpit_page;
+            const missingCapabilityItems = capabilityItems.length === 0;
+            const status = missingCockpitPage || linkedPages.length === 0
+              ? 'gap'
+              : missingCapabilityItems || usagePaths.length === 0
+                ? 'watch'
+                : 'ready';
+            return {
+              id: domain.id,
+              title: domain.title || domain.id,
+              english: domain.english,
+              cockpitPage: domain.cockpit_page,
+              status,
+              providerCount: providerIds.length,
+              capabilityCount: capabilityItems.length,
+              linkedPages,
+              usagePaths,
+              capabilityItems,
+              nextAction: linkedDraft?.description
+                || (missingCockpitPage
+                  ? '先补这个能力域的主入口页面映射。'
+                  : linkedPages.length === 0
+                    ? '先把能力域挂回至少一个 cockpit 页面。'
+                    : usagePaths.length === 0
+                      ? '把这个能力域接进至少一条使用路径。'
+                      : missingCapabilityItems
+                        ? '补能力项定义，让这个能力域不是空壳。'
+                        : '继续保持能力域、页面和任务承接同步。'),
+              taskQuery: linkedDraft?.source?.id || linkedDraft?.id || domain.id,
+              missingCockpitPage,
+              missingCapabilityItems,
+            };
+          }),
           dimensionCoverageRows: dimensionSummaryItems
             .map((item) => {
               const attentionProjects = (item.attention_projects || []).map((project) => ({
@@ -952,6 +1024,18 @@ export default function CockpitGuideView({
       rows: metrics.pageCoverageRows.filter((row) => row.groupId === group.id),
     }))
   ), [metrics.pageCoverageRows]);
+
+  const featureDomainCoverageSummary = useMemo(() => {
+    const rows = metrics.featureDomainRows;
+    return {
+      total: rows.length,
+      ready: rows.filter((row) => row.status === 'ready').length,
+      watch: rows.filter((row) => row.status === 'watch').length,
+      gap: rows.filter((row) => row.status !== 'ready' && row.status !== 'watch').length,
+      withUsagePath: rows.filter((row) => row.usagePaths.length > 0).length,
+      withCapabilityItems: rows.filter((row) => row.capabilityCount > 0).length,
+    };
+  }, [metrics.featureDomainRows]);
 
   const dimensionCoverageSummary = useMemo(() => {
     const rows = metrics.dimensionCoverageRows;
@@ -2366,6 +2450,85 @@ export default function CockpitGuideView({
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="cockpit-guide-section">
+        <div className="section-header">
+          <div>
+            <h2>能力域能力总表</h2>
+            <p className="text-muted">按能力域看主入口、provider 页面、能力项、使用路径和任务承接，直接回答“这个能力到底够不够用、挂没挂对”。</p>
+          </div>
+        </div>
+        <div className="cockpit-guide-coverage-summary">
+          <span><strong>{featureDomainCoverageSummary.total}</strong> 个能力域</span>
+          <span><strong>{featureDomainCoverageSummary.ready}</strong> 已接通</span>
+          <span><strong>{featureDomainCoverageSummary.watch}</strong> 待收口</span>
+          <span><strong>{featureDomainCoverageSummary.gap}</strong> 待补位</span>
+          <span><strong>{featureDomainCoverageSummary.withUsagePath}</strong> 已入路径</span>
+          <span><strong>{featureDomainCoverageSummary.withCapabilityItems}</strong> 已定义能力项</span>
+        </div>
+        <div className="cockpit-guide-coverage-list">
+          {metrics.featureDomainRows.map((row) => (
+            <div key={`feature-domain-row-${row.id}`} className={`cockpit-guide-coverage-row ${pageCoverageStatusClass(row.status)}`}>
+              <div className="cockpit-guide-coverage-row-head">
+                <div>
+                  <strong>{row.title}</strong>
+                  <small>{row.id} · {pageCoverageStatusText(row.status)} · 主入口 {row.cockpitPage || '未登记'}</small>
+                </div>
+                <span className={`cockpit-guide-coverage-status ${pageCoverageStatusClass(row.status)}`}>
+                  {pageCoverageStatusText(row.status)}
+                </span>
+              </div>
+              <p>{row.english || '进入系统地图查看该能力域的页面、能力项和 provider 映射。'}</p>
+              <div className="cockpit-guide-coverage-meta">
+                <span>页面 {row.linkedPages.length} 个</span>
+                <span>能力项 {row.capabilityCount} 个</span>
+                <span>使用路径 {row.usagePaths.length} 条</span>
+                <span>provider {row.providerCount} 个</span>
+              </div>
+              <div className="cockpit-guide-coverage-tags">
+                {row.linkedPages.slice(0, 2).map((item) => (
+                  <span key={`${row.id}-page-${item}`}>页面 · {item}</span>
+                ))}
+                {row.capabilityItems.slice(0, 2).map((item) => (
+                  <span key={`${row.id}-cap-${item}`}>能力项 · {item}</span>
+                ))}
+                {row.usagePaths.slice(0, 1).map((item) => (
+                  <span key={`${row.id}-usage-${item}`}>路径 · {item}</span>
+                ))}
+                {row.missingCockpitPage && <em>待挂主入口</em>}
+                {row.missingCapabilityItems && <em>待补能力项</em>}
+              </div>
+              <div className="cockpit-guide-coverage-next">
+                <strong>下一步</strong>
+                <p>{row.nextAction}</p>
+              </div>
+              <div className="cockpit-guide-coverage-actions">
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开能力域能力 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', featureDomainId: row.id }, onNavigate, onOpenTarget)}
+                >
+                  <MapIcon size={14} />
+                  <span>看能力域</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开能力域任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: row.taskQuery }, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>看任务承接</span>
+                </button>
+              </div>
+            </div>
+          ))}
+          {metrics.featureDomainRows.length === 0 && (
+            <div className="cockpit-guide-focus-empty">当前还没有能力域能力数据。</div>
+          )}
         </div>
       </section>
 

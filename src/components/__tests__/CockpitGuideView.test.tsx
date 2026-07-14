@@ -227,6 +227,8 @@ describe('CockpitGuideView', () => {
       expect(screen.getByText('补证入口')).toBeInTheDocument()
       expect(screen.getByText('全站覆盖总表')).toBeInTheDocument()
       expect(screen.getByText((_, node) => node?.textContent === '26 页总览')).toBeInTheDocument()
+      expect(screen.getByText('能力域能力总表')).toBeInTheDocument()
+      expect(screen.getByText((_, node) => node?.textContent === '4 个能力域')).toBeInTheDocument()
       expect(screen.getByText('维度覆盖总表')).toBeInTheDocument()
       expect(screen.getByText((_, node) => node?.textContent === '2 条维度')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开维度覆盖 验证证据' })).toBeInTheDocument()
@@ -247,6 +249,8 @@ describe('CockpitGuideView', () => {
       expect(screen.getByRole('button', { name: '打开全站覆盖页面 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '查看全站覆盖 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开全站覆盖任务 性能监控' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开能力域能力 知识智能' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开能力域任务 知识智能' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开任务车道 页面能力' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补位任务 页面能力：补齐 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开工作带 开发工具' })).toBeInTheDocument()
@@ -645,6 +649,18 @@ describe('CockpitGuideView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'TaskCenter',
       taskQuery: 'Performance',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开能力域能力 知识智能' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      featureDomainId: 'knowledge',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开能力域任务 知识智能' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'TaskCenter',
+      taskQuery: 'knowledge',
     }))
   })
 
