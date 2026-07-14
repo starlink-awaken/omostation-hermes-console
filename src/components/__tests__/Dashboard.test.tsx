@@ -71,6 +71,45 @@ describe('Dashboard global search', () => {
     })
   })
 
+  it('aligns the sidebar navigation groups with the shared cockpit page registry', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/cockpit/system-map') {
+        return Promise.resolve(okJson({
+          cockpit_pages: [],
+          page_maturity: { summary: { total: 0, ready: 0, watch: 0, gap: 0, score: 0 }, items: [] },
+          project_portfolio: { summary: { score: 0, status: 'healthy', projects: 0, blocked: 0, at_risk: 0, watch: 0, healthy: 0 }, weakest_dimensions: [], priority_projects: [] },
+          projects: [],
+          usage_paths: [],
+          playbooks: [],
+          feature_domains: [],
+          roadmap: { lanes: [], items: [] },
+          gaps: [],
+          domain_apps: { summary: { total: 0, ready: 0, security_attention_apps: 0 }, attention_items: [] },
+        }))
+      }
+      if (url === '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80') {
+        return Promise.resolve(okJson({ items: [] }))
+      }
+      if (url === '/api/domain-apps') return Promise.resolve(okJson({ summary: { total: 0, ready: 0, security_attention_apps: 0 }, items: [] }))
+      if (url === '/api/services') return Promise.resolve(okJson([]))
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<Dashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('menu', { name: '控制台主导航' })).toBeInTheDocument()
+    })
+
+    const nav = screen.getByRole('menu', { name: '控制台主导航' })
+    expect(within(nav).getByText('入口')).toBeInTheDocument()
+    expect(within(nav).getByText('领域应用')).toBeInTheDocument()
+    expect(within(nav).queryByText('亲子冒险')).not.toBeInTheDocument()
+    expect(within(nav).getByRole('menuitem', { name: '积分冒险' })).toBeInTheDocument()
+    expect(within(nav).getByRole('menuitem', { name: '应用中心' })).toBeInTheDocument()
+  })
+
   it('searches dynamic projects and task drafts from SystemMap and TaskCenter', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

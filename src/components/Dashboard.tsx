@@ -35,6 +35,7 @@ import { CommandPalette, useCommandPalette } from './common/CommandPalette';
 import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
 import { useKeyboardShortcuts } from './common/CommandPalette';
 import { parseNavigationHash, writeNavigationHash, type CockpitNavigationTarget } from './cockpitNavigation';
+import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
 import {
   findTaskDraftForTarget,
   persistTaskCenterDraft,
@@ -256,6 +257,60 @@ interface SearchCockpitPage {
   group?: string;
   purpose?: string;
   dimensions?: string[];
+}
+
+const PAGE_REGISTRY_BY_ID = new globalThis.Map(COCKPIT_PAGE_REGISTRY.map((page) => [page.id, page] as const));
+
+const SIDEBAR_NAV_SECTIONS = [
+  { id: 'group-home', title: '入口', tabs: ['Home', 'Guide', 'SystemMap'] },
+  { id: 'group-monitoring', title: '运行大盘', tabs: ['Overview', 'McpMesh', 'Topology', 'Compute'] },
+  { id: 'group-intelligence', title: '智能与知识', tabs: ['Research', 'Knowledge', 'Engines', 'Assets', 'Protocol', 'Workflows'] },
+  { id: 'group-governance', title: '系统治理', tabs: ['C2G', 'AlertCenter', 'L4Health', 'Debt', 'Observability'] },
+  { id: 'group-devtools', title: '开发工具', tabs: ['LogViewer', 'TaskCenter', 'Performance', 'Sandbox'] },
+  { id: 'group-domain-apps', title: '领域应用', tabs: ['QuestBoard', 'DomainApps'] },
+  { id: 'group-config', title: '系统配置', tabs: ['Settings'] },
+] as const;
+
+const GROUP_ENTRY_TABS: Record<string, string> = {
+  入口: 'Home',
+  '运行大盘': 'Overview',
+  '智能与知识': 'Knowledge',
+  '系统治理': 'AlertCenter',
+  '开发工具': 'LogViewer',
+  '领域应用': 'DomainApps',
+  '系统配置': 'Settings',
+};
+
+const NAV_ICON_BY_TAB: Record<string, React.ComponentType<{ size?: number; className?: string; 'aria-hidden'?: boolean }>> = {
+  Home: LayoutDashboard,
+  Guide: Compass,
+  SystemMap: Map,
+  Overview: LayoutDashboard,
+  McpMesh: Globe,
+  Topology: Network,
+  Compute: Cpu,
+  Research: Search,
+  Knowledge: Database,
+  Engines: Cpu,
+  Assets: Briefcase,
+  Protocol: Command,
+  Workflows: GitCommit,
+  C2G: Compass,
+  AlertCenter: Bell,
+  L4Health: Heart,
+  Debt: Trophy,
+  Observability: Activity,
+  LogViewer: FileText,
+  TaskCenter: ClipboardList,
+  Performance: BarChart3,
+  Sandbox: Terminal,
+  QuestBoard: Trophy,
+  DomainApps: AppWindow,
+  Settings: Settings,
+};
+
+function pageGroupLabel(tab: string): string | null {
+  return PAGE_REGISTRY_BY_ID.get(tab)?.group || null;
 }
 
 interface PageMaturitySummary {
@@ -3297,51 +3352,13 @@ export default function Dashboard() {
   // 面包屑
   const getBreadcrumbItems = () => {
     const items = [];
-    switch (activeTab) {
-      case 'Home':
-        break;
-      case 'Guide':
-        items.push({ label: '入口总览', onClick: () => setActiveTab('Home') });
-        break;
-      case 'SystemMap':
-        items.push({ label: '入口总览', onClick: () => setActiveTab('Home') });
-        break;
-      case 'Overview':
-      case 'McpMesh':
-      case 'Topology':
-      case 'Compute':
-        items.push({ label: '运行大盘', onClick: () => setActiveTab('Overview') });
-        break;
-      case 'Research':
-      case 'Knowledge':
-      case 'Engines':
-      case 'Assets':
-      case 'Protocol':
-      case 'Workflows':
-        items.push({ label: '智能与知识', onClick: () => setActiveTab('Knowledge') });
-        break;
-      case 'AlertCenter':
-      case 'L4Health':
-      case 'Debt':
-      case 'Observability':
-      case 'C2G':
-        items.push({ label: '系统治理', onClick: () => setActiveTab('AlertCenter') });
-        break;
-      case 'LogViewer':
-      case 'TaskCenter':
-      case 'Performance':
-      case 'Sandbox':
-        items.push({ label: '开发工具', onClick: () => setActiveTab('LogViewer') });
-        break;
-      case 'QuestBoard':
-        items.push({ label: '亲子冒险', onClick: () => setActiveTab('QuestBoard') });
-        break;
-      case 'DomainApps':
-        items.push({ label: '领域应用', onClick: () => setActiveTab('DomainApps') });
-        break;
-      case 'Settings':
-        items.push({ label: '系统配置', onClick: () => setActiveTab('Settings') });
-        break;
+    const group = pageGroupLabel(activeTab);
+    const groupEntryTab = group ? GROUP_ENTRY_TABS[group] : null;
+    if (activeTab !== 'Home' && group && groupEntryTab) {
+      items.push({
+        label: group === '入口' ? '入口总览' : group,
+        onClick: () => setActiveTab(groupEntryTab),
+      });
     }
     items.push({ label: hero.title.split(' (')[0] });
     return items;
@@ -3490,279 +3507,29 @@ export default function Dashboard() {
         )}
         
         <nav aria-label="控制台主导航" className="sidebar-nav" role="menu">
-          {/* Group 1: 首页 */}
-          <div className="nav-group-title" id="group-home">首页</div>
-          <button
-            role="menuitem"
-            aria-describedby="group-home"
-            aria-selected={activeTab === 'Home'}
-            className={`nav-item ${activeTab === 'Home' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Home')}
-          >
-            <LayoutDashboard size={16} aria-hidden="true" />
-            <span>首页</span>
-          </button>
-          <button
-            role="menuitem"
-            aria-describedby="group-home"
-            aria-selected={activeTab === 'Guide'}
-            className={`nav-item ${activeTab === 'Guide' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Guide')}
-          >
-            <Compass size={16} aria-hidden="true" />
-            <span>站内导览</span>
-          </button>
-          <button
-            role="menuitem"
-            aria-describedby="group-home"
-            aria-selected={activeTab === 'SystemMap'}
-            className={`nav-item ${activeTab === 'SystemMap' ? 'active' : ''}`}
-            onClick={() => setActiveTab('SystemMap')}
-          >
-            <Map size={16} aria-hidden="true" />
-            <span>系统地图</span>
-          </button>
-
-          {/* Group 2: 运行大盘 */}
-          <div className="nav-group-title" id="group-monitoring">运行大盘</div>
-          <button
-            role="menuitem"
-            aria-describedby="group-monitoring"
-            aria-selected={activeTab === 'Overview'}
-            className={`nav-item ${activeTab === 'Overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Overview')}
-          >
-            <LayoutDashboard size={16} aria-hidden="true" />
-            <span>概览中心</span>
-          </button>
-          <button
-            role="menuitem"
-            aria-describedby="group-monitoring"
-            aria-selected={activeTab === 'McpMesh'}
-            className={`nav-item ${activeTab === 'McpMesh' ? 'active' : ''}`}
-            onClick={() => setActiveTab('McpMesh')}
-          >
-            <Globe size={16} aria-hidden="true" />
-            <span>网格与 MCP</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-monitoring"
-            aria-selected={activeTab === 'Topology'}
-            className={`nav-item ${activeTab === 'Topology' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Topology')}
-          >
-            <Network size={16} aria-hidden="true" />
-            <span>全局拓扑</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-monitoring"
-            aria-selected={activeTab === 'Compute'}
-            className={`nav-item ${activeTab === 'Compute' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Compute')}
-          >
-            <Cpu size={16} aria-hidden="true" />
-            <span>算力调配</span>
-          </button>
-
-          {/* Group 2: 知识与引擎 */}
-          <div className="nav-group-title" id="group-intelligence">智能与知识</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Research'}
-            className={`nav-item ${activeTab === 'Research' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Research')}
-          >
-            <Search size={16} aria-hidden="true" />
-            <span>研究中枢</span>
-          </button>
-          <button
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Knowledge'}
-            className={`nav-item ${activeTab === 'Knowledge' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Knowledge')}
-          >
-            <Database size={16} aria-hidden="true" />
-            <span>知识中枢</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Engines'}
-            className={`nav-item ${activeTab === 'Engines' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Engines')}
-          >
-            <Cpu size={16} aria-hidden="true" />
-            <span>引擎调度</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Assets'}
-            className={`nav-item ${activeTab === 'Assets' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Assets')}
-          >
-            <Briefcase size={16} aria-hidden="true" />
-            <span>技术资产库</span>
-          </button>
-          <button
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Protocol'}
-            className={`nav-item ${activeTab === 'Protocol' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Protocol')}
-          >
-            <Command size={16} aria-hidden="true" />
-            <span>协议工作台</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Workflows'}
-            className={`nav-item ${activeTab === 'Workflows' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Workflows')}
-          >
-            <GitCommit size={16} aria-hidden="true" />
-            <span>MetaOS 工作流</span>
-          </button>
-
-          {/* Group 3: 治理与可观测 */}
-          <div className="nav-group-title" id="group-governance">系统治理</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'C2G'}
-            className={`nav-item ${activeTab === 'C2G' ? 'active' : ''}`}
-            onClick={() => setActiveTab('C2G')}
-          >
-            <Compass size={16} aria-hidden="true" />
-            <span>C2G 战略中心</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'AlertCenter'}
-            className={`nav-item ${activeTab === 'AlertCenter' ? 'active' : ''}`}
-            onClick={() => setActiveTab('AlertCenter')}
-          >
-            <Bell size={16} aria-hidden="true" />
-            <span>告警中心</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'L4Health'}
-            className={`nav-item ${activeTab === 'L4Health' ? 'active' : ''}`}
-            onClick={() => setActiveTab('L4Health')}
-          >
-            <Heart size={16} aria-hidden="true" />
-            <span>L4 域健康</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'Debt'}
-            className={`nav-item ${activeTab === 'Debt' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Debt')}
-          >
-            <Trophy size={16} aria-hidden="true" />
-            <span>技术债务</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'Observability'}
-            className={`nav-item ${activeTab === 'Observability' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Observability')}
-          >
-            <Activity size={16} aria-hidden="true" />
-            <span>运行可观测</span>
-          </button>
-          {/* Group 4: 开发工具 */}
-          <div className="nav-group-title" id="group-devtools">开发工具</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-devtools"
-            aria-selected={activeTab === 'LogViewer'}
-            className={`nav-item ${activeTab === 'LogViewer' ? 'active' : ''}`}
-            onClick={() => setActiveTab('LogViewer')}
-          >
-            <FileText size={16} aria-hidden="true" />
-            <span>日志查看器</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-devtools"
-            aria-selected={activeTab === 'TaskCenter'}
-            className={`nav-item ${activeTab === 'TaskCenter' ? 'active' : ''}`}
-            onClick={() => setActiveTab('TaskCenter')}
-          >
-            <ClipboardList size={16} aria-hidden="true" />
-            <span>任务中心</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-devtools"
-            aria-selected={activeTab === 'Performance'}
-            className={`nav-item ${activeTab === 'Performance' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Performance')}
-          >
-            <BarChart3 size={16} aria-hidden="true" />
-            <span>性能监控</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-devtools"
-            aria-selected={activeTab === 'Sandbox'}
-            className={`nav-item ${activeTab === 'Sandbox' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Sandbox')}
-          >
-            <Terminal size={16} aria-hidden="true" />
-            <span>隔离沙箱</span>
-          </button>
-
-          {/* Group 5: 亲子冒险 */}
-          <div className="nav-group-title" id="group-gamification">亲子冒险</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-gamification"
-            aria-selected={activeTab === 'QuestBoard'}
-            className={`nav-item ${activeTab === 'QuestBoard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('QuestBoard')}
-            style={{ fontWeight: '500' }}
-          >
-            <Trophy size={16} aria-hidden="true" className="text-warning" />
-            <span>积分冒险 (Quest)</span>
-          </button>
-
-          {/* Group 5: 领域应用 */}
-          <div className="nav-group-title" id="group-domain-apps">领域应用</div>
-          <button
-            role="menuitem"
-            aria-describedby="group-domain-apps"
-            aria-selected={activeTab === 'DomainApps'}
-            className={`nav-item ${activeTab === 'DomainApps' ? 'active' : ''}`}
-            onClick={() => setActiveTab('DomainApps')}
-          >
-            <AppWindow size={16} aria-hidden="true" />
-            <span>应用中心</span>
-          </button>
-
-          {/* Group 5: 系统配置 */}
-          <div className="nav-group-title" id="group-config">系统配置</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-config"
-            aria-selected={activeTab === 'Settings'}
-            className={`nav-item ${activeTab === 'Settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Settings')}
-          >
-            <Settings size={16} aria-hidden="true" />
-            <span>底层设置</span>
-          </button>
+          {SIDEBAR_NAV_SECTIONS.map((section) => (
+            <React.Fragment key={section.id}>
+              <div className="nav-group-title" id={section.id}>{section.title}</div>
+              {section.tabs.map((tab) => {
+                const pageMeta = PAGE_REGISTRY_BY_ID.get(tab);
+                const Icon = NAV_ICON_BY_TAB[tab] || LayoutDashboard;
+                return (
+                  <button
+                    key={tab}
+                    role="menuitem"
+                    aria-describedby={section.id}
+                    aria-selected={activeTab === tab}
+                    className={`nav-item ${activeTab === tab ? 'active' : ''}`}
+                    onClick={() => setActiveTab(tab)}
+                    style={tab === 'QuestBoard' ? { fontWeight: '500' } : undefined}
+                  >
+                    <Icon size={16} aria-hidden="true" className={tab === 'QuestBoard' ? 'text-warning' : undefined} />
+                    <span>{pageMeta?.title || tab}</span>
+                  </button>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </nav>
       </aside>
 
