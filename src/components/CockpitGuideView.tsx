@@ -332,6 +332,11 @@ function staticPageCount() {
   return GUIDE_GROUPS.reduce((total, group) => total + group.pages.length, 0);
 }
 
+function isGuidePageId(value?: string) {
+  if (!value) return false;
+  return GUIDE_GROUPS.some((group) => group.pages.some((page) => page.id === value));
+}
+
 function appendListValue(map: Map<string, string[]>, key: string, value: string) {
   if (!key || !value) return;
   const list = map.get(key) || [];
@@ -400,7 +405,9 @@ function guideDraftObjectTarget(draft: { sourceType: string; sourceId: string })
     return { tab: 'SystemMap', projectId: draft.sourceId };
   }
   if (draft.sourceType === 'system_map_verification_ready') {
-    return { tab: 'SystemMap', projectId: draft.sourceId };
+    return isGuidePageId(draft.sourceId)
+      ? { tab: 'SystemMap', pageId: draft.sourceId }
+      : { tab: 'SystemMap', projectId: draft.sourceId };
   }
   if (draft.sourceType === 'system_map_page_maturity') {
     return { tab: 'SystemMap', pageId: draft.sourceId };
@@ -845,6 +852,78 @@ export default function CockpitGuideView({
     drafts: objectCoverageRows.filter((row) => row.kind.includes('草稿')).length,
     ready: objectCoverageRows.filter((row) => row.statusClass === 'ready').length,
   }), [objectCoverageRows]);
+
+  const missingCapabilityRows = useMemo(() => {
+    const rows = [
+      ...metrics.pageAttentionItems.slice(0, 2).map((item) => ({
+        id: `missing-page-${item.page_id}`,
+        category: '页面能力',
+        title: item.page?.title || item.page_id,
+        signal: `${item.status} · ${item.score}%`,
+        summary: item.next_action || '先把页面补回使用路径、能力域和任务承接。',
+        objectTarget: { tab: 'SystemMap', pageId: item.page_id } as CockpitNavigationTarget,
+        taskTarget: { tab: 'TaskCenter', taskQuery: item.page_id } as CockpitNavigationTarget,
+      })),
+      ...metrics.closureDrafts.slice(0, 2).map((draft) => ({
+        id: `missing-evidence-${draft.id}`,
+        category: '证据链',
+        title: draft.title,
+        signal: guideDraftTypeLabel(draft.sourceType),
+        summary: draft.description || `继续补齐 ${draft.sourceId} 的执行证据和步骤。`,
+        objectTarget: guideDraftObjectTarget(draft),
+        taskTarget: { tab: 'TaskCenter', taskQuery: draft.sourceId } as CockpitNavigationTarget,
+      })),
+      ...metrics.domainAttention.slice(0, 2).map((item) => ({
+        id: `missing-domain-${item.id}`,
+        category: '领域挂载',
+        title: item.name,
+        signal: `${item.runtimeStatus} · ${item.securityPosture}`,
+        summary: item.nextAction,
+        objectTarget: { tab: 'DomainApps', taskQuery: item.id } as CockpitNavigationTarget,
+        taskTarget: { tab: 'TaskCenter', taskQuery: item.taskQuery } as CockpitNavigationTarget,
+      })),
+      ...metrics.priorityProjects
+        .filter((item) => item.status !== 'healthy' && item.status !== 'ready')
+        .slice(0, 2)
+        .map((item) => ({
+          id: `missing-project-${item.id}`,
+          category: '项目状态面',
+          title: item.id,
+          signal: `${item.status || 'unknown'} · ${item.score ?? 0}%`,
+          summary: item.primaryGap || item.nextAction || '先补齐项目状态面、验证证据和入口承接。',
+          objectTarget: { tab: 'SystemMap', projectId: item.id } as CockpitNavigationTarget,
+          taskTarget: { tab: 'TaskCenter', taskQuery: item.id } as CockpitNavigationTarget,
+        })),
+      ...metrics.roadmapItems.slice(0, 2).map((item) => ({
+        id: `missing-roadmap-${item.id}`,
+        category: '未来能力',
+        title: item.title,
+        signal: `${item.priority} · ${item.status}`,
+        summary: item.problem || `优先回到 ${item.cockpit_page} 承接这条未来能力。`,
+        objectTarget: { tab: 'SystemMap', pageId: item.cockpit_page } as CockpitNavigationTarget,
+        taskTarget: { tab: 'TaskCenter', taskQuery: item.id } as CockpitNavigationTarget,
+      })),
+    ];
+
+    return rows
+      .filter((row, index, allRows) => allRows.findIndex((item) => item.title === row.title && item.category === row.category) === index)
+      .slice(0, 8);
+  }, [
+    metrics.closureDrafts,
+    metrics.domainAttention,
+    metrics.pageAttentionItems,
+    metrics.priorityProjects,
+    metrics.roadmapItems,
+  ]);
+
+  const missingCapabilitySummary = useMemo(() => ({
+    total: missingCapabilityRows.length,
+    page: metrics.pageAttentionItems.length,
+    evidence: metrics.closureDrafts.length,
+    domain: metrics.domainAttention.length,
+    project: metrics.priorityProjects.filter((item) => item.status !== 'healthy' && item.status !== 'ready').length,
+    roadmap: metrics.roadmapItems.length,
+  }), [metrics.closureDrafts.length, metrics.domainAttention.length, missingCapabilityRows.length, metrics.pageAttentionItems.length, metrics.priorityProjects, metrics.roadmapItems.length]);
 
   const executionChainRows = useMemo(() => {
     const firstPage = metrics.pageAttentionItems[0];
@@ -1425,6 +1504,63 @@ export default function CockpitGuideView({
               )}
             </div>
           </article>
+        </div>
+      </section>
+
+      <section className="cockpit-guide-section">
+        <div className="section-header">
+          <div>
+            <h2>能力缺失登记</h2>
+            <p className="text-muted">把页面、证据、领域挂载、项目状态面和未来能力统一登记成一张缺口表，直接决定回对象还是回任务。</p>
+          </div>
+        </div>
+        <div className="cockpit-guide-coverage-summary">
+          <span><strong>{missingCapabilitySummary.total}</strong> 条登记</span>
+          <span><strong>{missingCapabilitySummary.page}</strong> 条页面能力</span>
+          <span><strong>{missingCapabilitySummary.evidence}</strong> 条证据链</span>
+          <span><strong>{missingCapabilitySummary.domain}</strong> 条领域挂载</span>
+          <span><strong>{missingCapabilitySummary.project + missingCapabilitySummary.roadmap}</strong> 条未来补位</span>
+        </div>
+        <div className="cockpit-guide-coverage-list">
+          {missingCapabilityRows.map((row) => (
+            <div key={row.id} className="cockpit-guide-coverage-row gap">
+              <div className="cockpit-guide-coverage-row-head">
+                <div>
+                  <strong>{row.title}</strong>
+                  <small>{row.category} · {row.signal}</small>
+                </div>
+                <span className="cockpit-guide-coverage-status gap">待补位</span>
+              </div>
+              <p>{row.summary}</p>
+              <div className="cockpit-guide-coverage-next">
+                <strong>承接方式</strong>
+                <p>先看对象承接，再回任务中心补齐缺失链路。</p>
+              </div>
+              <div className="cockpit-guide-coverage-actions">
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开缺失能力对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ArrowRight size={14} />
+                  <span>看对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开缺失能力任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>看任务</span>
+                </button>
+              </div>
+            </div>
+          ))}
+          {missingCapabilityRows.length === 0 && (
+            <div className="cockpit-guide-focus-empty">当前没有待登记的能力缺失项。</div>
+          )}
         </div>
       </section>
 

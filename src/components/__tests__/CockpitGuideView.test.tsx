@@ -148,6 +148,7 @@ describe('CockpitGuideView', () => {
       expect(screen.getByRole('button', { name: '打开角色对象 领域挂载模式' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开角色证据 建设补位模式' })).toBeInTheDocument()
       expect(screen.getByText('当前缺口与补位')).toBeInTheDocument()
+      expect(screen.getByText('能力缺失登记')).toBeInTheDocument()
       expect(screen.getByText('按问题定位')).toBeInTheDocument()
       expect(screen.getByText('页面有了但不会用')).toBeInTheDocument()
       expect(screen.getByText('能看不能证')).toBeInTheDocument()
@@ -186,6 +187,9 @@ describe('CockpitGuideView', () => {
       expect(screen.getByRole('button', { name: '打开全站覆盖任务 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开任务车道 页面能力' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补位任务 页面能力：补齐 性能监控' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开缺失能力对象 性能监控' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开缺失能力任务 family-hub 服务' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开缺失能力对象 家庭驾驶舱挂载' })).toBeInTheDocument()
       expect(screen.getByText('页面补位')).toBeInTheDocument()
       expect(screen.getAllByText('能力缺口').length).toBeGreaterThan(0)
       expect(screen.getByText('项目覆盖短板')).toBeInTheDocument()
@@ -454,6 +458,24 @@ describe('CockpitGuideView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'TaskCenter',
       taskQuery: 'Performance',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开缺失能力对象 性能监控' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      pageId: 'Performance',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开缺失能力任务 family-hub 服务' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'TaskCenter',
+      taskQuery: 'family-hub',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开缺失能力对象 家庭驾驶舱挂载' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      pageId: 'DomainApps',
     }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开领域对象 family-hub 服务' }))
