@@ -863,7 +863,7 @@ describe('SystemMapView', () => {
       expect(screen.getAllByText('治理闭环').length).toBeGreaterThan(0)
       expect(screen.getAllByText('相关项目').length).toBeGreaterThan(0)
       expect(screen.getAllByText('排查命令').length).toBeGreaterThan(0)
-      expect(screen.getByText('项目组合：修复 kairon')).toBeInTheDocument()
+      expect(screen.getAllByText('项目组合：修复 kairon').length).toBeGreaterThan(0)
       expect(screen.getAllByText('复跑验证').length).toBeGreaterThan(0)
       expect(screen.getAllByText('kairon').length).toBeGreaterThan(0)
     })
@@ -1080,6 +1080,48 @@ describe('SystemMapView', () => {
       expect(screen.getByRole('button', { name: '查看 kairon 项目详情' })).toBeInTheDocument()
       expect(screen.getByText(/显示 1 \/ 2 · 命令 1/)).toBeInTheDocument()
     })
+  })
+
+  it('builds a project entry mapping board with cockpit, coverage, and task handoff routes', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    render(<SystemMapView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      const board = screen.getByRole('region', { name: '项目入口映射总表' })
+      expect(board).toBeInTheDocument()
+      expect(within(board).getByText('入口映射')).toBeInTheDocument()
+      expect(within(board).getAllByText('kairon').length).toBeGreaterThan(0)
+      expect(within(board).getByText('打开项目入口')).toBeInTheDocument()
+      expect(within(board).getByText('查看项目覆盖')).toBeInTheDocument()
+      expect(within(board).getByText('打开项目任务')).toBeInTheDocument()
+      expect(within(board).getByText('定位缺口维度')).toBeInTheDocument()
+      expect(within(board).getByText('草稿 项目组合：修复 kairon')).toBeInTheDocument()
+    })
+
+    const board = screen.getByRole('region', { name: '项目入口映射总表' })
+    fireEvent.click(within(board).getByText('打开项目入口'))
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      tab: 'SystemMap',
+      projectId: 'kairon',
+    }))
+
+    fireEvent.click(within(board).getByText('查看项目覆盖'))
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      tab: 'SystemMap',
+      projectId: 'kairon',
+    }))
+
+    fireEvent.click(within(board).getByText('打开项目任务'))
+    expectTaskCenterDraftCall(onOpenTarget, 2, 'kairon', '项目组合：修复 kairon')
+
+    fireEvent.click(within(board).getByText('定位缺口维度'))
+    expect(onOpenTarget).toHaveBeenNthCalledWith(4, expect.objectContaining({
+      tab: 'SystemMap',
+      projectId: 'kairon',
+      coverageDimensionId: 'verification',
+    }))
   })
 
   it('surfaces a project dimension repair workbench', async () => {

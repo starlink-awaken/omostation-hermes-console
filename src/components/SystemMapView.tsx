@@ -1501,6 +1501,35 @@ export default function SystemMapView({
     [portfolioFilter, systemMap],
   );
 
+  const projectEntryRows = useMemo(() => {
+    if (!systemMap) return [];
+    return systemMap.project_portfolio.priority_projects
+      .map((priority) => {
+        const project = projectsById.get(priority.id);
+        if (!project) return null;
+        const pageId = project.cockpit_page || priority.cockpit_page;
+        const page = pageId ? pagesById.get(pageId) || null : null;
+        const primaryDimension = project.portfolio.non_ready_dimensions[0] || priority.non_ready_dimensions[0] || null;
+        const draftTarget = { tab: 'TaskCenter', taskQuery: project.id } as CockpitNavigationTarget;
+        const draft = findTaskDraftForTarget(draftTarget, draftTasks);
+        return {
+          priority,
+          project,
+          page,
+          primaryDimension,
+          draft,
+          draftTarget: withTaskDraftHandoff(draftTarget, draftTasks),
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }, [draftTasks, pagesById, projectsById, systemMap]);
+
+  const projectEntrySummary = useMemo(() => ({
+    mapped: projectEntryRows.filter((row) => row.page).length,
+    drafts: projectEntryRows.filter((row) => row.draft).length,
+    blocked: projectEntryRows.filter((row) => row.priority.status === 'blocked').length,
+  }), [projectEntryRows]);
+
   const activeRepairDimension = useMemo(() => {
     const dimensions = systemMap?.project_capability_coverage?.dimension_summary || [];
     if (coverageFilter !== 'all') {
@@ -2962,6 +2991,126 @@ export default function SystemMapView({
               </button>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="services-section system-map-section system-map-portfolio" role="region" aria-label="项目入口映射总表">
+        <div className="section-header">
+          <div>
+            <h2>项目入口映射总表</h2>
+            <p className="text-muted">把优先项目直接映射到 Cockpit 入口、覆盖维度和任务承接位，避免项目只挂在总览里不落到可操作入口。</p>
+          </div>
+          <span className={`status-badge ${statusClass(systemMap.project_portfolio.summary.status)}`}>
+            <Route size={13} />
+            已挂 {projectEntrySummary.mapped} / {projectEntryRows.length}
+          </span>
+        </div>
+        <SummaryTileGrid
+          className="system-map-summary-grid"
+          minColumnWidth={180}
+          items={[
+            {
+              label: '优先项目',
+              value: `${projectEntryRows.length}`,
+              tone: 'default',
+              helper: '当前项目组合里最影响日用的对象。',
+            },
+            {
+              label: '已挂入口',
+              value: `${projectEntrySummary.mapped}`,
+              tone: projectEntrySummary.mapped === projectEntryRows.length ? 'positive' : 'warning',
+              helper: '已登记 Cockpit 页面入口的优先项目数。',
+            },
+            {
+              label: '待补草稿',
+              value: `${projectEntrySummary.drafts}`,
+              tone: projectEntrySummary.drafts > 0 ? 'warning' : 'positive',
+              helper: '已经存在任务草稿承接的优先项目数。',
+            },
+            {
+              label: '阻塞项目',
+              value: `${projectEntrySummary.blocked}`,
+              tone: projectEntrySummary.blocked > 0 ? 'danger' : 'positive',
+              helper: '当前仍处于 blocked 的优先项目数。',
+            },
+          ]}
+        />
+        <div className="system-map-portfolio-priority">
+          <div className="system-map-portfolio-subhead">
+            <h3>入口映射</h3>
+            <span>{projectEntryRows.length}</span>
+          </div>
+          {projectEntryRows.length > 0 ? (
+            projectEntryRows.map(({ priority, project, page, primaryDimension, draft, draftTarget }) => (
+              <article className={`system-map-portfolio-priority-card ${statusClass(priority.status)}`} key={`entry-${project.id}`}>
+                <div>
+                  <strong>{project.id}</strong>
+                  <span>
+                    {project.layer} · {page ? `${page.title} / ${page.group}` : '未登记入口'} · {portfolioStatusText(priority.status)}
+                  </span>
+                </div>
+                <p>{priority.primary_gap}</p>
+                <small>{project.portfolio.next_action}</small>
+                <div className="system-map-portfolio-tags">
+                  <em className={statusClass(priority.status)}>
+                    入口 {page ? page.id : project.cockpit_page || '未登记'}
+                  </em>
+                  <em className={statusClass(project.runtime.status)}>
+                    运行 {runtimeStatusText(project.runtime.status)}
+                  </em>
+                  <em className={statusClass(project.runtime.latest_verification.status)}>
+                    验证 {verifyText(project.runtime.latest_verification.status)}
+                  </em>
+                  {primaryDimension && (
+                    <em className={statusClass(primaryDimension.status)}>
+                      缺口 {primaryDimension.title}
+                    </em>
+                  )}
+                  {draft && (
+                    <em className="ready">
+                      草稿 {draft.title}
+                    </em>
+                  )}
+                </div>
+                <div className="system-map-page-focus-actions-grid">
+                  {page && (
+                    <button
+                      className="system-map-page-focus-action"
+                      onClick={() => openSystemMapTarget({ tab: page.id, projectId: project.id }, onNavigate, onOpenTarget)}
+                    >
+                      <span>打开项目入口</span>
+                      <small>{page.title}</small>
+                    </button>
+                  )}
+                  <button
+                    className="system-map-page-focus-action"
+                    onClick={() => openSystemMapTarget({ tab: 'SystemMap', projectId: project.id }, onNavigate, onOpenTarget)}
+                  >
+                    <span>查看项目覆盖</span>
+                    <small>{project.portfolio.ready} 就绪 · {project.portfolio.failed} 缺口</small>
+                  </button>
+                  <button
+                    className="system-map-page-focus-action"
+                    onClick={() => openSystemMapTarget(draftTarget, onNavigate, onOpenTarget)}
+                  >
+                    <span>打开项目任务</span>
+                    <small>{draft?.title || project.portfolio.next_action}</small>
+                  </button>
+                  {primaryDimension && (
+                    <button
+                      className="system-map-page-focus-action"
+                      onClick={() => openSystemMapTarget({ tab: 'SystemMap', coverageDimensionId: primaryDimension.id, projectId: project.id }, onNavigate, onOpenTarget)}
+                    >
+                      <span>定位缺口维度</span>
+                      <small>{primaryDimension.title}</small>
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))
+          ) : (
+            <span className="text-muted">当前还没有需要映射的优先项目。</span>
+          )}
         </div>
       </section>
 
