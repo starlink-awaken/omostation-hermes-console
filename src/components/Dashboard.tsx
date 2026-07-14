@@ -29,6 +29,8 @@ import {
   ArrowRight,
   Copy,
   Sparkles,
+  Menu,
+  X,
 } from 'lucide-react';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
@@ -1094,6 +1096,7 @@ function SidebarGroupEntryPanel({
 export default function Dashboard() {
   const initialNavigationTarget = typeof window === 'undefined' ? null : parseNavigationHash(window.location.hash);
   const [activeTab, setActiveTabState] = useState(initialNavigationTarget?.tab || 'Home');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dynamicSearchTargets, setDynamicSearchTargets] = useState<SearchTarget[]>([]);
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
@@ -2685,6 +2688,7 @@ export default function Dashboard() {
     setTaskSearchSeed('');
     setTaskDraftKey(null);
     setAlertTab(null);
+    setMobileNavOpen(false);
     setActiveTabState(tab);
     writeNavigationHash({ tab });
   };
@@ -2702,6 +2706,7 @@ export default function Dashboard() {
     setTaskSearchSeed(target.taskQuery || '');
     setTaskDraftKey(resolvedDraftKey);
     setAlertTab(target.alertTab || null);
+    setMobileNavOpen(false);
     setActiveTabState(target.tab);
     writeNavigationHash({
       ...target,
@@ -3451,12 +3456,28 @@ export default function Dashboard() {
       </a>
 
       {/* Sider Navigation Sidebar (AntD Style) */}
-      <aside role="complementary" aria-label="控制台侧边栏" className="sidebar">
+      {mobileNavOpen && (
+        <button
+          type="button"
+          className="mobile-nav-backdrop"
+          aria-label="关闭主导航"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+      <aside role="complementary" aria-label="控制台侧边栏" className={`sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo-box" aria-hidden="true">
             <Activity size={18} />
           </div>
           <h2>Cockpit Console</h2>
+          <button
+            type="button"
+            className="mobile-nav-close"
+            aria-label="关闭主导航"
+            onClick={() => setMobileNavOpen(false)}
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
         <SidebarCoveragePanel coverage={sidebarCoverage} onOpenTarget={openContextTarget} />
         <SidebarProjectPortfolioPanel
@@ -3536,6 +3557,15 @@ export default function Dashboard() {
       {/* Main Content Area (a11y skip target) */}
       <main id="main-content" tabIndex={-1} className="main-content" style={{ outline: 'none' }}>
         <header className="topbar">
+          <button
+            type="button"
+            className="topbar-btn mobile-nav-toggle"
+            aria-label={mobileNavOpen ? '关闭主导航' : '打开主导航'}
+            aria-expanded={mobileNavOpen}
+            onClick={() => setMobileNavOpen((open) => !open)}
+          >
+            {mobileNavOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
+          </button>
           <div className="topbar-search-wrap" role="search">
             <div className="search-bar">
               <Search size={16} className="text-muted" aria-hidden="true" />
