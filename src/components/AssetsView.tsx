@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Briefcase, Code, Cpu, GitPullRequest, Play, RefreshCw, ShieldAlert, Terminal } from 'lucide-react';
+import { Briefcase, ClipboardCheck, Code, Cpu, GitPullRequest, Play, RefreshCw, Route, ShieldAlert, Terminal } from 'lucide-react';
 import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
@@ -25,6 +25,17 @@ interface AssetsViewProps {
   focusPageId?: string | null;
   focusTaskQuery?: string;
 }
+
+type AssetClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
 
 function matchesAssetsFocusQuery(values: Array<string | null | undefined>, query?: string) {
   const normalizedQuery = query?.trim().toLowerCase();
@@ -197,6 +208,74 @@ export default function AssetsView({
     workflowItems: workflows.slice(0, 3),
   }), [localSkills, pipelines, selectedPipeline, skills, workflows]);
 
+  const assetClosureRows = useMemo<AssetClosureRow[]>(() => {
+    const firstLocalSkill = assetBacklog.skillItems[0];
+    const firstPipeline = assetBacklog.pipelineItems[0] || selectedPipeline;
+    const firstWorkflow = assetBacklog.workflowItems[0];
+
+    return [
+      {
+        id: 'knowledge-assets',
+        title: '知识供给入资产',
+        summary: '知识页补好的上下文，最终得落到技能、管线和工作流资产上，不然知识供给就是空转。',
+        signal: focusTaskQuery && matchesAssetsFocusQuery(['knowledge', 'memory', 'context', 'research', '资产'], focusTaskQuery)
+          ? `当前焦点 ${focusTaskQuery}`
+          : `技能 ${skills.length} · 管线 ${pipelines.length}`,
+        nextAction: '先回知识页确认上下文供给，再回来核对资产是否真的拿到可执行输入。',
+        statusTone: skills.length > 0 || pipelines.length > 0 ? 'degraded' : 'online',
+        objectTarget: { tab: 'Knowledge', taskQuery: focusTaskQuery || 'knowledge-assets' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || 'knowledge-assets' },
+      },
+      {
+        id: 'protocol-skills',
+        title: '技能治理到协议',
+        summary: '本地技能不是堆在磁盘里就算完成，最终要回协议面补描述、边界和治理位置。',
+        signal: localSkills.length > 0 ? `待治理 ${localSkills.length}` : `插件技能 ${pluginSkills.length}`,
+        nextAction: firstLocalSkill
+          ? `优先治理 ${firstLocalSkill.name}，补使用边界、协议归类和复用说明。`
+          : '当前没有本地技能待治理，抽查一条插件技能的治理归属。',
+        statusTone: localSkills.length > 0 ? 'degraded' : 'online',
+        objectTarget: { tab: 'Protocol', taskQuery: firstLocalSkill?.id || 'skills' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstLocalSkill?.id || 'skills' },
+      },
+      {
+        id: 'pipeline-output',
+        title: '管线试跑与输出复核',
+        summary: '管线至少要跑出一轮明确输出，才能判断它到底是日用能力还是一条摆设命令。',
+        signal: firstPipeline ? `待试跑 ${assetBacklog.pipelineItems.length}` : '暂无管线',
+        nextAction: firstPipeline
+          ? `给 ${firstPipeline} 一个明确目标，跑一轮输出，再决定是否继续沉成正式能力。`
+          : '当前没有可调度管线，先补齐最小可运行管线清单。',
+        statusTone: firstPipeline ? 'degraded' : 'online',
+        objectTarget: { tab: 'Assets', taskQuery: firstPipeline || 'pipelines' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstPipeline || 'pipelines' },
+      },
+      {
+        id: 'workflow-runtime',
+        title: '工作流验收到运行面',
+        summary: '资产层工作流跑完以后，还要回运行页看真实编排、授权链和 HITL，不然只是假通过。',
+        signal: firstWorkflow ? `待验收 ${assetBacklog.workflowItems.length}` : `已验收 ${testedWorkflowCount}`,
+        nextAction: firstWorkflow
+          ? `回运行面核对 ${firstWorkflow.name} 的真实节点状态、授权链和最近测试结果。`
+          : '当前没有待验收工作流，抽查已测试结果是否还和运行态一致。',
+        statusTone: firstWorkflow ? 'degraded' : 'online',
+        objectTarget: { tab: 'Workflows', taskQuery: firstWorkflow?.name || 'workflows' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstWorkflow?.name || 'workflows' },
+      },
+    ];
+  }, [
+    assetBacklog.pipelineItems,
+    assetBacklog.skillItems,
+    assetBacklog.workflowItems,
+    focusTaskQuery,
+    localSkills.length,
+    pipelines.length,
+    pluginSkills.length,
+    selectedPipeline,
+    skills.length,
+    testedWorkflowCount,
+  ]);
+
   const focusedAssetCard = useMemo(() => {
     const matchedSkill = skills.find((skill) => (
       matchesAssetsFocusQuery([skill.id, skill.name, skill.description, skill.source, skill.path], focusTaskQuery)
@@ -235,6 +314,19 @@ export default function AssetsView({
       };
     }
 
+    const matchedClosure = assetClosureRows.find((row) => (
+      matchesAssetsFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '资产闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
+      };
+    }
+
     if (focusPageId === 'Assets') {
       return {
         kicker: '当前页面',
@@ -246,7 +338,7 @@ export default function AssetsView({
     }
 
     return null;
-  }, [focusPageId, focusTaskQuery, pipelines, skills, workflows]);
+  }, [assetClosureRows, focusPageId, focusTaskQuery, pipelines, skills, workflows]);
 
   if (loading) {
     return (
@@ -474,6 +566,57 @@ export default function AssetsView({
               </div>
             )}
           </article>
+        </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="资产闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>资产闭环总表</h2>
+            <p className="text-muted">把知识供给、技能治理、管线试跑和工作流验收并排摆出来，资产页才不只是清单和测试按钮。</p>
+          </div>
+          <span className="status-badge online">{assetClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {assetClosureRows.map((row) => (
+            <article
+              key={`asset-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开资产闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ClipboardCheck size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开资产闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 

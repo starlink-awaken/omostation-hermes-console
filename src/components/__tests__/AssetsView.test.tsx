@@ -61,6 +61,7 @@ describe('AssetsView', () => {
     await waitFor(() => {
       expect(screen.getByText('技术资产总览')).toBeInTheDocument()
       expect(screen.getByText('资产承接工作台')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '资产闭环总表' })).toBeInTheDocument()
       expect(screen.getAllByText('自定义治理技能').length).toBeGreaterThan(0)
     })
 
@@ -68,6 +69,9 @@ describe('AssetsView', () => {
     expect(onNavigate).toHaveBeenCalledWith('Protocol')
 
     fireEvent.click(screen.getByRole('button', { name: '处理工作流 nightly-governance' }))
+    expect(onNavigate).toHaveBeenCalledWith('Workflows')
+
+    fireEvent.click(screen.getByRole('button', { name: '打开资产闭环对象 工作流验收到运行面' }))
     expect(onNavigate).toHaveBeenCalledWith('Workflows')
   })
 
@@ -91,6 +95,29 @@ describe('AssetsView', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Assets', taskQuery: 'risk-audit' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'risk-audit' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces asset closure routing when focus hits knowledge handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    render(
+      <AssetsView
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="知识供给入资产"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前资产承接焦点' })
+    expect(within(focusRegion).getByText('知识供给入资产')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开资产焦点对象 知识供给入资产' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开资产焦点任务 知识供给入资产' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Knowledge', taskQuery: '知识供给入资产' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '知识供给入资产' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
 })
