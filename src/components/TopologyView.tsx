@@ -83,6 +83,17 @@ interface TopologyViewProps {
   focusTaskQuery?: string;
 }
 
+type TopologyClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesTopologyFocusQuery(values: Array<string | null | undefined>, query?: string) {
   const normalizedQuery = query?.trim().toLowerCase();
   if (!normalizedQuery) return false;
@@ -221,6 +232,9 @@ export default function TopologyView({
     }))
     .filter((service) => service.status !== 'online' || service.dependencyCount === 0)
     .slice(0, 4);
+  const firstAttentionService = attentionServices[0] || null;
+  const firstOfflineService = attentionServices.find((service) => service.status === 'offline') || null;
+  const firstIsolatedService = attentionServices.find((service) => service.dependencyCount === 0) || null;
   const topologyActionItems = [
     {
       id: 'topology-compute',
@@ -247,6 +261,60 @@ export default function TopologyView({
       actionValue: 'LogViewer',
     },
   ];
+  const topologyClosureRows: TopologyClosureRow[] = [
+    {
+      id: 'node-compute',
+      title: '异常节点与算力排障',
+      summary: '拓扑页先负责指出异常节点，但节点到底是停了、端口没起还是资源爆了，还得回算力面继续排障。',
+      signal: firstOfflineService ? `离线 ${attentionServices.filter((service) => service.status === 'offline').length}` : `异常 ${attentionServices.length}`,
+      nextAction: firstOfflineService
+        ? `优先围绕 ${firstOfflineService.name} 回算力页确认启动、端口监听和资源状态。`
+        : firstAttentionService
+          ? `先看 ${firstAttentionService.name} 的基础状态，确认它是降级还是仅缺依赖证据。`
+          : '当前没有明显异常节点，抽查一次拓扑到算力面的承接链是否还能走通。',
+      statusTone: firstAttentionService ? 'degraded' : 'online',
+      objectTarget: { tab: 'Compute', taskQuery: firstOfflineService?.id || firstAttentionService?.id || 'topology-compute' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstOfflineService?.id || firstAttentionService?.id || 'topology-compute' },
+    },
+    {
+      id: 'dependency-mesh',
+      title: '依赖关系与网格核对',
+      summary: '拓扑图只告诉你关系有没有露出来，真正的连接、路由和约束，还得回网格面继续核对。',
+      signal: firstIsolatedService ? `孤点 ${firstIsolatedService.name}` : `关系 ${edges.length}`,
+      nextAction: firstIsolatedService
+        ? `优先核对 ${firstIsolatedService.name} 为什么没有依赖证据，再回网格页看路由和注册。`
+        : edges.length > 0
+          ? '当前已有显式关系，抽查一条关键依赖是否能在网格页继续落证。'
+          : '当前还没有显式关系证据，先回网格页核对注册和依赖声明。',
+      statusTone: firstIsolatedService || edges.length === 0 ? 'degraded' : 'online',
+      objectTarget: { tab: 'McpMesh', taskQuery: firstIsolatedService?.id || firstAttentionService?.id || 'topology-mesh' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstIsolatedService?.id || firstAttentionService?.id || 'topology-mesh' },
+    },
+    {
+      id: 'logs-evidence',
+      title: '日志证据与任务承接',
+      summary: '拓扑异常如果不回日志抓真实报错，最后只能知道哪儿坏了，不知道为什么坏，也沉不成正式动作。',
+      signal: firstAttentionService ? `追证 ${firstAttentionService.name}` : '待补日志证据',
+      nextAction: firstAttentionService
+        ? `把 ${firstAttentionService.name} 带去日志页抓证据，再决定要不要立刻送进任务中心。`
+        : '当前没有明显异常对象，抽查一次拓扑到日志和任务中心的承接链是否仍然可用。',
+      statusTone: firstAttentionService ? 'degraded' : 'online',
+      objectTarget: { tab: 'LogViewer', taskQuery: firstAttentionService?.id || 'topology-logs' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstAttentionService?.id || 'topology-logs' },
+    },
+    {
+      id: 'systemmap-task',
+      title: '系统地图与任务回挂',
+      summary: '拓扑问题如果已经反复出现，就不该只留在运行面，要回系统地图挂成全站缺口，再由任务中心持续追。',
+      signal: attentionServices.length > 0 ? `待回挂 ${attentionServices.length}` : `节点 ${services.length}`,
+      nextAction: attentionServices.length > 0
+        ? '把重复异常正式回挂到系统地图，再在任务中心保留长期承接动作。'
+        : '当前没有明显待回挂对象，抽查拓扑页与系统地图、任务中心的互跳链路。',
+      statusTone: services.length > 0 ? 'degraded' : 'online',
+      objectTarget: { tab: 'SystemMap', pageId: 'Topology' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: 'Topology' },
+    },
+  ];
   const focusedTopologyCard = (() => {
     const matchedService = services
       .map((service) => ({
@@ -271,6 +339,19 @@ export default function TopologyView({
         detail: `${statusText} · 依赖 ${matchedService.dependencyCount}，先在拓扑上确认范围，再决定去算力、网格或日志页深挖。`,
         objectTarget: { tab: 'Topology', taskQuery: matchedService.id },
         taskTarget: { tab: 'TaskCenter', taskQuery: matchedService.id },
+      };
+    }
+
+    const matchedClosure = topologyClosureRows.find((row) => (
+      matchesTopologyFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '拓扑闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
       };
     }
 
@@ -338,6 +419,57 @@ export default function TopologyView({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="拓扑闭环总表">
+        <div className="section-header">
+          <div>
+            <h2>拓扑闭环总表</h2>
+            <p className="text-muted">把异常节点排障、依赖核对、日志追证和系统地图回挂并排摆出来，拓扑页才不只是关系图和异常名单。</p>
+          </div>
+          <span className="status-badge online">{topologyClosureRows.length} 条闭环</span>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {topologyClosureRows.map((row) => (
+            <article
+              key={`topology-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开拓扑闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <Server size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开拓扑闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <AlertTriangle size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">

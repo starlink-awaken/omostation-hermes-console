@@ -30,6 +30,7 @@ describe('TopologyView', () => {
     render(<TopologyView />)
 
     await waitFor(() => {
+      expect(screen.getByRole('region', { name: '拓扑闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('拓扑动作区')).toBeInTheDocument()
       expect(screen.getByText('服务拓扑数据不可用')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '重试拓扑探测' })).toBeInTheDocument()
@@ -101,6 +102,35 @@ describe('TopologyView', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Topology', taskQuery: 'worker' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'worker' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces topology closure routing when focus hits system map handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockResolvedValue(okJson({
+      items: [
+        { name: 'gateway', status: 'degraded', dependencies: ['worker'] },
+        { name: 'worker', status: 'offline', dependencies: [] },
+      ],
+    }))
+
+    render(
+      <TopologyView
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="系统地图与任务回挂"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前拓扑承接焦点' })
+    expect(within(focusRegion).getByText('系统地图与任务回挂')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开拓扑焦点对象 系统地图与任务回挂' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开拓扑焦点任务 系统地图与任务回挂' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', pageId: 'Topology' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Topology' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
 })
