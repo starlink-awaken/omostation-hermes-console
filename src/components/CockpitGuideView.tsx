@@ -132,6 +132,7 @@ interface GuideMetrics {
     score: number | null;
     stepCount: number;
     pageCount: number;
+    pageIds: string[];
     linkedPages: string[];
     playbooks: string[];
     featureDomains: string[];
@@ -723,6 +724,7 @@ export default function CockpitGuideView({
               score,
               stepCount: (path.steps || []).length,
               pageCount: pageIds.length,
+              pageIds,
               linkedPages,
               playbooks,
               featureDomains,
@@ -872,6 +874,77 @@ export default function CockpitGuideView({
       missingFeatureDomain: rows.filter((row) => row.featureDomains.length === 0).length,
     };
   }, [metrics.usageCoverageRows]);
+
+  const architectureLaneRows = useMemo(() => (
+    GUIDE_GROUPS.map((group) => {
+      const pageRows = metrics.pageCoverageRows.filter((row) => row.groupId === group.id);
+      const pageIdSet = new Set(pageRows.map((row) => row.id));
+      const usageRows = metrics.usageCoverageRows.filter((row) => row.pageIds.some((pageId) => pageIdSet.has(pageId)));
+      const domainTitles = [...new Set([
+        ...pageRows.flatMap((row) => row.featureDomains),
+        ...usageRows.flatMap((row) => row.featureDomains),
+      ])];
+      const roadmapTitles = [...new Set([
+        ...pageRows.flatMap((row) => row.roadmapTitles),
+        ...usageRows.flatMap((row) => row.roadmapTitles),
+      ])];
+      const relatedDrafts = [...metrics.featuredDrafts, ...metrics.closureDrafts].filter((draft) => pageIdSet.has(draft.sourceId));
+      const laneDomainAttention = group.id === 'domain' ? metrics.domainAttention : [];
+      const attentionPageRows = pageRows.filter((row) => row.status !== 'ready');
+      const attentionUsageRows = usageRows.filter((row) => row.status !== 'ready');
+      const severityWeight = attentionPageRows.reduce((total, row) => total + (row.status === 'gap' ? 2 : 1), 0)
+        + attentionUsageRows.reduce((total, row) => total + (row.status === 'gap' ? 2 : 1), 0)
+        + laneDomainAttention.length;
+      const status = severityWeight === 0 ? 'ready' : severityWeight <= 2 ? 'watch' : 'gap';
+      const primaryPage = attentionPageRows[0];
+      const primaryUsage = attentionUsageRows[0];
+      const primaryDomain = laneDomainAttention[0];
+      const objectTarget = primaryPage
+        ? { tab: 'SystemMap', pageId: primaryPage.id }
+        : primaryUsage
+          ? { tab: 'SystemMap', usagePathId: primaryUsage.id }
+          : primaryDomain
+            ? { tab: 'DomainApps', taskQuery: primaryDomain.id }
+            : group.target;
+      const taskTarget = primaryPage
+        ? { tab: 'TaskCenter', taskQuery: primaryPage.taskQuery }
+        : primaryUsage
+          ? { tab: 'TaskCenter', usagePathId: primaryUsage.id, taskQuery: primaryUsage.taskQuery }
+          : primaryDomain
+            ? { tab: 'TaskCenter', taskQuery: primaryDomain.taskQuery }
+            : { tab: 'TaskCenter', taskQuery: group.pages[0]?.id || group.id };
+      const nextAction = primaryPage?.nextAction
+        || primaryUsage?.nextAction
+        || primaryDomain?.nextAction
+        || roadmapTitles[0]
+        || group.description;
+
+      return {
+        id: group.id,
+        title: group.title,
+        summary: group.summary,
+        status,
+        signal: `页面 ${pageRows.length} · 使用链 ${usageRows.length} · 能力域 ${domainTitles.length}`,
+        pageCount: pageRows.length,
+        usageCount: usageRows.length,
+        domainCount: domainTitles.length,
+        draftCount: relatedDrafts.length,
+        roadmapCount: roadmapTitles.length,
+        attentionCount: attentionPageRows.length + attentionUsageRows.length + laneDomainAttention.length,
+        nextAction,
+        objectTarget: objectTarget as CockpitNavigationTarget,
+        taskTarget: taskTarget as CockpitNavigationTarget,
+      };
+    })
+  ), [metrics.closureDrafts, metrics.domainAttention, metrics.featuredDrafts, metrics.pageCoverageRows, metrics.usageCoverageRows]);
+
+  const architectureLaneSummary = useMemo(() => ({
+    total: architectureLaneRows.length,
+    ready: architectureLaneRows.filter((row) => row.status === 'ready').length,
+    attention: architectureLaneRows.filter((row) => row.status !== 'ready').length,
+    usageConnected: architectureLaneRows.filter((row) => row.usageCount > 0).length,
+    roadmapLinked: architectureLaneRows.filter((row) => row.roadmapCount > 0).length,
+  }), [architectureLaneRows]);
 
   const coverageGroups = useMemo(() => (
     GUIDE_GROUPS.map((group) => ({
@@ -1359,6 +1432,69 @@ export default function CockpitGuideView({
               <strong>{card.value}</strong>
               <p>{card.detail}</p>
             </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="cockpit-guide-section">
+        <div className="section-header">
+          <div>
+            <h2>功能架构工作带总表</h2>
+            <p className="text-muted">把入口、运行、智能、治理、开发工具和领域应用六条工作带拉平，看每一带有没有页面、使用链、能力域和补位动作。</p>
+          </div>
+        </div>
+        <div className="cockpit-guide-coverage-summary">
+          <span><strong>{architectureLaneSummary.total}</strong> 条工作带</span>
+          <span><strong>{architectureLaneSummary.ready}</strong> 条已接通</span>
+          <span><strong>{architectureLaneSummary.attention}</strong> 条待补位</span>
+          <span><strong>{architectureLaneSummary.usageConnected}</strong> 条已挂使用链</span>
+          <span><strong>{architectureLaneSummary.roadmapLinked}</strong> 条已挂路线图</span>
+        </div>
+        <div className="cockpit-guide-coverage-list">
+          {architectureLaneRows.map((row) => (
+            <div key={row.id} className={`cockpit-guide-coverage-row ${pageCoverageStatusClass(row.status)}`}>
+              <div className="cockpit-guide-coverage-row-head">
+                <div>
+                  <strong>{row.title}</strong>
+                  <small>{row.signal}</small>
+                </div>
+                <span className={`cockpit-guide-coverage-status ${pageCoverageStatusClass(row.status)}`}>
+                  {pageCoverageStatusText(row.status)}
+                </span>
+              </div>
+              <p>{row.summary}</p>
+              <div className="cockpit-guide-coverage-meta">
+                <span>页面 {row.pageCount} 个</span>
+                <span>使用链 {row.usageCount} 条</span>
+                <span>能力域 {row.domainCount} 个</span>
+                <span>草稿 {row.draftCount} 条</span>
+                <span>待处理 {row.attentionCount} 项</span>
+              </div>
+              <div className="cockpit-guide-coverage-next">
+                <strong>下一步</strong>
+                <p>{row.nextAction}</p>
+              </div>
+              <div className="cockpit-guide-coverage-actions">
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开工作带 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ArrowRight size={14} />
+                  <span>看工作带</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开工作带任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>看补位任务</span>
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       </section>

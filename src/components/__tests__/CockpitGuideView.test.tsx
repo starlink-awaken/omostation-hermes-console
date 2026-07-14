@@ -16,11 +16,12 @@ describe('CockpitGuideView', () => {
           id: 'daily-ops',
           title: '日常体检',
           intent: '每天先确认首页、告警和任务是否都能承接。',
-          steps: ['查看首页健康分', '进入告警中心', '打开任务中心'],
+          steps: ['查看首页健康分', '进入告警中心', '打开任务中心', '查看日志'],
           pages: [
             { id: 'Home', title: '首页' },
             { id: 'AlertCenter', title: '告警中心' },
             { id: 'TaskCenter', title: '任务中心' },
+            { id: 'LogViewer', title: '日志查看器' },
           ],
         },
         {
@@ -42,11 +43,37 @@ describe('CockpitGuideView', () => {
           pages: [
             { id: 'Performance', title: '性能监控' },
             { id: 'TaskCenter', title: '任务中心' },
+            { id: 'LogViewer', title: '日志查看器' },
           ],
         },
       ],
-      playbooks: [{ id: 'daily' }, { id: 'weekly' }],
-      feature_domains: [{ id: 'runtime' }, { id: 'governance' }, { id: 'family' }, { id: 'knowledge' }],
+      playbooks: [
+        {
+          id: 'daily',
+          title: '每日体检',
+          steps: [
+            { page_id: 'Home' },
+            { page_id: 'AlertCenter' },
+            { page_id: 'TaskCenter' },
+            { page_id: 'LogViewer' },
+          ],
+        },
+        {
+          id: 'weekly',
+          title: '治理周检',
+          steps: [
+            { page_id: 'C2G' },
+            { page_id: 'Debt' },
+            { page_id: 'L4Health' },
+          ],
+        },
+      ],
+      feature_domains: [
+        { id: 'runtime', title: '运行态势', cockpit_page: 'Home', providers: ['Home', 'Overview', 'McpMesh', 'Topology', 'Compute', 'TaskCenter', 'LogViewer'] },
+        { id: 'governance', title: '系统治理', cockpit_page: 'C2G', providers: ['C2G', 'AlertCenter', 'L4Health', 'Debt', 'Observability', 'SystemMap'] },
+        { id: 'family', title: '家庭生活', cockpit_page: 'DomainApps', providers: ['DomainApps', 'QuestBoard', 'Settings'] },
+        { id: 'knowledge', title: '知识智能', cockpit_page: 'Knowledge', providers: ['Research', 'Knowledge', 'Engines', 'Assets', 'Protocol', 'Workflows', 'Sandbox'] },
+      ],
       page_maturity: {
         items: [
           { page_id: 'Performance', status: 'gap', score: 20, next_action: '补路径', page: { title: '性能监控' } },
@@ -173,6 +200,7 @@ describe('CockpitGuideView', () => {
       expect(screen.getByText('2 页待补')).toBeInTheDocument()
       expect(screen.getByText('推荐使用路径')).toBeInTheDocument()
       expect(screen.getByText('使用承接总表')).toBeInTheDocument()
+      expect(screen.getByText('功能架构工作带总表')).toBeInTheDocument()
       expect(screen.getByText('按角色进入')).toBeInTheDocument()
       expect(screen.getByText('日常值守模式')).toBeInTheDocument()
       expect(screen.getByText('治理巡检模式')).toBeInTheDocument()
@@ -221,6 +249,8 @@ describe('CockpitGuideView', () => {
       expect(screen.getByRole('button', { name: '打开全站覆盖任务 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开任务车道 页面能力' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补位任务 页面能力：补齐 性能监控' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开工作带 开发工具' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开工作带任务 开发工具' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开使用链 性能补位' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开使用任务 性能补位' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开缺失能力对象 性能监控' })).toBeInTheDocument()
@@ -251,10 +281,11 @@ describe('CockpitGuideView', () => {
           id: 'daily-ops',
           title: '日常体检',
           intent: '先看首页，再回任务中心承接。',
-          steps: ['查看首页', '回任务中心'],
+          steps: ['查看首页', '回任务中心', '查看日志'],
           pages: [
             { id: 'Home', title: '首页' },
             { id: 'TaskCenter', title: '任务中心' },
+            { id: 'LogViewer', title: '日志查看器' },
           ],
         },
         {
@@ -265,11 +296,15 @@ describe('CockpitGuideView', () => {
           pages: [
             { id: 'Performance', title: '性能监控' },
             { id: 'TaskCenter', title: '任务中心' },
+            { id: 'LogViewer', title: '日志查看器' },
           ],
         },
       ],
       playbooks: [],
-      feature_domains: [],
+      feature_domains: [
+        { id: 'runtime', title: '运行态势', cockpit_page: 'Home', providers: ['Home', 'TaskCenter', 'LogViewer'] },
+        { id: 'knowledge', title: '知识智能', cockpit_page: 'Knowledge', providers: ['Sandbox'] },
+      ],
       page_maturity: {
         items: [
           { page_id: 'Performance', status: 'gap', score: 20, next_action: '补路径', page: { title: '性能监控' } },
@@ -512,6 +547,18 @@ describe('CockpitGuideView', () => {
     }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开补位任务 页面能力：补齐 性能监控' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'TaskCenter',
+      taskQuery: 'Performance',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开工作带 开发工具' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      pageId: 'Performance',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开工作带任务 开发工具' }))
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'TaskCenter',
       taskQuery: 'Performance',
