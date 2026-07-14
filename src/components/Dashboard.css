@@ -4628,6 +4628,32 @@
   gap: 12px;
 }
 
+.system-map-gap-closure-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.system-map-gap-closure-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--antd-radius-lg);
+  background: rgba(6, 9, 19, 0.28);
+}
+
+.system-map-gap-closure-card p {
+  margin: 0;
+  color: var(--antd-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.system-map-gap-closure-links {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .system-map-build-column {
   display: grid;
   gap: 10px;

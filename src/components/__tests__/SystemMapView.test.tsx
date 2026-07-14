@@ -919,14 +919,36 @@ describe('SystemMapView', () => {
     })
   })
 
-  it('surfaces a focused capability gap when launched with a gap id', async () => {
-    render(<SystemMapView onNavigate={vi.fn()} focusGapId="project-native-surface" />)
+  it('surfaces a focused capability gap with closure handoff routes when launched with a gap id', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    render(<SystemMapView onNavigate={onNavigate} onOpenTarget={onOpenTarget} focusGapId="project-native-surface" />)
 
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: '当前聚焦能力缺口' })).toBeInTheDocument()
+      const focus = screen.getByRole('region', { name: '当前聚焦能力缺口' })
+      expect(focus).toBeInTheDocument()
       expect(screen.getAllByText('部分项目仍需补齐状态面').length).toBeGreaterThan(0)
       expect(screen.getAllByText(/继续补齐项目原生入口/).length).toBeGreaterThan(0)
+      expect(within(focus).getByText('缺口承接面')).toBeInTheDocument()
+      expect(within(focus).getByText('当前承接线索')).toBeInTheDocument()
+      expect(within(focus).getByText('反向修复入口')).toBeInTheDocument()
+      expect(within(focus).getByText('查看项目')).toBeInTheDocument()
+      expect(within(focus).getByText('查看任务草稿')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '能力缺口承接总表' })).toBeInTheDocument()
+      expect(screen.getByText('已挂页面')).toBeInTheDocument()
+      expect(screen.getByText('待跟项目')).toBeInTheDocument()
     })
+
+    fireEvent.click(within(screen.getByRole('region', { name: '当前聚焦能力缺口' })).getByText('查看项目'))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('kairon 项目详情')).toBeInTheDocument()
+    })
+
+    fireEvent.click(within(screen.getByRole('region', { name: '当前聚焦能力缺口' })).getByText('查看任务草稿'))
+
+    expectTaskCenterDraftCall(onOpenTarget, 0, 'kairon', '项目组合：修复 kairon')
   })
 
   it('summarizes page capability maturity across site pages', async () => {

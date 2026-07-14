@@ -458,6 +458,8 @@ type CapabilityGap = {
   next: string;
 };
 
+type CapabilityGapScope = 'project' | 'page' | 'domain' | 'flow' | 'mixed';
+
 type RoadmapItem = {
   id: string;
   priority: string;
@@ -509,6 +511,20 @@ type DraftTask = {
     guard: string;
     evidence_fields?: DraftTaskEvidenceField[];
   };
+};
+
+type CapabilityGapClosureRow = {
+  gap: CapabilityGap;
+  scope: CapabilityGapScope;
+  page: PageMaturity | null;
+  projects: ProjectItem[];
+  domains: FeatureDomain[];
+  usagePaths: UsagePath[];
+  playbooks: OperatingPlaybook[];
+  roadmapItems: RoadmapItem[];
+  draft: DraftTask | null;
+  nextAction: string;
+  taskQuery: string;
 };
 
 type SystemMapWorkbenchRow = {
@@ -780,6 +796,52 @@ function pageMaturityGapSignals(item: PageMaturity): PageMaturityGapSignal[] {
     signals.push({ id: 'actions', title: '受控动作缺失', detail: '页面还缺少可推进问题的受控动作或排查操作。' });
   }
   return signals;
+}
+
+function normalizeSearchText(value?: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[()\-_/.,:;]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function inferGapScope(gap: CapabilityGap): CapabilityGapScope {
+  const text = normalizeSearchText([gap.id, gap.title, gap.evidence, gap.next].join(' '));
+  if (text.includes('项目') || text.includes('project')) return 'project';
+  if (text.includes('页面') || text.includes('page')) return 'page';
+  if (text.includes('能力域') || text.includes('领域') || text.includes('domain') || text.includes('provider')) return 'domain';
+  if (text.includes('路径') || text.includes('清单') || text.includes('playbook') || text.includes('route')) return 'flow';
+  return 'mixed';
+}
+
+function includesGapTerm(haystack: string, value?: string): boolean {
+  const normalizedValue = normalizeSearchText(value);
+  if (!normalizedValue || normalizedValue.length < 2) return false;
+  return haystack.includes(normalizedValue);
+}
+
+function uniqueById<T extends { id: string }>(items: Array<T | null | undefined>): T[] {
+  const seen = new Set<string>();
+  const rows: T[] = [];
+  items.forEach((item) => {
+    if (!item || seen.has(item.id)) return;
+    seen.add(item.id);
+    rows.push(item);
+  });
+  return rows;
+}
+
+function uniquePageMaturityItems(items: Array<PageMaturity | null | undefined>): PageMaturity[] {
+  const seen = new Set<string>();
+  const rows: PageMaturity[] = [];
+  items.forEach((item) => {
+    const pageId = item?.page.id;
+    if (!item || !pageId || seen.has(pageId)) return;
+    seen.add(pageId);
+    rows.push(item);
+  });
+  return rows;
 }
 
 function compactPath(path: string): string {
@@ -1814,6 +1876,172 @@ export default function SystemMapView({
     return signals.slice(0, 4);
   }, [selectedFeatureDomain, selectedFeaturePageMaturity]);
 
+  const gapClosureRows = useMemo<CapabilityGapClosureRow[]>(() => {
+    if (!systemMap) return [];
+
+    const attentionProjects = uniqueById(
+      systemMap.project_portfolio.priority_projects
+        .map((item) => projectsById.get(item.id) || null)
+        .filter((project): project is ProjectItem => Boolean(project)),
+    );
+    const nonReadyPages = pageMaturity.filter((item) => item.status !== 'ready');
+    const domainAttentionPages = new Set(nonReadyPages.map((item) => item.page.id));
+
+    return systemMap.gaps.map((gap) => {
+      const gapText = normalizeSearchText([gap.id, gap.title, gap.evidence, gap.next].join(' '));
+      const scope = inferGapScope(gap);
+
+      const matchedProjects = systemMap.projects.filter((project) =>
+        [
+          project.id,
+          project.role,
+          project.stack,
+          project.portfolio.primary_gap,
+          project.portfolio.next_action,
+          ...project.diagnostics.map((item) => item.title),
+          ...project.diagnostics.map((item) => item.detail),
+        ].some((value) => includesGapTerm(gapText, value)),
+      );
+
+      const matchedPages = pageMaturity.filter((item) =>
+        [
+          item.page.id,
+          item.page.title,
+          item.page.group,
+          item.page.purpose,
+          ...item.page.dimensions,
+        ].some((value) => includesGapTerm(gapText, value)),
+      );
+
+      const matchedDomains = systemMap.feature_domains.filter((domain) =>
+        [
+          domain.id,
+          domain.title,
+          domain.english,
+          ...domain.providers,
+          ...domain.capability_items,
+        ].some((value) => includesGapTerm(gapText, value)),
+      );
+
+      let projects = uniqueById(matchedProjects);
+      let pages = uniquePageMaturityItems(matchedPages);
+      let domains = uniqueById(matchedDomains);
+
+      if (scope === 'project' && projects.length === 0) {
+        projects = attentionProjects.length > 0
+          ? attentionProjects
+          : systemMap.projects.filter((project) => project.portfolio.status !== 'healthy');
+      }
+      if (scope === 'page' && pages.length === 0) {
+        pages = nonReadyPages;
+      }
+      if (scope === 'domain' && domains.length === 0) {
+        domains = systemMap.feature_domains.filter((domain) => domainAttentionPages.has(domain.cockpit_page));
+      }
+      if (scope === 'flow' && pages.length === 0) {
+        pages = pageMaturity.filter((item) => item.usagePaths.length === 0 || item.playbookSteps.length === 0);
+      }
+
+      if (pages.length === 0 && projects.length > 0) {
+        pages = uniquePageMaturityItems(
+          projects
+            .map((project) => pageMaturity.find((item) => item.page.id === project.cockpit_page) || null),
+        );
+      }
+      if (pages.length === 0 && domains.length > 0) {
+        pages = uniquePageMaturityItems(
+          domains
+            .map((domain) => pageMaturity.find((item) => item.page.id === domain.cockpit_page) || null),
+        );
+      }
+      if (domains.length === 0 && pages.length > 0) {
+        const pageIds = new Set(pages.map((item) => item.page.id));
+        domains = systemMap.feature_domains.filter((domain) => pageIds.has(domain.cockpit_page));
+      }
+      if (projects.length === 0 && pages.length > 0) {
+        const pageIds = new Set(pages.map((item) => item.page.id));
+        projects = systemMap.projects.filter((project) => pageIds.has(project.cockpit_page));
+      }
+
+      const pageIds = new Set(pages.map((item) => item.page.id));
+      const usagePaths = systemMap.usage_paths.filter((path) =>
+        path.pages.some((page) => pageIds.has(page.id)),
+      );
+      const playbooks = systemMap.playbooks.filter((playbook) =>
+        playbook.steps.some((step) => pageIds.has(step.page_id)),
+      );
+      const roadmapItems = systemMap.roadmap.items.filter((item) =>
+        pageIds.has(item.cockpit_page) && item.status !== 'shipped',
+      );
+
+      const gapDraft = draftTasks.find((task) =>
+        task.read_only && task.source?.type === 'system_map_capability_gap' && task.source.id === gap.id,
+      ) || null;
+      const projectDraft = draftTasks.find((task) =>
+        task.read_only
+        && (
+          (task.source?.type === 'system_map_project_portfolio' && projects.some((project) => project.id === task.source?.id))
+          || (task.source?.type === 'system_map_verification_ready' && projects.some((project) => project.id === task.source?.id))
+        ),
+      ) || null;
+      const pageDraft = draftTasks.find((task) =>
+        task.read_only
+        && task.source?.type === 'system_map_page_maturity'
+        && pageIds.has(task.source?.id || ''),
+      ) || null;
+      const playbookDraft = draftTasks.find((task) =>
+        task.read_only
+        && task.source?.type === 'system_map_playbook'
+        && playbooks.some((playbook) => playbook.id === task.source?.id),
+      ) || null;
+      const domainDraft = draftTasks.find((task) =>
+        task.read_only
+        && task.source?.type === 'system_map_domain_app'
+        && domains.some((domain) => domain.id === task.source?.id),
+      ) || null;
+      const draft = gapDraft || projectDraft || pageDraft || playbookDraft || domainDraft || null;
+
+      const page = pages[0]
+        || (projects[0] ? pageMaturity.find((item) => item.page.id === projects[0].cockpit_page) || null : null)
+        || (domains[0] ? pageMaturity.find((item) => item.page.id === domains[0].cockpit_page) || null : null)
+        || null;
+
+      const nextAction = draft?.description
+        || projects[0]?.portfolio.next_action
+        || page?.nextAction
+        || roadmapItems[0]?.problem
+        || playbooks[0]?.goal
+        || gap.next;
+
+      const taskQuery = draft?.source?.id
+        || draft?.id
+        || projects[0]?.id
+        || playbooks[0]?.id
+        || page?.page.id
+        || domains[0]?.id
+        || gap.id;
+
+      return {
+        gap,
+        scope,
+        page,
+        projects: projects.slice(0, 3),
+        domains: domains.slice(0, 3),
+        usagePaths: usagePaths.slice(0, 2),
+        playbooks: playbooks.slice(0, 2),
+        roadmapItems: roadmapItems.slice(0, 2),
+        draft,
+        nextAction,
+        taskQuery,
+      };
+    });
+  }, [draftTasks, pageMaturity, projectsById, systemMap]);
+
+  const selectedGapClosureRow = useMemo(
+    () => gapClosureRows.find((row) => row.gap.id === selectedGapId) || null,
+    [gapClosureRows, selectedGapId],
+  );
+
   const selectedProjectUsagePaths = useMemo(() => {
     if (!systemMap || !selectedProject) return [];
     return systemMap.usage_paths.filter((path) =>
@@ -2208,6 +2436,152 @@ export default function SystemMapView({
               <strong>{selectedGap.next}</strong>
             </div>
           </article>
+          {selectedGapClosureRow && (
+            <div className="system-map-page-focus-grid">
+              <div className="system-map-page-focus-panel">
+                <strong>缺口承接面</strong>
+                <div className="system-map-page-focus-links">
+                  <span>页面 {selectedGapClosureRow.page ? 1 : 0}</span>
+                  <span>项目 {selectedGapClosureRow.projects.length}</span>
+                  <span>能力域 {selectedGapClosureRow.domains.length}</span>
+                  <span>路径 {selectedGapClosureRow.usagePaths.length}</span>
+                  <span>清单 {selectedGapClosureRow.playbooks.length}</span>
+                  <span>路线图 {selectedGapClosureRow.roadmapItems.length}</span>
+                </div>
+                <small className="system-map-page-focus-next">{selectedGapClosureRow.nextAction}</small>
+              </div>
+              <div className="system-map-page-focus-panel">
+                <strong>当前承接线索</strong>
+                <div className="system-map-page-focus-signals">
+                  <div className="system-map-page-focus-signal">
+                    <span>主页面</span>
+                    <small>{selectedGapClosureRow.page?.page.title || '还没挂到具体页面'}</small>
+                  </div>
+                  <div className="system-map-page-focus-signal">
+                    <span>重点项目</span>
+                    <small>{selectedGapClosureRow.projects[0]?.id || '还没落到具体项目'}</small>
+                  </div>
+                  <div className="system-map-page-focus-signal">
+                    <span>任务承接</span>
+                    <small>{selectedGapClosureRow.draft?.title || '当前还没有专属草稿，先回 TaskCenter 承接。'}</small>
+                  </div>
+                </div>
+              </div>
+              <div className="system-map-page-focus-panel">
+                <strong>反向修复入口</strong>
+                <div className="system-map-page-focus-actions-grid">
+                  {selectedGapClosureRow.page && (
+                    <button
+                      className="system-map-page-focus-action"
+                      onClick={() => onNavigate(selectedGapClosureRow.page?.page.id || 'SystemMap')}
+                    >
+                      <span>查看页面</span>
+                      <small>{selectedGapClosureRow.page.page.title}</small>
+                    </button>
+                  )}
+                  {selectedGapClosureRow.projects[0] && (
+                    <button
+                      className="system-map-page-focus-action"
+                      onClick={() => setSelectedProjectId(selectedGapClosureRow.projects[0].id)}
+                    >
+                      <span>查看项目</span>
+                      <small>{selectedGapClosureRow.projects[0].id}</small>
+                    </button>
+                  )}
+                  {selectedGapClosureRow.playbooks[0] && (
+                    <button
+                      className="system-map-page-focus-action"
+                      onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: selectedGapClosureRow.playbooks[0].id }, draftTasks), onNavigate, onOpenTarget)}
+                    >
+                      <span>查看清单</span>
+                      <small>{selectedGapClosureRow.playbooks[0].title}</small>
+                    </button>
+                  )}
+                  <button
+                    className="system-map-page-focus-action"
+                    onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: selectedGapClosureRow.taskQuery }, draftTasks), onNavigate, onOpenTarget)}
+                  >
+                    <span>查看任务草稿</span>
+                    <small>{selectedGapClosureRow.draft?.title || selectedGapClosureRow.taskQuery}</small>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {gapClosureRows.length > 0 && (
+        <section className="services-section system-map-section system-map-build-backlog" aria-label="能力缺口承接总表">
+          <div className="section-header">
+            <div>
+              <h2>能力缺口承接总表</h2>
+              <p className="text-muted">每个缺口都要能落到页面、项目或任务，不再只停在一句“缺功能”。</p>
+            </div>
+            <span className="status-badge degraded">
+              <ShieldAlert size={13} />
+              {gapClosureRows.length} 个显性缺口
+            </span>
+          </div>
+          <div className="system-map-build-summary">
+            <span><strong>{gapClosureRows.length}</strong> 缺口总数</span>
+            <span><strong>{gapClosureRows.filter((row) => row.page).length}</strong> 已挂页面</span>
+            <span><strong>{gapClosureRows.reduce((count, row) => count + row.projects.length, 0)}</strong> 待跟项目</span>
+            <span><strong>{gapClosureRows.filter((row) => row.draft).length}</strong> 已有草稿</span>
+          </div>
+          <div className="system-map-gap-closure-grid">
+            {gapClosureRows.map((row) => (
+              <article className="system-map-gap-closure-card" key={row.gap.id}>
+                <div className="dashboard-page-workbench-head">
+                  <div>
+                    <span>能力缺口 · {row.scope}</span>
+                    <strong>{row.gap.title}</strong>
+                  </div>
+                  <em className={`status-badge ${statusClass(row.gap.severity)}`}>{row.gap.severity}</em>
+                </div>
+                <p>{row.gap.evidence}</p>
+                <div className="system-map-page-focus-links system-map-gap-closure-links">
+                  <span>页面 {row.page?.page.title || '待挂'}</span>
+                  <span>项目 {row.projects[0]?.id || '待定'}</span>
+                  <span>任务 {row.draft ? '已承接' : '待承接'}</span>
+                </div>
+                <div className="dashboard-page-workbench-detail">
+                  <span>下一步</span>
+                  <strong>{row.nextAction}</strong>
+                </div>
+                <div className="dashboard-page-workbench-detail">
+                  <span>配套入口</span>
+                  <strong>
+                    路径 {row.usagePaths.length} · 清单 {row.playbooks.length} · 路线图 {row.roadmapItems.length}
+                  </strong>
+                </div>
+                <div className="dashboard-page-workbench-actions">
+                  <button type="button" className="antd-btn" onClick={() => setSelectedGapId(row.gap.id)}>
+                    <span>定位缺口</span>
+                  </button>
+                  {row.page && (
+                    <button type="button" className="antd-btn" onClick={() => onNavigate(row.page?.page.id || 'SystemMap')}>
+                      <ArrowRight size={14} />
+                      <span>查看页面</span>
+                    </button>
+                  )}
+                  {row.projects[0] && (
+                    <button type="button" className="antd-btn" onClick={() => setSelectedProjectId(row.projects[0].id)}>
+                      <span>查看项目</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="antd-btn"
+                    onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: row.taskQuery }, draftTasks), onNavigate, onOpenTarget)}
+                  >
+                    <ClipboardCheck size={14} />
+                    <span>打开任务</span>
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
       )}
 
