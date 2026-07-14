@@ -6713,6 +6713,9 @@ button.system-map-gap {
 
 .home-architecture-kpis {
   margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
 }
 
 .home-architecture-kpis .summary-tile-card,
@@ -6734,6 +6737,27 @@ button.system-map-gap {
 
 .home-architecture-kpis.summary-tile-grid {
   gap: 12px;
+}
+
+.home-architecture-kpi {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.home-architecture-kpi span {
+  color: var(--antd-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.home-architecture-kpi strong {
+  color: var(--antd-text-primary);
+  font-size: 20px;
+  line-height: 1;
 }
 
 .home-architecture-kpis .summary-tile-info h3,

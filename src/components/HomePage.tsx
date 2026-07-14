@@ -241,6 +241,23 @@ interface NavigationCoverageRow {
   taskTarget: CockpitNavigationTarget;
 }
 
+interface DimensionCoverageBandRow {
+  id: string;
+  group: string;
+  coverageScore: number;
+  pageCount: number;
+  registeredCount: number;
+  usageCount: number;
+  playbookCount: number;
+  domainCount: number;
+  taskCount: number;
+  attentionCount: number;
+  missingDimensionCounts: { label: string; count: number }[];
+  nextAction: string;
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+}
+
 interface SiteArchitecture {
   projects: number;
   pages: number;
@@ -611,6 +628,75 @@ function buildNavigationCoverageRows({
     if (missingDelta !== 0) return missingDelta;
     return left.title.localeCompare(right.title, 'zh-CN');
   });
+}
+
+function buildDimensionCoverageRows({
+  rows,
+  featureDomains,
+}: {
+  rows: NavigationCoverageRow[];
+  featureDomains: FeatureDomain[];
+}): DimensionCoverageBandRow[] {
+  const grouped = new globalThis.Map<string, NavigationCoverageRow[]>();
+  rows.forEach((row) => {
+    const group = row.group || '未分组';
+    const items = grouped.get(group) || [];
+    items.push(row);
+    grouped.set(group, items);
+  });
+
+  return [...grouped.entries()]
+    .sort((left, right) => {
+      const leftIndex = PAGE_GROUP_ORDER.indexOf(left[0]);
+      const rightIndex = PAGE_GROUP_ORDER.indexOf(right[0]);
+      return (leftIndex === -1 ? PAGE_GROUP_ORDER.length : leftIndex) - (rightIndex === -1 ? PAGE_GROUP_ORDER.length : rightIndex);
+    })
+    .map(([group, groupRows]) => {
+      const pageCount = groupRows.length;
+      const registeredCount = groupRows.filter((row) => row.registeredInSystemMap).length;
+      const usageCount = groupRows.filter((row) => row.hasUsagePath).length;
+      const playbookCount = groupRows.filter((row) => row.hasPlaybook).length;
+      const taskCount = groupRows.filter((row) => row.hasTaskDraft).length;
+      const groupPageIds = new Set(groupRows.map((row) => row.pageId));
+      const domainCount = new Set(
+        featureDomains
+          .map((domain) => domain.cockpit_page)
+          .filter((pageId): pageId is string => Boolean(pageId) && groupPageIds.has(pageId)),
+      ).size;
+      const attentionRows = groupRows.filter((row) => row.missingItems.length > 0);
+      const missingDimensionCounts = [
+        { label: '缺地图', count: groupRows.filter((row) => !row.registeredInSystemMap).length },
+        { label: '缺路径', count: groupRows.filter((row) => !row.hasUsagePath).length },
+        { label: '缺清单', count: groupRows.filter((row) => !row.hasPlaybook).length },
+        { label: '缺能力域', count: groupRows.filter((row) => !featureDomains.some((domain) => domain.cockpit_page === row.pageId)).length },
+        { label: '缺任务', count: groupRows.filter((row) => !row.hasTaskDraft).length },
+      ].filter((item) => item.count > 0);
+      const weakestRow = [...groupRows].sort((left, right) => {
+        const missingDelta = right.missingItems.length - left.missingItems.length;
+        if (missingDelta !== 0) return missingDelta;
+        return left.title.localeCompare(right.title, 'zh-CN');
+      })[0];
+      const coverageScore = pageCount === 0
+        ? 0
+        : Math.round(((registeredCount + usageCount + playbookCount + domainCount + taskCount) / (pageCount * 5)) * 100);
+
+      return {
+        id: `dimension-band-${group}`,
+        group,
+        coverageScore,
+        pageCount,
+        registeredCount,
+        usageCount,
+        playbookCount,
+        domainCount,
+        taskCount,
+        attentionCount: attentionRows.length,
+        missingDimensionCounts,
+        nextAction: weakestRow?.nextAction || `继续收口 ${group} 工作带的使用链和承接入口。`,
+        objectTarget: weakestRow?.objectTarget || { tab: 'SystemMap' },
+        taskTarget: weakestRow?.taskTarget || { tab: 'TaskCenter', taskQuery: group },
+      };
+    });
 }
 
 interface HomePageProps {
@@ -1371,6 +1457,102 @@ function FunctionalArchitectureSection({
             ))}
             {architecture.laneSummaries.length === 0 && (
               <div className="home-focus-empty">暂无工作带补位摘要</div>
+            )}
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function DimensionCoverageMatrixSection({
+  rows,
+  onTabChange,
+  onOpenTarget,
+}: {
+  rows: DimensionCoverageBandRow[];
+  onTabChange?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+}) {
+  const fullBands = rows.filter((row) => row.attentionCount === 0).length;
+  const attentionBands = rows.filter((row) => row.attentionCount > 0);
+  const summaryItems = [
+    ['工作带', rows.length],
+    ['满配工作带', fullBands],
+    ['待补工作带', attentionBands.length],
+    ['缺路径页', rows.reduce((total, row) => total + (row.missingDimensionCounts.find((item) => item.label === '缺路径')?.count || 0), 0)],
+    ['缺清单页', rows.reduce((total, row) => total + (row.missingDimensionCounts.find((item) => item.label === '缺清单')?.count || 0), 0)],
+    ['缺任务页', rows.reduce((total, row) => total + (row.missingDimensionCounts.find((item) => item.label === '缺任务')?.count || 0), 0)],
+  ];
+
+  return (
+    <section className="services-section home-architecture">
+      <div className="section-header">
+        <div>
+          <h2>全站维度覆盖矩阵</h2>
+          <p className="text-muted">按工作带把地图登记、使用路径、操作清单、能力域、任务承接五条线摊开，看清是哪个维度没接上，不再只盯总分。</p>
+        </div>
+        <button className="antd-btn small" aria-label="打开全站维度覆盖总图" onClick={() => onTabChange?.('SystemMap')}>
+          <Map size={13} />
+          <span>回系统地图</span>
+          <ArrowRight size={13} />
+        </button>
+      </div>
+
+      <div className="home-architecture-kpis">
+        {summaryItems.map(([label, value]) => (
+          <div key={label} className="home-architecture-kpi">
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="home-architecture-grid">
+        <article className="home-architecture-panel">
+          <div className="home-architecture-panel-head">
+            <div>
+              <strong>工作带维度矩阵</strong>
+              <small>每行是一条工作带，直接看这一带在五个承接维度上覆盖到什么程度。</small>
+            </div>
+            <span className={`status-badge ${attentionBands.length > 0 ? 'degraded' : 'online'}`}>{attentionBands.length}</span>
+          </div>
+          <div className="home-architecture-list">
+            {rows.map((row) => (
+              <article key={row.id} className="home-architecture-item home-architecture-lane">
+                <strong>{row.group}</strong>
+                <span>覆盖 {row.coverageScore}% · 页面 {row.pageCount} · 待补 {row.attentionCount}</span>
+                <small>
+                  地图 {row.registeredCount}/{row.pageCount} · 路径 {row.usageCount}/{row.pageCount} · 清单 {row.playbookCount}/{row.pageCount} · 能力域 {row.domainCount}/{row.pageCount} · 任务 {row.taskCount}/{row.pageCount}
+                </small>
+                <div className="home-focus-lane-chips">
+                  {row.missingDimensionCounts.length > 0 ? row.missingDimensionCounts.map((item) => (
+                    <em key={`${row.id}-${item.label}`}>{item.label} {item.count}</em>
+                  )) : <em>已满配</em>}
+                </div>
+                <small>{row.nextAction}</small>
+                <div className="home-architecture-lane-actions">
+                  <button
+                    className="antd-btn small"
+                    aria-label={`打开维度矩阵对象 ${row.group}`}
+                    onClick={() => openCockpitNavigationTarget(row.objectTarget, onTabChange, onOpenTarget)}
+                  >
+                    <ArrowRight size={13} />
+                    <span>看对象</span>
+                  </button>
+                  <button
+                    className="antd-btn small secondary"
+                    aria-label={`打开维度矩阵任务 ${row.group}`}
+                    onClick={() => openCockpitNavigationTarget(row.taskTarget, onTabChange, onOpenTarget)}
+                  >
+                    <Route size={13} />
+                    <span>看任务</span>
+                  </button>
+                </div>
+              </article>
+            ))}
+            {rows.length === 0 && (
+              <div className="home-focus-empty">暂无维度覆盖矩阵</div>
             )}
           </div>
         </article>
@@ -2645,6 +2827,10 @@ export default function HomePage({
     playbooks,
     draftItems: readOnlyDrafts,
   }), [cockpitPages, playbooks, readOnlyDrafts, usagePaths]);
+  const dimensionCoverageRows = useMemo(() => buildDimensionCoverageRows({
+    rows: navigationCoverageRows,
+    featureDomains: siteArchitecture.featureDomains,
+  }), [navigationCoverageRows, siteArchitecture.featureDomains]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -2901,6 +3087,8 @@ export default function HomePage({
 
       {/* 全站功能架构 */}
       <FunctionalArchitectureSection architecture={siteArchitecture} onTabChange={onTabChange} onOpenTarget={onOpenTarget} />
+
+      <DimensionCoverageMatrixSection rows={dimensionCoverageRows} onTabChange={onTabChange} onOpenTarget={onOpenTarget} />
 
       <SiteClosureBoardSection rows={siteClosureRows} onTabChange={onTabChange} onOpenTarget={onOpenTarget} />
 

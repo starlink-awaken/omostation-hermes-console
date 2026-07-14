@@ -291,6 +291,8 @@ describe('HomePage', () => {
       expect(screen.getByText('建设补位模式')).toBeInTheDocument()
       expect(screen.getByText('领域挂载模式')).toBeInTheDocument()
       expect(screen.getByText('功能架构总览')).toBeInTheDocument()
+      expect(screen.getByText('全站维度覆盖矩阵')).toBeInTheDocument()
+      expect(screen.getByText('工作带维度矩阵')).toBeInTheDocument()
       expect(screen.getByText('工作带补位')).toBeInTheDocument()
       expect(screen.getByText('全站闭环总表')).toBeInTheDocument()
       expect(screen.getByText('导航页面覆盖总表')).toBeInTheDocument()
@@ -330,6 +332,8 @@ describe('HomePage', () => {
       expect(screen.getAllByText('系统配置').length).toBeGreaterThan(0)
       expect(screen.getByRole('button', { name: '打开工作带补位 开发工具' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开工作带任务 开发工具' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开维度矩阵对象 系统配置' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开维度矩阵任务 系统配置' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开全站闭环对象 Home' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开全站闭环任务 Home' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开导航覆盖对象 Guide' })).toBeInTheDocument()
@@ -438,6 +442,12 @@ describe('HomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /打开工作带任务 开发工具/ }))
     expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
 
+    fireEvent.click(screen.getByRole('button', { name: /打开维度矩阵对象 系统配置/ }))
+    expect(onTabChange).toHaveBeenCalledWith('Settings')
+
+    fireEvent.click(screen.getByRole('button', { name: /打开维度矩阵任务 系统配置/ }))
+    expect(onTabChange).toHaveBeenCalledWith('TaskCenter')
+
     fireEvent.click(screen.getByRole('button', { name: /打开全站闭环对象 Home/ }))
     expect(onTabChange).toHaveBeenCalledWith('SystemMap')
 
@@ -539,6 +549,36 @@ describe('HomePage', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Guide', pageId: 'Guide' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Guide' })
+  })
+
+  it('routes dimension coverage matrix rows to exact page and task targets', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/health/summary') {
+        return Promise.resolve(okJson({ health_score: 90, health_score_change: 1, active_services: 2, total_services: 3, active_tasks: 1, today_requests: 20, today_requests_change: 2 }))
+      }
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      if (url === '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80') return Promise.resolve(okJson(taskPayload))
+      if (url.startsWith('/api/tasks')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/alerts')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/metrics')) return Promise.resolve(okJson({ health_score: [], requests: [], error_rate: [] }))
+      if (url.startsWith('/api/omos/thoughts')) return Promise.resolve(okJson({ status: 'ok', thoughts: [] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<HomePage onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '打开维度矩阵对象 系统配置' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开维度矩阵任务 系统配置' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开维度矩阵对象 系统配置' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开维度矩阵任务 系统配置' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Settings', pageId: 'Settings' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Settings' })
   })
 
   it('opens homepage focus items with their source context', async () => {
