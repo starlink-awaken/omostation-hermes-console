@@ -3,6 +3,7 @@ import { ArrowRight, Compass, LayoutDashboard, Map as MapIcon, Route, Sparkles }
 import ActionSurfacePanel from './ActionSurfacePanel';
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { COCKPIT_PAGE_REGISTRY, type CockpitPageRegistryItem } from './cockpitPageRegistry';
 
 interface CockpitGuideViewProps {
   onNavigate?: (tab: string) => void;
@@ -12,12 +13,7 @@ interface CockpitGuideViewProps {
   focusTaskQuery?: string;
 }
 
-interface GuidePage {
-  id: string;
-  title: string;
-  purpose: string;
-  whenToUse: string;
-}
+type GuidePage = CockpitPageRegistryItem;
 
 interface GuideGroup {
   id: string;
@@ -26,6 +22,15 @@ interface GuideGroup {
   summary: string;
   target: CockpitNavigationTarget;
   pages: GuidePage[];
+}
+
+interface GuideGroupBlueprint {
+  id: string;
+  title: string;
+  description: string;
+  summary: string;
+  target: CockpitNavigationTarget;
+  registryGroups: string[];
 }
 
 interface GuidePath {
@@ -157,6 +162,7 @@ interface GuideMetrics {
     taskQuery: string;
     missingUsagePath: boolean;
     missingFeatureDomain: boolean;
+    missingSystemMapRegistration: boolean;
   }>;
   featureDomainRows: Array<{
     id: string;
@@ -204,19 +210,14 @@ interface ProblemEntryCard {
   secondaryTarget: CockpitNavigationTarget;
 }
 
-const GUIDE_GROUPS: GuideGroup[] = [
+const GUIDE_GROUP_BLUEPRINTS: GuideGroupBlueprint[] = [
   {
     id: 'entry',
     title: '入口总览',
     description: '先用导览和系统地图定路径，再从首页进入日常值守。',
     summary: '把第一次使用、导航总图、领域挂载入口放在最前面。',
     target: { tab: 'SystemMap' },
-    pages: [
-      { id: 'Home', title: '首页', purpose: '健康总览、告警摘要、待办入口。', whenToUse: '每天先看这里。' },
-      { id: 'Guide', title: '站内导览', purpose: '解释 cockpit 的页面分工、入口路径和推荐使用法。', whenToUse: '第一次进入或迷路时。' },
-      { id: 'SystemMap', title: '系统地图', purpose: '串起页面、项目、能力域、路线图和缺口。', whenToUse: '想知道 cockpit 还缺什么时。' },
-      { id: 'DomainApps', title: '应用中心', purpose: '挂载家庭驾驶舱、OPC、family-hub 等领域应用。', whenToUse: '要进入具体 L4 领域时。' },
-    ],
+    registryGroups: ['入口'],
   },
   {
     id: 'runtime',
@@ -224,12 +225,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
     description: '覆盖服务健康、网格路由、拓扑关系和算力调配。',
     summary: '这是面向运行态的主工作区，适合做状态确认和问题定位。',
     target: { tab: 'Overview' },
-    pages: [
-      { id: 'Overview', title: '概览中心', purpose: '看整体运行态势和关键指标。', whenToUse: '每天巡检、出问题先看。' },
-      { id: 'McpMesh', title: '网格与 MCP', purpose: '看路由、实例注册和 BOS URI 解析。', whenToUse: '怀疑入口或路由异常时。' },
-      { id: 'Topology', title: '全局拓扑', purpose: '看服务之间怎么连、依赖谁。', whenToUse: '排查影响范围时。' },
-      { id: 'Compute', title: '算力调配', purpose: '看 CPU/GPU、模型节点和成本侧压力。', whenToUse: '推理或调度卡住时。' },
-    ],
+    registryGroups: ['运行大盘'],
   },
   {
     id: 'intelligence',
@@ -237,14 +233,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
     description: '承接研究、知识、引擎、资产、协议和工作流编排。',
     summary: '这是把“知道什么”和“怎么执行”接起来的工作带。',
     target: { tab: 'Knowledge' },
-    pages: [
-      { id: 'Research', title: '研究中枢', purpose: '发起研究、推进发布、承接后续行动。', whenToUse: '做内容、研究、产品推演时。' },
-      { id: 'Knowledge', title: '知识中枢', purpose: '看知识检索、记忆摄取和执行衔接。', whenToUse: '想知道知识是否能支撑动作时。' },
-      { id: 'Engines', title: '引擎调度', purpose: '看 Kairon、Gbrain 等底层引擎状态。', whenToUse: '排查能力供给层时。' },
-      { id: 'Assets', title: '技术资产库', purpose: '看技能、管线、工作流资产沉淀。', whenToUse: '找现成能力而不是重造轮子。' },
-      { id: 'Protocol', title: '协议工作台', purpose: '看 ecos、workflow、model-driven 的桥接。', whenToUse: '做协议层梳理和巡检时。' },
-      { id: 'Workflows', title: 'MetaOS 工作流', purpose: '看 agent workflow 的链路和执行。', whenToUse: '验证流程有没有真正闭环时。' },
-    ],
+    registryGroups: ['智能与知识'],
   },
   {
     id: 'governance',
@@ -252,13 +241,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
     description: '覆盖战略、告警、L4 域健康、债务和可观测。',
     summary: '这是从风险、治理、质量和演进角度看 cockpit 的面。',
     target: { tab: 'C2G' },
-    pages: [
-      { id: 'C2G', title: 'C2G 战略中心', purpose: '把目标、治理卡片、计划和执行接起来。', whenToUse: '要看优先级和治理承接时。' },
-      { id: 'AlertCenter', title: '告警中心', purpose: '统一处理活跃告警、历史和规则。', whenToUse: 'P0/P1 先从这里落点。' },
-      { id: 'L4Health', title: 'L4 域健康', purpose: '看各领域是否真正健康、哪里在掉分。', whenToUse: '比单页看得更全时。' },
-      { id: 'Debt', title: '技术债务', purpose: '看质量风险和欠账优先级。', whenToUse: '规划补位和治理投入时。' },
-      { id: 'Observability', title: '运行可观测', purpose: '看链路、日志汇总和系统可见性。', whenToUse: '需要证据而不是直觉时。' },
-    ],
+    registryGroups: ['系统治理'],
   },
   {
     id: 'devtools',
@@ -266,12 +249,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
     description: '给排查、执行、性能分析和隔离实验提供落点。',
     summary: '这是从“发现问题”到“动手验证”的操作面。',
     target: { tab: 'TaskCenter' },
-    pages: [
-      { id: 'LogViewer', title: '日志查看器', purpose: '看实时日志、检索和导出。', whenToUse: '看错误细节时。' },
-      { id: 'TaskCenter', title: '任务中心', purpose: '把草稿、执行、验证承接为动作。', whenToUse: '需要把发现变成任务时。' },
-      { id: 'Performance', title: '性能监控', purpose: '看资源指标和性能瓶颈。', whenToUse: '系统慢、负载高时。' },
-      { id: 'Sandbox', title: '隔离沙箱', purpose: '做低风险验证和命令实验。', whenToUse: '先试再动生产面时。' },
-    ],
+    registryGroups: ['开发工具'],
   },
   {
     id: 'domain',
@@ -279,13 +257,14 @@ const GUIDE_GROUPS: GuideGroup[] = [
     description: '把家庭生活、OPC 和服务型能力作为挂载应用纳入 cockpit。',
     summary: 'Cockpit 做入口和治理，不吞掉领域自己的 SSOT 和专业 UI。',
     target: { tab: 'DomainApps' },
-    pages: [
-      { id: 'QuestBoard', title: '积分冒险', purpose: '承接家庭激励与亲子场景。', whenToUse: '家庭互动和任务激励时。' },
-      { id: 'DomainApps', title: '应用中心', purpose: '统一看领域应用、服务状态和打开入口。', whenToUse: '要进入家庭驾驶舱或 OPC 时。' },
-      { id: 'Settings', title: '底层设置', purpose: '配置控制面、认证和基础参数。', whenToUse: '准备挂载新应用或修配置时。' },
-    ],
+    registryGroups: ['领域应用', '系统配置'],
   },
 ];
+
+const GUIDE_GROUPS: GuideGroup[] = GUIDE_GROUP_BLUEPRINTS.map((group) => ({
+  ...group,
+  pages: COCKPIT_PAGE_REGISTRY.filter((page) => group.registryGroups.includes(page.group)),
+}));
 
 const GUIDE_PATHS: GuidePath[] = [
   {
@@ -364,6 +343,49 @@ const DEFAULT_METRICS: GuideMetrics = {
 
 function staticPageCount() {
   return GUIDE_GROUPS.reduce((total, group) => total + group.pages.length, 0);
+}
+
+function buildSystemMapRegisteredPageIds(payload: any): Set<string> {
+  const registered = new Set<string>();
+
+  ((payload.cockpit_pages || []) as Array<{ id?: string }>).forEach((page) => {
+    if (page.id) registered.add(page.id);
+  });
+
+  ((payload.page_maturity?.items || []) as Array<{ page_id?: string }>).forEach((item) => {
+    if (item.page_id) registered.add(item.page_id);
+  });
+
+  ((payload.usage_paths || []) as Array<{ pages?: Array<{ id?: string }> }>).forEach((path) => {
+    (path.pages || []).forEach((page) => {
+      if (page.id) registered.add(page.id);
+    });
+  });
+
+  ((payload.playbooks || []) as Array<{ steps?: Array<{ page_id?: string; page?: { id?: string } }> }>).forEach((playbook) => {
+    (playbook.steps || []).forEach((step) => {
+      if (step.page_id) registered.add(step.page_id);
+      if (step.page?.id) registered.add(step.page.id);
+    });
+  });
+
+  ((payload.feature_domains || []) as Array<{ cockpit_page?: string; providers?: string[] }>).forEach((domain) => {
+    if (domain.cockpit_page) registered.add(domain.cockpit_page);
+    (domain.providers || []).forEach((provider) => {
+      if (isGuidePageId(provider)) registered.add(provider);
+    });
+  });
+
+  ((payload.roadmap?.items || []) as Array<{ cockpit_page?: string }>).forEach((item) => {
+    if (item.cockpit_page) registered.add(item.cockpit_page);
+  });
+
+  ((payload.items || []) as Array<{ source?: { id?: string; type?: string } }>).forEach((item) => {
+    const sourceId = item.source?.id;
+    if (sourceId && isGuidePageId(sourceId)) registered.add(sourceId);
+  });
+
+  return registered;
 }
 
 function isGuidePageId(value?: string) {
@@ -517,6 +539,7 @@ export default function CockpitGuideView({
         const playbookMap = new Map<string, string[]>();
         const featureDomainMap = new Map<string, string[]>();
         const roadmapMap = new Map<string, string[]>();
+        const systemMapRegisteredPageIds = buildSystemMapRegisteredPageIds(payload);
         const pageAttentionById = new Map<string, {
           page_id: string;
           score?: number;
@@ -766,16 +789,25 @@ export default function CockpitGuideView({
               );
               const missingUsagePath = usagePaths.length === 0;
               const missingFeatureDomain = featureDomains.length === 0;
+              const missingSystemMapRegistration = !systemMapRegisteredPageIds.has(page.id);
               const status = attention?.status
-                || (linkedDraft ? 'watch' : (missingUsagePath || missingFeatureDomain ? 'gap' : 'ready'));
+                || (missingSystemMapRegistration
+                  ? 'gap'
+                  : linkedDraft
+                    ? 'watch'
+                    : (missingUsagePath || missingFeatureDomain ? 'gap' : 'ready'));
               const score = attention?.score ?? (
-                missingUsagePath && missingFeatureDomain
+                missingSystemMapRegistration
+                  ? 32
+                  : missingUsagePath && missingFeatureDomain
                   ? 40
                   : missingUsagePath || missingFeatureDomain
                     ? 72
                     : 100
               );
-              const nextAction = attention?.next_action
+              const nextAction = missingSystemMapRegistration
+                ? '先把这个页面登记进系统地图和治理视图，再补路径与承接。'
+                : attention?.next_action
                 || linkedDraft?.description
                 || roadmapTitles[0]
                 || (missingUsagePath
@@ -800,6 +832,7 @@ export default function CockpitGuideView({
                 taskQuery: linkedDraft?.source?.id || page.id,
                 missingUsagePath,
                 missingFeatureDomain,
+                missingSystemMapRegistration,
               };
             })
           )),
@@ -931,6 +964,7 @@ export default function CockpitGuideView({
       ready: rows.filter((row) => row.status === 'ready').length,
       watch: rows.filter((row) => row.status === 'watch').length,
       gap: rows.filter((row) => row.status !== 'ready' && row.status !== 'watch').length,
+      withSystemMap: rows.filter((row) => !row.missingSystemMapRegistration).length,
       withUsagePath: rows.filter((row) => !row.missingUsagePath).length,
       withFeatureDomain: rows.filter((row) => !row.missingFeatureDomain).length,
     };
@@ -2356,6 +2390,7 @@ export default function CockpitGuideView({
           <span><strong>{coverageSummary.ready}</strong> 已接通</span>
           <span><strong>{coverageSummary.watch}</strong> 待收口</span>
           <span><strong>{coverageSummary.gap}</strong> 待补位</span>
+          <span><strong>{coverageSummary.withSystemMap}</strong> 已登记总图</span>
           <span><strong>{coverageSummary.withUsagePath}</strong> 已入路径</span>
           <span><strong>{coverageSummary.withFeatureDomain}</strong> 已挂能力域</span>
         </div>
@@ -2392,6 +2427,7 @@ export default function CockpitGuideView({
                     <p>{row.purpose}</p>
                     <div className="cockpit-guide-coverage-meta">
                       <span>何时进入：{row.whenToUse}</span>
+                      <span>{row.missingSystemMapRegistration ? '总图待登记' : '总图已登记'}</span>
                       <span>{row.missingUsagePath ? '未入使用路径' : `路径 ${row.usagePaths.length} 条`}</span>
                       <span>{row.missingFeatureDomain ? '未挂能力域' : `能力域 ${row.featureDomains.length} 个`}</span>
                       <span>{row.playbooks.length > 0 ? `清单 ${row.playbooks.length} 条` : '暂无清单承接'}</span>
@@ -2409,6 +2445,7 @@ export default function CockpitGuideView({
                       {row.roadmapTitles.slice(0, 1).map((item) => (
                         <span key={`${row.id}-roadmap-${item}`}>路线图 · {item}</span>
                       ))}
+                      {row.missingSystemMapRegistration && <em>待登记总图</em>}
                       {row.missingUsagePath && <em>待补路径</em>}
                       {row.missingFeatureDomain && <em>待挂能力域</em>}
                     </div>
