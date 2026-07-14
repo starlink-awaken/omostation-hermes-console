@@ -42,6 +42,7 @@ describe('DebtView', () => {
 
     await waitFor(() => {
       expect(screen.getByText('债务处理区')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '债务闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('债务承接工作台')).toBeInTheDocument()
       expect(screen.getByText('回治理决策')).toBeInTheDocument()
       expect(screen.getByText('查领域挂载')).toBeInTheDocument()
@@ -91,6 +92,40 @@ describe('DebtView', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Debt', taskQuery: 'debt-1' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'debt-1' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('surfaces debt closure routing when focus hits governance handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    vi.mocked(fetch).mockResolvedValue(okJson({
+      total: 3,
+      open: 2,
+      closed: 1,
+      items: [
+        {
+          id: 'debt-1',
+          title: '补家庭 app 鉴权',
+          severity: 'p0',
+          lifecycle_state: 'open',
+          opened_at: '2026-07-07T09:00:00Z',
+          owner: 'security',
+          dimension: 'security',
+        },
+      ],
+    }))
+
+    render(<DebtView onNavigate={onNavigate} onOpenTarget={onOpenTarget} focusTaskQuery="治理决策与责任归位" />)
+
+    const focusRegion = await screen.findByRole('region', { name: '当前债务承接焦点' })
+    expect(within(focusRegion).getByText('治理决策与责任归位')).toBeInTheDocument()
+
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开债务焦点对象 治理决策与责任归位' }))
+    fireEvent.click(within(focusRegion).getByRole('button', { name: '打开债务焦点任务 治理决策与责任归位' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'C2G', taskQuery: 'debt-1' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'security' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
 })

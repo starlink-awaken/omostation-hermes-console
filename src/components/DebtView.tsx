@@ -22,6 +22,17 @@ interface DebtViewProps {
   focusTaskQuery?: string;
 }
 
+type DebtClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 function matchesDebtFocusQuery(values: Array<string | null | undefined>, query?: string) {
   const normalizedQuery = query?.trim().toLowerCase();
   if (!normalizedQuery) return false;
@@ -121,6 +132,58 @@ export default function DebtView({
       return weight(right.severity) - weight(left.severity);
     })
     .slice(0, 4);
+  const firstDebtItem = focusDebtItems[0] || data.items[0] || null;
+  const openDebtCount = data.items.filter((item) => item.lifecycle_state === 'open').length;
+  const debtClosureRows: DebtClosureRow[] = [
+    {
+      id: 'triage-priority',
+      title: '高危债务与优先分诊',
+      summary: '债务页首先要接住的是优先级，不然账本再全，用户还是得自己猜先处理哪个。',
+      signal: firstDebtItem ? `${firstDebtItem.severity.toUpperCase()} · ${openDebtCount} open` : `open ${data.open}`,
+      nextAction: firstDebtItem
+        ? `优先围绕 ${firstDebtItem.title} 定位责任域和处理顺序，再决定回治理还是系统地图。`
+        : '当前没有明显高危债务，抽查债务页到治理面的优先分诊链路。',
+      statusTone: firstDebtItem ? 'degraded' : 'online',
+      objectTarget: { tab: 'Debt', taskQuery: firstDebtItem?.id || 'debt-triage' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstDebtItem?.id || 'debt-triage' },
+    },
+    {
+      id: 'governance-decision',
+      title: '治理决策与责任归位',
+      summary: '债务不是简单记账，很多高危项最后都要回治理页重新排优先级和责任归位。',
+      signal: firstDebtItem ? `${firstDebtItem.owner} · ${firstDebtItem.dimension}` : '待抽查治理链',
+      nextAction: firstDebtItem
+        ? `带着 ${firstDebtItem.title} 回 C2G 确认优先级、owner 和治理动作。`
+        : '当前没有明显待治理债务，抽查债务到治理决策页的承接链路。',
+      statusTone: firstDebtItem ? 'degraded' : 'online',
+      objectTarget: { tab: 'C2G', taskQuery: firstDebtItem?.id || 'debt-governance' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstDebtItem?.owner || firstDebtItem?.id || 'debt-governance' },
+    },
+    {
+      id: 'systemmap-impact',
+      title: '系统地图影响回挂',
+      summary: '真正棘手的债务要回系统地图确认影响的是项目、页面还是能力域，不然处理动作很容易漂在空中。',
+      signal: firstDebtItem ? `${firstDebtItem.dimension} 维度` : '待抽查影响面',
+      nextAction: firstDebtItem
+        ? `把 ${firstDebtItem.title} 回挂到系统地图，确认它影响的是哪条路径和哪一层。`
+        : '当前没有明显待回挂债务，抽查债务页到系统地图的影响面收口链路。',
+      statusTone: firstDebtItem ? 'degraded' : 'online',
+      objectTarget: { tab: 'SystemMap', pageId: 'Debt' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstDebtItem?.id || 'debt-systemmap' },
+    },
+    {
+      id: 'task-closeout',
+      title: '任务承接与长期跟踪',
+      summary: '长期债务不进任务中心，就只会反复出现在账本里，处理永远靠记忆和口头同步。',
+      signal: firstDebtItem ? `待承接 ${firstDebtItem.id}` : `closed ${data.closed}`,
+      nextAction: firstDebtItem
+        ? `把 ${firstDebtItem.title} 的处理动作正式送进任务中心持续跟。`
+        : '当前没有明显待承接债务，抽查债务到任务中心的 closeout 链路。',
+      statusTone: firstDebtItem ? 'degraded' : 'online',
+      objectTarget: { tab: 'Debt', taskQuery: firstDebtItem?.id || 'debt-closeout' },
+      taskTarget: { tab: 'TaskCenter', taskQuery: firstDebtItem?.id || 'debt-closeout' },
+    },
+  ];
   const focusedDebtCard = (() => {
     const matchedDebt = data.items.find((item) => (
       matchesDebtFocusQuery([item.id, item.title, item.severity, item.lifecycle_state, item.owner, item.dimension], focusTaskQuery)
@@ -132,6 +195,19 @@ export default function DebtView({
         detail: `${matchedDebt.severity.toUpperCase()} · ${matchedDebt.dimension} · ${matchedDebt.lifecycle_state} · owner ${matchedDebt.owner}`,
         objectTarget: { tab: 'Debt', taskQuery: matchedDebt.id },
         taskTarget: { tab: 'TaskCenter', taskQuery: matchedDebt.id },
+      };
+    }
+
+    const matchedClosure = debtClosureRows.find((row) => (
+      matchesDebtFocusQuery([row.title, row.summary, row.signal, row.nextAction], focusTaskQuery)
+    ));
+    if (matchedClosure) {
+      return {
+        kicker: '债务闭环',
+        title: matchedClosure.title,
+        detail: `${matchedClosure.signal} · ${matchedClosure.nextAction}`,
+        objectTarget: matchedClosure.objectTarget,
+        taskTarget: matchedClosure.taskTarget,
       };
     }
 
@@ -232,6 +308,60 @@ export default function DebtView({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="债务闭环总表">
+        <div className="section-header">
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>债务闭环总表</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把高危分诊、治理决策、系统地图影响和任务承接并排摆出来，债务页才不只是账本和筛选器。
+            </p>
+          </div>
+          <span className="status-badge online">{debtClosureRows.length} 条闭环</span>
+        </div>
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          {debtClosureRows.map((row) => (
+            <article
+              key={`debt-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开债务闭环对象 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ShieldAlert size={14} />
+                  <span>打开对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开债务闭环任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <CheckCircle size={14} />
+                  <span>打开任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">
