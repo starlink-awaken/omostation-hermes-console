@@ -11,7 +11,40 @@ describe('CockpitGuideView', () => {
 
   it('renders site guide summaries, paths, and architecture groups', async () => {
     const payload = {
-      usage_paths: [{ id: 'daily-ops' }, { id: 'governance-loop' }, { id: 'research-publish' }],
+      usage_paths: [
+        {
+          id: 'daily-ops',
+          title: '日常体检',
+          intent: '每天先确认首页、告警和任务是否都能承接。',
+          steps: ['查看首页健康分', '进入告警中心', '打开任务中心'],
+          pages: [
+            { id: 'Home', title: '首页' },
+            { id: 'AlertCenter', title: '告警中心' },
+            { id: 'TaskCenter', title: '任务中心' },
+          ],
+        },
+        {
+          id: 'governance-loop',
+          title: '治理闭环',
+          intent: '从系统地图回到治理页面，确认风险真的被收口。',
+          steps: ['打开系统地图', '进入 C2G 战略中心', '回任务中心'],
+          pages: [
+            { id: 'SystemMap', title: '系统地图' },
+            { id: 'C2G', title: 'C2G 战略中心' },
+            { id: 'TaskCenter', title: '任务中心' },
+          ],
+        },
+        {
+          id: 'performance-fix',
+          title: '性能补位',
+          intent: '把还没接通的性能页拉回可用路径。',
+          steps: ['查看性能监控', '回任务中心承接补位'],
+          pages: [
+            { id: 'Performance', title: '性能监控' },
+            { id: 'TaskCenter', title: '任务中心' },
+          ],
+        },
+      ],
       playbooks: [{ id: 'daily' }, { id: 'weekly' }],
       feature_domains: [{ id: 'runtime' }, { id: 'governance' }, { id: 'family' }, { id: 'knowledge' }],
       page_maturity: {
@@ -139,6 +172,7 @@ describe('CockpitGuideView', () => {
       expect(screen.getByText('4 个')).toBeInTheDocument()
       expect(screen.getByText('2 页待补')).toBeInTheDocument()
       expect(screen.getByText('推荐使用路径')).toBeInTheDocument()
+      expect(screen.getByText('使用承接总表')).toBeInTheDocument()
       expect(screen.getByText('按角色进入')).toBeInTheDocument()
       expect(screen.getByText('日常值守模式')).toBeInTheDocument()
       expect(screen.getByText('治理巡检模式')).toBeInTheDocument()
@@ -187,6 +221,8 @@ describe('CockpitGuideView', () => {
       expect(screen.getByRole('button', { name: '打开全站覆盖任务 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开任务车道 页面能力' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补位任务 页面能力：补齐 性能监控' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开使用链 性能补位' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开使用任务 性能补位' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开缺失能力对象 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开缺失能力任务 family-hub 服务' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开缺失能力对象 家庭驾驶舱挂载' })).toBeInTheDocument()
@@ -210,7 +246,28 @@ describe('CockpitGuideView', () => {
 
   it('opens recommended paths and page actions through navigation callbacks', async () => {
     const payload = {
-      usage_paths: [{ id: 'daily-ops' }],
+      usage_paths: [
+        {
+          id: 'daily-ops',
+          title: '日常体检',
+          intent: '先看首页，再回任务中心承接。',
+          steps: ['查看首页', '回任务中心'],
+          pages: [
+            { id: 'Home', title: '首页' },
+            { id: 'TaskCenter', title: '任务中心' },
+          ],
+        },
+        {
+          id: 'performance-fix',
+          title: '性能补位',
+          intent: '把性能页接回使用路径和任务中心。',
+          steps: ['查看性能监控', '回任务中心'],
+          pages: [
+            { id: 'Performance', title: '性能监控' },
+            { id: 'TaskCenter', title: '任务中心' },
+          ],
+        },
+      ],
       playbooks: [],
       feature_domains: [],
       page_maturity: {
@@ -457,6 +514,19 @@ describe('CockpitGuideView', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开补位任务 页面能力：补齐 性能监控' }))
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'TaskCenter',
+      taskQuery: 'Performance',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开使用链 性能补位' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      usagePathId: 'performance-fix',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开使用任务 性能补位' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'TaskCenter',
+      usagePathId: 'performance-fix',
       taskQuery: 'Performance',
     }))
 

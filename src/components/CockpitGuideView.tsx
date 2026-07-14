@@ -124,6 +124,21 @@ interface GuideMetrics {
     sourceId: string;
     description?: string;
   }>;
+  usageCoverageRows: Array<{
+    id: string;
+    title: string;
+    intent: string;
+    status: string;
+    score: number | null;
+    stepCount: number;
+    pageCount: number;
+    linkedPages: string[];
+    playbooks: string[];
+    featureDomains: string[];
+    roadmapTitles: string[];
+    nextAction: string;
+    taskQuery: string;
+  }>;
   pageCoverageRows: Array<{
     id: string;
     title: string;
@@ -324,6 +339,7 @@ const DEFAULT_METRICS: GuideMetrics = {
   },
   featuredDrafts: [],
   closureDrafts: [],
+  usageCoverageRows: [],
   pageCoverageRows: [],
   dimensionCoverageRows: [],
 };
@@ -646,6 +662,75 @@ export default function CockpitGuideView({
               sourceId: item.source?.id || item.id,
               description: item.description,
             })),
+          usageCoverageRows: ((payload.usage_paths || []) as Array<{
+            id?: string;
+            title?: string;
+            intent?: string;
+            steps?: string[];
+            pages?: Array<{ id?: string; title?: string }>;
+          }>).map((path) => {
+            const pageIds = (path.pages || [])
+              .map((page) => page.id)
+              .filter(Boolean) as string[];
+            const linkedPages = (path.pages || [])
+              .map((page) => page.title || page.id)
+              .filter(Boolean) as string[];
+            const playbooks = [...new Set(pageIds.flatMap((pageId) => playbookMap.get(pageId) || []))];
+            const featureDomains = [...new Set(pageIds.flatMap((pageId) => featureDomainMap.get(pageId) || []))];
+            const roadmapTitles = [...new Set(pageIds.flatMap((pageId) => roadmapMap.get(pageId) || []))];
+            const linkedAttention = pageIds
+              .map((pageId) => pageAttentionById.get(pageId))
+              .filter(Boolean) as Array<{
+              page_id: string;
+              score?: number;
+              status?: string;
+              next_action?: string;
+            }>;
+            const linkedDraft = draftItems.find((item) =>
+              pageIds.includes(item.source?.id || '')
+              || (path.title ? item.title?.includes(path.title) : false),
+            );
+            const missingPlaybook = playbooks.length === 0;
+            const missingFeatureDomain = featureDomains.length === 0;
+            const hasAttention = linkedAttention.length > 0 || Boolean(linkedDraft);
+            const status = hasAttention
+              ? (missingPlaybook || missingFeatureDomain ? 'gap' : 'watch')
+              : (missingPlaybook || missingFeatureDomain || pageIds.length === 0 ? 'gap' : 'ready');
+            const score = Math.max(
+              35,
+              100
+                - (linkedAttention.length * 18)
+                - (linkedDraft ? 12 : 0)
+                - (missingPlaybook ? 15 : 0)
+                - (missingFeatureDomain ? 15 : 0)
+                - (pageIds.length === 0 ? 20 : 0),
+            );
+            const nextAction = linkedAttention[0]?.next_action
+              || linkedDraft?.description
+              || (missingPlaybook
+                ? '先给这条使用链补操作清单，让路径不只是导航提示。'
+                : missingFeatureDomain
+                  ? '给这条使用链补能力域映射，避免页面只是散点。'
+                  : roadmapTitles[0]
+                    ? `优先回到 ${roadmapTitles[0]} 对应入口继续收口。`
+                    : '保持路径、页面和任务承接同步。');
+
+            return {
+              id: path.id || path.title || `usage-path-${linkedPages[0] || 'untitled'}`,
+              title: path.title || path.id || '未命名使用链',
+              intent: path.intent || '把页面入口串成一条真的可走的使用链。',
+              status,
+              score,
+              stepCount: (path.steps || []).length,
+              pageCount: pageIds.length,
+              linkedPages,
+              playbooks,
+              featureDomains,
+              roadmapTitles,
+              nextAction,
+              taskQuery: linkedDraft?.source?.id || linkedAttention[0]?.page_id || path.id || linkedPages[0] || 'usage-path',
+            };
+          }),
           pageCoverageRows: GUIDE_GROUPS.flatMap((group) => (
             group.pages.map((page) => {
               const attention = pageAttentionById.get(page.id);
@@ -776,6 +861,17 @@ export default function CockpitGuideView({
       withFeatureDomain: rows.filter((row) => !row.missingFeatureDomain).length,
     };
   }, [metrics.pageCoverageRows]);
+
+  const usageCoverageSummary = useMemo(() => {
+    const rows = metrics.usageCoverageRows;
+    return {
+      total: rows.length,
+      ready: rows.filter((row) => row.status === 'ready').length,
+      attention: rows.filter((row) => row.status !== 'ready').length,
+      missingPlaybook: rows.filter((row) => row.playbooks.length === 0).length,
+      missingFeatureDomain: rows.filter((row) => row.featureDomains.length === 0).length,
+    };
+  }, [metrics.usageCoverageRows]);
 
   const coverageGroups = useMemo(() => (
     GUIDE_GROUPS.map((group) => ({
@@ -1643,6 +1739,82 @@ export default function CockpitGuideView({
               </button>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="cockpit-guide-section">
+        <div className="section-header">
+          <div>
+            <h2>使用承接总表</h2>
+            <p className="text-muted">把每条使用链实际连到的页面、清单、能力域和任务承接摆在一行里，看清哪些链条已经能用，哪些还只是概念。</p>
+          </div>
+        </div>
+        <div className="cockpit-guide-coverage-summary">
+          <span><strong>{usageCoverageSummary.total}</strong> 条使用链</span>
+          <span><strong>{usageCoverageSummary.ready}</strong> 条已接通</span>
+          <span><strong>{usageCoverageSummary.attention}</strong> 条待补位</span>
+          <span><strong>{usageCoverageSummary.missingPlaybook}</strong> 条缺清单</span>
+          <span><strong>{usageCoverageSummary.missingFeatureDomain}</strong> 条缺能力域</span>
+        </div>
+        <div className="cockpit-guide-coverage-list">
+          {metrics.usageCoverageRows.map((row) => (
+            <div key={row.id} className={`cockpit-guide-coverage-row ${pageCoverageStatusClass(row.status)}`}>
+              <div className="cockpit-guide-coverage-row-head">
+                <div>
+                  <strong>{row.title}</strong>
+                  <small>{pageCoverageStatusText(row.status)} · {row.score ?? 0}% · 页面 {row.pageCount} · 步骤 {row.stepCount}</small>
+                </div>
+                <span className={`cockpit-guide-coverage-status ${pageCoverageStatusClass(row.status)}`}>
+                  {pageCoverageStatusText(row.status)}
+                </span>
+              </div>
+              <p>{row.intent}</p>
+              <div className="cockpit-guide-coverage-meta">
+                <span>页面 {row.pageCount} 个</span>
+                <span>清单 {row.playbooks.length} 条</span>
+                <span>能力域 {row.featureDomains.length} 个</span>
+                <span>路线图 {row.roadmapTitles.length} 条</span>
+              </div>
+              <div className="cockpit-guide-coverage-tags">
+                {row.linkedPages.slice(0, 3).map((item) => (
+                  <span key={`${row.id}-page-${item}`}>页面 · {item}</span>
+                ))}
+                {row.featureDomains.slice(0, 2).map((item) => (
+                  <em key={`${row.id}-domain-${item}`}>能力域 · {item}</em>
+                ))}
+                {row.linkedPages.length === 0 && (
+                  <em>当前没有挂上页面</em>
+                )}
+              </div>
+              <div className="cockpit-guide-coverage-next">
+                <strong>下一步</strong>
+                <p>{row.nextAction}</p>
+              </div>
+              <div className="cockpit-guide-coverage-actions">
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开使用链 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', usagePathId: row.id }, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>看使用链</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开使用任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', usagePathId: row.id, taskQuery: row.taskQuery }, onNavigate, onOpenTarget)}
+                >
+                  <ArrowRight size={14} />
+                  <span>看任务承接</span>
+                </button>
+              </div>
+            </div>
+          ))}
+          {metrics.usageCoverageRows.length === 0 && (
+            <div className="cockpit-guide-focus-empty">当前还没有可承接的使用链数据。</div>
+          )}
         </div>
       </section>
 
