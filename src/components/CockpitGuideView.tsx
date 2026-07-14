@@ -92,6 +92,15 @@ interface GuideMetrics {
     cockpit_page: string;
     problem?: string;
   }>;
+  priorityProjects: Array<{
+    id: string;
+    layer?: string;
+    cockpitPage?: string;
+    status?: string;
+    score?: number;
+    primaryGap?: string;
+    nextAction?: string;
+  }>;
   draftSummary: {
     total: number;
     capabilityGap: number;
@@ -303,6 +312,7 @@ const DEFAULT_METRICS: GuideMetrics = {
   capabilityGaps: [],
   weakestDimensions: [],
   roadmapItems: [],
+  priorityProjects: [],
   draftSummary: {
     total: 0,
     capabilityGap: 0,
@@ -363,6 +373,39 @@ function guideDraftTypeLabel(type?: string) {
   if (type === 'system_map_playbook') return '操作清单';
   if (type === 'system_map_verification_ready') return '验证补证';
   return '承接任务';
+}
+
+function guideProjectStatusClass(status?: string) {
+  if (status === 'healthy' || status === 'ready') return 'ready';
+  if (status === 'watch' || status === 'at_risk') return 'watch';
+  return 'gap';
+}
+
+function guideProjectStatusText(status?: string) {
+  if (status === 'healthy' || status === 'ready') return '项目稳定';
+  if (status === 'watch') return '继续观察';
+  if (status === 'at_risk') return '项目风险';
+  if (status === 'blocked') return '项目阻塞';
+  return status || '待收口';
+}
+
+function guideDraftObjectTarget(draft: { sourceType: string; sourceId: string }): CockpitNavigationTarget {
+  if (draft.sourceType === 'system_map_domain_app') {
+    return { tab: 'DomainApps', taskQuery: draft.sourceId };
+  }
+  if (draft.sourceType === 'system_map_capability_gap') {
+    return { tab: 'SystemMap', gapId: draft.sourceId };
+  }
+  if (draft.sourceType === 'system_map_project_portfolio') {
+    return { tab: 'SystemMap', projectId: draft.sourceId };
+  }
+  if (draft.sourceType === 'system_map_verification_ready') {
+    return { tab: 'SystemMap', projectId: draft.sourceId };
+  }
+  if (draft.sourceType === 'system_map_page_maturity') {
+    return { tab: 'SystemMap', pageId: draft.sourceId };
+  }
+  return { tab: 'TaskCenter', taskQuery: draft.sourceId };
 }
 
 function matchesGuideFocusQuery(value?: string | null, query?: string) {
@@ -535,6 +578,23 @@ export default function CockpitGuideView({
           roadmapItems: ((payload.roadmap?.items || []) as GuideMetrics['roadmapItems'])
             .filter((item) => item.status !== 'shipped')
             .slice(0, 3),
+          priorityProjects: ((payload.project_portfolio?.priority_projects || []) as Array<{
+            id: string;
+            layer?: string;
+            cockpit_page?: string;
+            status?: string;
+            score?: number;
+            primary_gap?: string;
+            next_action?: string;
+          }>).slice(0, 4).map((item) => ({
+            id: item.id,
+            layer: item.layer,
+            cockpitPage: item.cockpit_page,
+            status: item.status,
+            score: item.score,
+            primaryGap: item.primary_gap,
+            nextAction: item.next_action,
+          })),
           draftSummary,
           featuredDrafts: draftItems
             .filter((item) =>
@@ -713,6 +773,64 @@ export default function CockpitGuideView({
       attentionProjects: rows.reduce((total, row) => total + row.attentionProjects.length, 0),
     };
   }, [metrics.dimensionCoverageRows]);
+
+  const objectCoverageRows = useMemo(() => {
+    const projectRows = metrics.priorityProjects.map((project) => ({
+      id: `project-${project.id}`,
+      kind: '项目对象',
+      title: project.id,
+      statusClass: guideProjectStatusClass(project.status),
+      statusText: guideProjectStatusText(project.status),
+      meta: `${project.layer || '项目'} · ${project.score ?? 0}%`,
+      summary: project.primaryGap || project.nextAction || '回系统地图继续看项目覆盖和组合阻塞。',
+      nextAction: project.nextAction || '先确认这个项目当前最影响使用面的缺口。',
+      objectTarget: { tab: 'SystemMap', projectId: project.id } as CockpitNavigationTarget,
+      taskTarget: { tab: 'TaskCenter', taskQuery: project.id } as CockpitNavigationTarget,
+    }));
+
+    const domainRows = metrics.domainAttention.map((item) => ({
+      id: `domain-${item.id}`,
+      kind: '领域对象',
+      title: item.name,
+      statusClass: item.runtimeStatus === 'running' && item.securityPosture === 'passed' ? 'ready' : item.securityPosture === 'passed' ? 'watch' : 'gap',
+      statusText: item.runtimeStatus === 'running' && item.securityPosture === 'passed' ? '运行稳定' : item.securityPosture === 'passed' ? '待收口' : '安全待补',
+      meta: `${item.domainName || '领域应用'} · ${item.runtimeStatus} · ${item.riskLevel}`,
+      summary: item.taskTitle || item.nextAction,
+      nextAction: item.nextAction,
+      objectTarget: { tab: 'DomainApps', taskQuery: item.id } as CockpitNavigationTarget,
+      taskTarget: { tab: 'TaskCenter', taskQuery: item.taskQuery } as CockpitNavigationTarget,
+    }));
+
+    const uniqueDrafts = [...metrics.featuredDrafts, ...metrics.closureDrafts]
+      .filter((draft, index, allDrafts) => (
+        allDrafts.findIndex((item) => item.id === draft.id) === index
+      ))
+      .slice(0, 6);
+
+    const draftRows = uniqueDrafts
+      .map((draft) => ({
+        id: `draft-${draft.id}`,
+        kind: `${guideDraftTypeLabel(draft.sourceType)}草稿`,
+        title: draft.title,
+        statusClass: draft.sourceType === 'system_map_verification_ready' ? 'watch' : 'gap',
+        statusText: draft.sourceType === 'system_map_verification_ready' ? '待补证' : '待承接',
+        meta: `${guideDraftTypeLabel(draft.sourceType)} · ${draft.sourceId}`,
+        summary: draft.description || `先把 ${draft.sourceId} 的承接动作继续沉到任务中心。`,
+        nextAction: draft.description || '先看草稿来源对象，再确认任务承接是否已经接通。',
+        objectTarget: guideDraftObjectTarget(draft),
+        taskTarget: { tab: 'TaskCenter', taskQuery: draft.sourceId } as CockpitNavigationTarget,
+      }));
+
+    return [...projectRows, ...domainRows, ...draftRows];
+  }, [metrics.closureDrafts, metrics.domainAttention, metrics.featuredDrafts, metrics.priorityProjects]);
+
+  const objectCoverageSummary = useMemo(() => ({
+    total: objectCoverageRows.length,
+    projects: objectCoverageRows.filter((row) => row.kind === '项目对象').length,
+    domains: objectCoverageRows.filter((row) => row.kind === '领域对象').length,
+    drafts: objectCoverageRows.filter((row) => row.kind.includes('草稿')).length,
+    ready: objectCoverageRows.filter((row) => row.statusClass === 'ready').length,
+  }), [objectCoverageRows]);
 
   const focusedGuideCard = useMemo(() => {
     const pageRow = focusPageId
@@ -1686,6 +1804,65 @@ export default function CockpitGuideView({
           ))}
           {metrics.dimensionCoverageRows.length === 0 && (
             <div className="cockpit-guide-focus-empty">当前还没有维度覆盖数据。</div>
+          )}
+        </div>
+      </section>
+
+      <section className="cockpit-guide-section">
+        <div className="section-header">
+          <div>
+            <h2>对象承接总表</h2>
+            <p className="text-muted">把项目、领域对象和任务草稿放到同一层看，直接决定该回对象页还是回任务中心，不再分散在几块卡片里找。</p>
+          </div>
+        </div>
+        <div className="cockpit-guide-coverage-summary">
+          <span><strong>{objectCoverageSummary.total}</strong> 个对象</span>
+          <span><strong>{objectCoverageSummary.projects}</strong> 个项目</span>
+          <span><strong>{objectCoverageSummary.domains}</strong> 个领域对象</span>
+          <span><strong>{objectCoverageSummary.drafts}</strong> 条草稿</span>
+          <span><strong>{objectCoverageSummary.ready}</strong> 个稳定对象</span>
+        </div>
+        <div className="cockpit-guide-coverage-list">
+          {objectCoverageRows.map((row) => (
+            <div key={row.id} className={`cockpit-guide-coverage-row ${row.statusClass}`}>
+              <div className="cockpit-guide-coverage-row-head">
+                <div>
+                  <strong>{row.title}</strong>
+                  <small>{row.kind} · {row.meta}</small>
+                </div>
+                <span className={`cockpit-guide-coverage-status ${row.statusClass}`}>
+                  {row.statusText}
+                </span>
+              </div>
+              <p>{row.summary}</p>
+              <div className="cockpit-guide-coverage-next">
+                <strong>下一步</strong>
+                <p>{row.nextAction}</p>
+              </div>
+              <div className="cockpit-guide-coverage-actions">
+                <button
+                  type="button"
+                  className="antd-btn"
+                  aria-label={`打开对象承接 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ArrowRight size={14} />
+                  <span>看对象</span>
+                </button>
+                <button
+                  type="button"
+                  className="antd-btn secondary"
+                  aria-label={`打开对象任务 ${row.title}`}
+                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <Route size={14} />
+                  <span>看任务</span>
+                </button>
+              </div>
+            </div>
+          ))}
+          {objectCoverageRows.length === 0 && (
+            <div className="cockpit-guide-focus-empty">当前还没有对象承接数据。</div>
           )}
         </div>
       </section>

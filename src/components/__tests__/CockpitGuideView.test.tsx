@@ -25,6 +25,17 @@ describe('CockpitGuideView', () => {
       ],
       project_portfolio: {
         summary: { score: 78 },
+        priority_projects: [
+          {
+            id: 'cockpit',
+            layer: 'L3',
+            cockpit_page: 'SystemMap',
+            status: 'at_risk',
+            score: 63,
+            primary_gap: '入口与承接仍有待补位页面。',
+            next_action: '先把高频补位页面接回使用路径和任务中心。',
+          },
+        ],
         weakest_dimensions: [
           { id: 'runtime_probe', title: '运行探针', score: 21, failed: 10, warning: 5 },
         ],
@@ -154,6 +165,12 @@ describe('CockpitGuideView', () => {
       expect(screen.getByText((_, node) => node?.textContent === '2 条维度')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开维度覆盖 验证证据' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开维度任务 验证证据' })).toBeInTheDocument()
+      expect(screen.getByText('对象承接总表')).toBeInTheDocument()
+      expect(screen.getByText((_, node) => node?.textContent === '7 个对象')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开对象承接 cockpit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开对象任务 cockpit' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开对象承接 family-hub 服务' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开对象任务 页面能力：补齐 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '回来源页 性能监控' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补证车道 验证补证' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开补证任务 验证补证：补齐 概览中心' })).toBeInTheDocument()
@@ -195,6 +212,17 @@ describe('CockpitGuideView', () => {
       ],
       project_portfolio: {
         summary: { score: 61 },
+        priority_projects: [
+          {
+            id: 'cockpit',
+            layer: 'L3',
+            cockpit_page: 'SystemMap',
+            status: 'at_risk',
+            score: 61,
+            primary_gap: '领域挂载和验证承接还没完全接上。',
+            next_action: '先补领域挂载和验证承接链。',
+          },
+        ],
         weakest_dimensions: [
           { id: 'runtime_probe', title: '运行探针', score: 21, failed: 4, warning: 2 },
         ],
@@ -363,6 +391,18 @@ describe('CockpitGuideView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'TaskCenter',
       taskQuery: 'Overview',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开对象承接 cockpit' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      projectId: 'cockpit',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开对象任务 cockpit' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit',
     }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开任务车道 页面能力' }))
