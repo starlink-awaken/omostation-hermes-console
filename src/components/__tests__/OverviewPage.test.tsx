@@ -221,6 +221,7 @@ describe('OverviewPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('总面动作区')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '概览闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('概览冲刺工坊')).toBeInTheDocument()
       expect(screen.getByText('按工作模式进入')).toBeInTheDocument()
       expect(screen.getByText('领域执行闭环')).toBeInTheDocument()
@@ -384,6 +385,40 @@ describe('OverviewPage', () => {
 
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', pageId: 'Performance' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Performance' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  }, 30000)
+
+  it('surfaces overview closure routing when focus hits architecture handoff', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/services') return Promise.resolve({ ok: true, json: async () => registryPayload } as Response)
+      if (url === '/api/services/status') return Promise.resolve({ ok: true, json: async () => runtimePayload } as Response)
+      if (url === '/api/alerts?status=active&limit=10') return Promise.resolve({ ok: true, json: async () => alertPayload } as Response)
+      if (url === '/api/cockpit/system-map') return Promise.resolve({ ok: true, json: async () => systemMapPayload } as Response)
+      if (url === '/api/tasks?include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=40') return Promise.resolve({ ok: true, json: async () => draftPayload } as Response)
+      if (url === '/api/domain-apps') return Promise.resolve({ ok: true, json: async () => domainAppsPayload } as Response)
+      return Promise.resolve({ ok: true, json: async () => ({ items: [] }) } as Response)
+    })
+
+    render(
+      <OverviewPage
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        focusTaskQuery="功能架构与使用路径收口"
+      />,
+    )
+
+    const focusRegion = await screen.findByRole('region', { name: '当前概览承接焦点' })
+    expect(within(focusRegion).getByText('功能架构与使用路径收口')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '打开概览焦点对象 功能架构与使用路径收口' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开概览焦点任务 功能架构与使用路径收口' }))
+
+    expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', usagePathId: 'daily-ops' })
+    expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '每日 5 分钟体检' })
     expect(onNavigate).not.toHaveBeenCalled()
   }, 30000)
 })

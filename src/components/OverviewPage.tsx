@@ -270,6 +270,17 @@ type OverviewSprintRow = {
   copyText: string;
 };
 
+type OverviewClosureRow = {
+  id: string;
+  title: string;
+  summary: string;
+  signal: string;
+  nextAction: string;
+  statusTone: 'online' | 'degraded';
+  objectTarget: OverviewNavigationTarget;
+  taskTarget: OverviewNavigationTarget;
+};
+
 type OverviewState = {
   loading: boolean;
   registry: RegistryService[];
@@ -424,6 +435,7 @@ function FocusedOverviewClosureSection({
   readOnlyDrafts,
   domainAttention,
   domainApps,
+  closureRows,
   focusPageId,
   focusProjectId,
   focusTaskQuery,
@@ -435,6 +447,7 @@ function FocusedOverviewClosureSection({
   readOnlyDrafts: DraftTask[];
   domainAttention: DomainAttentionItem[];
   domainApps: DomainAppRegistryItem[];
+  closureRows: OverviewClosureRow[];
   focusPageId?: string | null;
   focusProjectId?: string | null;
   focusTaskQuery?: string;
@@ -473,6 +486,14 @@ function FocusedOverviewClosureSection({
   const linkedDomainApp = domainItem
     ? domainApps.find((app) => matchesDomainRegistryItem(app, domainItem.id) || matchesDomainRegistryItem(app, domainItem.name)) || null
     : null;
+  const matchedClosure = focusTaskQuery
+    ? closureRows.find((row) =>
+      matchesFocusQuery(row.title, focusTaskQuery)
+      || matchesFocusQuery(row.summary, focusTaskQuery)
+      || matchesFocusQuery(row.signal, focusTaskQuery)
+      || matchesFocusQuery(row.nextAction, focusTaskQuery),
+    ) || null
+    : null;
 
   const card = (pageDraft || pageMeta || focusPageId) ? {
     title: pageMeta?.title || focusPageId || pageDraft?.source?.id || pageDraft?.title || '未命名页面',
@@ -501,6 +522,13 @@ function FocusedOverviewClosureSection({
     nextAction: queryDraft.description || '回任务中心继续承接这条草稿。',
     objectTarget: draftTarget(queryDraft),
     taskTarget: { tab: 'TaskCenter', taskQuery: queryDraft.source?.id || queryDraft.id || queryDraft.title } as OverviewNavigationTarget,
+  } : matchedClosure ? {
+    title: matchedClosure.title,
+    meta: '从概览闭环总表带回来的总控对象',
+    state: matchedClosure.signal,
+    nextAction: matchedClosure.nextAction,
+    objectTarget: matchedClosure.objectTarget,
+    taskTarget: matchedClosure.taskTarget,
   } : (priorityProject || focusProjectId) ? {
     title: priorityProject?.id || focusProjectId || '未命名项目',
     meta: '从系统地图带回来的优先项目',
@@ -899,6 +927,84 @@ export default function OverviewPage({
     ],
     [activeAlerts.length, domainAttention.length, readOnlyDrafts.length],
   );
+  const overviewClosureRows = useMemo<OverviewClosureRow[]>(() => {
+    const firstWeakDimension = weakestDimensions[0] || null;
+    const firstCoverageDraft = focusDrafts[0] || null;
+    const firstDomainCard = domainExecutionCards[0] || null;
+    const firstUsagePath = usagePaths[0] || null;
+    const firstPlaybook = playbooks[0] || null;
+    const firstFeatureDomain = featureDomains[0] || null;
+    const firstUnstableRuntime = unstableRuntime[0] || null;
+    const firstTriageAction = triageActions[0] || null;
+
+    return [
+      {
+        id: 'coverage-repair',
+        title: '全站覆盖与修复收口',
+        summary: '概览页最先要接住的，是覆盖缺口和修复草稿，不然系统地图和任务中心之间还是断开的。',
+        signal: firstWeakDimension ? `${firstWeakDimension.title || firstWeakDimension.id} ${firstWeakDimension.score || 0}%` : `草稿 ${focusDrafts.length}`,
+        nextAction: firstCoverageDraft
+          ? `优先处理 ${firstCoverageDraft.title || firstCoverageDraft.id}，回系统地图确认缺口，再送进任务中心。`
+          : '当前没有明显修复草稿，抽查概览到系统地图和任务中心的覆盖收口链路。',
+        statusTone: firstWeakDimension || firstCoverageDraft ? 'degraded' : 'online',
+        objectTarget: firstWeakDimension
+          ? { tab: 'SystemMap', coverageDimensionId: firstWeakDimension.id }
+          : { tab: 'SystemMap' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstCoverageDraft?.source?.id || firstCoverageDraft?.title || '覆盖修复' },
+      },
+      {
+        id: 'domain-execution',
+        title: '领域挂载与执行闭环',
+        summary: '领域对象、运行态和任务承接必须在概览页上一起看，不然用户还得猜该先回应用中心还是先回任务。',
+        signal: firstDomainCard ? `${firstDomainCard.objectTitle} · ${statusText(firstDomainCard.runtimeStatus)}` : `领域 ${domainExecutionCards.length}`,
+        nextAction: firstDomainCard
+          ? `先围绕 ${firstDomainCard.objectTitle} 回应用中心核对运行态，再把任务承接动作正式落下。`
+          : '当前没有明显领域闭环对象，抽查应用中心到任务中心的挂载承接链路。',
+        statusTone: firstDomainCard ? 'degraded' : 'online',
+        objectTarget: { tab: 'DomainApps', taskQuery: firstDomainCard?.appQuery || 'domain-execution' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstDomainCard?.draftQuery || 'domain-execution' },
+      },
+      {
+        id: 'architecture-usage',
+        title: '功能架构与使用路径收口',
+        summary: '概览页不该只列页面和路径数量，它要把功能架构、使用路径和操作清单真正串成可走的站内路线。',
+        signal: firstUsagePath ? `${firstUsagePath.title} · ${firstUsagePath.pages?.length || 0} 页` : `能力域 ${featureDomains.length}`,
+        nextAction: firstPlaybook
+          ? `先沿着 ${firstUsagePath?.title || firstFeatureDomain?.title || '当前路径'} 下钻，再用 ${firstPlaybook.title} 把动作落到任务。`
+          : '当前没有完整操作清单，先回系统地图补使用路径，再把执行步骤沉进任务中心。',
+        statusTone: firstUsagePath || firstFeatureDomain ? 'degraded' : 'online',
+        objectTarget: firstUsagePath
+          ? { tab: 'SystemMap', usagePathId: firstUsagePath.id }
+          : { tab: 'SystemMap', featureDomainId: firstFeatureDomain?.id || null },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstPlaybook?.title || firstUsagePath?.title || '功能架构' },
+      },
+      {
+        id: 'runtime-repair',
+        title: '运行态势与修复动作收口',
+        summary: '运行态势、修复动作和日志/性能证据要在概览页上形成一条链，不然总面还是只能看热闹。',
+        signal: firstUnstableRuntime ? `${firstUnstableRuntime.name} · ${statusText(firstUnstableRuntime.status)}` : `修复动作 ${triageActions.length}`,
+        nextAction: firstTriageAction
+          ? `围绕 ${firstTriageAction.projectId} 的修复动作继续看性能或日志，再决定是否升级成长期任务。`
+          : firstUnstableRuntime
+            ? `先去性能页确认 ${firstUnstableRuntime.name} 的波动，再回日志页抓证据。`
+            : '当前没有明显运行修复对象，抽查概览到性能、日志和任务中心的修复链路。',
+        statusTone: firstUnstableRuntime || firstTriageAction ? 'degraded' : 'online',
+        objectTarget: firstUnstableRuntime
+          ? { tab: 'Performance', taskQuery: firstUnstableRuntime.name }
+          : { tab: 'LogViewer', taskQuery: firstTriageAction?.projectId || 'runtime-repair' },
+        taskTarget: { tab: 'TaskCenter', taskQuery: firstTriageAction?.projectId || firstUnstableRuntime?.name || 'runtime-repair' },
+      },
+    ];
+  }, [
+    domainExecutionCards,
+    featureDomains,
+    focusDrafts,
+    playbooks,
+    triageActions,
+    unstableRuntime,
+    usagePaths,
+    weakestDimensions,
+  ]);
 
   if (state.loading && state.registry.length === 0 && state.runtime.length === 0 && !state.systemMap) {
     return (
@@ -927,12 +1033,65 @@ export default function OverviewPage({
         readOnlyDrafts={readOnlyDrafts}
         domainAttention={domainAttention}
         domainApps={state.domainApps}
+        closureRows={overviewClosureRows}
         focusPageId={focusPageId}
         focusProjectId={focusProjectId}
         focusTaskQuery={focusTaskQuery}
         onNavigate={onNavigate}
         onOpenTarget={onOpenTarget}
       />
+
+      <section className="services-section overview-ops-panel" role="region" aria-label="概览闭环总表">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>概览闭环总表</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把覆盖修复、领域执行、架构使用和运行修复四条主线放在同一层，概览页才能真正承担总控入口，而不是信息堆场。
+            </p>
+          </div>
+          <span className="status-badge online">{overviewClosureRows.length} 条闭环</span>
+        </div>
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          {overviewClosureRows.map((row) => (
+            <article
+              key={`overview-closure-${row.id}`}
+              className="antd-card"
+              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
+            >
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
+                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
+                </div>
+                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <small className="text-muted">下一步</small>
+                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  className="antd-btn small"
+                  aria-label={`打开概览闭环对象 ${row.title}`}
+                  onClick={() => openOverviewTarget(row.objectTarget, onNavigate, onOpenTarget)}
+                >
+                  <ExternalLink size={13} />
+                  <span>看对象</span>
+                </button>
+                <button
+                  className="antd-btn small"
+                  aria-label={`打开概览闭环任务 ${row.title}`}
+                  onClick={() => openOverviewTarget(row.taskTarget, onNavigate, onOpenTarget)}
+                >
+                  <ClipboardCheck size={13} />
+                  <span>看任务</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {overviewSprintRows.length > 0 && activeOverviewSprintRow && (
         <section className="services-section overview-ops-panel" aria-label="概览冲刺工坊">
