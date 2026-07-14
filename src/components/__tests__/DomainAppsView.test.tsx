@@ -94,6 +94,38 @@ const opcPayload = {
   product_portfolio: { matrix: [], pipeline: [], revenue: [] },
 }
 
+const systemMapPayload = {
+  cockpit_pages: [
+    { id: 'DomainApps', title: '应用中心' },
+    { id: 'QuestBoard', title: '积分冒险' },
+  ],
+  project_portfolio: {
+    priority_projects: [
+      {
+        id: 'family-dashboard-app-project',
+        layer: 'L4',
+        cockpit_page: 'DomainApps',
+        status: 'at_risk',
+        score: 68,
+        primary_gap: '家庭入口已挂载，但项目承接和验证面还没完全接通。',
+        next_action: '先回应用中心确认入口，再到系统地图和任务中心继续收口。',
+      },
+    ],
+  },
+  roadmap: {
+    items: [
+      {
+        id: 'family-quest-loop',
+        priority: 'P1',
+        status: 'planned',
+        title: '家庭激励闭环',
+        cockpit_page: 'QuestBoard',
+        problem: '积分冒险还没完全接进家庭任务与周报闭环。',
+      },
+    ],
+  },
+}
+
 describe('DomainAppsView', () => {
   beforeEach(() => {
     vi.mocked(fetch).mockReset()
@@ -104,6 +136,7 @@ describe('DomainAppsView', () => {
       const url = String(input)
       if (url === '/api/domain-apps') return Promise.resolve(okJson(domainAppsPayload))
       if (url === '/api/opc/workspace') return Promise.resolve(okJson(opcPayload))
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
       return Promise.resolve(okJson({}))
     })
 
@@ -117,6 +150,12 @@ describe('DomainAppsView', () => {
       expect(screen.getByRole('region', { name: '当前聚焦应用剖面' })).toBeInTheDocument()
       expect(screen.getByRole('region', { name: '领域承接路径' })).toBeInTheDocument()
       expect(screen.getByText('领域承接路径')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '领域建设入口' })).toBeInTheDocument()
+      expect(screen.getByText('领域建设入口')).toBeInTheDocument()
+      expect(screen.getByText('领域项目与路线图')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开领域建设入口 family-dashboard-app-project' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开领域建设覆盖 family-dashboard-app-project' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开领域建设任务 家庭激励闭环' })).toBeInTheDocument()
       expect(screen.getAllByText('OPC 作战台').length).toBeGreaterThan(0)
       expect(screen.getAllByText('Cockpit 入口').length).toBeGreaterThan(0)
       expect(screen.getAllByText('领域 SSOT').length).toBeGreaterThan(0)
@@ -136,6 +175,7 @@ describe('DomainAppsView', () => {
       const url = String(input)
       if (url === '/api/domain-apps') return Promise.resolve(okJson(domainAppsPayload))
       if (url === '/api/opc/workspace') return Promise.resolve(okJson(opcPayload))
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
       return Promise.resolve(okJson({}))
     })
 
@@ -145,6 +185,9 @@ describe('DomainAppsView', () => {
       expect(screen.getByRole('button', { name: /按应用筛任务/ })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开聚焦应用系统地图' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /打开领域承接任务 家庭驾驶舱/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开领域建设入口 family-dashboard-app-project' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开领域建设覆盖 family-dashboard-app-project' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开领域建设任务 家庭激励闭环' })).toBeInTheDocument()
     }, { timeout: 5000 })
 
     fireEvent.click(screen.getByRole('button', { name: /打开领域承接任务 家庭驾驶舱/ }))
@@ -158,6 +201,15 @@ describe('DomainAppsView', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开聚焦应用系统地图' }))
 
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap' })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开领域建设入口 family-dashboard-app-project' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'DomainApps' })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开领域建设覆盖 family-dashboard-app-project' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'family-dashboard-app-project' })
+
+    fireEvent.click(screen.getByRole('button', { name: '打开领域建设任务 家庭激励闭环' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'family-quest-loop' })
   }, 20000)
 
   it('renders security posture summary and checks', async () => {

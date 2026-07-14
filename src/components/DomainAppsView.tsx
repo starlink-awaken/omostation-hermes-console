@@ -5,13 +5,16 @@ import {
   Copy,
   ExternalLink,
   FileText,
+  Map,
   RefreshCw,
+  Route,
   ShieldAlert,
   Terminal,
 } from 'lucide-react';
 import './Dashboard.css';
 import GovernanceDomainWorkbench from './GovernanceDomainWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
+import { type CockpitNavigationTarget } from './cockpitNavigation';
 
 type DomainApp = {
   id: string;
@@ -95,6 +98,38 @@ type DomainAppsPayload = {
   items: DomainApp[];
 };
 
+type DomainBuildProject = {
+  id: string;
+  layer?: string;
+  cockpit_page?: string;
+  status?: string;
+  score?: number;
+  primary_gap?: string;
+  next_action?: string;
+};
+
+type DomainBuildRoadmapItem = {
+  id: string;
+  priority?: string;
+  status?: string;
+  title?: string;
+  cockpit_page?: string;
+  problem?: string;
+};
+
+type DomainBuildRow = {
+  id: string;
+  kind: 'project' | 'roadmap';
+  title: string;
+  meta: string;
+  summary: string;
+  nextAction: string;
+  statusClass: string;
+  entryTarget: CockpitNavigationTarget;
+  coverageTarget: CockpitNavigationTarget;
+  taskTarget: CockpitNavigationTarget;
+};
+
 type OpcWorkspace = {
   exists: boolean;
   ssot_root: string;
@@ -138,6 +173,8 @@ type DomainRouteCard = {
   secondaryAction?: () => void;
   launchUrl?: string | null;
 };
+
+const DOMAIN_SURFACE_PAGE_IDS = new Set(['DomainApps', 'QuestBoard', 'L4Health', 'Settings']);
 
 const healthLabels: Record<string, string> = {
   ready: '就绪',
@@ -391,7 +428,7 @@ function AlertTriangleText({ items }: { items: string[] }) {
 
 interface DomainAppsViewProps {
   onNavigate?: (tab: string) => void;
-  onOpenTarget?: (target: { tab: string; taskQuery?: string }) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
   taskQuery?: string;
 }
 
@@ -402,9 +439,18 @@ function matchesDomainApp(app: DomainApp, query: string): boolean {
     .some((value) => value.toLowerCase().includes(normalizedQuery));
 }
 
+function domainBuildStatusClass(value?: string): string {
+  if (!value) return 'degraded';
+  if (value === 'healthy' || value === 'ready' || value === 'shipped') return 'online';
+  if (value === 'watch' || value === 'at_risk' || value === 'planned' || value === 'active') return 'degraded';
+  if (value === 'blocked' || value === 'failed') return 'offline';
+  return 'degraded';
+}
+
 export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: DomainAppsViewProps) {
   const [apps, setApps] = useState<DomainAppsPayload | null>(null);
   const [opc, setOpc] = useState<OpcWorkspace | null>(null);
+  const [domainBuildRows, setDomainBuildRows] = useState<DomainBuildRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [attentionFilter, setAttentionFilter] = useState<DomainAttentionFilter>('all');
@@ -414,13 +460,59 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
     setLoading(true);
     setError('');
     try {
-      const [appsRes, opcRes] = await Promise.all([
+      const [appsRes, opcRes, systemMapRes] = await Promise.all([
         fetch('/api/domain-apps'),
         fetch('/api/opc/workspace'),
+        fetch('/api/cockpit/system-map'),
       ]);
       if (!appsRes.ok || !opcRes.ok) throw new Error('领域应用数据读取失败');
-      setApps(await appsRes.json());
-      setOpc(await opcRes.json());
+      const appsPayload = await appsRes.json();
+      const opcPayload = await opcRes.json();
+      const systemMapPayload = systemMapRes.ok ? await systemMapRes.json() : {};
+      const pagesById = new globalThis.Map<string, { id: string; title?: string }>(
+        ((systemMapPayload.cockpit_pages || []) as Array<{ id?: string; title?: string }>)
+          .filter((page): page is { id: string; title?: string } => Boolean(page.id))
+          .map((page) => [page.id, page] as const),
+      );
+      const projectRows = ((systemMapPayload.project_portfolio?.priority_projects || []) as DomainBuildProject[])
+        .filter((project) => project.cockpit_page && DOMAIN_SURFACE_PAGE_IDS.has(project.cockpit_page))
+        .slice(0, 4)
+        .map((project) => {
+          const page = pagesById.get(project.cockpit_page || '');
+          return {
+            id: `domain-build-project-${project.id}`,
+            kind: 'project' as const,
+            title: project.id,
+            meta: `${project.layer || '项目'} · 入口 ${page?.title || project.cockpit_page || '系统地图'} · ${project.score ?? 0}%`,
+            summary: project.primary_gap || project.next_action || '先回项目覆盖面确认领域入口、任务和安全门是否接通。',
+            nextAction: project.next_action || '先从项目面确认领域相关项目的下一步。',
+            statusClass: domainBuildStatusClass(project.status),
+            entryTarget: { tab: project.cockpit_page || 'DomainApps' },
+            coverageTarget: { tab: 'SystemMap', projectId: project.id },
+            taskTarget: { tab: 'TaskCenter', taskQuery: project.id },
+          };
+        });
+      const roadmapRows = ((systemMapPayload.roadmap?.items || []) as DomainBuildRoadmapItem[])
+        .filter((item) => item.cockpit_page && DOMAIN_SURFACE_PAGE_IDS.has(item.cockpit_page) && item.status !== 'shipped')
+        .slice(0, 4)
+        .map((item) => {
+          const page = pagesById.get(item.cockpit_page || '');
+          return {
+            id: `domain-build-roadmap-${item.id}`,
+            kind: 'roadmap' as const,
+            title: item.title || item.id,
+            meta: `${item.priority || '路线图'} · 入口 ${page?.title || item.cockpit_page || '系统地图'} · ${item.status || 'planned'}`,
+            summary: item.problem || '先确认这条领域路线图应该落在哪个入口页和任务收口面。',
+            nextAction: item.problem || '进入系统地图继续看路线图承接。',
+            statusClass: domainBuildStatusClass(item.status),
+            entryTarget: { tab: item.cockpit_page || 'DomainApps' },
+            coverageTarget: { tab: 'SystemMap', pageId: item.cockpit_page || 'DomainApps' },
+            taskTarget: { tab: 'TaskCenter', taskQuery: item.id || item.title || 'roadmap' },
+          };
+        });
+      setApps(appsPayload);
+      setOpc(opcPayload);
+      setDomainBuildRows([...projectRows, ...roadmapRows]);
     } catch (err) {
       setError(err instanceof Error ? err.message : '领域应用数据读取失败');
     } finally {
@@ -556,6 +648,13 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       freshnessReady: items.filter((app) => Boolean(app.freshness.status)).length,
     };
   }, [apps]);
+
+  const domainBuildSummary = useMemo(() => ({
+    total: domainBuildRows.length,
+    projects: domainBuildRows.filter((row) => row.kind === 'project').length,
+    roadmap: domainBuildRows.filter((row) => row.kind === 'roadmap').length,
+    attention: domainBuildRows.filter((row) => row.statusClass !== 'online').length,
+  }), [domainBuildRows]);
 
   const domainRouteCards: DomainRouteCard[] = (apps?.items || []).map((app) => {
     const launchUrl = app.links.launch_url || app.runtime.launch.url || app.links.api_url || app.runtime.api.url || null;
@@ -1223,6 +1322,87 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               })}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="services-section" aria-label="领域建设入口" style={{ marginBottom: 20 }}>
+        <div className="section-header" style={{ marginBottom: 12 }}>
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>领域建设入口</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把领域相关的重点项目和路线图翻成 cockpit 入口页、系统收口面和任务承接入口，让领域页也能直接承接项目维度。
+            </p>
+          </div>
+          <span className={`status-badge ${domainBuildSummary.attention > 0 ? 'degraded' : 'online'}`}>
+            {domainBuildSummary.total > 0 ? `已编排 ${domainBuildSummary.total}` : '待接入'}
+          </span>
+        </div>
+
+        <div className="home-architecture-kpis">
+          {[
+            ['建设入口', domainBuildSummary.total],
+            ['重点项目', domainBuildSummary.projects],
+            ['路线图项', domainBuildSummary.roadmap],
+            ['待收口', domainBuildSummary.attention],
+          ].map(([label, value]) => (
+            <div key={label} className="home-architecture-kpi">
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </div>
+          ))}
+        </div>
+
+        <div className="home-architecture-grid">
+          <article className="home-architecture-panel">
+            <div className="home-architecture-panel-head">
+              <div>
+                <strong>领域项目与路线图</strong>
+                <small>先看入口页，再看系统收口面，最后回任务中心跟进动作。</small>
+              </div>
+              <span className={`status-badge ${domainBuildSummary.attention > 0 ? 'degraded' : 'online'}`}>
+                {domainBuildSummary.attention}
+              </span>
+            </div>
+            <div className="home-architecture-list">
+              {domainBuildRows.map((row) => (
+                <article key={row.id} className="home-architecture-item home-architecture-lane">
+                  <strong>{row.title}</strong>
+                  <span>{row.kind === 'project' ? '重点项目' : '能力路线图'} · {row.meta}</span>
+                  <p className="home-architecture-copy">{row.summary}</p>
+                  <small>{row.nextAction}</small>
+                  <div className="home-architecture-lane-actions">
+                    <button
+                      className="antd-btn small"
+                      aria-label={`打开领域建设入口 ${row.title}`}
+                      onClick={() => onOpenTarget ? onOpenTarget(row.entryTarget) : onNavigate?.(row.entryTarget.tab)}
+                    >
+                      <ExternalLink size={13} />
+                      <span>入口页</span>
+                    </button>
+                    <button
+                      className="antd-btn small secondary"
+                      aria-label={`打开领域建设覆盖 ${row.title}`}
+                      onClick={() => onOpenTarget ? onOpenTarget(row.coverageTarget) : onNavigate?.(row.coverageTarget.tab)}
+                    >
+                      <Map size={13} />
+                      <span>系统收口</span>
+                    </button>
+                    <button
+                      className="antd-btn small secondary"
+                      aria-label={`打开领域建设任务 ${row.title}`}
+                      onClick={() => onOpenTarget ? onOpenTarget(row.taskTarget) : onNavigate?.(row.taskTarget.tab)}
+                    >
+                      <Route size={13} />
+                      <span>任务承接</span>
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {domainBuildRows.length === 0 && (
+                <div className="home-focus-empty">当前还没有领域建设入口数据</div>
+              )}
+            </div>
+          </article>
         </div>
       </section>
 
