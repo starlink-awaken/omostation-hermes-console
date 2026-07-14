@@ -9083,23 +9083,38 @@ button.platform-workbench-item {
   gap: 8px;
 }
 
-.cockpit-guide-mode-focus span {
-  display: inline-flex;
-  min-height: 28px;
-  align-items: center;
-  padding: 0 10px;
-  border: 1px solid var(--antd-border-color);
-  border-radius: var(--antd-radius-md);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--antd-text-secondary);
-  font-size: 12px;
-}
-
 .cockpit-guide-mode-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
+}
+
+.cockpit-guide-mode-workbench {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--antd-radius-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.cockpit-guide-mode-workbench small,
+.cockpit-guide-mode-context span {
+  color: var(--antd-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cockpit-guide-mode-context {
+  display: grid;
+  gap: 6px;
+}
+
+.cockpit-guide-mode-context-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .cockpit-guide-closure-head {

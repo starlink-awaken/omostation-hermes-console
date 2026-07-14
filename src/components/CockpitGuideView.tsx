@@ -917,6 +917,71 @@ export default function CockpitGuideView({
     metrics.weakestDimensions,
   ]);
 
+  const roleWorkbenchRows = useMemo(() => {
+    const firstPage = metrics.pageAttentionItems[0];
+    const firstDomain = metrics.domainAttention[0];
+    const firstProject = metrics.priorityProjects[0];
+    const firstWeakDimension = metrics.weakestDimensions[0];
+    return COCKPIT_WORK_MODES.map((mode) => {
+      if (mode.role === 'operator') {
+        return {
+          id: mode.id,
+          signal: metrics.attentionPages > 0 ? `${metrics.attentionPages} 页待补位` : '首页值守链基本接通',
+          summary: firstPage
+            ? `${firstPage.page?.title || firstPage.page_id} 还会影响日常值守流，建议先顺手补到路径和任务里。`
+            : '先从首页、告警、任务、日志这条链确认日常值守真的通了。',
+          objectLabel: firstPage?.page?.title || '首页值守链',
+          objectTarget: firstPage ? { tab: 'SystemMap', pageId: firstPage.page_id } : { tab: 'Home' },
+          evidenceLabel: '日志与告警',
+          evidenceTarget: { tab: 'LogViewer', taskQuery: 'verification' } as CockpitNavigationTarget,
+        };
+      }
+      if (mode.role === 'governance') {
+        return {
+          id: mode.id,
+          signal: firstWeakDimension ? `${firstWeakDimension.title || firstWeakDimension.id} ${firstWeakDimension.score ?? 0}%` : '治理短板暂未暴露',
+          summary: firstWeakDimension
+            ? `${firstWeakDimension.title || firstWeakDimension.id} 现在最拖治理视角，先回系统地图看失败格子和注意项目。`
+            : '先从 C2G、债务和 L4 健康确认当前有没有新的治理阻塞。',
+          objectLabel: firstWeakDimension?.title || '治理总面',
+          objectTarget: firstWeakDimension ? { tab: 'SystemMap', coverageDimensionId: firstWeakDimension.id } : { tab: 'C2G' },
+          evidenceLabel: '债务与域健康',
+          evidenceTarget: { tab: 'Debt' } as CockpitNavigationTarget,
+        };
+      }
+      if (mode.role === 'builder') {
+        return {
+          id: mode.id,
+          signal: firstProject ? `${firstProject.id} ${firstProject.score ?? 0}%` : '建设面待继续收口',
+          summary: firstProject
+            ? `${firstProject.id} 当前最适合拿来补功能或补验证，先看项目对象再进任务和沙箱。`
+            : '先从系统地图、协议工作台和沙箱把补位动作串起来。',
+          objectLabel: firstProject?.id || '建设对象',
+          objectTarget: firstProject ? { tab: 'SystemMap', projectId: firstProject.id } : { tab: 'SystemMap' },
+          evidenceLabel: '沙箱与协议',
+          evidenceTarget: { tab: 'Sandbox' } as CockpitNavigationTarget,
+        };
+      }
+      return {
+        id: mode.id,
+        signal: firstDomain ? `${firstDomain.name} · ${firstDomain.runtimeStatus}` : '领域挂载面待继续接通',
+        summary: firstDomain
+          ? `${firstDomain.name} 现在最值得优先收口，建议先看领域对象，再回任务和设置确认入口。`
+          : '先看应用中心、Quest 和设置，确认领域入口、安全门和激励面都还通着。',
+        objectLabel: firstDomain?.name || '领域对象',
+        objectTarget: firstDomain ? { tab: 'DomainApps', taskQuery: firstDomain.id } : { tab: 'DomainApps' },
+        evidenceLabel: firstDomain?.taskTitle || '设置与领域证据',
+        evidenceTarget: firstDomain ? { tab: 'TaskCenter', taskQuery: firstDomain.taskQuery } : { tab: 'Settings' },
+      };
+    });
+  }, [
+    metrics.attentionPages,
+    metrics.domainAttention,
+    metrics.pageAttentionItems,
+    metrics.priorityProjects,
+    metrics.weakestDimensions,
+  ]);
+
   const focusedGuideCard = useMemo(() => {
     const pageRow = focusPageId
       ? metrics.pageCoverageRows.find((row) => row.id === focusPageId) || null
@@ -1453,7 +1518,9 @@ export default function CockpitGuideView({
           </div>
         </div>
         <div className="cockpit-guide-mode-grid">
-          {COCKPIT_WORK_MODES.map((mode) => (
+          {COCKPIT_WORK_MODES.map((mode) => {
+            const workbench = roleWorkbenchRows.find((row) => row.id === mode.id);
+            return (
             <article key={mode.id} className={`cockpit-guide-mode-card ${mode.role}`}>
               <div className="cockpit-guide-mode-head">
                 <span>{mode.role}</span>
@@ -1462,9 +1529,47 @@ export default function CockpitGuideView({
               <p>{mode.summary}</p>
               <div className="cockpit-guide-mode-focus">
                 {mode.focus.map((item) => (
-                  <span key={item}>{item}</span>
+                  <button
+                    key={item}
+                    type="button"
+                    className="cockpit-guide-step-chip"
+                    aria-label={`打开角色步骤 ${mode.title} ${item}`}
+                    onClick={() => openCockpitNavigationTarget(executionStepTarget(item, mode.entry), onNavigate, onOpenTarget)}
+                  >
+                    {item}
+                  </button>
                 ))}
               </div>
+              {workbench && (
+                <div className="cockpit-guide-mode-workbench">
+                  <small>{workbench.signal}</small>
+                  <p>{workbench.summary}</p>
+                  <div className="cockpit-guide-mode-context">
+                    <span>当前对象：{workbench.objectLabel}</span>
+                    <span>证据入口：{workbench.evidenceLabel}</span>
+                  </div>
+                  <div className="cockpit-guide-mode-context-actions">
+                    <button
+                      type="button"
+                      className="antd-btn secondary"
+                      aria-label={`打开角色对象 ${mode.title}`}
+                      onClick={() => openCockpitNavigationTarget(workbench.objectTarget, onNavigate, onOpenTarget)}
+                    >
+                      <ArrowRight size={14} />
+                      <span>看当前对象</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="antd-btn secondary"
+                      aria-label={`打开角色证据 ${mode.title}`}
+                      onClick={() => openCockpitNavigationTarget(workbench.evidenceTarget, onNavigate, onOpenTarget)}
+                    >
+                      <Route size={14} />
+                      <span>看证据入口</span>
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="cockpit-guide-mode-actions">
                 <button
                   type="button"
@@ -1486,7 +1591,7 @@ export default function CockpitGuideView({
                 </button>
               </div>
             </article>
-          ))}
+          )})}
         </div>
       </section>
 

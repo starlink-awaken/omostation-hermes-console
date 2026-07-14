@@ -144,6 +144,9 @@ describe('CockpitGuideView', () => {
       expect(screen.getByText('治理巡检模式')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开角色模式 日常值守模式' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开角色任务 建设补位模式' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开角色步骤 日常值守模式 首页' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开角色对象 领域挂载模式' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开角色证据 建设补位模式' })).toBeInTheDocument()
       expect(screen.getByText('当前缺口与补位')).toBeInTheDocument()
       expect(screen.getByText('按问题定位')).toBeInTheDocument()
       expect(screen.getByText('页面有了但不会用')).toBeInTheDocument()
@@ -326,10 +329,27 @@ describe('CockpitGuideView', () => {
       tab: 'Home',
     }))
 
+    fireEvent.click(screen.getByRole('button', { name: '打开角色步骤 日常值守模式 首页' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'Home',
+    }))
+
     fireEvent.click(screen.getByRole('button', { name: '打开角色任务 建设补位模式' }))
     expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
       tab: 'TaskCenter',
       taskQuery: 'system_map_page_maturity',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开角色对象 治理巡检模式' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'SystemMap',
+      coverageDimensionId: 'runtime_probe',
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '打开角色证据 领域挂载模式' }))
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'TaskCenter',
+      taskQuery: 'family-hub',
     }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开页面 站内导览' }))
