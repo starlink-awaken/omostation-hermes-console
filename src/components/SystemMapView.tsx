@@ -1243,10 +1243,10 @@ function ProjectDetailPanel({
               {project.runtime.ports.slice(0, 6).map((port) => (
                 <span
                   key={port.port}
-                  className={port.listening ? 'online' : port.probe_status === 'not_probeable' ? 'degraded' : 'offline'}
+                  className={port.listening ? 'online' : ['not_probeable', 'deprecated'].includes(port.probe_status || '') ? 'degraded' : 'offline'}
                   title={port.probe_reason || port.service}
                 >
-                  :{port.port} {port.service} · {port.probe_status === 'not_probeable' ? '不可探测' : port.listening ? '监听' : '未监听'}
+                  :{port.port} {port.service} · {port.probe_status === 'deprecated' ? '已弃用' : port.probe_status === 'not_probeable' ? '不可探测' : port.listening ? '监听' : '未监听'}
                 </span>
               ))}
             </div>
