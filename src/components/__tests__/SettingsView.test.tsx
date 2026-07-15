@@ -224,4 +224,17 @@ describe('SettingsView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'DomainApps', taskQuery: 'family-dashboard-app' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'csrf-secret-env' })
   })
+
+  it('shows a retryable error when control-plane data cannot load', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 503, json: async () => ({}) } as Response)
+
+    render(<SettingsView />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('设置页数据加载失败')
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/metrics/history')
+      expect(fetch).toHaveBeenCalledWith('/api/domain-apps')
+    })
+  })
 })

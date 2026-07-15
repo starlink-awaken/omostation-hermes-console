@@ -99,6 +99,7 @@ export default function SettingsView({
   const [instanceUrl, setInstanceUrl] = useState('');
   const [instanceService, setInstanceService] = useState('');
   const [registerResult, setRegisterResult] = useState<any>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const healthyServices = typeof metrics?.healthy === 'number' ? metrics.healthy : 0;
   const totalServices = typeof metrics?.services === 'number' ? metrics.services : 0;
   const latencyEntries = metrics?.latency && typeof metrics.latency === 'object'
@@ -254,16 +255,27 @@ export default function SettingsView({
   const fetchMetrics = async () => {
     try {
       const res = await fetch('/api/metrics/history');
-      if (res.ok) setMetrics(await res.json());
-    } catch (e) {}
+      if (!res.ok) throw new Error(`指标服务返回 HTTP ${res.status}`);
+      setMetrics(await res.json());
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : '系统指标暂不可用');
+    }
   };
 
   const fetchDomainApps = async () => {
     try {
       const res = await fetch('/api/domain-apps');
-      if (!res.ok) return;
+      if (!res.ok) throw new Error(`领域应用服务返回 HTTP ${res.status}`);
       setDomainApps(await res.json());
-    } catch (e) {}
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : '领域应用数据暂不可用');
+    }
+  };
+
+  const refreshSettingsData = () => {
+    setLoadError(null);
+    void Promise.all([fetchMetrics(), fetchDomainApps()]);
   };
 
   useEffect(() => {
@@ -294,6 +306,17 @@ export default function SettingsView({
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <PlatformControlWorkbench currentPage="Settings" onNavigate={onNavigate} />
+
+      {loadError && (
+        <div
+          role="alert"
+          className="antd-card"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '12px 16px', color: 'var(--antd-error)', border: '1px solid rgba(255,71,87,0.2)' }}
+        >
+          <span>设置页数据加载失败：{loadError}</span>
+          <button type="button" className="antd-btn" onClick={refreshSettingsData}>重试</button>
+        </div>
+      )}
 
       <ActionSurfacePanel
         title="控制面动作区"
