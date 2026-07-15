@@ -90,6 +90,16 @@ interface Task {
       recorded_at?: string;
     } | null;
     controlled_execution?: boolean;
+    controlled_process?: boolean;
+    execution_process?: {
+      status?: string;
+      pid?: number;
+      log_ref?: string;
+      command?: string;
+      actor?: string;
+      started_at?: string;
+      stopped_at?: string;
+    } | null;
   };
 }
 
@@ -830,6 +840,35 @@ export default function TaskCenterPage({
       setRefreshToken((value) => value + 1);
     } catch (error) {
       setActionError(`受控执行失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  const controlTaskProcess = async (task: Task, action: 'start' | 'stop') => {
+    setActionPending(task.id);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/${action}`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '进程操作失败');
+      const process = payload.process || {};
+      const update = (current: Task) => current.id === task.id
+        ? {
+            ...current,
+            execution_contract: {
+              ...(current.execution_contract || {}),
+              execution_process: process,
+              next_action: action === 'start' ? '检查服务进程状态与日志' : '服务进程已停止，可重新启动',
+            },
+          }
+        : current;
+      setTasks((current) => current.map(update));
+      setSelectedTask((current) => current ? update(current) : current);
+      setActionNotice(action === 'start' ? `服务已启动，PID ${process.pid || '未知'}，日志已留证。` : '服务停止请求已记录。');
+    } catch (error) {
+      setActionError(`进程操作失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setActionPending(null);
     }
@@ -1785,7 +1824,27 @@ export default function TaskCenterPage({
                   </button>
                 )}
                 {!task.read_only && task.status === 'in_progress' && (
-                  task.execution_contract?.controlled_execution && !task.execution_contract.execution_audit ? (
+                  task.execution_contract?.controlled_process ? (
+                    task.execution_contract.execution_process?.status === 'started' ? (
+                      <button
+                        className="btn btn-sm btn-outline"
+                        aria-label="停止受控服务"
+                        disabled={actionPending === task.id}
+                        onClick={(e) => { e.stopPropagation(); void controlTaskProcess(task, 'stop'); }}
+                      >
+                        <Pause size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-sm btn-outline"
+                        aria-label="启动受控服务"
+                        disabled={actionPending === task.id}
+                        onClick={(e) => { e.stopPropagation(); void controlTaskProcess(task, 'start'); }}
+                      >
+                        <Play size={14} />
+                      </button>
+                    )
+                  ) : task.execution_contract?.controlled_execution && !task.execution_contract.execution_audit ? (
                     <button
                       className="btn btn-sm btn-outline"
                       aria-label="执行受控验证"
@@ -2064,6 +2123,16 @@ export default function TaskCenterPage({
                           </button>
                         </label>
                       )}
+                    </span>
+                  )}
+                  {selectedTask.execution_contract.controlled_process && (
+                    <span>
+                      <strong>服务进程</strong>
+                      <small>
+                        {selectedTask.execution_contract.execution_process?.status || '未启动'}
+                        {selectedTask.execution_contract.execution_process?.pid ? ` · PID ${selectedTask.execution_contract.execution_process.pid}` : ''}
+                        {selectedTask.execution_contract.execution_process?.log_ref ? ` · ${selectedTask.execution_contract.execution_process.log_ref}` : ''}
+                      </small>
                     </span>
                   )}
                   {(selectedTask.execution_contract.entry_gate || []).length > 0 && (
