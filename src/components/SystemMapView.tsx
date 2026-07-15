@@ -16,6 +16,7 @@ import {
   Route,
   Search,
   Server,
+  Send,
   ShieldAlert,
   X,
 } from 'lucide-react';
@@ -1600,6 +1601,31 @@ export default function SystemMapView({
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '运行探针承接失败');
+    } finally {
+      setBulkTriagePending(false);
+    }
+  };
+
+  const executeVerificationTriage = async () => {
+    if (!window.confirm('将按顺序执行最多 8 条已承接且尚未通过的低风险验证命令，并写入 OMO 执行证据。继续吗？')) return;
+    setActionNotice('');
+    setActionError('');
+    setBulkTriagePending(true);
+    try {
+      const response = await fetch('/api/cockpit/triage/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 8 }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '批量验证执行失败');
+      const summary = payload.summary || {};
+      setActionNotice(`批量验证完成：通过 ${summary.succeeded || 0} 条，失败 ${summary.failed || 0} 条，候选 ${summary.candidates || 0} 条。`);
+      if (onOpenTarget && (summary.selected || 0) > 0) {
+        onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '批量验证执行失败');
     } finally {
       setBulkTriagePending(false);
     }
@@ -4380,6 +4406,16 @@ export default function SystemMapView({
             >
               <Server size={13} />
               <span>{bulkTriagePending ? '正在承接' : '承接运行探针'}</span>
+            </button>
+            <button
+              className="antd-btn"
+              aria-label="执行待补验证"
+              disabled={bulkTriagePending || (systemMap.project_triage.queues.find((queue) => queue.id === 'verification')?.queued || 0) === 0}
+              onClick={() => void executeVerificationTriage()}
+              title="顺序执行最多 8 条已承接且尚未通过的低风险验证，并写入执行证据"
+            >
+              <Send size={13} />
+              <span>{bulkTriagePending ? '正在执行' : '执行待补验证'}</span>
             </button>
             <span className="status-badge degraded">
               <ClipboardCheck size={13} />
