@@ -162,12 +162,27 @@ export default function ResearchHubView({
   const [researchDetail, setResearchDetail] = useState<ResearchDetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [queueingResearchId, setQueueingResearchId] = useState<number | null>(null);
 
   const load = async () => {
     const data = await fetchJson<ResearchHubPayload>('/api/cockpit/research-hub', EMPTY_PAYLOAD);
     setPayload(data);
     setLoading(false);
     setRefreshing(false);
+  };
+
+  const queueResearchTask = async (researchId: number) => {
+    setQueueingResearchId(researchId);
+    try {
+      const response = await fetch(`/api/cockpit/research/${researchId}/queue`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || payload.error || '研究任务承接失败');
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : '研究任务承接失败');
+    } finally {
+      setQueueingResearchId(null);
+    }
   };
 
   useEffect(() => {
@@ -805,7 +820,8 @@ export default function ResearchHubView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`落任务 ${item.topic}`}
-                    onClick={() => onNavigate?.(taskTarget)}
+                    onClick={() => void queueResearchTask(item.id)}
+                    disabled={queueingResearchId === item.id}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -815,7 +831,7 @@ export default function ResearchHubView({
                         追问 {item.follow_up_count} · 最近事件 {item.last_event?.label || '暂无'}
                       </span>
                     </div>
-                    <GitBranch size={14} />
+                    {queueingResearchId === item.id ? <RefreshCw size={14} className="animate-spin" /> : <GitBranch size={14} />}
                   </button>
                 ))}
               </div>

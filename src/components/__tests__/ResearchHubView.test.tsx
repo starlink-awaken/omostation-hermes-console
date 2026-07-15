@@ -12,6 +12,9 @@ describe('ResearchHubView', () => {
 
   it('renders research summary, pipeline and follow-up actions', async () => {
     const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn((target: { tab: string; taskQuery?: string }) => {
+      if (target.tab !== 'TaskCenter' || target.taskQuery !== 'cockpit-research-7') onNavigate(target.tab)
+    })
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       if (String(input) === '/api/cockpit/research-hub') {
         return Promise.resolve(okJson({
@@ -51,10 +54,13 @@ describe('ResearchHubView', () => {
           ],
         }))
       }
+      if (String(input) === '/api/cockpit/research/7/queue') {
+        return Promise.resolve(okJson({ id: 'cockpit-research-7', created: true, executes: false }))
+      }
       return Promise.resolve(okJson({}))
     })
 
-    render(<ResearchHubView onNavigate={onNavigate} />)
+    render(<ResearchHubView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />)
 
     await waitFor(() => {
       expect(screen.getByText('研究主旅程')).toBeInTheDocument()
@@ -73,7 +79,7 @@ describe('ResearchHubView', () => {
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
 
     fireEvent.click(screen.getByRole('button', { name: /落任务 家庭系统研究/ }))
-    expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+    await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-research-7' }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开研究闭环对象 发布回流与复盘' }))
     expect(onNavigate).toHaveBeenCalledWith('Overview')
