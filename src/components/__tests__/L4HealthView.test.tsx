@@ -82,6 +82,12 @@ describe('L4HealthView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开域健康承接到观测页' }))
     expect(onNavigate).toHaveBeenCalledWith('Observability')
+
+    vi.mocked(fetch).mockResolvedValueOnce(okJson({ id: 'l4-task-1', title: '域健康任务' }))
+    fireEvent.click(screen.getByRole('button', { name: '登记域健康治理任务' }))
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('已登记域健康治理任务：域健康任务')
+    })
   })
 
   it('surfaces focus handoff for a matched domain', async () => {

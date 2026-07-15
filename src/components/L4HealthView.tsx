@@ -92,6 +92,9 @@ export default function L4HealthView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [taskPending, setTaskPending] = useState(false);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   const degradedReasons = Array.from(new Set([
     ...(healthData?.degraded_reasons || []),
@@ -102,6 +105,35 @@ export default function L4HealthView({
     .filter((domain) => !domain.fresh || domain.issue_count > 0 || !domain.has_state || !domain.has_status)
     .slice(0, 4);
   const focusRisks = (signalData?.risks || []).slice(0, 3);
+  const createDomainHealthTask = async () => {
+    const domain = unhealthyDomains[0];
+    const risk = focusRisks[0];
+    const subject = domain?.name || domain?.id || risk?.risk || 'L4 域健康';
+    setTaskPending(true);
+    setTaskNotice(null);
+    setTaskError(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `域健康治理：${subject}`,
+          description: `针对 ${subject} 的域健康问题完成 freshness、KEMS 状态、问题与信号核对，并把结果回写到应用、观测和治理链。${risk ? ` 当前风险：${risk.message}` : ''}`,
+          priority: domain?.issue_count || risk?.severity === 'critical' ? 'high' : 'medium',
+          risk_level: 'L1',
+          evidence_required: ['域健康快照', '问题与信号处理结果', '关联应用或观测证据', 'task closeout'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '域健康任务登记失败');
+      setTaskNotice(`已登记域健康治理任务：${payload.title || subject}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+    } catch (taskRequestError) {
+      setTaskError(taskRequestError instanceof Error ? taskRequestError.message : '域健康任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
   const focusedL4Card = (() => {
     const matchedDomain = (healthData?.domains || []).find((domain) => (
       matchesL4FocusQuery(
@@ -269,6 +301,31 @@ export default function L4HealthView({
           },
         ]}
       />
+
+      {(taskNotice || taskError) && (
+        <div className="shell-data-banner" role={taskError ? 'alert' : 'status'}>
+          <span>{taskError || taskNotice}</span>
+        </div>
+      )}
+
+      <section className="services-section" aria-label="域健康正式任务">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>域健康正式任务</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>把当前最严重的域或风险直接登记为可审批、可留证、可 closeout 的任务。</p>
+          </div>
+          <button
+            type="button"
+            className="antd-btn"
+            disabled={taskPending}
+            aria-label="登记域健康治理任务"
+            onClick={() => { void createDomainHealthTask(); }}
+          >
+            <Shield size={14} />
+            <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
+          </button>
+        </div>
+      </section>
 
       {focusedL4Card && (
         <section className="services-section overview-ops-panel" aria-label="当前域健康承接焦点">
