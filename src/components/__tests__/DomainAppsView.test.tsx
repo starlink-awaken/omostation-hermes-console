@@ -302,6 +302,24 @@ describe('DomainAppsView', () => {
     })
   }, 20000)
 
+  it('falls back to legacy navigation when a task target callback is unavailable', async () => {
+    const onNavigate = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (init?.method === 'POST') return Promise.resolve(okJson({ id: 'domain-app-task-1' }))
+      if (url === '/api/domain-apps') return Promise.resolve(okJson(domainAppsPayload))
+      if (url === '/api/opc/workspace') return Promise.resolve(okJson(opcPayload))
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<DomainAppsView onNavigate={onNavigate} taskQuery="family-dashboard-app" />)
+    const queueButtons = await screen.findAllByRole('button', { name: '登记领域应用动作 复制启动命令' })
+    fireEvent.click(queueButtons[0])
+
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('TaskCenter'))
+  }, 20000)
+
   it('renders security posture summary and checks', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

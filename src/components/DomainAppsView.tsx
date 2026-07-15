@@ -648,9 +648,8 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || '领域应用动作登记失败');
       setActionNotice(`已登记“${action.label}”，任务中心将负责后续审批与留证。`);
-      if (onOpenTarget) {
-        onOpenTarget({ tab: 'TaskCenter', taskQuery: payload.id });
-      }
+      if (payload.id) openTaskCenter(payload.id);
+      else setActionError('领域应用动作已返回成功，但没有任务 ID，无法定位后续审批。');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '领域应用动作登记失败');
     }
@@ -665,7 +664,8 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || '领域应用验证执行失败');
       setActionNotice(`验证完成：${app.name} exit ${payload.exit_code ?? 'unknown'}，已写入任务证据。`);
-      if (onOpenTarget && payload.id) onOpenTarget({ tab: 'TaskCenter', taskQuery: payload.id });
+      if (payload.id) openTaskCenter(payload.id);
+      else setActionError('验证已返回结果，但没有任务 ID，无法定位执行证据。');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '领域应用验证执行失败');
     }
