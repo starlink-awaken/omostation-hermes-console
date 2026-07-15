@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Send,
   History,
+  Plus,
 } from 'lucide-react';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
@@ -317,6 +318,12 @@ export default function TaskCenterPage({
   const [executionExitCodeInput, setExecutionExitCodeInput] = useState('0');
   const [executionCloseoutInput, setExecutionCloseoutInput] = useState('');
   const [workflowRunIdInput, setWorkflowRunIdInput] = useState('');
+  const [manualTaskOpen, setManualTaskOpen] = useState(false);
+  const [manualTaskTitle, setManualTaskTitle] = useState('');
+  const [manualTaskDescription, setManualTaskDescription] = useState('');
+  const [manualTaskPriority, setManualTaskPriority] = useState<Task['priority']>('medium');
+  const [manualTaskRisk, setManualTaskRisk] = useState('L1');
+  const [manualTaskEvidence, setManualTaskEvidence] = useState('');
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -689,6 +696,48 @@ export default function TaskCenterPage({
       setRefreshToken((value) => value + 1);
     } catch (error) {
       setActionError(`任务承接失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  const createManualTask = async () => {
+    const title = manualTaskTitle.trim();
+    const description = manualTaskDescription.trim();
+    if (!title || !description) {
+      setActionError('请填写任务标题和任务描述。');
+      return;
+    }
+    setActionPending('manual-task');
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const evidence_required = manualTaskEvidence
+        .split(/\n|,/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          description,
+          priority: manualTaskPriority,
+          risk_level: manualTaskRisk,
+          evidence_required,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '任务登记失败');
+      setActionNotice(`已登记正式计划任务：${payload.title || title}`);
+      setManualTaskTitle('');
+      setManualTaskDescription('');
+      setManualTaskEvidence('');
+      setManualTaskOpen(false);
+      setRefreshToken((value) => value + 1);
+      if (onOpenTarget && payload.id) onOpenTarget({ tab: 'TaskCenter', taskQuery: payload.id });
+    } catch (error) {
+      setActionError(`任务登记失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setActionPending(null);
     }
@@ -1792,7 +1841,67 @@ export default function TaskCenterPage({
           <RefreshCw size={14} />
           刷新
         </button>
+        <button
+          className="btn btn-primary"
+          aria-label="新建正式任务"
+          onClick={() => setManualTaskOpen((value) => !value)}
+        >
+          <Plus size={14} />
+          新建任务
+        </button>
       </div>
+
+      {manualTaskOpen && (
+        <section className="task-manual-create antd-card" aria-label="新建正式任务">
+          <div className="section-header">
+            <div>
+              <h3>登记现场发现</h3>
+              <p className="text-muted">直接进入 OMO planned 生命周期；L2/L3 会自动挂上人工审批门。</p>
+            </div>
+            <button className="btn btn-sm btn-outline" aria-label="关闭新建任务" onClick={() => setManualTaskOpen(false)}>
+              <X size={14} />
+            </button>
+          </div>
+          <div className="task-manual-create-grid">
+            <label>
+              <span>任务标题</span>
+              <input aria-label="手工任务标题" value={manualTaskTitle} onChange={(event) => setManualTaskTitle(event.target.value)} placeholder="例如：补齐生产入口审计" />
+            </label>
+            <label>
+              <span>优先级</span>
+              <select aria-label="手工任务优先级" value={manualTaskPriority} onChange={(event) => setManualTaskPriority(event.target.value as Task['priority'])}>
+                <option value="low">低</option>
+                <option value="medium">中</option>
+                <option value="high">高</option>
+                <option value="critical">紧急</option>
+              </select>
+            </label>
+            <label>
+              <span>风险级别</span>
+              <select aria-label="手工任务风险级别" value={manualTaskRisk} onChange={(event) => setManualTaskRisk(event.target.value)}>
+                <option value="L0">L0 · 只读/低风险</option>
+                <option value="L1">L1 · 常规变更</option>
+                <option value="L2">L2 · 需要审批</option>
+                <option value="L3">L3 · 高风险</option>
+              </select>
+            </label>
+            <label className="task-manual-create-wide">
+              <span>任务描述</span>
+              <textarea aria-label="手工任务描述" rows={3} value={manualTaskDescription} onChange={(event) => setManualTaskDescription(event.target.value)} placeholder="写清楚要解决的问题、边界和完成定义。" />
+            </label>
+            <label className="task-manual-create-wide">
+              <span>所需证据（每行一项）</span>
+              <textarea aria-label="手工任务证据" rows={2} value={manualTaskEvidence} onChange={(event) => setManualTaskEvidence(event.target.value)} placeholder="审计结果\n验证日志" />
+            </label>
+          </div>
+          <div className="task-manual-create-actions">
+            <button className="btn btn-primary" aria-label="提交新建任务" disabled={actionPending === 'manual-task'} onClick={() => { void createManualTask(); }}>
+              <ClipboardCheck size={14} />
+              登记到任务中心
+            </button>
+          </div>
+        </section>
+      )}
 
       {actionError && (
         <div role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', border: '1px solid rgba(255, 71, 87, 0.35)', borderRadius: 'var(--antd-radius-md)', background: 'rgba(255, 71, 87, 0.08)', color: 'var(--antd-error)' }}>

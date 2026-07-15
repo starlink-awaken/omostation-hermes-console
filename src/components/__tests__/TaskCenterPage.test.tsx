@@ -224,8 +224,11 @@ const pageMaturityDraft = {
 const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Response
 
 function mockTaskCenterFetch(items: unknown[], domainApps: unknown[] = [domainAppSnapshot]) {
-  vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+  vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
+    if (url === '/api/tasks' && init?.method === 'POST') {
+      return Promise.resolve(okJson({ id: 'cockpit-manual-demo', title: '人工发现任务', status: 'pending' }))
+    }
     if (url === '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true') {
       return Promise.resolve(okJson({ items }))
     }
@@ -380,6 +383,31 @@ describe('TaskCenterPage', () => {
         expect.objectContaining({ method: 'POST' }),
       )
     })
+  })
+
+  it('creates a governed task from an operator finding', async () => {
+    mockTaskCenterFetch([])
+    render(<TaskCenterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '新建正式任务' })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: '新建正式任务' }))
+    fireEvent.change(screen.getByRole('textbox', { name: '手工任务标题' }), {
+      target: { value: '人工发现任务' },
+    })
+    fireEvent.change(screen.getByRole('textbox', { name: '手工任务描述' }), {
+      target: { value: '补齐现场发现的治理缺口。' },
+    })
+    fireEvent.change(screen.getByRole('combobox', { name: '手工任务风险级别' }), {
+      target: { value: 'L2' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '提交新建任务' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks', expect.objectContaining({ method: 'POST' }))
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('人工发现任务')
   })
 
   it('renders fetched tasks and stats', async () => {
