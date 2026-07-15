@@ -151,7 +151,7 @@ export default function ComputeView({
       const result = await res.json();
       if (!res.ok) throw new Error(result.detail || result.error || '登记失败');
       setControlMessage({ tone: 'success', text: nextVal ? '熔断变更已登记，等待人工审批' : '恢复云端路由已登记，等待人工审批' });
-      onNavigate?.('TaskCenter');
+      openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: result.id }, onNavigate, onOpenTarget);
     } catch (err: any) {
       setControlMessage({ tone: 'error', text: '修改熔断状态发生异常：' + err.message });
     }
@@ -168,7 +168,7 @@ export default function ComputeView({
       const result = await res.json();
       if (!res.ok) throw new Error(result.detail || result.error || '登记失败');
       setControlMessage({ tone: 'success', text: `每日预算 $${val} 变更已登记，等待人工审批` });
-      onNavigate?.('TaskCenter');
+      openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: result.id }, onNavigate, onOpenTarget);
     } catch (err: any) {
       setControlMessage({ tone: 'error', text: '修改预算异常：' + err.message });
     }

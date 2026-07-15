@@ -82,6 +82,39 @@ describe('ComputeView', () => {
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
   })
 
+  it('keeps compute control changes focused on their created task', async () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/governance/compute/status') {
+        return Promise.resolve(okJson({
+          summary: {},
+          cost_board: {},
+          nodes: [],
+          quota: { quota: [] },
+          traffic_by_node: [],
+          circuit_broken: false,
+          daily_budget: 100,
+        }))
+      }
+      if (String(input) === '/api/cockpit/compute/control/queue') {
+        expect(init?.method).toBe('POST')
+        return Promise.resolve(okJson({ id: 'cockpit-compute-control-circuit_break-42', executes: false }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<ComputeView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /紧急拉闸/ })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /紧急拉闸/ }))
+
+    await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit-compute-control-circuit_break-42',
+    }))
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
   it('surfaces focus handoff for a matched compute provider risk', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
