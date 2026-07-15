@@ -227,6 +227,10 @@ type ProjectTriageQueue = {
   severity: string;
   reason: string;
   count: number;
+  queued?: number;
+  active?: number;
+  succeeded?: number;
+  failed?: number;
   project_ids: string[];
   commands: ProjectAction[];
 };
@@ -609,6 +613,10 @@ type SystemMapPayload = {
       runtime_commands: number;
       verification_commands: number;
       coverage_commands: number;
+      queued_commands?: number;
+      active_commands?: number;
+      succeeded_commands?: number;
+      failed_commands?: number;
     };
   };
   project_capability_coverage: ProjectCapabilityCoverage;
@@ -1102,7 +1110,10 @@ function ProjectTriageQueues({
               <h3>{queue.title}</h3>
               <p>{queue.reason}</p>
             </div>
-            <strong>{queue.count}</strong>
+            <div className="system-map-triage-count">
+              <strong>{queue.count}</strong>
+              <small>{queue.queued || 0} 已承接 · {queue.failed || 0} 失败</small>
+            </div>
           </div>
           <div className="system-map-triage-projects">
             {queue.project_ids.slice(0, 5).map((projectId) => (
@@ -4360,7 +4371,7 @@ export default function SystemMapView({
             </button>
             <span className="status-badge degraded">
               <ClipboardCheck size={13} />
-              {filteredTriageCommandCount} / {systemMap.project_triage.summary.total_commands}
+              {filteredTriageCommandCount} / {systemMap.project_triage.summary.total_commands} · 已承接 {systemMap.project_triage.summary.queued_commands || 0}
             </span>
           </div>
         </div>
