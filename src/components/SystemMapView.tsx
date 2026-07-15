@@ -160,14 +160,16 @@ type ProjectItem = {
       source_ref?: SourceRef;
     }[];
     listening_count: number;
-    latest_verification: {
-      status: string;
-      run_id?: string | null;
-      ts?: string | null;
-      checks: number;
-      command?: string | null;
-      source?: string | null;
-    };
+  latest_verification: {
+    status: string;
+    run_id?: string | null;
+    ts?: string | null;
+    checks: number;
+    command?: string | null;
+    source?: string | null;
+    closeout_status?: string;
+    closeout_ref?: string | null;
+  };
   };
   workflow: {
     latest_run_id?: string | null;
@@ -770,6 +772,12 @@ function verifyText(value: string): string {
   return value;
 }
 
+function closeoutText(value?: string): string {
+  if (value === 'closed') return 'closeout 已收口';
+  if (value === 'missing') return 'closeout 待补';
+  return 'closeout 未知';
+}
+
 function triageCategoryForDimension(dimensionId: string): string {
   if (dimensionId === 'runtime_probe') return 'runtime';
   if (dimensionId === 'verification') return 'verification';
@@ -1281,11 +1289,13 @@ function ProjectDetailPanel({
             <span>checks：{verification.checks}</span>
             <span>run：{verification.run_id || '暂无'}</span>
             <span>时间：{verification.ts ? shortDate(verification.ts) : '暂无'}</span>
+            <span>收口：{closeoutText(verification.closeout_status)}</span>
           </div>
           {verification.source && (
             <div className="system-map-risk-line">
               证据来源：{verification.source}
               {verification.command ? ` · ${verification.command}` : ''}
+              {verification.closeout_ref ? ` · ${verification.closeout_ref}` : ''}
             </div>
           )}
         </article>
@@ -4638,6 +4648,7 @@ export default function SystemMapView({
                       <div className={`system-map-risk-line ${statusClass(project.runtime.latest_verification.status)}`}>
                         {verifyText(project.runtime.latest_verification.status)}
                         {project.runtime.latest_verification.ts ? ` · ${shortDate(project.runtime.latest_verification.ts)}` : ''}
+                        {` · ${closeoutText(project.runtime.latest_verification.closeout_status)}`}
                       </div>
                     </td>
                     <td>
