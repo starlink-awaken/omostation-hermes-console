@@ -80,6 +80,10 @@ export default function AlertCenterPage({
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [filterSource, setFilterSource] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [ruleFormOpen, setRuleFormOpen] = useState(false);
+  const [ruleForm, setRuleForm] = useState({ name: '', condition: '', level: 'warning', channels: 'slack', enabled: true });
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -130,39 +134,102 @@ export default function AlertCenterPage({
 
   const handleAcknowledge = async (alertId: string) => {
     try {
-      await fetch(`/api/alerts/${alertId}/acknowledge`, { method: 'POST' });
+      const response = await fetch(`/api/alerts/${alertId}/acknowledge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      if (!response.ok) throw new Error(response.statusText);
       setAlerts(alerts.map(a =>
         a.id === alertId ? { ...a, status: 'acknowledged' } : a
       ));
+      setActionNotice('告警已确认，状态会在后续刷新中保留。');
     } catch (error) {
-      console.error('Failed to acknowledge alert:', error);
+      setActionError(`确认告警失败：${error instanceof Error ? error.message : '请稍后重试'}`);
     }
   };
 
   const handleSilence = async (alertId: string) => {
     try {
-      await fetch(`/api/alerts/${alertId}/silence`, {
+      const response = await fetch(`/api/alerts/${alertId}/silence`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ duration: 60 }),
       });
+      if (!response.ok) throw new Error(response.statusText);
       setAlerts(alerts.map(a =>
         a.id === alertId ? { ...a, status: 'silenced' } : a
       ));
+      setActionNotice('告警已静默，状态会在后续刷新中保留。');
     } catch (error) {
-      console.error('Failed to silence alert:', error);
+      setActionError(`静默告警失败：${error instanceof Error ? error.message : '请稍后重试'}`);
     }
   };
 
   const handleResolve = async (alertId: string) => {
     try {
-      await fetch(`/api/alerts/${alertId}/resolve`, { method: 'POST' });
+      const response = await fetch(`/api/alerts/${alertId}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      if (!response.ok) throw new Error(response.statusText);
       setAlerts(alerts.map(a =>
         a.id === alertId ? { ...a, status: 'resolved' } : a
       ));
+      setActionNotice('告警已解决，状态会在后续刷新中保留。');
     } catch (error) {
-      console.error('Failed to resolve alert:', error);
+      setActionError(`解决告警失败：${error instanceof Error ? error.message : '请稍后重试'}`);
     }
+  };
+
+  const createRule = async () => {
+    setActionError(null);
+    try {
+      const response = await fetch('/api/alerts/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: ruleForm.name.trim(),
+          condition: ruleForm.condition.trim(),
+          level: ruleForm.level,
+          channels: ruleForm.channels.split(',').map((value) => value.trim()).filter(Boolean),
+          enabled: ruleForm.enabled,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText);
+      if (!payload || typeof payload.id !== 'string' || !Array.isArray(payload.channels)) {
+        throw new Error('规则服务返回了无效的规则对象');
+      }
+      setRules((current) => [...current, payload]);
+      setRuleForm({ name: '', condition: '', level: 'warning', channels: 'slack', enabled: true });
+      setRuleFormOpen(false);
+      setActionNotice('告警规则已创建。');
+    } catch (error) {
+      setActionError(`创建规则失败：${error instanceof Error ? error.message : '请稍后重试'}`);
+    }
+  };
+
+  const toggleRule = async (rule: AlertRule) => {
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/alerts/rules/${rule.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !rule.enabled }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText);
+      setRules((current) => current.map((item) => item.id === rule.id ? payload : item));
+      setActionNotice(`规则已${payload.enabled ? '启用' : '停用'}。`);
+    } catch (error) {
+      setActionError(`更新规则失败：${error instanceof Error ? error.message : '内置规则不可编辑'}`);
+    }
+  };
+
+  const exportHistory = () => {
+    const csv = ['时间,级别,来源,消息,状态', ...historyAlerts.map((alert) => [
+      alert.created_at, alert.level, alert.source, alert.message, alert.status,
+    ].map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))].join('\n');
+    const url = URL.createObjectURL(new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `cockpit-alert-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const getLevelIcon = (level: Alert['level']) => {
@@ -358,6 +425,8 @@ export default function AlertCenterPage({
         items={diagnosticTargets}
         onNavigate={onNavigate}
       />
+      {actionNotice && <div role="status" className="alert-action-notice">{actionNotice}</div>}
+      {actionError && <div role="alert" className="alert-action-error">{actionError}</div>}
 
       {focusedAlertCard && (
         <section className="services-section overview-ops-panel" aria-label="当前告警承接焦点">
@@ -679,7 +748,7 @@ export default function AlertCenterPage({
       {activeTab === 'history' && (
         <div className="alerts-history">
           <div className="history-header">
-            <button className="btn btn-outline">
+            <button className="btn btn-outline" onClick={exportHistory}>
               <Download size={16} />
               导出
             </button>
@@ -723,11 +792,32 @@ export default function AlertCenterPage({
       {activeTab === 'rules' && (
         <div className="alerts-rules">
           <div className="rules-header">
-            <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={() => setRuleFormOpen((value) => !value)}>
               <Plus size={16} />
-              新增规则
+              {ruleFormOpen ? '收起表单' : '新增规则'}
             </button>
           </div>
+          {ruleFormOpen && (
+            <form
+              className="antd-card"
+              style={{ display: 'grid', gap: 10, padding: 16, marginBottom: 16 }}
+              onSubmit={(event) => { event.preventDefault(); void createRule(); }}
+            >
+              <input required aria-label="规则名称" placeholder="规则名称" value={ruleForm.name} onChange={(event) => setRuleForm((current) => ({ ...current, name: event.target.value }))} />
+              <input required aria-label="规则条件" placeholder="规则条件，例如 health_rate < 90%" value={ruleForm.condition} onChange={(event) => setRuleForm((current) => ({ ...current, condition: event.target.value }))} />
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <select aria-label="规则级别" value={ruleForm.level} onChange={(event) => setRuleForm((current) => ({ ...current, level: event.target.value }))}>
+                  <option value="critical">严重</option>
+                  <option value="error">错误</option>
+                  <option value="warning">警告</option>
+                  <option value="info">信息</option>
+                </select>
+                <input aria-label="通知渠道" placeholder="通知渠道，逗号分隔" value={ruleForm.channels} onChange={(event) => setRuleForm((current) => ({ ...current, channels: event.target.value }))} />
+                <label><input type="checkbox" checked={ruleForm.enabled} onChange={(event) => setRuleForm((current) => ({ ...current, enabled: event.target.checked }))} /> 启用</label>
+                <button type="submit" className="btn btn-primary">保存规则</button>
+              </div>
+            </form>
+          )}
           <table className="rules-table">
             <thead>
               <tr>
@@ -756,7 +846,7 @@ export default function AlertCenterPage({
                     </span>
                   </td>
                   <td>
-                    <button className="btn btn-sm btn-outline">
+                    <button className="btn btn-sm btn-outline" aria-label={`${rule.enabled ? '停用' : '启用'}规则 ${rule.name}`} onClick={() => { void toggleRule(rule); }}>
                       <Settings size={14} />
                     </button>
                   </td>

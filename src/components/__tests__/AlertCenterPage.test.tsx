@@ -174,7 +174,26 @@ describe('AlertCenterPage', () => {
     fireEvent.click(ackButtons[0])
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/alerts/alert-1/acknowledge', { method: 'POST' })
+      expect(fetch).toHaveBeenCalledWith('/api/alerts/alert-1/acknowledge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+    })
+  })
+
+  it('creates a custom alert rule from the rules workbench', async () => {
+    mockAlertCenterFetch()
+    render(<AlertCenterPage initialTab="rules" />)
+    await waitFor(() => expect(screen.getByText('新增规则')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByText('新增规则'))
+    fireEvent.change(screen.getByRole('textbox', { name: '规则名称' }), { target: { value: '延迟过高' } })
+    fireEvent.change(screen.getByRole('textbox', { name: '规则条件' }), { target: { value: 'p99 > 1s' } })
+    fireEvent.click(screen.getByText('保存规则'))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/alerts/rules', expect.objectContaining({ method: 'POST' }))
     })
   })
 
