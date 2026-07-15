@@ -43,6 +43,7 @@ import LogViewerPage from './LogViewerPage';
 import TaskCenterPage from './TaskCenterPage';
 import PerformanceMonitorPage from './PerformanceMonitorPage';
 import C2GStrategyView from './C2GStrategyView';
+import Wave2DashboardView from './Wave2DashboardView';
 import McpMeshView from './McpMeshView';
 import AssetsView from './AssetsView';
 import Breadcrumb from './common/Breadcrumb';
@@ -86,6 +87,7 @@ export default function Dashboard() {
     { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
     { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
     { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => setActiveTab('C2G') },
+    { id: 'wave2', label: 'Wave2 预测面板', description: '热力与治理提案', action: () => setActiveTab('Wave2') },
     { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
     { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
     { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
@@ -223,6 +225,8 @@ export default function Dashboard() {
         return { title: '技术债务治理舱 (Debt)', subtitle: '全自动审计技术债务评分，追踪高危风险。' };
       case 'C2G':
         return { title: 'C2G 战略决策中心 (C2G)', subtitle: '跟踪系统从战役目标 (Goals) 到治理卡片 (OMO CARDS) 的全生命周期，守护 SSOT 保鲜。' };
+      case 'Wave2':
+        return { title: 'Wave2 预测治理面板 (Wave2)', subtitle: '热力、预测序列与 C2G→OMO 治理提案（c2g.wave2.dashboard.v1）。' };
       case 'QuestBoard':
         return { title: '积分冒险看板 (QuestBoard)', subtitle: '让家庭充满正向激励与智慧成长，打通 Quest 生态。' };
       case 'Observability':
@@ -385,6 +389,16 @@ export default function Dashboard() {
           >
             <Compass size={16} aria-hidden="true" />
             <span>C2G 战略中心</span>
+          </button>
+          <button 
+            role="menuitem"
+            aria-describedby="group-governance"
+            aria-selected={activeTab === 'Wave2'}
+            className={`nav-item ${activeTab === 'Wave2' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Wave2')}
+          >
+            <BarChart3 size={16} aria-hidden="true" />
+            <span>Wave2 预测面板</span>
           </button>
           <button 
             role="menuitem"
@@ -649,6 +663,15 @@ export default function Dashboard() {
             <C2GStrategyView />
           )}
 
+          {activeTab === 'Wave2' && (
+            <Wave2DashboardView
+              onNavigate={setActiveTab}
+              onOpenTarget={(t) => {
+                if (t.tab) setActiveTab(t.tab);
+              }}
+            />
+          )}
+
           {activeTab === 'McpMesh' && (
             <McpMeshView />
           )}
@@ -702,6 +725,7 @@ export default function Dashboard() {
           { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
           { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
           { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => setActiveTab('C2G') },
+          { id: 'wave2', label: 'Wave2 预测面板', description: '热力与治理提案', action: () => setActiveTab('Wave2') },
           { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => setActiveTab('McpMesh') },
           { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => setActiveTab('Assets') },
           { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
