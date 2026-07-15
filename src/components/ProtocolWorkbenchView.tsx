@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ClipboardCheck, Copy, GitBranch, Layers, RefreshCw, Route, ShieldAlert } from 'lucide-react';
 import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
+import EcosWorkflowWorkbench from './EcosWorkflowWorkbench';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type ProtocolLayer = {
@@ -742,6 +743,8 @@ export default function ProtocolWorkbenchView({
         items={actionItems}
         onNavigate={onNavigate}
       />
+
+      <EcosWorkflowWorkbench />
 
       <section className="services-section">
         <div className="section-header">

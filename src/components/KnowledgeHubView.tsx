@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, BookOpen, Bot, Brain, Copy, Database, FileText, GitBranch, Route, ShieldAlert } from 'lucide-react';
 import { DashboardPage as GBrainDashboard } from './GBrain/GBrainDashboard';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
+import KOSWorkbench from './KOSWorkbench';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface KnowledgeHubViewProps {
@@ -500,6 +501,7 @@ export default function KnowledgeHubView({
       </div>
 
       <GBrainDashboard initialSubTab={knowledgeSubTab} />
+      <KOSWorkbench />
     </div>
   );
 }

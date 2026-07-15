@@ -539,7 +539,7 @@ export default function TaskCenterPage({
     onNavigate?.(target.tab);
   };
 
-  const runTaskAction = async (taskId: string, action: 'pause' | 'resume' | 'cancel', nextStatus: Task['status']) => {
+  const runTaskAction = async (taskId: string, action: 'pause' | 'resume' | 'complete', nextStatus: Task['status']) => {
     setActionPending(taskId);
     setActionError(null);
     setActionNotice(null);
@@ -556,7 +556,7 @@ export default function TaskCenterPage({
         task.id === taskId ? { ...task, status: nextStatus } : task
       )));
       setSelectedTask((currentTask) => currentTask?.id === taskId ? { ...currentTask, status: nextStatus } : currentTask);
-      setActionNotice(`任务已${action === 'pause' ? '暂停' : action === 'resume' ? '恢复' : '取消'}。`);
+      setActionNotice(`任务已${action === 'pause' ? '暂停' : action === 'resume' ? '恢复' : '完成'}。`);
     } catch (error) {
       console.error('Failed to pause task:', error);
       setActionError(`任务操作失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
@@ -1527,11 +1527,11 @@ export default function TaskCenterPage({
                 {!task.read_only && (task.status === 'pending' || task.status === 'in_progress') && (
                   <button
                     className="btn btn-sm btn-outline"
-                    aria-label="取消任务"
+                    aria-label="完成任务"
                     disabled={actionPending === task.id}
-                    onClick={(e) => { e.stopPropagation(); void runTaskAction(task.id, 'cancel', 'cancelled'); }}
+                    onClick={(e) => { e.stopPropagation(); void runTaskAction(task.id, 'complete', 'completed'); }}
                   >
-                    <X size={14} />
+                    <CheckCircle size={14} />
                   </button>
                 )}
                 <button

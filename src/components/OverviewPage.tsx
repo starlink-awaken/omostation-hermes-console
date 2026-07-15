@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle, ClipboardCheck, Compass, Copy, ExternalLink, FileText, Layers, RefreshCw, Route, Server, ShieldAlert, Zap } from 'lucide-react';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import RuntimeOpsWorkbench from './RuntimeOpsWorkbench';
+import SystemAssuranceWorkbench from './SystemAssuranceWorkbench';
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 
 type OverviewNavigationTarget = {
@@ -1018,6 +1019,7 @@ export default function OverviewPage({
   return (
     <div className="animate-fade-in">
       <RuntimeOpsWorkbench currentPage="Overview" onNavigate={onNavigate} />
+      <SystemAssuranceWorkbench onNavigate={onNavigate} />
 
       <ActionSurfacePanel
         title="总面动作区"
