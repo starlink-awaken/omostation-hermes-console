@@ -106,6 +106,7 @@ export default function C2GStrategyView({
   const [fixResult, setFixResult] = useState<string | null>(null);
   const [approvingIds, setApprovingIds] = useState<Record<string, boolean>>({});
   const [rejectingIds, setRejectingIds] = useState<Record<string, boolean>>({});
+  const [queueingProposalIds, setQueueingProposalIds] = useState<Record<string, boolean>>({});
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSuccess, setProposalSuccess] = useState<string | null>(null);
 
@@ -169,6 +170,23 @@ export default function C2GStrategyView({
       setProposalError(`网络错误: ${err.message}`);
     } finally {
       setRejectingIds(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleQueueProposal = async (id: string) => {
+    setQueueingProposalIds(prev => ({ ...prev, [id]: true }));
+    setProposalError(null);
+    setProposalSuccess(null);
+    try {
+      const res = await fetch(`/api/cockpit/proposals/${encodeURIComponent(id)}/queue`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || data.error || '提案任务承接失败');
+      setProposalSuccess(data.created === false ? `任务已存在：${data.id}` : `提案已承接为任务：${data.id}`);
+      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+    } catch (err: any) {
+      setProposalError(`承接失败: ${err.message || '网络异常'}`);
+    } finally {
+      setQueueingProposalIds(prev => ({ ...prev, [id]: false }));
     }
   };
 
@@ -878,7 +896,7 @@ export default function C2GStrategyView({
                   {proposals.map(prop => (
                     <div key={prop.id} className="service-row animate-fade-in" style={{
                       display: 'grid',
-                      gridTemplateColumns: '120px 1fr 120px',
+                      gridTemplateColumns: '120px 1fr 220px',
                       alignItems: 'center',
                       padding: '12px 16px',
                       borderRadius: '6px',
@@ -932,6 +950,17 @@ export default function C2GStrategyView({
 
                       {/* Approve / Reject Actions */}
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          className="antd-btn"
+                          aria-label={`承接提案任务 ${prop.id}`}
+                          disabled={queueingProposalIds[prop.id] || approvingIds[prop.id] || rejectingIds[prop.id]}
+                          style={{ padding: '4px 8px', fontSize: '11px' }}
+                          onClick={() => void handleQueueProposal(prop.id)}
+                        >
+                          <ClipboardList size={12} />
+                          {queueingProposalIds[prop.id] ? '...' : '承接任务'}
+                        </button>
                         {/* Reject */}
                         <button 
                           className="antd-btn text-danger" 
