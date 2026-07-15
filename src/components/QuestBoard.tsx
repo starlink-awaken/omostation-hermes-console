@@ -76,6 +76,7 @@ export default function QuestBoard({
   const [assignee, setAssignee] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [completingId, setCompletingId] = useState<number | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
 
   const fetchBoardData = async () => {
     try {
@@ -113,6 +114,7 @@ export default function QuestBoard({
     if (!title.trim() || !assignee) return;
 
     setSubmitting(true);
+    setActionFeedback(null);
     try {
       const params = new URLSearchParams({
         title: title.trim(),
@@ -132,11 +134,12 @@ export default function QuestBoard({
         setReward(10);
         setShowAddForm(false);
         await fetchBoardData();
+        setActionFeedback({ status: 'success', message: '新冒险已创建并回流到积分看板。' });
       } else {
-        alert(`创建失败: ${res.error}`);
+        setActionFeedback({ status: 'error', message: `创建失败：${res.error || '服务端未接受请求。'}` });
       }
     } catch (err: any) {
-      alert(`创建任务发生错误: ${err.message}`);
+      setActionFeedback({ status: 'error', message: `创建任务发生错误：${err.message || '请稍后重试。'}` });
     } finally {
       setSubmitting(false);
     }
@@ -144,6 +147,7 @@ export default function QuestBoard({
 
   const handleCompleteQuest = async (questId: number) => {
     setCompletingId(questId);
+    setActionFeedback(null);
     try {
       const response = await fetch(`/api/omos/quests/${questId}/complete`, {
         method: 'POST'
@@ -154,11 +158,12 @@ export default function QuestBoard({
       const res = await response.json();
       if (res.status === 'ok') {
         await fetchBoardData();
+        setActionFeedback({ status: 'success', message: '任务已完成，积分和日志已刷新。' });
       } else {
-        alert(`标记完成失败: ${res.error}`);
+        setActionFeedback({ status: 'error', message: `标记完成失败：${res.error || '服务端未接受请求。'}` });
       }
     } catch (err: any) {
-      alert(`操作错误: ${err.message}`);
+      setActionFeedback({ status: 'error', message: `操作错误：${err.message || '请稍后重试。'}` });
     } finally {
       setCompletingId(null);
     }
@@ -531,6 +536,21 @@ export default function QuestBoard({
           {showAddForm ? '取消发布' : <><Plus size={14} aria-hidden="true" /> 发布新冒险</>}
         </button>
       </div>
+
+      {actionFeedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="antd-card"
+          style={{
+            padding: '0.75rem 1rem',
+            color: actionFeedback.status === 'success' ? 'var(--antd-success)' : 'var(--antd-error)',
+            border: `1px solid ${actionFeedback.status === 'success' ? 'rgba(5,243,162,0.2)' : 'rgba(255,71,87,0.2)'}`,
+          }}
+        >
+          {actionFeedback.message}
+        </div>
+      )}
 
       {/* Quest Creation Form (AntD Form layout) */}
       {showAddForm && (

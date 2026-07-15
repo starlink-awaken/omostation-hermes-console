@@ -133,4 +133,28 @@ describe('QuestBoard', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Settings', taskQuery: '孩子' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '孩子' })
   })
+
+  it('keeps quest action failures inside the page instead of using browser alerts', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/omos/quests' && !init?.method) {
+        return Promise.resolve(okJson({
+          status: 'ok',
+          quests: [{ id: 1, title: '整理客厅', type: 'responsibility', reward: 15, completed: 0, assignee: 'child' }],
+          profiles: [{ role: 'child', name: '孩子', level: 3, wisdomPoints: 12, responsibilityPoints: 24 }],
+          logs: [],
+        }))
+      }
+      if (url === '/api/omos/quests/1/complete') {
+        return Promise.resolve({ ok: false, json: async () => ({ error: '积分服务暂不可用' }) } as Response)
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<QuestBoard />)
+    const completeButton = await screen.findByRole('button', { name: '完成任务: 整理客厅' })
+    fireEvent.click(completeButton)
+
+    expect(await screen.findByRole('status')).toHaveTextContent('操作错误：完成任务接口异常')
+  })
 })
