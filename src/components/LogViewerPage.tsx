@@ -53,6 +53,9 @@ export default function LogViewerPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [taskPending, setTaskPending] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -245,6 +248,43 @@ export default function LogViewerPage({
     },
   ];
 
+  const createLogTask = async () => {
+    const source = firstCriticalLog?.source || firstHotSource;
+    if (!source) {
+      setActionError('当前没有可承接的错误或热点日志源。');
+      return;
+    }
+    const finding = firstCriticalLog
+      ? `${firstCriticalLog.level.toUpperCase()}：${firstCriticalLog.message}`
+      : '当前日志源需要继续确认是否存在重复异常。';
+    setTaskPending(true);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `日志治理：${source}`,
+          description: `针对 ${source} 的日志异常继续追查并完成收口。当前发现：${finding}`,
+          priority: firstCriticalLog?.level === 'fatal' ? 'critical' : 'high',
+          risk_level: 'L1',
+          evidence_required: ['日志或性能证据', '根因与处理结果', '告警恢复状态', 'task closeout'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '日志任务登记失败');
+      setActionNotice(`已登记日志治理任务：${payload.title || source}`);
+      if (payload.id) {
+        openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+      }
+    } catch (taskError) {
+      setActionError(taskError instanceof Error ? taskError.message : '日志任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
+
   const handleExport = () => {
     const csv = [
       'timestamp,level,source,message',
@@ -263,6 +303,7 @@ export default function LogViewerPage({
   };
 
   const handleClear = () => {
+    setIsStreaming(false);
     setLogs([]);
   };
 
@@ -309,6 +350,12 @@ export default function LogViewerPage({
         items={logActionItems}
         onNavigate={onNavigate}
       />
+
+      {(actionError || actionNotice) && (
+        <div className="shell-data-banner" role={actionError ? 'alert' : 'status'}>
+          <span>{actionError || actionNotice}</span>
+        </div>
+      )}
 
       {focusedLogCard && (
         <section className="services-section overview-ops-panel" aria-label="当前日志承接焦点">
@@ -441,8 +488,16 @@ export default function LogViewerPage({
                     <AlertTriangle size={14} />
                   </button>
                 ))}
-              </div>
+                </div>
             )}
+            <button
+              type="button"
+              className="antd-btn"
+              disabled={taskPending}
+              onClick={() => { void createLogTask(); }}
+            >
+              {taskPending ? '登记中...' : '登记日志治理任务'}
+            </button>
           </article>
 
           <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -526,9 +581,9 @@ export default function LogViewerPage({
             <Download size={14} />
             导出
           </button>
-          <button className="btn btn-sm btn-outline" onClick={handleClear}>
+          <button className="btn btn-sm btn-outline" title="停止流式读取并清除当前日志视图" onClick={handleClear}>
             <Trash2 size={14} />
-            清空
+            清除当前列表
           </button>
         </div>
       </div>

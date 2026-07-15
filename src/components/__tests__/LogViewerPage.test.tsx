@@ -101,4 +101,26 @@ describe('LogViewerPage', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'cockpit-api' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('registers a real governance task from a critical log source', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(okJson({
+        items: [
+          { timestamp: '2026-07-11T10:00:00Z', level: 'error', source: 'cockpit-api', message: 'database timeout' },
+        ],
+      }))
+      .mockResolvedValueOnce(okJson({ id: 'cockpit-manual-log', title: '日志治理：cockpit-api' }))
+
+    render(<LogViewerPage onOpenTarget={onOpenTarget} />)
+
+    await screen.findByText('database timeout')
+    fireEvent.click(screen.getByRole('button', { name: '登记日志治理任务' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenNthCalledWith(2, '/api/tasks', expect.objectContaining({ method: 'POST' }))
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-manual-log' })
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('已登记日志治理任务')
+  })
 })
