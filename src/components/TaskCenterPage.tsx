@@ -81,6 +81,14 @@ interface Task {
     next_action?: string;
     run_ref?: string | null;
     review_ref?: string | null;
+    execution_audit?: {
+      command?: string;
+      exit_code?: number;
+      log_ref?: string;
+      closeout_ref?: string | null;
+      actor?: string;
+      recorded_at?: string;
+    } | null;
   };
 }
 
@@ -282,6 +290,8 @@ export default function TaskCenterPage({
   const [taskExecutionLoading, setTaskExecutionLoading] = useState(false);
   const [taskExecutionError, setTaskExecutionError] = useState<string | null>(null);
   const [evidenceInput, setEvidenceInput] = useState('');
+  const [executionLogInput, setExecutionLogInput] = useState('');
+  const [executionExitCodeInput, setExecutionExitCodeInput] = useState('0');
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -758,6 +768,38 @@ export default function TaskCenterPage({
       setActionNotice('已创建受控 worker dispatch，尚未启动外部进程。');
     } catch (error) {
       setActionError(`dispatch 失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  const recordExecutionReport = async (task: Task) => {
+    const exitCode = Number(executionExitCodeInput);
+    if (!Number.isInteger(exitCode) || !executionLogInput.trim()) {
+      setActionError('请填写整数退出码和已存在的工作区日志路径。');
+      return;
+    }
+    setActionPending(task.id);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/execution-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exit_code: exitCode, log_ref: executionLogInput.trim() }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '执行回执登记失败');
+      const update = (current: Task) => current.id === task.id
+        ? { ...current, execution_contract: { ...(current.execution_contract || {}), execution_audit: payload } }
+        : current;
+      setTasks((current) => current.map(update));
+      setSelectedTask((current) => current ? update(current) : current);
+      setExecutionLogInput('');
+      setExecutionExitCodeInput('0');
+      setActionNotice('执行回执已写入 OMO，任务历史已更新。');
+    } catch (error) {
+      setActionError(`执行回执失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setActionPending(null);
     }
@@ -1947,6 +1989,40 @@ export default function TaskCenterPage({
                     <span>
                       <strong>命令</strong>
                       <small>{selectedTask.execution_contract.command}</small>
+                    </span>
+                  )}
+                  {selectedTask.execution_contract.executes === false && selectedTask.execution_contract.command && (
+                    <span>
+                      <strong>执行回执</strong>
+                      {selectedTask.execution_contract.execution_audit ? (
+                        <small>
+                          exit {selectedTask.execution_contract.execution_audit.exit_code} · {selectedTask.execution_contract.execution_audit.log_ref || '日志未登记'}
+                        </small>
+                      ) : (
+                        <label>
+                          <small>填写人工执行后的日志路径和退出码</small>
+                          <input
+                            value={executionLogInput}
+                            onChange={(event) => setExecutionLogInput(event.target.value)}
+                            placeholder="runtime/.../command.log"
+                            aria-label="执行日志路径"
+                          />
+                          <input
+                            type="number"
+                            value={executionExitCodeInput}
+                            onChange={(event) => setExecutionExitCodeInput(event.target.value)}
+                            aria-label="执行退出码"
+                          />
+                          <button
+                            className="btn btn-sm btn-outline"
+                            disabled={actionPending === selectedTask.id}
+                            onClick={() => { void recordExecutionReport(selectedTask); }}
+                          >
+                            <ClipboardCheck size={14} />
+                            登记回执
+                          </button>
+                        </label>
+                      )}
                     </span>
                   )}
                   {(selectedTask.execution_contract.entry_gate || []).length > 0 && (
