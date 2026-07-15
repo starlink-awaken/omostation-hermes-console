@@ -99,6 +99,8 @@ interface Task {
       actor?: string;
       started_at?: string;
       stopped_at?: string;
+      exit_code?: number;
+      exited_at?: string;
     } | null;
   };
 }
@@ -2149,6 +2151,9 @@ export default function TaskCenterPage({
                       <small>
                         {selectedTask.execution_contract.execution_process?.status || '未启动'}
                         {selectedTask.execution_contract.execution_process?.pid ? ` · PID ${selectedTask.execution_contract.execution_process.pid}` : ''}
+                        {typeof selectedTask.execution_contract.execution_process?.exit_code === 'number'
+                          ? ` · exit ${selectedTask.execution_contract.execution_process.exit_code}`
+                          : ''}
                         {selectedTask.execution_contract.execution_process?.log_ref ? ` · ${selectedTask.execution_contract.execution_process.log_ref}` : ''}
                       </small>
                     </span>
