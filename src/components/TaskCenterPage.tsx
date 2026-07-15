@@ -12,6 +12,7 @@ import {
   Copy,
   ClipboardCheck,
   ShieldCheck,
+  Send,
   History,
 } from 'lucide-react';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -75,6 +76,7 @@ interface Task {
     command?: string | null;
     executes?: boolean;
     approval_ref?: string | null;
+    dispatch_id?: string | null;
     approval_state?: string;
     next_action?: string;
     run_ref?: string | null;
@@ -680,6 +682,36 @@ export default function TaskCenterPage({
       setActionNotice(action === 'approve' ? '审批已授予，可以恢复任务。' : '审批申请已登记，等待人工确认。');
     } catch (error) {
       setActionError(`审批操作失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  const dispatchTask = async (task: Task) => {
+    setActionPending(task.id);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/dispatch`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '受控 dispatch 失败');
+      const update = (current: Task) => current.id === task.id
+        ? {
+            ...current,
+            status: 'in_progress' as const,
+            execution_contract: {
+              ...(current.execution_contract || {}),
+              dispatch_id: payload.dispatch_id,
+              run_ref: payload.run_ref,
+              next_action: '等待 worker 留证并进入审查',
+            },
+          }
+        : current;
+      setTasks((current) => current.map(update));
+      setSelectedTask((current) => current ? update(current) : current);
+      setActionNotice('已创建受控 worker dispatch，尚未启动外部进程。');
+    } catch (error) {
+      setActionError(`dispatch 失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setActionPending(null);
     }
@@ -1633,6 +1665,18 @@ export default function TaskCenterPage({
                   >
                     <Eye size={14} />
                   </button>
+                )}
+                {!task.read_only && task.status === 'in_progress' && (
+                  !task.execution_contract?.dispatch_id && (
+                    <button
+                      className="btn btn-sm btn-outline"
+                      aria-label="发起受控执行"
+                      disabled={actionPending === task.id}
+                      onClick={(e) => { e.stopPropagation(); void dispatchTask(task); }}
+                    >
+                      <Send size={14} />
+                    </button>
+                  )
                 )}
                 {!task.read_only && task.status === 'in_progress' && (
                   <button

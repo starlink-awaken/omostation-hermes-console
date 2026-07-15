@@ -564,6 +564,21 @@ describe('TaskCenterPage', () => {
       expect(fetch).toHaveBeenCalledWith('/api/tasks/approval-task/approve', { method: 'POST' })
       expect(screen.getByRole('button', { name: '恢复任务' })).toBeInTheDocument()
     })
+
+    const resumeButtons = screen.getAllByRole('button', { name: '恢复任务' })
+    fireEvent.click(resumeButtons[resumeButtons.length - 1])
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/approval-task/resume', { method: 'POST' })
+      expect(screen.getByRole('button', { name: '发起受控执行' })).toBeInTheDocument()
+    })
+
+    const approvalTitle = screen.getAllByText('登记外部服务启动').find((element) => element.classList.contains('task-title'))
+    const approvalCard = approvalTitle?.closest('.task-card')
+    expect(approvalCard).not.toBeNull()
+    fireEvent.click(within(approvalCard as HTMLElement).getByRole('button', { name: '发起受控执行' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/approval-task/dispatch', { method: 'POST' })
+    })
   })
 
   it('shows an inline error and preserves state when a task action fails', async () => {
