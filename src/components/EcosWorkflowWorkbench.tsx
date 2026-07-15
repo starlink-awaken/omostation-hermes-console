@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ClipboardCheck, FlaskConical, GitBranch, Loader2, Play, RefreshCw, ShieldAlert } from 'lucide-react';
+import type { CockpitNavigationTarget } from './cockpitNavigation';
 
 type Workflow = {
   name: string;
@@ -14,6 +15,10 @@ type JsonValue = Record<string, unknown>;
 
 const EMPTY: JsonValue = {};
 
+type EcosWorkflowWorkbenchProps = {
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+};
+
 async function fetchJson(url: string, init?: RequestInit): Promise<JsonValue> {
   const response = await fetch(url, init);
   const data = await response.json().catch(() => ({}));
@@ -26,7 +31,7 @@ function resultText(value: unknown) {
   return value === undefined ? '无结果' : JSON.stringify(value, null, 2);
 }
 
-export default function EcosWorkflowWorkbench() {
+export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWorkbenchProps) {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [selectedName, setSelectedName] = useState('');
   const [detail, setDetail] = useState<JsonValue | null>(null);
@@ -37,6 +42,8 @@ export default function EcosWorkflowWorkbench() {
   const [logs, setLogs] = useState<JsonValue[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
+  const [lastRunMode, setLastRunMode] = useState<'test' | 'dry_run'>('test');
+  const [queueResult, setQueueResult] = useState<JsonValue | null>(null);
 
   const selectedWorkflow = useMemo(
     () => workflows.find((workflow) => workflow.name === selectedName) || null,
@@ -98,8 +105,30 @@ export default function EcosWorkflowWorkbench() {
         ? `/api/ecos/workflow/run?name=${encodeURIComponent(selectedName)}&dry_run=true`
         : `/api/ecos/workflow/test?name=${encodeURIComponent(selectedName)}`;
       setRunResult(await fetchJson(endpoint, { method: 'POST' }));
+      setLastRunMode(dryRun ? 'dry_run' : 'test');
+      setQueueResult(null);
     } catch (reason) {
       setError(`${dryRun ? '干跑' : '模拟测试'}失败：${reason instanceof Error ? reason.message : '未知错误'}`);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const queueVerification = async () => {
+    if (!selectedName) return;
+    setLoading('queue');
+    setError(null);
+    try {
+      const queued = await fetchJson(
+        `/api/cockpit/ecos/workflows/${encodeURIComponent(selectedName)}/queue?mode=${lastRunMode}`,
+        { method: 'POST' },
+      );
+      setQueueResult(queued);
+      if (typeof queued.id === 'string') {
+        onOpenTarget?.({ tab: 'TaskCenter', taskQuery: queued.id });
+      }
+    } catch (reason) {
+      setError(`验证任务承接失败：${reason instanceof Error ? reason.message : '未知错误'}`);
     } finally {
       setLoading(null);
     }
@@ -144,7 +173,17 @@ export default function EcosWorkflowWorkbench() {
             <article className="antd-card" style={{ padding: 14 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{validation?.valid === true ? <CheckCircle2 size={15} /> : <ShieldAlert size={15} />}<strong>约束校验</strong></div><pre style={{ margin: '10px 0 0', maxHeight: 180, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 11 }}>{resultText(validation || EMPTY)}</pre></article>
             <article className="antd-card" style={{ padding: 14 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><GitBranch size={15} /><strong>工作流定义</strong></div><pre style={{ margin: '10px 0 0', maxHeight: 180, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 11 }}>{resultText(detail || EMPTY)}</pre></article>
           </div>
-          {runResult && <article className="antd-card" style={{ padding: 14 }}><strong>最近验证结果</strong><pre style={{ margin: '10px 0 0', maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 11 }}>{resultText(runResult)}</pre></article>}
+          {runResult && <article className="antd-card" style={{ padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <strong>最近验证结果</strong>
+              <button type="button" className="antd-btn" onClick={() => void queueVerification()} disabled={loading === 'queue'}>
+                {loading === 'queue' ? <Loader2 size={14} className="spinner" /> : <ClipboardCheck size={14} />}
+                承接到任务中心
+              </button>
+            </div>
+            <pre style={{ margin: '10px 0 0', maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 11 }}>{resultText(runResult)}</pre>
+            {queueResult && <div className="shell-data-banner" role="status" style={{ marginTop: 10 }}>{resultText(queueResult)}</div>}
+          </article>}
           <article className="antd-card" style={{ padding: 14 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><ClipboardCheck size={15} /><strong>历史运行证据</strong><span className="status-badge online">{logs.length}</span></div>
             {logs.length === 0 ? <p className="text-muted" style={{ margin: '10px 0 0' }}>暂无 eCOS 运行日志。</p> : <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>{logs.slice(0, 5).map((log, index) => <div key={`${String(log.workflow_id ?? log.name ?? 'run')}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}><span>{String(log.name ?? log.workflow_id ?? '未命名运行')}</span><span className="text-muted">{String(log.status ?? 'unknown')} · {String(log.generated_at ?? '无时间')}</span></div>)}</div>}

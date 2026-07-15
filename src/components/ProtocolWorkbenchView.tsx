@@ -744,7 +744,7 @@ export default function ProtocolWorkbenchView({
         onNavigate={onNavigate}
       />
 
-      <EcosWorkflowWorkbench />
+      <EcosWorkflowWorkbench onOpenTarget={onOpenTarget} />
 
       <section className="services-section">
         <div className="section-header">

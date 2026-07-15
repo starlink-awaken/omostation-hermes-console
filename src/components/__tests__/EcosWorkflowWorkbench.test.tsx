@@ -11,6 +11,7 @@ describe('EcosWorkflowWorkbench', () => {
   })
 
   it('loads a workflow catalog and runs a safe test against the selected workflow', async () => {
+    const onOpenTarget = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/ecos/workflow/list') return Promise.resolve(response({ workflows: [{ name: 'health-check', display: '健康检查', layer: 'L0', subtype: 'PipelineWorkflow' }] }))
@@ -22,10 +23,14 @@ describe('EcosWorkflowWorkbench', () => {
         expect(init?.method).toBe('POST')
         return Promise.resolve(response({ status: 'ok', passed: 1, failed: 0 }))
       }
+      if (url.includes('/api/cockpit/ecos/workflows/health-check/queue?mode=test')) {
+        expect(init?.method).toBe('POST')
+        return Promise.resolve(response({ id: 'cockpit-ecos-workflow-health-check-test', created: true, executes: false }))
+      }
       return Promise.resolve(response({}))
     })
 
-    render(<EcosWorkflowWorkbench />)
+    render(<EcosWorkflowWorkbench onOpenTarget={onOpenTarget} />)
 
     expect(await screen.findByRole('option', { name: '健康检查' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText(/健康检查/)).toBeInTheDocument())
@@ -33,5 +38,11 @@ describe('EcosWorkflowWorkbench', () => {
 
     await waitFor(() => expect(screen.getByText(/最近验证结果/)).toBeInTheDocument())
     expect(screen.getByText(/"passed": 1/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '承接到任务中心' }))
+    await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit-ecos-workflow-health-check-test',
+    }))
   })
 })
