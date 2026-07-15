@@ -383,6 +383,7 @@ function CredentialsModal({ credentials, onClose }: {
 
 function AgentDrawer({ agent, onClose, onRevoked }: { agent: Agent; onClose: () => void; onRevoked: () => void }) {
   const [tab, setTab] = useState<'claude-code' | 'chatgpt' | 'claude-cowork' | 'perplexity' | 'cursor' | 'json'>('claude-code');
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const copy = (text: string) => navigator.clipboard.writeText(text);
   const serverUrl = window.location.origin;
 
@@ -610,6 +611,7 @@ function AgentDrawer({ agent, onClose, onRevoked }: { agent: Agent; onClose: () 
           {agent.status === 'active' && (
             <button className="btn btn-danger" onClick={async () => {
               if (!confirm(`Revoke ${agent.name || agent.client_name}? All active tokens will be invalidated.`)) return;
+              setRevokeError(null);
               try {
                 if (agent.auth_type === 'oauth') {
                   await api.revokeClient(agent.id || agent.client_id || '');
@@ -619,9 +621,14 @@ function AgentDrawer({ agent, onClose, onRevoked }: { agent: Agent; onClose: () 
                 onRevoked();
                 onClose();
               } catch (e) {
-                alert('Revoke failed: ' + (e instanceof Error ? e.message : 'unknown error'));
+                setRevokeError(`Revoke failed: ${e instanceof Error ? e.message : 'unknown error'}`);
               }
             }}>Revoke Agent</button>
+          )}
+          {revokeError && (
+            <div role="alert" style={{ color: 'var(--text-danger, #ff4757)', fontSize: 13, marginTop: 10 }}>
+              {revokeError}
+            </div>
           )}
           {agent.status === 'revoked' && (
             <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>This agent has been revoked.</span>
