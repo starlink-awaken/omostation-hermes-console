@@ -136,6 +136,23 @@ describe('SettingsView', () => {
     })
   })
 
+  it('rejects invalid instance registration before making a request', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({}))
+
+    render(<SettingsView />)
+
+    await waitFor(() => {
+      expect(screen.getByText('注册分布式新实例 (Instance)')).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByLabelText('目标服务名称 (Service Name)'), { target: { value: 'bad service' } })
+    fireEvent.change(screen.getByLabelText('MCP 接入点地址 (Endpoint URL)'), { target: { value: 'not-a-uri' } })
+    fireEvent.click(screen.getByRole('button', { name: '注册实例' }))
+
+    expect(await screen.findByText(/服务名需为 1-64 位/)).toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalledWith('/api/instance', expect.anything())
+  })
+
   it('surfaces focus handoff for a matched control-plane metric', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()

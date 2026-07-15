@@ -4,6 +4,7 @@ import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import InfrastructureOpsWorkbench from './InfrastructureOpsWorkbench';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { validateInstanceRegistration } from './instanceRegistration';
 
 const MESH_DOMAINS = ['all', 'memory', 'governance', 'analysis', 'persona', 'capability'];
 
@@ -121,6 +122,11 @@ export default function McpMeshView({
     if (!registerName || !registerEndpoint) return;
     setRegisterStatus(null);
     setRegisterError(null);
+    const validationError = validateInstanceRegistration(registerName, registerEndpoint);
+    if (validationError) {
+      setRegisterError(validationError);
+      return;
+    }
 
     try {
       const formData = new FormData();

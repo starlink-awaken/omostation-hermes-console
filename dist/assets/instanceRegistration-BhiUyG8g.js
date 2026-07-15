@@ -1,0 +1,1 @@
+var e=/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/,t=/^(https?|wss?|stdio):\/\/[^\s]+$/i;function n(n,r){let i=n.trim(),a=r.trim();return e.test(i)?t.test(a)?null:`MCP 地址需使用 http(s)、ws(s) 或 stdio URI。`:`服务名需为 1-64 位字母、数字、下划线、点、冒号或连字符。`}export{n as t};

@@ -4,6 +4,7 @@ import './Dashboard.css';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { validateInstanceRegistration } from './instanceRegistration';
 
 interface SettingsViewProps {
   onNavigate?: (tab: string) => void;
@@ -274,6 +275,11 @@ export default function SettingsView({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationError = validateInstanceRegistration(instanceService, instanceUrl);
+    if (validationError) {
+      setRegisterResult({ error: validationError });
+      return;
+    }
     try {
       const fd = new FormData();
       fd.append('service', instanceService);
