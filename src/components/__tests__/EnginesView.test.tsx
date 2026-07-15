@@ -110,4 +110,34 @@ describe('EnginesView', () => {
       expect(screen.getByText(/executes/)).toBeInTheDocument()
     })
   })
+
+  it('carries the generated MetaOS plan into the planned task', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/pipelines') return Promise.resolve(okJson({ pipelines: ['health-check'] }))
+      if (url === '/api/metaos/plan') {
+        expect(init?.method).toBe('POST')
+        return Promise.resolve(okJson({ status: 'ok', plan: { steps: [{ id: 'inspect' }] } }))
+      }
+      if (url === '/api/cockpit/engine/queue') {
+        expect(JSON.parse(String(init?.body))).toEqual({
+          engine: 'metaos',
+          task: '核对运行状态',
+          plan: { status: 'ok', plan: { steps: [{ id: 'inspect' }] } },
+        })
+        return Promise.resolve(okJson({ id: 'cockpit-engine-metaos-42', executes: false }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<EnginesView onOpenTarget={onOpenTarget} />)
+    await waitFor(() => expect(screen.getByDisplayValue('health-check')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('执行指令 / 目标'), { target: { value: '核对运行状态' } })
+    fireEvent.click(screen.getByRole('button', { name: '新任务' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '承接计划' })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '承接计划' }))
+
+    await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-engine-metaos-42' }))
+  })
 })

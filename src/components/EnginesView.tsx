@@ -170,7 +170,7 @@ export default function EnginesView({
       const res = await fetch('/api/cockpit/engine/queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ engine: 'metaos', task: pipelineInput }),
+        body: JSON.stringify({ engine: 'metaos', task: pipelineInput, plan: metaosPlan }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || data.error || 'MetaOS 任务承接失败');
