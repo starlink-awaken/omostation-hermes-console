@@ -315,6 +315,7 @@ export default function TaskCenterPage({
   const [evidenceInput, setEvidenceInput] = useState('');
   const [executionLogInput, setExecutionLogInput] = useState('');
   const [executionExitCodeInput, setExecutionExitCodeInput] = useState('0');
+  const [executionCloseoutInput, setExecutionCloseoutInput] = useState('');
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -809,7 +810,11 @@ export default function TaskCenterPage({
       const response = await fetch(`/api/tasks/${task.id}/execution-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ exit_code: exitCode, log_ref: executionLogInput.trim() }),
+        body: JSON.stringify({
+          exit_code: exitCode,
+          log_ref: executionLogInput.trim(),
+          ...(executionCloseoutInput.trim() ? { closeout_ref: executionCloseoutInput.trim() } : {}),
+        }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || response.statusText || '执行回执登记失败');
@@ -820,6 +825,7 @@ export default function TaskCenterPage({
       setSelectedTask((current) => current ? update(current) : current);
       setExecutionLogInput('');
       setExecutionExitCodeInput('0');
+      setExecutionCloseoutInput('');
       setActionNotice('执行回执已写入 OMO，任务历史已更新。');
     } catch (error) {
       setActionError(`执行回执失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
@@ -2170,7 +2176,7 @@ export default function TaskCenterPage({
                         </small>
                       ) : (
                         <label>
-                          <small>填写人工执行后的日志路径和退出码</small>
+                          <small>填写日志路径、退出码；workflow 完成后可补 closeout 文件路径</small>
                           <input
                             value={executionLogInput}
                             onChange={(event) => setExecutionLogInput(event.target.value)}
@@ -2182,6 +2188,12 @@ export default function TaskCenterPage({
                             value={executionExitCodeInput}
                             onChange={(event) => setExecutionExitCodeInput(event.target.value)}
                             aria-label="执行退出码"
+                          />
+                          <input
+                            value={executionCloseoutInput}
+                            onChange={(event) => setExecutionCloseoutInput(event.target.value)}
+                            placeholder=".omo/_delivery/agent-workflows/runs/closeout.yaml"
+                            aria-label="workflow closeout 路径"
                           />
                           <button
                             className="btn btn-sm btn-outline"
