@@ -55,7 +55,7 @@ describe('InfrastructureOpsWorkbench', () => {
     const onNavigate = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
-      if (url === '/api/compute/status') return Promise.resolve({ ok: true, json: async () => computePayload } as Response)
+      if (url === '/api/governance/compute/status') return Promise.resolve({ ok: true, json: async () => computePayload } as Response)
       if (url === '/api/bos/health') return Promise.resolve({ ok: true, json: async () => bosHealthPayload } as Response)
       if (url === '/api/bos/services') return Promise.resolve({ ok: true, json: async () => bosServicesPayload } as Response)
       if (url === '/api/services/status') return Promise.resolve({ ok: true, json: async () => runtimePayload } as Response)

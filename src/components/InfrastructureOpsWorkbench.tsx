@@ -130,7 +130,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate }: 
     const load = async () => {
       try {
         const [computeRes, bosHealthRes, bosServicesRes, runtimeRes] = await Promise.all([
-          fetch('/api/compute/status'),
+          fetch('/api/governance/compute/status'),
           fetch('/api/bos/health'),
           fetch('/api/bos/services'),
           fetch('/api/services/status'),
