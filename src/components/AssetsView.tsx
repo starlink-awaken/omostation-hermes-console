@@ -65,6 +65,8 @@ export default function AssetsView({
 
   const [wfTesting, setWfTesting] = useState<Record<string, boolean>>({});
   const [wfTestResults, setWfTestResults] = useState<Record<string, any>>({});
+  const [wfQueueing, setWfQueueing] = useState<Record<string, boolean>>({});
+  const [wfQueueResults, setWfQueueResults] = useState<Record<string, any>>({});
 
   const fetchData = async () => {
     try {
@@ -169,6 +171,23 @@ export default function AssetsView({
       setWfTestResults((prev) => ({ ...prev, [name]: { error: err.message } }));
     } finally {
       setWfTesting((prev) => ({ ...prev, [name]: false }));
+    }
+  };
+
+  const handleQueueWorkflow = async (name: string) => {
+    setWfQueueing((prev) => ({ ...prev, [name]: true }));
+    try {
+      const res = await fetch(`/api/cockpit/ecos/workflows/${encodeURIComponent(name)}/queue?mode=dry_run`, {
+        method: 'POST',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.executes !== false) throw new Error(data.detail || data.error || '工作流验收任务承接失败');
+      setWfQueueResults((prev) => ({ ...prev, [name]: data }));
+      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+    } catch (err: any) {
+      setWfQueueResults((prev) => ({ ...prev, [name]: { error: err.message || '工作流验收任务承接失败' } }));
+    } finally {
+      setWfQueueing((prev) => ({ ...prev, [name]: false }));
     }
   };
 
@@ -918,6 +937,24 @@ export default function AssetsView({
                     <Play size={12} />
                     <span>{wfTesting[workflow.name] ? '测试中' : '测试运行'}</span>
                   </button>
+                  {wfTestResults[workflow.name] && !wfTestResults[workflow.name].error && (
+                    <button
+                      onClick={() => void handleQueueWorkflow(workflow.name)}
+                      disabled={wfQueueing[workflow.name]}
+                      className="antd-btn"
+                      aria-label={`登记工作流验收任务 ${workflow.name}`}
+                      style={{
+                        fontSize: '11px',
+                        padding: '4px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <ClipboardCheck size={12} />
+                      <span>{wfQueueing[workflow.name] ? '承接中' : '登记验收任务'}</span>
+                    </button>
+                  )}
                 </div>
 
                 {wfTestResults[workflow.name] && (
@@ -937,6 +974,13 @@ export default function AssetsView({
                     >
                       {JSON.stringify(wfTestResults[workflow.name], null, 2)}
                     </pre>
+                  </div>
+                )}
+                {wfQueueResults[workflow.name] && (
+                  <div style={{ gridColumn: 'span 3', marginTop: '8px' }} role="status">
+                    {wfQueueResults[workflow.name].error
+                      ? `验收任务承接失败：${wfQueueResults[workflow.name].error}`
+                      : `已登记验收任务 ${wfQueueResults[workflow.name].id || '待定'}，请到任务中心继续审批。`}
                   </div>
                 )}
               </div>

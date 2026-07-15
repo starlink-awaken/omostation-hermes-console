@@ -158,4 +158,28 @@ describe('AssetsView', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('资产数据部分不可用')
     expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
   })
+
+  it('turns a successful workflow test into a TaskCenter acceptance task', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/ecos/skills') return Promise.resolve(okJson({ skills: [] }))
+      if (url === '/api/pipelines') return Promise.resolve(okJson({ pipelines: [] }))
+      if (url === '/api/ecos/workflows') return Promise.resolve(okJson({ workflows: [{ name: 'nightly-governance', description: '夜间治理巡检', steps: 5 }] }))
+      if (url === '/api/ecos/workflow/test?name=nightly-governance') return Promise.resolve(okJson({ workflow: 'nightly-governance', tests_passed: 5 }))
+      if (url === '/api/cockpit/ecos/workflows/nightly-governance/queue?mode=dry_run') return Promise.resolve(okJson({ id: 'cockpit-ecos-workflow-nightly-governance-dry_run', executes: false }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<AssetsView onOpenTarget={onOpenTarget} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /自动化工作流/ })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /自动化工作流/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '测试运行' }))
+    fireEvent.click(await screen.findByRole('button', { name: '登记工作流验收任务 nightly-governance' }))
+
+    await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit-ecos-workflow-nightly-governance-dry_run',
+    }))
+  })
 })
