@@ -121,7 +121,11 @@ export default function WorkflowsView({
       const res = await fetch(`/api/metaos/workflows/${id}/approve`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.status === 'ok') {
-        setApprovalMessage({ tone: 'success', text: `工作流 ${id} 已授权放行` });
+        const approvedNodes = Array.isArray(data.approved_nodes) ? data.approved_nodes : [];
+        const receipt = approvedNodes.length > 0
+          ? `，已放行 ${approvedNodes.length} 个节点（${approvedNodes.join('、')}），回执 ${data.approved_at || '已记录'}`
+          : '';
+        setApprovalMessage({ tone: 'success', text: `工作流 ${id} 已授权放行${receipt}` });
         await loadDetail(id);
         await fetchWorkflows();
       } else {
