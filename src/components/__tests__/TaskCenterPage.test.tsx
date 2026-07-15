@@ -531,6 +531,41 @@ describe('TaskCenterPage', () => {
     })
   })
 
+  it('requires request and grant approval before resuming a gated task', async () => {
+    const approvalTask = {
+      ...mockTasks[1],
+      id: 'approval-task',
+      title: '登记外部服务启动',
+      priority: 'high',
+      execution_contract: {
+        risk_level: 'L2',
+        allowed_operation_level: 'L2',
+        human_approval_required: true,
+        approval_state: 'missing',
+        next_action: '先申请人工审批',
+        executes: false,
+      },
+    }
+    mockTaskCenterFetch([...mockTasks, approvalTask])
+
+    render(<TaskCenterPage />)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '申请任务审批' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '申请任务审批' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/approval-task/request-approval', { method: 'POST' })
+      expect(screen.getByRole('button', { name: '批准任务' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '批准任务' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/approval-task/approve', { method: 'POST' })
+      expect(screen.getByRole('button', { name: '恢复任务' })).toBeInTheDocument()
+    })
+  })
+
   it('shows an inline error and preserves state when a task action fails', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

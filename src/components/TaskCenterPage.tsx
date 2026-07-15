@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Copy,
   ClipboardCheck,
+  ShieldCheck,
   History,
 } from 'lucide-react';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -74,6 +75,8 @@ interface Task {
     command?: string | null;
     executes?: boolean;
     approval_ref?: string | null;
+    approval_state?: string;
+    next_action?: string;
     run_ref?: string | null;
     review_ref?: string | null;
   };
@@ -648,6 +651,36 @@ export default function TaskCenterPage({
       setActionError(`任务操作失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     }
     finally {
+      setActionPending(null);
+    }
+  };
+
+  const runApprovalAction = async (task: Task, action: 'request-approval' | 'approve') => {
+    setActionPending(task.id);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/${action}`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '审批操作失败');
+      const approvalState = action === 'approve' ? 'granted' : 'requested';
+      const update = (current: Task) => current.id === task.id
+        ? {
+            ...current,
+            execution_contract: {
+              ...(current.execution_contract || {}),
+              approval_state: approvalState,
+              next_action: action === 'approve' ? '可恢复到 active' : '等待人工审批',
+              approval_ref: payload.approval_ref || current.execution_contract?.approval_ref,
+            },
+          }
+        : current;
+      setTasks((current) => current.map(update));
+      setSelectedTask((current) => current ? update(current) : current);
+      setActionNotice(action === 'approve' ? '审批已授予，可以恢复任务。' : '审批申请已登记，等待人工确认。');
+    } catch (error) {
+      setActionError(`审批操作失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
+    } finally {
       setActionPending(null);
     }
   };
@@ -1612,6 +1645,27 @@ export default function TaskCenterPage({
                   </button>
                 )}
                 {!task.read_only && task.status === 'pending' && (
+                  task.execution_contract?.human_approval_required
+                    && task.execution_contract.approval_state === 'missing' ? (
+                      <button
+                        className="btn btn-sm btn-outline"
+                        aria-label="申请任务审批"
+                        disabled={actionPending === task.id}
+                        onClick={(e) => { e.stopPropagation(); void runApprovalAction(task, 'request-approval'); }}
+                      >
+                        <ShieldCheck size={14} />
+                      </button>
+                    ) : task.execution_contract?.human_approval_required
+                      && task.execution_contract.approval_state === 'requested' ? (
+                        <button
+                          className="btn btn-sm btn-outline"
+                          aria-label="批准任务"
+                          disabled={actionPending === task.id}
+                          onClick={(e) => { e.stopPropagation(); void runApprovalAction(task, 'approve'); }}
+                        >
+                          <CheckCircle size={14} />
+                        </button>
+                      ) : (
                   <button
                     className="btn btn-sm btn-outline"
                     aria-label="恢复任务"
@@ -1620,6 +1674,7 @@ export default function TaskCenterPage({
                   >
                     <Play size={14} />
                   </button>
+                      )
                 )}
                 {!task.read_only && (task.status === 'pending' || task.status === 'in_progress') && (
                   <button
@@ -1788,7 +1843,11 @@ export default function TaskCenterPage({
                   </span>
                   <span>
                     <strong>审批</strong>
-                    <small>{selectedTask.execution_contract.human_approval_required ? '需要人工审批' : '无需额外审批'}</small>
+                    <small>
+                      {selectedTask.execution_contract.human_approval_required
+                        ? `${selectedTask.execution_contract.approval_state || 'missing'} · ${selectedTask.execution_contract.next_action || '等待审批'}`
+                        : '无需额外审批'}
+                    </small>
                   </span>
                   <span>
                     <strong>执行方式</strong>
