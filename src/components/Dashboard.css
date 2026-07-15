@@ -5112,6 +5112,13 @@
   gap: 8px;
 }
 
+.system-map-triage-command-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: stretch;
+}
+
 .system-map-triage-command {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -5134,6 +5141,30 @@
 }
 
 .system-map-triage-command:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+.system-map-triage-queue {
+  display: inline-flex;
+  width: 32px;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 242, 254, 0.14);
+  border-radius: var(--antd-radius-md);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--antd-text-secondary);
+  cursor: pointer;
+}
+
+.system-map-triage-queue:hover:not(:disabled) {
+  border-color: var(--antd-border-color-hover);
+  color: var(--antd-primary);
+  background: rgba(0, 242, 254, 0.075);
+}
+
+.system-map-triage-queue:disabled {
   cursor: not-allowed;
   opacity: 0.46;
 }

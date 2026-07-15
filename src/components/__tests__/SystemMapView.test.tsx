@@ -821,6 +821,14 @@ describe('SystemMapView', () => {
           executes: false,
         })
       }
+      if (url === '/api/cockpit/projects/kairon/triage/verification-rerun/queue') {
+        return okJson({
+          id: 'cockpit-triage-kairon-verification-rerun',
+          status: 'pending',
+          title: '项目排查：kairon · 复跑验证',
+          executes: false,
+        })
+      }
       throw new Error(`Unexpected fetch: ${url}`)
     })
   })
@@ -868,6 +876,29 @@ describe('SystemMapView', () => {
       expect(onOpenTarget).toHaveBeenCalledWith({
         tab: 'TaskCenter',
         taskQuery: 'cockpit-action-cockpit-copy-verify-command',
+      })
+      expect(screen.getByRole('status')).toHaveTextContent('已登记为计划任务')
+    })
+  })
+
+  it('queues a triage command without executing it', async () => {
+    const onOpenTarget = vi.fn()
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '承接排查命令 kairon 复跑验证' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '承接排查命令 kairon 复跑验证' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/cockpit/projects/kairon/triage/verification-rerun/queue',
+        { method: 'POST' },
+      )
+      expect(onOpenTarget).toHaveBeenCalledWith({
+        tab: 'TaskCenter',
+        taskQuery: 'cockpit-triage-kairon-verification-rerun',
       })
       expect(screen.getByRole('status')).toHaveTextContent('已登记为计划任务')
     })

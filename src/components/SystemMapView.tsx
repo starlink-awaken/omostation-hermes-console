@@ -1070,7 +1070,13 @@ function ProjectActionList({
   );
 }
 
-function ProjectTriageQueues({ queues }: { queues: ProjectTriageQueue[] }) {
+function ProjectTriageQueues({
+  queues,
+  onQueueCommand,
+}: {
+  queues: ProjectTriageQueue[];
+  onQueueCommand?: (command: ProjectAction) => void;
+}) {
   return (
     <div className="system-map-triage-grid">
       {queues.map((queue) => (
@@ -1090,20 +1096,32 @@ function ProjectTriageQueues({ queues }: { queues: ProjectTriageQueue[] }) {
           <div className="system-map-triage-command-list">
             {queue.commands.length > 0 ? (
               queue.commands.slice(0, 4).map((command) => (
-                <button
-                  className={`system-map-triage-command ${statusClass(command.risk)}`}
-                  disabled={!command.enabled}
-                  key={`${queue.id}-${command.project_id}-${command.id}`}
-                  onClick={() => void copyText(command.value)}
-                  title={command.guard}
-                >
-                  <Copy size={12} />
-                  <span>
-                    <strong>{command.project_id} · {command.label}</strong>
-                    <small>{command.reason}</small>
-                    <code>{command.value}</code>
-                  </span>
-                </button>
+                <div className="system-map-triage-command-row" key={`${queue.id}-${command.project_id}-${command.id}`}>
+                  <button
+                    className={`system-map-triage-command ${statusClass(command.risk)}`}
+                    disabled={!command.enabled}
+                    onClick={() => void copyText(command.value)}
+                    title={command.guard}
+                  >
+                    <Copy size={12} />
+                    <span>
+                      <strong>{command.project_id} · {command.label}</strong>
+                      <small>{command.reason}</small>
+                      <code>{command.value}</code>
+                    </span>
+                  </button>
+                  {onQueueCommand && (
+                    <button
+                      className={`system-map-triage-queue ${statusClass(command.risk)}`}
+                      disabled={!command.enabled}
+                      aria-label={`承接排查命令 ${command.project_id} ${command.label}`}
+                      title="登记为 OMO 计划任务，不会直接执行命令"
+                      onClick={() => onQueueCommand(command)}
+                    >
+                      <ClipboardCheck size={12} />
+                    </button>
+                  )}
+                </div>
               ))
             ) : (
               <span className="text-muted">暂无需要排查的命令</span>
@@ -1472,6 +1490,27 @@ export default function SystemMapView({
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '项目动作承接失败');
+    }
+  };
+
+  const queueProjectTriageCommand = async (command: ProjectAction) => {
+    const projectId = command.project_id;
+    if (!projectId) return;
+    setActionNotice('');
+    setActionError('');
+    try {
+      const response = await fetch(
+        `/api/cockpit/projects/${encodeURIComponent(projectId)}/triage/${encodeURIComponent(command.id)}/queue`,
+        { method: 'POST' },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '排查命令承接失败');
+      setActionNotice(`已登记为计划任务：${payload.title || command.label}`);
+      if (onOpenTarget) {
+        onOpenTarget({ tab: 'TaskCenter', taskQuery: payload.id });
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '排查命令承接失败');
     }
   };
 
@@ -4201,7 +4240,7 @@ export default function SystemMapView({
             {filteredTriageCommandCount} / {systemMap.project_triage.summary.total_commands}
           </span>
         </div>
-        <ProjectTriageQueues queues={filteredTriageQueues} />
+        <ProjectTriageQueues queues={filteredTriageQueues} onQueueCommand={(command) => void queueProjectTriageCommand(command)} />
       </section>
 
       <section className="services-section system-map-section">
