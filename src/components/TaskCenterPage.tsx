@@ -298,6 +298,7 @@ export default function TaskCenterPage({
   const [tasks, setTasks] = useState<Task[]>([]);
   const [domainApps, setDomainApps] = useState<DomainAppSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<TaskStatus>('all');
   const [activeSourceFilter, setActiveSourceFilter] = useState<DraftLaneFilter>('all');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
@@ -336,6 +337,12 @@ export default function TaskCenterPage({
         if (tasksResult.status === 'fulfilled' && tasksResult.value.ok) {
           const data = await tasksResult.value.json();
           setTasks(data.items || []);
+          setDataError(null);
+        } else {
+          const reason = tasksResult.status === 'rejected'
+            ? tasksResult.reason
+            : new Error(`任务服务返回 HTTP ${tasksResult.value.status}`);
+          throw reason instanceof Error ? reason : new Error('任务数据暂不可用');
         }
 
         if (domainAppsResult.status === 'fulfilled' && domainAppsResult.value.ok) {
@@ -344,6 +351,7 @@ export default function TaskCenterPage({
         }
       } catch (error) {
         console.error('Failed to fetch tasks:', error);
+        setDataError(error instanceof Error ? error.message : '任务数据暂不可用');
       } finally {
         setLoading(false);
       }
@@ -1033,6 +1041,26 @@ export default function TaskCenterPage({
   return (
     <div className="task-center-page">
       <KnowledgeExecutionWorkbench currentPage="TaskCenter" onNavigate={onNavigate} />
+
+      {dataError && (
+        <div
+          role="alert"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', border: '1px solid rgba(255, 71, 87, 0.35)', borderRadius: 'var(--antd-radius-md)', background: 'rgba(255, 71, 87, 0.08)', color: 'var(--antd-error)' }}
+        >
+          <span>任务数据加载失败：{dataError}</span>
+          <button
+            className="btn btn-sm btn-outline"
+            aria-label="重试任务数据"
+            onClick={() => {
+              setDataError(null);
+              setLoading(true);
+              setRefreshToken((value) => value + 1);
+            }}
+          >
+            重试
+          </button>
+        </div>
+      )}
 
       <ActionSurfacePanel
         title="任务动作区"

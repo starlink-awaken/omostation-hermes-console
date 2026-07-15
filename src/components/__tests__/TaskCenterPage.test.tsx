@@ -1026,4 +1026,19 @@ describe('TaskCenterPage', () => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('页面能力草稿内容')
     })
   })
+
+  it('shows a retryable error when the task source is unavailable', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).startsWith('/api/tasks?')) {
+        return Promise.resolve({ ok: false, status: 503, json: async () => ({}) } as Response)
+      }
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<TaskCenterPage />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('任务数据加载失败')
+    fireEvent.click(screen.getByRole('button', { name: '重试任务数据' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/tasks?')))
+  })
 })
