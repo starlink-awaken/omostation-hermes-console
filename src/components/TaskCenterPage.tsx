@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Clock,
   CheckCircle,
+  Archive,
   AlertCircle,
   Loader,
   Pause,
@@ -851,6 +852,25 @@ export default function TaskCenterPage({
       setRefreshToken((value) => value + 1);
     } catch (error) {
       setActionError(`受控执行失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  const completeFromExecution = async (task: Task) => {
+    setActionPending(task.id);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/complete-from-execution`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '执行证据归档失败');
+      setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: 'completed' } : item));
+      setSelectedTask((current) => current?.id === task.id ? { ...current, status: 'completed' } : current);
+      setActionNotice('已用执行日志和执行记录完成任务，证据已归档。');
+      setRefreshToken((value) => value + 1);
+    } catch (error) {
+      setActionError(`执行证据归档失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setActionPending(null);
     }
@@ -1939,6 +1959,19 @@ export default function TaskCenterPage({
                       )
                 )}
                 {!task.read_only && (task.status === 'pending' || task.status === 'in_progress') && (
+                  task.status === 'in_progress'
+                    && task.execution_contract?.controlled_execution
+                    && task.execution_contract.execution_audit?.exit_code === 0 ? (
+                      <button
+                        className="btn btn-sm btn-outline"
+                        aria-label="用执行证据完成任务"
+                        title="使用成功执行记录和日志完成任务"
+                        disabled={actionPending === task.id}
+                        onClick={(e) => { e.stopPropagation(); void completeFromExecution(task); }}
+                      >
+                        <Archive size={14} />
+                      </button>
+                    ) : (
                   <button
                     className="btn btn-sm btn-outline"
                     aria-label="完成任务"
@@ -1947,6 +1980,7 @@ export default function TaskCenterPage({
                   >
                     <CheckCircle size={14} />
                   </button>
+                    )
                 )}
                 <button
                   className="btn btn-sm btn-outline"

@@ -310,6 +310,35 @@ describe('TaskCenterPage', () => {
     expect(fetch).toHaveBeenCalledWith('/api/tasks/failed-verification/execute', { method: 'POST' })
   })
 
+  it('archives successful controlled execution from generated evidence', async () => {
+    const successfulControlledTask = {
+      ...mockTasks[0],
+      id: 'successful-verification',
+      title: '归档成功验证',
+      status: 'in_progress' as const,
+      execution_contract: {
+        controlled_execution: true,
+        command: 'uv run pytest',
+        execution_audit: {
+          exit_code: 0,
+          log_ref: 'runtime/omo/successful-verification.log',
+        },
+      },
+    }
+    mockTaskCenterFetch([successfulControlledTask])
+
+    render(<TaskCenterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '用执行证据完成任务' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '用执行证据完成任务' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/successful-verification/complete-from-execution', { method: 'POST' })
+    })
+  })
+
   it('renders fetched tasks and stats', async () => {
     mockTaskCenterFetch(mockTasks)
 
