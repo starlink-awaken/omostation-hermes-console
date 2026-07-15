@@ -16,6 +16,7 @@ export default function MemoryInjector() {
   const [query, setQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const handleWrite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,9 +55,10 @@ export default function MemoryInjector() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query) return;
+    if (!query.trim()) return;
     
     setSearchLoading(true);
+    setSearchError(null);
     setSearchResults([]);
     
     try {
@@ -76,7 +78,11 @@ export default function MemoryInjector() {
         if (cleanText.startsWith('```json')) {
           cleanText = cleanText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
         }
-        parsed = JSON.parse(cleanText);
+        try {
+          parsed = JSON.parse(cleanText);
+        } catch {
+          parsed = cleanText ? [{ title: '检索结果', chunk_text: cleanText }] : [];
+        }
       }
       const results = Array.isArray(parsed)
         ? parsed
@@ -90,7 +96,7 @@ export default function MemoryInjector() {
       setSearchResults(results);
     } catch (err: any) {
       console.error(err);
-      alert('检索失败: ' + err.message);
+      setSearchError(`检索失败：${err.message || '知识服务暂不可用。'}`);
     } finally {
       setSearchLoading(false);
     }
@@ -171,9 +177,15 @@ export default function MemoryInjector() {
             </button>
           </form>
 
+          {searchError && (
+            <div role="alert" aria-live="assertive" className="antd-card" style={{ padding: '0.75rem 1rem', color: 'var(--antd-error)', border: '1px solid rgba(255,71,87,0.2)' }}>
+              {searchError}
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }} aria-live="polite">
             {searchResults.map((res, i) => (
-              <div key={i} className="stat-card animate-fade-in" style={{ animationDelay: `${i * 0.1}s`, display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid var(--antd-border-color)' }}>
+              <div key={`${res.slug || res.title || 'memory-result'}-${i}`} className="stat-card animate-fade-in" style={{ animationDelay: `${i * 0.1}s`, display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid var(--antd-border-color)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
                   <h3 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--antd-text-primary)' }}>{res.title}</h3>
                   <span style={{ 
