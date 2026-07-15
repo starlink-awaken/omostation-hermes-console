@@ -934,9 +934,37 @@ describe('SystemMapView', () => {
     render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '打开失败任务 kairon 复跑验证' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '打开排查任务 kairon 复跑验证' })).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: '打开失败任务 kairon 复跑验证' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开排查任务 kairon 复跑验证' }))
+
+    expect(onOpenTarget).toHaveBeenCalledWith({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit-triage-kairon-verification-rerun',
+    })
+  })
+
+  it('opens an already queued triage task for approval or execution', async () => {
+    const onOpenTarget = vi.fn()
+    const queuedPayload = JSON.parse(JSON.stringify(systemMapPayload))
+    queuedPayload.project_triage.queues[1].commands[0].task = {
+      task_id: 'cockpit-triage-kairon-verification-rerun',
+      status: 'planned',
+      execution_audit: {},
+    }
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+      if (url === '/api/cockpit/system-map') return okJson(queuedPayload)
+      if (url === SYSTEM_MAP_DRAFT_TASKS_URL) return okJson({ items: [] })
+      return okJson({})
+    })
+
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '打开排查任务 kairon 复跑验证' })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: '打开排查任务 kairon 复跑验证' }))
 
     expect(onOpenTarget).toHaveBeenCalledWith({
       tab: 'TaskCenter',

@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   Compass,
   Copy,
+  Eye,
   ExternalLink,
   Layers,
   Map as MapIcon,
@@ -1144,19 +1145,20 @@ function ProjectTriageQueues({
                   </button>
               {onQueueCommand && (
                 (() => {
-                  const failedTask = command.task?.status === 'failed' && command.task.task_id;
+                  const existingTaskId = command.task?.task_id;
                   const hasTask = Boolean(command.task?.status && command.task.status !== 'not_queued');
+                  const canOpenTask = hasTask && Boolean(existingTaskId) && Boolean(onOpenTarget);
                   return (
                   <button
                     className={`system-map-triage-queue ${statusClass(command.risk)}`}
-                    disabled={!command.enabled || (hasTask && !failedTask)}
-                    aria-label={failedTask ? `打开失败任务 ${command.project_id} ${command.label}` : `承接排查命令 ${command.project_id} ${command.label}`}
-                    title={failedTask ? '上次执行失败，打开任务中心重试' : hasTask ? '该命令已有 OMO 任务' : '登记为 OMO 计划任务，不会直接执行命令'}
-                    onClick={() => failedTask && onOpenTarget
-                      ? onOpenTarget({ tab: 'TaskCenter', taskQuery: failedTask })
+                    disabled={!command.enabled || (hasTask && !canOpenTask)}
+                    aria-label={hasTask ? `打开排查任务 ${command.project_id} ${command.label}` : `承接排查命令 ${command.project_id} ${command.label}`}
+                    title={hasTask ? '打开已承接任务，继续审批、执行或查看证据' : '登记为 OMO 计划任务，不会直接执行命令'}
+                    onClick={() => canOpenTask && onOpenTarget
+                      ? onOpenTarget({ tab: 'TaskCenter', taskQuery: existingTaskId })
                       : onQueueCommand(command)}
                   >
-                    {failedTask ? <RefreshCw size={12} /> : <ClipboardCheck size={12} />}
+                    {hasTask ? <Eye size={12} /> : <ClipboardCheck size={12} />}
                   </button>
                   );
                 })()
