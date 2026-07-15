@@ -7,6 +7,7 @@ interface HealthSummaryProps {
   activeServices: number;
   totalServices: number;
   activeTasks: number;
+  activeTasksSource?: string;
   todayRequests: number;
   todayRequestsChange: number;
   dataQuality?: string;
@@ -19,6 +20,7 @@ export default function HealthSummarySection({
   activeServices,
   totalServices,
   activeTasks,
+  activeTasksSource = 'omo',
   todayRequests,
   todayRequestsChange,
   dataQuality = 'complete',
@@ -85,7 +87,7 @@ export default function HealthSummarySection({
             <h3>活跃任务</h3>
             <p className="stat-value">{activeTasks}</p>
             <div className="stat-trend">
-              <span className="text-muted">进行中</span>
+              <span className="text-muted">{activeTasksSource === 'omo' ? 'OMO active 队列' : '任务队列不可用'}</span>
             </div>
           </div>
         </div>

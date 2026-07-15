@@ -17,6 +17,7 @@ interface HealthSummary {
   active_services: number;
   total_services: number;
   active_tasks: number;
+  active_tasks_source?: 'omo' | 'unavailable' | string;
   today_requests: number;
   today_requests_change: number;
   data_quality?: 'complete' | 'partial' | 'unavailable' | string;
@@ -3150,12 +3151,13 @@ export default function HomePage({
       )}
 
       {/* 系统健康总览 */}
-      <HealthSummarySection
+              <HealthSummarySection
         healthScore={healthSummary.health_score}
         healthScoreChange={healthSummary.health_score_change}
         activeServices={healthSummary.active_services}
         totalServices={healthSummary.total_services}
-        activeTasks={healthSummary.active_tasks}
+                activeTasks={healthSummary.active_tasks}
+                activeTasksSource={healthSummary.active_tasks_source}
         todayRequests={healthSummary.today_requests}
         todayRequestsChange={healthSummary.today_requests_change}
         dataQuality={healthSummary.data_quality}
