@@ -13,6 +13,11 @@ interface LogEntry {
   created_at: string;
 }
 
+interface AgentFilterOption {
+  value: string;
+  label: string;
+}
+
 export function RequestLogPage() {
   const [data, setData] = useState<{ rows: LogEntry[]; total: number; page: number; pages: number }>({
     rows: [], total: 0, page: 1, pages: 1,
@@ -22,8 +27,27 @@ export function RequestLogPage() {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [agentOptions, setAgentOptions] = useState<AgentFilterOption[]>([]);
+  const [agentOptionsError, setAgentOptionsError] = useState<string | null>(null);
 
   useEffect(() => { loadPage(page); }, [page, agentFilter]);
+
+  useEffect(() => {
+    api.agents()
+      .then((payload) => {
+        const agents = Array.isArray(payload) ? payload : payload?.items || payload?.agents || [];
+        setAgentOptions(
+          agents
+            .map((agent: { id?: string; name?: string; client_id?: string; client_name?: string; auth_type?: string }) => ({
+              value: agent.auth_type === 'api_key' ? agent.name || agent.id || '' : agent.id || agent.client_id || '',
+              label: agent.name || agent.client_name || agent.id || agent.client_id || 'unknown',
+            }))
+            .filter((agent: AgentFilterOption) => agent.value),
+        );
+        setAgentOptionsError(null);
+      })
+      .catch((reason) => setAgentOptionsError(reason instanceof Error ? reason.message : 'Failed to load agents'));
+  }, []);
 
   const loadPage = (p: number) => {
     const qs = agentFilter !== 'all' ? `&agent=${encodeURIComponent(agentFilter)}` : '';
@@ -58,7 +82,7 @@ export function RequestLogPage() {
   };
 
   // Collect unique agents for filter (use name for display, token_name for value)
-  const agentMap = new Map<string, string>();
+  const agentMap = new Map<string, string>(agentOptions.map((agent) => [agent.value, agent.label]));
   data.rows.forEach(r => { if (r.token_name) agentMap.set(r.token_name, r.agent_name || r.token_name); });
 
   return (
@@ -71,6 +95,12 @@ export function RequestLogPage() {
           {[...agentMap.entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select>
       </div>
+
+      {agentOptionsError && (
+        <div role="status" style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12 }}>
+          Agent filter list unavailable; showing agents found in the current page.
+        </div>
+      )}
 
       {loading ? (
         <div role="status" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
