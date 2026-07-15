@@ -119,6 +119,32 @@ export default function Wave2DashboardView({
   const [planError, setPlanError] = useState<string | null>(null);
   const [seedLoading, setSeedLoading] = useState(false);
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
+  const [doctorStatus, setDoctorStatus] = useState<{
+    status?: string;
+    available?: boolean;
+    highlights?: {
+      path_acl_status?: string;
+      path_acl_detail?: string;
+      path_acl_warn_streak?: number;
+      path_acl_alert?: boolean;
+      path_acl_alert_threshold?: number;
+      warn?: number;
+      fail?: number;
+    };
+    written_at?: string | null;
+    hint?: string;
+  } | null>(null);
+
+  const loadDoctor = useCallback(async () => {
+    try {
+      const res = await fetch('/api/omo/doctor');
+      if (!res.ok) return;
+      const body = await res.json();
+      setDoctorStatus(body);
+    } catch {
+      // non-fatal for Wave2 panel
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -190,7 +216,8 @@ export default function Wave2DashboardView({
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadDoctor();
+  }, [load, loadDoctor]);
 
   const cards = data?.cards || {};
   const heat = data?.heatmap;
@@ -255,6 +282,57 @@ export default function Wave2DashboardView({
           data-testid="wave2-seed-msg"
         >
           {seedMsg}
+        </div>
+      ) : null}
+
+      {doctorStatus ? (
+        <div
+          data-testid="wave2-doctor-banner"
+          className={`rounded-lg border p-3 text-xs ${
+            doctorStatus.highlights?.path_acl_alert
+              ? 'border-rose-500/40 bg-rose-500/10 text-rose-100'
+              : doctorStatus.highlights?.path_acl_status === 'warn'
+                ? 'border-amber-500/40 bg-amber-500/10 text-amber-100'
+                : doctorStatus.available
+                  ? 'border-white/10 bg-white/5 text-slate-300'
+                  : 'border-slate-600/40 bg-slate-800/40 text-slate-400'
+          }`}
+        >
+          <div className="flex flex-wrap items-center gap-2 font-medium">
+            <span>Doctor / path-acl</span>
+            <span className="rounded bg-black/20 px-1.5 py-0.5">
+              {doctorStatus.highlights?.path_acl_status ?? doctorStatus.status ?? '—'}
+            </span>
+            {typeof doctorStatus.highlights?.path_acl_warn_streak === 'number' ? (
+              <span>
+                streak={doctorStatus.highlights.path_acl_warn_streak}
+                {doctorStatus.highlights.path_acl_alert ? ' · ALERT' : ''}
+              </span>
+            ) : null}
+            {doctorStatus.written_at ? (
+              <span className="text-[10px] opacity-70">@ {doctorStatus.written_at}</span>
+            ) : null}
+          </div>
+          {doctorStatus.highlights?.path_acl_detail ? (
+            <p className="mt-1 opacity-90">{doctorStatus.highlights.path_acl_detail}</p>
+          ) : null}
+          {doctorStatus.highlights?.path_acl_status === 'warn' ||
+          doctorStatus.highlights?.path_acl_alert ? (
+            <p className="mt-1 opacity-80">
+              修复: <code className="text-[10px]">omo acl plan --json</code>
+              {doctorStatus.hint && doctorStatus.hint !== 'ok'
+                ? ` · ${doctorStatus.hint}`
+                : ''}
+            </p>
+          ) : null}
+          {!doctorStatus.available ? (
+            <p className="mt-1 opacity-80">
+              尚无日检快照。运行{' '}
+              <code className="text-[10px]">
+                python bin/gac/omo-doctor-cron.py
+              </code>
+            </p>
+          ) : null}
         </div>
       ) : null}
 

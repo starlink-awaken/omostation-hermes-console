@@ -53,8 +53,27 @@ describe('Wave2DashboardView', () => {
   beforeEach(() => {
     vi.mocked(fetch).mockReset()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
-      if (String(input) === '/api/wave2/dashboard') {
+      const url = String(input)
+      if (url === '/api/wave2/dashboard') {
         return Promise.resolve(okJson(sample))
+      }
+      if (url === '/api/omo/doctor') {
+        return Promise.resolve(
+          okJson({
+            available: true,
+            status: 'warn',
+            written_at: '2026-07-15T09:20:00+00:00',
+            highlights: {
+              path_acl_status: 'warn',
+              path_acl_detail: '1 ACL red flag(s)',
+              path_acl_warn_streak: 2,
+              path_acl_alert: false,
+              warn: 1,
+              fail: 0,
+            },
+            hint: 'omo acl plan --json',
+          }),
+        )
       }
       return Promise.resolve(okJson({}))
     })
@@ -74,6 +93,12 @@ describe('Wave2DashboardView', () => {
     expect(screen.getByTestId('wave2-proposals')).toBeInTheDocument()
     expect(screen.getByText('1 critical pitch(es)')).toBeInTheDocument()
     expect(screen.getByText('declining')).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(screen.getByTestId('wave2-doctor-banner')).toBeInTheDocument()
+      expect(screen.getByTestId('wave2-doctor-banner')).toHaveTextContent('Doctor / path-acl')
+      expect(screen.getByTestId('wave2-doctor-banner')).toHaveTextContent('streak=2')
+    })
 
     fireEvent.click(screen.getByRole('button', { name: '打开 C2G 战略中心' }))
     expect(onNavigate).toHaveBeenCalledWith('C2G')
