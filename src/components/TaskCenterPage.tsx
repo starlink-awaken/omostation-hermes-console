@@ -845,7 +845,7 @@ export default function TaskCenterPage({
     }
   };
 
-  const controlTaskProcess = async (task: Task, action: 'start' | 'stop') => {
+  const controlTaskProcess = async (task: Task, action: 'start' | 'stop' | 'restart') => {
     setActionPending(task.id);
     setActionError(null);
     setActionNotice(null);
@@ -860,13 +860,19 @@ export default function TaskCenterPage({
             execution_contract: {
               ...(current.execution_contract || {}),
               execution_process: process,
-              next_action: action === 'start' ? '检查服务进程状态与日志' : '服务进程已停止，可重新启动',
+              next_action: action === 'start' || action === 'restart' ? '检查服务进程状态与日志' : '服务进程已停止，可重新启动',
             },
           }
         : current;
       setTasks((current) => current.map(update));
       setSelectedTask((current) => current ? update(current) : current);
-      setActionNotice(action === 'start' ? `服务已启动，PID ${process.pid || '未知'}，日志已留证。` : '服务停止请求已记录。');
+      setActionNotice(
+        action === 'start'
+          ? `服务已启动，PID ${process.pid || '未知'}，日志已留证。`
+          : action === 'restart'
+            ? `服务已重启，PID ${process.pid || '未知'}，停止与启动均已留证。`
+            : '服务停止请求已记录。',
+      );
     } catch (error) {
       setActionError(`进程操作失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
@@ -1826,14 +1832,26 @@ export default function TaskCenterPage({
                 {!task.read_only && task.status === 'in_progress' && (
                   task.execution_contract?.controlled_process ? (
                     task.execution_contract.execution_process?.status === 'started' ? (
-                      <button
-                        className="btn btn-sm btn-outline"
-                        aria-label="停止受控服务"
-                        disabled={actionPending === task.id}
-                        onClick={(e) => { e.stopPropagation(); void controlTaskProcess(task, 'stop'); }}
-                      >
-                        <Pause size={14} />
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          aria-label="重启受控服务"
+                          title="先停止并确认退出，再启动新进程"
+                          disabled={actionPending === task.id}
+                          onClick={(e) => { e.stopPropagation(); void controlTaskProcess(task, 'restart'); }}
+                        >
+                          <RefreshCw size={14} />
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          aria-label="停止受控服务"
+                          title="停止受控服务"
+                          disabled={actionPending === task.id}
+                          onClick={(e) => { e.stopPropagation(); void controlTaskProcess(task, 'stop'); }}
+                        >
+                          <Pause size={14} />
+                        </button>
+                      </>
                     ) : (
                       <button
                         className="btn btn-sm btn-outline"
