@@ -42,6 +42,8 @@ const sample = {
       title: '1 critical pitch(es)',
       rationale: 'low score',
       suggested_omo_action: 'create_planned_task',
+      task_query: '[C2G feedback] Review critical',
+      handoff: { tab: 'TaskCenter', taskQuery: '[C2G feedback] Review critical' },
     },
   ],
   source: 'test',
@@ -60,7 +62,8 @@ describe('Wave2DashboardView', () => {
 
   it('renders cards heatmap and proposals from API', async () => {
     const onNavigate = vi.fn()
-    render(<Wave2DashboardView onNavigate={onNavigate} />)
+    const onOpenTarget = vi.fn()
+    render(<Wave2DashboardView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />)
 
     await waitFor(() => {
       expect(screen.getByTestId('wave2-dashboard')).toBeInTheDocument()
@@ -74,6 +77,36 @@ describe('Wave2DashboardView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开 C2G 战略中心' }))
     expect(onNavigate).toHaveBeenCalledWith('C2G')
+
+    fireEvent.click(screen.getByTestId('wave2-open-tasks-prop-critical-pitches'))
+    expect(onOpenTarget).toHaveBeenCalledWith({
+      tab: 'TaskCenter',
+      taskQuery: '[C2G feedback] Review critical',
+    })
+  })
+
+  it('loads dry-run plan actions', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/wave2/dashboard') return Promise.resolve(okJson(sample))
+      if (url === '/api/wave2/proposals/plan') {
+        return Promise.resolve(
+          okJson({
+            task_actions: [
+              { proposal_id: 'prop-critical-pitches', title: 'Review X', would_create: true },
+            ],
+          }),
+        )
+      }
+      return Promise.resolve(okJson({}))
+    })
+    render(<Wave2DashboardView />)
+    await waitFor(() => expect(screen.getByTestId('wave2-load-plan')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('wave2-load-plan'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wave2-plan-actions')).toBeInTheDocument()
+      expect(screen.getByText(/Review X/)).toBeInTheDocument()
+    })
   })
 
   it('shows error when API fails', async () => {

@@ -72,6 +72,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('Home');
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  /** TaskCenter search seed from Wave2 proposal handoff (ADR-0192). */
+  const [taskSearchSeed, setTaskSearchSeed] = useState('');
 
   // 命令面板
   const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette([
@@ -667,6 +669,7 @@ export default function Dashboard() {
             <Wave2DashboardView
               onNavigate={setActiveTab}
               onOpenTarget={(t) => {
+                if (t.taskQuery) setTaskSearchSeed(t.taskQuery);
                 if (t.tab) setActiveTab(t.tab);
               }}
             />
@@ -701,7 +704,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === 'TaskCenter' && (
-            <TaskCenterPage />
+            <TaskCenterPage initialSearchQuery={taskSearchSeed} />
           )}
 
           {activeTab === 'Performance' && (

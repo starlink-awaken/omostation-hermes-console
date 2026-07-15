@@ -26,12 +26,26 @@ interface Task {
 
 type TaskStatus = 'all' | 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
 
-export default function TaskCenterPage() {
+interface TaskCenterPageProps {
+  /** Seed search from Wave2 / other handoffs (ADR-0192). */
+  initialSearchQuery?: string;
+}
+
+export default function TaskCenterPage({
+  initialSearchQuery = '',
+}: TaskCenterPageProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<TaskStatus>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Accept new seeds when navigating from Wave2 panel
+  useEffect(() => {
+    if (initialSearchQuery !== undefined && initialSearchQuery !== '') {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
 
   useEffect(() => {
     const fetchTasks = async () => {

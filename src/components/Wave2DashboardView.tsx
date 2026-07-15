@@ -42,6 +42,16 @@ interface Proposal {
   title?: string;
   rationale?: string;
   suggested_omo_action?: string;
+  task_query?: string;
+  handoff?: { tab?: string; taskQuery?: string; proposal_id?: string };
+  suggested_task?: { title?: string; priority?: string };
+}
+
+interface PlanAction {
+  proposal_id?: string;
+  title?: string;
+  dry_run?: boolean;
+  would_create?: boolean;
 }
 
 interface Wave2Dashboard {
@@ -104,6 +114,9 @@ export default function Wave2DashboardView({
   const [data, setData] = useState<Wave2Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [planActions, setPlanActions] = useState<PlanAction[] | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,6 +135,32 @@ export default function Wave2DashboardView({
       setLoading(false);
     }
   }, []);
+
+  const loadPlan = useCallback(async () => {
+    setPlanLoading(true);
+    setPlanError(null);
+    try {
+      const res = await fetch('/api/wave2/proposals/plan');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      setPlanActions((body.task_actions as PlanAction[]) || []);
+    } catch (e: unknown) {
+      setPlanError(e instanceof Error ? e.message : String(e));
+      setPlanActions(null);
+    } finally {
+      setPlanLoading(false);
+    }
+  }, []);
+
+  const openProposalInTasks = (p: Proposal) => {
+    const q =
+      p.task_query ||
+      p.handoff?.taskQuery ||
+      p.suggested_task?.title ||
+      p.id ||
+      'C2G-FB';
+    onOpenTarget?.({ tab: 'TaskCenter', taskQuery: q });
+  };
 
   useEffect(() => {
     void load();
@@ -313,10 +352,21 @@ export default function Wave2DashboardView({
           </div>
 
           <section className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-200">
-              <ShieldAlert size={14} />
-              治理提案 (Phase C)
-            </h3>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="flex items-center gap-2 text-sm font-medium text-slate-200">
+                <ShieldAlert size={14} />
+                治理提案 (Phase C)
+              </h3>
+              <button
+                type="button"
+                data-testid="wave2-load-plan"
+                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-200 hover:bg-white/10"
+                onClick={() => void loadPlan()}
+                disabled={planLoading}
+              >
+                {planLoading ? '加载 plan…' : '预览 apply plan（dry-run）'}
+              </button>
+            </div>
             {proposals.length === 0 ? (
               <p className="text-sm text-slate-500">无提案 — 数据不足或风险面干净。</p>
             ) : (
@@ -340,6 +390,14 @@ export default function Wave2DashboardView({
                       </span>
                       <span className="text-sm font-medium text-white">{p.title}</span>
                       <span className="text-xs text-slate-500">{p.kind}</span>
+                      <button
+                        type="button"
+                        className="ml-auto rounded border border-white/15 px-2 py-0.5 text-xs text-sky-200 hover:bg-white/10"
+                        onClick={() => openProposalInTasks(p)}
+                        data-testid={`wave2-open-tasks-${p.id || 'x'}`}
+                      >
+                        在任务中心打开
+                      </button>
                     </div>
                     {p.rationale ? (
                       <p className="mt-1 text-xs text-slate-400">{p.rationale}</p>
@@ -347,16 +405,41 @@ export default function Wave2DashboardView({
                     {p.suggested_omo_action ? (
                       <p className="mt-1 text-xs text-slate-500">
                         action: {p.suggested_omo_action}
+                        {p.task_query ? ` · query: ${p.task_query}` : ''}
                       </p>
                     ) : null}
                   </li>
                 ))}
               </ul>
             )}
+            {planError ? (
+              <p className="mt-2 text-xs text-rose-300">plan 失败: {planError}</p>
+            ) : null}
+            {planActions && planActions.length > 0 ? (
+              <div
+                className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 p-3"
+                data-testid="wave2-plan-actions"
+              >
+                <p className="text-xs font-medium text-sky-100">
+                  Dry-run 将创建 {planActions.length} 条 planned task（未执行）
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {planActions.map((a, i) => (
+                    <li key={i} className="text-xs text-slate-300">
+                      · {a.title || a.proposal_id}
+                      {a.would_create ? ' (would_create)' : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <div className="mt-3 flex items-start gap-2 text-xs text-slate-500">
               <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-              提案仅建议；不自动改写 x1/GaC。可用 CLI{' '}
-              <code className="text-slate-400">cockpit wave2 proposals</code> 导出。
+              提案仅建议；不自动改写 x1/GaC。真正落 task 用 CLI{' '}
+              <code className="text-slate-400">
+                c2g.governance_feedback --apply-tasks
+              </code>
+              。
             </div>
           </section>
         </>
