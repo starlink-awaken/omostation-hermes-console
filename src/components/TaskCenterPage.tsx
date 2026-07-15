@@ -89,6 +89,7 @@ interface Task {
       actor?: string;
       recorded_at?: string;
     } | null;
+    controlled_execution?: boolean;
   };
 }
 
@@ -800,6 +801,35 @@ export default function TaskCenterPage({
       setActionNotice('执行回执已写入 OMO，任务历史已更新。');
     } catch (error) {
       setActionError(`执行回执失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  const executeControlledTask = async (task: Task) => {
+    setActionPending(task.id);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/execute`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '受控执行失败');
+      const update = (current: Task) => current.id === task.id
+        ? {
+            ...current,
+            execution_contract: {
+              ...(current.execution_contract || {}),
+              execution_audit: payload,
+              next_action: payload.exit_code === 0 ? '验证通过，可补 closeout 证据' : '验证失败，查看日志并处理失败原因',
+            },
+          }
+        : current;
+      setTasks((current) => current.map(update));
+      setSelectedTask((current) => current ? update(current) : current);
+      setActionNotice(payload.exit_code === 0 ? '受控验证已通过，执行日志已留证。' : '受控验证已结束但未通过，请查看执行日志。');
+      setRefreshToken((value) => value + 1);
+    } catch (error) {
+      setActionError(`受控执行失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setActionPending(null);
     }
@@ -1755,6 +1785,16 @@ export default function TaskCenterPage({
                   </button>
                 )}
                 {!task.read_only && task.status === 'in_progress' && (
+                  task.execution_contract?.controlled_execution && !task.execution_contract.execution_audit ? (
+                    <button
+                      className="btn btn-sm btn-outline"
+                      aria-label="执行受控验证"
+                      disabled={actionPending === task.id}
+                      onClick={(e) => { e.stopPropagation(); void executeControlledTask(task); }}
+                    >
+                      <Send size={14} />
+                    </button>
+                  ) : (
                   !task.execution_contract?.dispatch_id && (
                     <button
                       className="btn btn-sm btn-outline"
@@ -1764,6 +1804,7 @@ export default function TaskCenterPage({
                     >
                       <Send size={14} />
                     </button>
+                  )
                   )
                 )}
                 {!task.read_only && task.status === 'in_progress' && (
