@@ -250,6 +250,9 @@ function mockTaskCenterFetch(items: unknown[], domainApps: unknown[] = [domainAp
     if (url === '/api/domain-apps') {
       return Promise.resolve(okJson({ items: domainApps }))
     }
+    if (url.startsWith('/api/tasks/drafts/') && url.endsWith('/promote')) {
+      return Promise.resolve(okJson({ id: 'cockpit-playbook-daily-health-check', status: 'pending', title: '操作清单：每日 5 分钟体检' }))
+    }
     if (url.endsWith('/pause') || url.endsWith('/resume') || url.endsWith('/cancel')) {
       return Promise.resolve(okJson({}))
     }
@@ -563,6 +566,23 @@ describe('TaskCenterPage', () => {
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('任务草稿内容')
+    })
+  })
+
+  it('promotes a read-only draft into an OMO planned task', async () => {
+    mockTaskCenterFetch([playbookDraft])
+
+    render(<TaskCenterPage />)
+    await waitFor(() => {
+      expect(screen.getAllByText('操作清单：每日 5 分钟体检').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button', { name: '承接为正式计划任务' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '承接为正式计划任务' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/drafts/playbook-daily-health-check/promote', { method: 'POST' })
+      expect(screen.getByText('已承接为正式计划任务：操作清单：每日 5 分钟体检')).toBeInTheDocument()
     })
   })
 

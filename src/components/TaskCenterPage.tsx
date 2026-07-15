@@ -10,6 +10,7 @@ import {
   Eye,
   RefreshCw,
   Copy,
+  ClipboardCheck,
 } from 'lucide-react';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
@@ -527,6 +528,30 @@ export default function TaskCenterPage({
   const copyTaskDraft = async (task: Task) => {
     if (!task.draft?.copy_text) return;
     await navigator.clipboard.writeText(task.draft.copy_text);
+  };
+
+  const promoteTaskDraft = async (task: Task) => {
+    if (!task.read_only || !task.source?.type) return;
+    setActionPending(task.id);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await fetch(`/api/tasks/drafts/${task.id}/promote`, { method: 'POST' });
+      let payload: { detail?: string; title?: string } = {};
+      try {
+        payload = await response.json();
+      } catch {
+        // Keep the control response useful even when the proxy returns no body.
+      }
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '系统拒绝了这次任务承接');
+      setActionNotice(`已承接为正式计划任务：${payload.title || task.title}`);
+      setSelectedTask(null);
+      setRefreshToken((value) => value + 1);
+    } catch (error) {
+      setActionError(`任务承接失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
+    } finally {
+      setActionPending(null);
+    }
   };
 
   const openTaskSource = (task: Task) => {
@@ -1493,6 +1518,17 @@ export default function TaskCenterPage({
                     onClick={(e) => { e.stopPropagation(); void copyTaskDraft(task); }}
                   >
                     <Copy size={14} />
+                  </button>
+                )}
+                {task.read_only && task.source?.type && (
+                  <button
+                    className="btn btn-sm btn-outline"
+                    aria-label="承接为正式计划任务"
+                    title="承接为正式计划任务"
+                    disabled={actionPending === task.id}
+                    onClick={(e) => { e.stopPropagation(); void promoteTaskDraft(task); }}
+                  >
+                    <ClipboardCheck size={14} />
                   </button>
                 )}
                 {task.read_only && resolveTaskTarget(task) && (
