@@ -87,6 +87,7 @@ interface SearchTarget {
     pageId?: string;
     featureDomainId?: string;
     draftId?: string;
+    alertTab?: 'active' | 'history' | 'rules';
   };
 }
 
@@ -169,6 +170,8 @@ interface SearchTaskDraft {
   id: string;
   title?: string;
   description?: string;
+  status?: string;
+  read_only?: boolean;
   priority?: string;
   tags?: string[];
   source?: {
@@ -190,6 +193,16 @@ interface SearchTaskDraft {
       done_when?: string;
     }[];
   };
+}
+
+interface SearchAlert {
+  id: string;
+  level?: string;
+  status?: string;
+  source?: string;
+  message?: string;
+  description?: string;
+  created_at?: string;
 }
 
 interface SearchUsagePath {
@@ -2804,6 +2817,7 @@ export default function Dashboard() {
       pageId: target.context?.pageId || null,
       featureDomainId: target.context?.featureDomainId || null,
       taskQuery: target.context?.taskQuery || '',
+      alertTab: target.context?.alertTab || null,
       draftKey,
     });
     setSearchQuery('');
@@ -2861,10 +2875,11 @@ export default function Dashboard() {
   useEffect(() => {
     const buildDynamicSearch = async () => {
       try {
-        const [systemMapRes, tasksRes, domainAppsRes] = await Promise.all([
+        const [systemMapRes, tasksRes, domainAppsRes, alertsRes] = await Promise.all([
           fetch('/api/cockpit/system-map'),
           fetch('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80'),
           fetch('/api/domain-apps'),
+          fetch('/api/alerts?limit=80'),
         ]);
         const targets: SearchTarget[] = [];
 
@@ -3216,16 +3231,8 @@ export default function Dashboard() {
           const tasks = await tasksRes.json();
           const drafts: SearchTaskDraft[] = tasks.items || [];
           setShellTaskDrafts(drafts);
-          drafts
-            .filter((task) =>
-              task.source?.type === 'system_map_project_portfolio'
-              || task.source?.type === 'system_map_verification_ready'
-              || task.source?.type === 'system_map_playbook'
-              || task.source?.type === 'system_map_domain_app'
-              || task.source?.type === 'system_map_capability_gap'
-              || task.source?.type === 'system_map_page_maturity'
-            )
-            .forEach((task) => {
+          drafts.forEach((task) => {
+              const isDraft = task.read_only === true || Boolean(task.source?.type);
               const group = task.source?.type === 'system_map_project_portfolio'
                 ? '项目组合草稿'
                 : task.source?.type === 'system_map_verification_ready'
@@ -3235,21 +3242,23 @@ export default function Dashboard() {
                   : task.source?.type === 'system_map_capability_gap'
                     ? '能力缺口草稿'
                     : task.source?.type === 'system_map_page_maturity'
-                      ? '页面能力草稿'
-                      : '操作清单草稿';
+                    ? '页面能力草稿'
+                      : isDraft ? '操作清单草稿' : `任务 · ${task.status || 'pending'}`;
               targets.push({
-                id: `task-draft-${task.id}`,
+                id: `${isDraft ? 'task-draft' : 'task'}-${task.id}`,
                 tab: 'TaskCenter',
-                label: `任务草稿：${task.title || task.id}`,
+                label: `${isDraft ? '任务草稿' : '任务'}：${task.title || task.id}`,
                 group,
                 context: {
-                  taskQuery: task.source?.id || task.title || task.id,
-                  draftId: task.id,
+                  taskQuery: isDraft ? (task.source?.id || task.title || task.id) : task.id,
+                  ...(isDraft ? { draftId: task.id } : {}),
                 },
                 keywords: [
                   task.id,
                   task.title || '',
                   task.description || '',
+                  task.status || '',
+                  task.priority || '',
                   task.source?.id || '',
                   task.source?.title || '',
                   task.draft?.kind || '',
@@ -3257,8 +3266,7 @@ export default function Dashboard() {
                   ...(task.tags || []),
                   ...(task.source?.type === 'system_map_capability_gap' ? ['gap', '缺口', '能力缺口', '能力不足'] : []),
                   ...(task.source?.type === 'system_map_page_maturity' ? ['page', '页面', '页面能力', '成熟度', '能力不足'] : []),
-                  'draft',
-                  '草稿',
+                  ...(isDraft ? ['draft', '草稿'] : ['active', '正式任务', '受治理']),
                   '任务',
                 ],
               });
@@ -3331,6 +3339,32 @@ export default function Dashboard() {
         }
         else {
           setShellDomainApps(null);
+        }
+
+        if (alertsRes.ok) {
+          const alertsPayload = await alertsRes.json();
+          const alerts: SearchAlert[] = alertsPayload.items || [];
+          alerts.forEach((alert) => {
+            const status = alert.status || 'active';
+            targets.push({
+              id: `alert-${alert.id}`,
+              tab: 'AlertCenter',
+              label: `告警：${alert.message || alert.id}`,
+              group: `告警 · ${alert.level || 'unknown'} · ${status}`,
+              context: { taskQuery: alert.id, alertTab: status === 'active' ? 'active' : 'history' },
+              keywords: [
+                alert.id,
+                alert.level || '',
+                status,
+                alert.source || '',
+                alert.message || '',
+                alert.description || '',
+                'alert',
+                '告警',
+                '异常',
+              ],
+            });
+          });
         }
 
         setDynamicSearchTargets(targets);
