@@ -68,6 +68,16 @@ describe('KnowledgeHubView', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开知识相关对象 访问日志' }))
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'LogViewer', taskQuery: 'knowledge' })
 
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'knowledge-task-1', title: '知识任务' }),
+    } as Response)
+    fireEvent.click(screen.getByRole('button', { name: '登记知识治理任务 补齐知识承接：访问日志' }))
+    await waitFor(() => {
+      expect(screen.getByText('已登记知识治理任务：知识任务')).toBeInTheDocument()
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'knowledge-task-1' })
+    })
+
     fireEvent.click(screen.getByRole('button', { name: '复制知识补位任务 补齐知识承接：访问日志' }))
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('补齐知识承接：访问日志'))

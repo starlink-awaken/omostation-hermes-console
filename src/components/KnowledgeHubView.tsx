@@ -103,6 +103,8 @@ export default function KnowledgeHubView({
   const inferredSubTab = useMemo(() => inferKnowledgeSubTab(focusTaskQuery), [focusTaskQuery]);
   const [knowledgeSubTab, setKnowledgeSubTab] = useState<KnowledgeSubTab>(inferredSubTab);
   const [knowledgeDraftNotice, setKnowledgeDraftNotice] = useState<string | null>(null);
+  const [knowledgeTaskPending, setKnowledgeTaskPending] = useState(false);
+  const [knowledgeTaskError, setKnowledgeTaskError] = useState<string | null>(null);
 
   useEffect(() => {
     setKnowledgeSubTab(inferredSubTab);
@@ -256,6 +258,33 @@ export default function KnowledgeHubView({
     };
   }, [activeKnowledgeSurface, focusTaskQuery]);
 
+  const createKnowledgeTask = async () => {
+    setKnowledgeTaskPending(true);
+    setKnowledgeTaskError(null);
+    setKnowledgeDraftNotice(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: knowledgeTaskDraft.title,
+          description: knowledgeTaskDraft.description,
+          priority: 'medium',
+          risk_level: 'L1',
+          evidence_required: ['知识上下文或检索证据', '关联对象验证结果', '后续执行结果', 'task closeout'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '知识任务登记失败');
+      setKnowledgeDraftNotice(`已登记知识治理任务：${payload.title || knowledgeTaskDraft.title}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+    } catch (taskError) {
+      setKnowledgeTaskError(taskError instanceof Error ? taskError.message : '知识任务登记失败');
+    } finally {
+      setKnowledgeTaskPending(false);
+    }
+  };
+
   return (
     <div className="gbrain-wrapper animate-fade-in">
       <KnowledgeExecutionWorkbench currentPage="Knowledge" onNavigate={onNavigate} />
@@ -406,6 +435,16 @@ export default function KnowledgeHubView({
             <button
               type="button"
               className="antd-btn"
+              disabled={knowledgeTaskPending}
+              aria-label={`登记知识治理任务 ${knowledgeTaskDraft.title}`}
+              onClick={() => { void createKnowledgeTask(); }}
+            >
+              <ShieldAlert size={14} />
+              <span>{knowledgeTaskPending ? '登记中...' : '登记正式任务'}</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
               aria-label={`复制知识补位任务 ${knowledgeTaskDraft.title}`}
               onClick={async () => {
                 await copyText(knowledgeTaskDraft.copyText);
@@ -437,6 +476,9 @@ export default function KnowledgeHubView({
         </article>
         {knowledgeDraftNotice && (
           <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{knowledgeDraftNotice}</p>
+        )}
+        {knowledgeTaskError && (
+          <p role="alert" className="text-danger" style={{ margin: 0, fontSize: 12 }}>{knowledgeTaskError}</p>
         )}
       </section>
 

@@ -151,6 +151,8 @@ export default function ProtocolWorkbenchView({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [protocolDraftNotice, setProtocolDraftNotice] = useState<string | null>(null);
+  const [protocolTaskPending, setProtocolTaskPending] = useState(false);
+  const [protocolTaskError, setProtocolTaskError] = useState<string | null>(null);
 
   const load = async () => {
     const data = await fetchJson<ProtocolPayload>('/api/cockpit/protocol-hub', EMPTY_PAYLOAD);
@@ -438,6 +440,33 @@ export default function ProtocolWorkbenchView({
     };
   }, [activeProtocolSurface, focusTaskQuery]);
 
+  const createProtocolTask = async () => {
+    setProtocolTaskPending(true);
+    setProtocolTaskError(null);
+    setProtocolDraftNotice(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: protocolTaskDraft.title,
+          description: protocolTaskDraft.description,
+          priority: 'high',
+          risk_level: 'L1',
+          evidence_required: ['协议定义或元模型快照', '工作流运行证据', '桥接或治理处理结果', 'task closeout'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '协议任务登记失败');
+      setProtocolDraftNotice(`已登记协议治理任务：${payload.title || protocolTaskDraft.title}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+    } catch (taskError) {
+      setProtocolTaskError(taskError instanceof Error ? taskError.message : '协议任务登记失败');
+    } finally {
+      setProtocolTaskPending(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="loading-state">
@@ -702,6 +731,16 @@ export default function ProtocolWorkbenchView({
             <button
               type="button"
               className="antd-btn"
+              disabled={protocolTaskPending}
+              aria-label={`登记协议治理任务 ${protocolTaskDraft.title}`}
+              onClick={() => { void createProtocolTask(); }}
+            >
+              <ShieldAlert size={14} />
+              <span>{protocolTaskPending ? '登记中...' : '登记正式任务'}</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
               aria-label={`复制协议补位任务 ${protocolTaskDraft.title}`}
               onClick={async () => {
                 await copyText(protocolTaskDraft.copyText);
@@ -733,6 +772,9 @@ export default function ProtocolWorkbenchView({
         </article>
         {protocolDraftNotice && (
           <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{protocolDraftNotice}</p>
+        )}
+        {protocolTaskError && (
+          <p role="alert" className="text-danger" style={{ margin: 0, fontSize: 12 }}>{protocolTaskError}</p>
         )}
       </section>
 

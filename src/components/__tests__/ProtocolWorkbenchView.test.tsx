@@ -181,6 +181,13 @@ describe('ProtocolWorkbenchView', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开协议相关对象 治理收口' }))
     expect(onOpenTarget).toHaveBeenLastCalledWith({ tab: 'SystemMap', taskQuery: 'audit' })
 
+    vi.mocked(fetch).mockResolvedValueOnce(okJson({ id: 'protocol-task-1', title: '协议任务' }))
+    fireEvent.click(screen.getByRole('button', { name: '登记协议治理任务 补齐协议承接：治理收口' }))
+    await waitFor(() => {
+      expect(screen.getByText('已登记协议治理任务：协议任务')).toBeInTheDocument()
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'protocol-task-1' })
+    })
+
     fireEvent.click(screen.getByRole('button', { name: '复制协议补位任务 补齐协议承接：治理收口' }))
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalled()
