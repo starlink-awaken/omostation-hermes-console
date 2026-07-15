@@ -1087,9 +1087,11 @@ function ProjectActionList({
 function ProjectTriageQueues({
   queues,
   onQueueCommand,
+  onOpenTarget,
 }: {
   queues: ProjectTriageQueue[];
   onQueueCommand?: (command: ProjectAction) => void;
+  onOpenTarget?: (target: { tab: string; taskQuery?: string }) => void;
 }) {
   const taskStatusLabel = (status?: string) => {
     switch (status) {
@@ -1140,17 +1142,25 @@ function ProjectTriageQueues({
                       <code>{command.value}</code>
                     </span>
                   </button>
-                  {onQueueCommand && (
-                    <button
-                      className={`system-map-triage-queue ${statusClass(command.risk)}`}
-                      disabled={!command.enabled || Boolean(command.task?.status && command.task.status !== 'not_queued')}
-                      aria-label={`承接排查命令 ${command.project_id} ${command.label}`}
-                      title={command.task?.status && command.task.status !== 'not_queued' ? '该命令已有 OMO 任务' : '登记为 OMO 计划任务，不会直接执行命令'}
-                      onClick={() => onQueueCommand(command)}
-                    >
-                      <ClipboardCheck size={12} />
-                    </button>
-                  )}
+              {onQueueCommand && (
+                (() => {
+                  const failedTask = command.task?.status === 'failed' && command.task.task_id;
+                  const hasTask = Boolean(command.task?.status && command.task.status !== 'not_queued');
+                  return (
+                  <button
+                    className={`system-map-triage-queue ${statusClass(command.risk)}`}
+                    disabled={!command.enabled || (hasTask && !failedTask)}
+                    aria-label={failedTask ? `打开失败任务 ${command.project_id} ${command.label}` : `承接排查命令 ${command.project_id} ${command.label}`}
+                    title={failedTask ? '上次执行失败，打开任务中心重试' : hasTask ? '该命令已有 OMO 任务' : '登记为 OMO 计划任务，不会直接执行命令'}
+                    onClick={() => failedTask && onOpenTarget
+                      ? onOpenTarget({ tab: 'TaskCenter', taskQuery: failedTask })
+                      : onQueueCommand(command)}
+                  >
+                    {failedTask ? <RefreshCw size={12} /> : <ClipboardCheck size={12} />}
+                  </button>
+                  );
+                })()
+              )}
                 </div>
               ))
             ) : (
@@ -4375,7 +4385,11 @@ export default function SystemMapView({
             </span>
           </div>
         </div>
-        <ProjectTriageQueues queues={filteredTriageQueues} onQueueCommand={(command) => void queueProjectTriageCommand(command)} />
+        <ProjectTriageQueues
+          queues={filteredTriageQueues}
+          onQueueCommand={(command) => void queueProjectTriageCommand(command)}
+          onOpenTarget={onOpenTarget}
+        />
       </section>
 
       <section className="services-section system-map-section">

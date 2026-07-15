@@ -916,6 +916,34 @@ describe('SystemMapView', () => {
     })
   })
 
+  it('opens the task center to retry a failed triage task', async () => {
+    const onOpenTarget = vi.fn()
+    const failedPayload = JSON.parse(JSON.stringify(systemMapPayload))
+    failedPayload.project_triage.queues[1].commands[0].task = {
+      task_id: 'cockpit-triage-kairon-verification-rerun',
+      status: 'failed',
+      execution_audit: { exit_code: 124, timed_out: true },
+    }
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+      if (url === '/api/cockpit/system-map') return okJson(failedPayload)
+      if (url === SYSTEM_MAP_DRAFT_TASKS_URL) return okJson({ items: [] })
+      return okJson({})
+    })
+
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '打开失败任务 kairon 复跑验证' })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: '打开失败任务 kairon 复跑验证' }))
+
+    expect(onOpenTarget).toHaveBeenCalledWith({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit-triage-kairon-verification-rerun',
+    })
+  })
+
   it('batches verification triage into OMO tasks without executing commands', async () => {
     const onOpenTarget = vi.fn()
     render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
