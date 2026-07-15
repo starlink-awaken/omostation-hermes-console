@@ -3310,28 +3310,28 @@ export default function SystemMapView({
           minColumnWidth={180}
           items={[
             {
-              label: '优先项目',
+              id: 'entry-priority-projects',
+              title: '优先项目',
               value: `${projectEntryRows.length}`,
-              tone: 'default',
-              helper: '当前项目组合里最影响日用的对象。',
+              description: '当前项目组合里最影响日用的对象。',
             },
             {
-              label: '已挂入口',
+              id: 'entry-mapped-projects',
+              title: '已挂入口',
               value: `${projectEntrySummary.mapped}`,
-              tone: projectEntrySummary.mapped === projectEntryRows.length ? 'positive' : 'warning',
-              helper: '已登记 Cockpit 页面入口的优先项目数。',
+              description: '已登记 Cockpit 页面入口的优先项目数。',
             },
             {
-              label: '待补草稿',
+              id: 'entry-draft-projects',
+              title: '待补草稿',
               value: `${projectEntrySummary.drafts}`,
-              tone: projectEntrySummary.drafts > 0 ? 'warning' : 'positive',
-              helper: '已经存在任务草稿承接的优先项目数。',
+              description: '已经存在任务草稿承接的优先项目数。',
             },
             {
-              label: '阻塞项目',
+              id: 'entry-blocked-projects',
+              title: '阻塞项目',
               value: `${projectEntrySummary.blocked}`,
-              tone: projectEntrySummary.blocked > 0 ? 'danger' : 'positive',
-              helper: '当前仍处于 blocked 的优先项目数。',
+              description: '当前仍处于 blocked 的优先项目数。',
             },
           ]}
         />
