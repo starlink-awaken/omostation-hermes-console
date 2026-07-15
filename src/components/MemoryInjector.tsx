@@ -37,7 +37,10 @@ export default function MemoryInjector() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || response.statusText);
       
-      setWriteResult({ status: 'success', msg: `知识注入成功，已落盘至 bos://memory。` });
+      setWriteResult({
+        status: 'success',
+        msg: data.knowledge_ref ? `知识注入成功：${data.knowledge_ref}` : '知识注入成功，已落盘至 bos://memory。',
+      });
       setSlug('');
       setTitle('');
       setContent('');
@@ -66,18 +69,25 @@ export default function MemoryInjector() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || response.statusText);
       
-      // MCP returns tools result which contains content array
-      // For `search` tool, we expect a JSON string in the first text block
       const resultText = data.result?.content?.[0]?.text;
-      if (resultText) {
-        let cleanText = resultText.trim();
+      let parsed = resultText;
+      if (typeof parsed === 'string') {
+        let cleanText = parsed.trim();
         if (cleanText.startsWith('```json')) {
           cleanText = cleanText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
         }
-        setSearchResults(JSON.parse(cleanText));
-      } else {
-        setSearchResults([]);
+        parsed = JSON.parse(cleanText);
       }
+      const results = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.results)
+          ? parsed.results
+          : Array.isArray(data.result?.results)
+            ? data.result.results
+            : Array.isArray(data.results)
+              ? data.results
+              : [];
+      setSearchResults(results);
     } catch (err: any) {
       console.error(err);
       alert('检索失败: ' + err.message);
