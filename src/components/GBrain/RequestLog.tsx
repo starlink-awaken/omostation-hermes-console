@@ -20,12 +20,19 @@ export function RequestLogPage() {
   const [page, setPage] = useState(1);
   const [agentFilter, setAgentFilter] = useState('all');
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { loadPage(page); }, [page, agentFilter]);
 
   const loadPage = (p: number) => {
     const qs = agentFilter !== 'all' ? `&agent=${encodeURIComponent(agentFilter)}` : '';
-    api.requests(p, qs).then(setData).catch(() => {});
+    setLoading(true);
+    setError(null);
+    api.requests(p, qs)
+      .then(setData)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Failed to load request log'))
+      .finally(() => setLoading(false));
   };
 
   const timeAgo = (ts: string) => {
@@ -65,7 +72,16 @@ export function RequestLogPage() {
         </select>
       </div>
 
-      {data.rows.length === 0 ? (
+      {loading ? (
+        <div role="status" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+          Loading request log...
+        </div>
+      ) : error ? (
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '12px 16px', color: 'var(--text-danger, #ff4757)', border: '1px solid rgba(255,71,87,0.2)', borderRadius: 8 }}>
+          <span>Unable to load request log: {error}</span>
+          <button className="btn btn-secondary" onClick={() => loadPage(page)}>Retry</button>
+        </div>
+      ) : data.rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
           No requests yet.
         </div>
