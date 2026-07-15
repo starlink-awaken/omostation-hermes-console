@@ -29,6 +29,7 @@ export default function SandboxTerminal({
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [isQueueingResult, setIsQueueingResult] = useState(false);
 
   const handleExecute = async () => {
     setIsRunning(true);
@@ -60,6 +61,34 @@ export default function SandboxTerminal({
       setOutput(`网络异常: ${err.message}`);
     } finally {
       setIsRunning(false);
+    }
+  };
+
+  const queueSandboxResult = async () => {
+    if (!code.trim() || !output.trim()) {
+      setDraftNotice('请先完成一次沙箱实验，再登记结果。');
+      return;
+    }
+    setIsQueueingResult(true);
+    setDraftNotice(null);
+    try {
+      const response = await fetch('/api/cockpit/sandbox/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          output,
+          title: `沙箱实验结果：${code.split('\n')[0]?.trim() || '未命名实验'}`,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || data.error || '结果登记失败');
+      setDraftNotice(data.created === false ? '这份沙箱结果已经登记过。' : '沙箱结果已登记到任务中心。');
+      if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
+    } catch (error: any) {
+      setDraftNotice(`沙箱结果登记失败：${error.message || '请稍后重试。'}`);
+    } finally {
+      setIsQueueingResult(false);
     }
   };
 
@@ -314,6 +343,16 @@ export default function SandboxTerminal({
             >
               <ShieldAlert size={14} />
               <span>送进任务中心</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn antd-btn-primary"
+              aria-label="登记当前沙箱结果"
+              disabled={isQueueingResult || !output}
+              onClick={() => void queueSandboxResult()}
+            >
+              <ShieldAlert size={14} />
+              <span>{isQueueingResult ? '登记中...' : '登记实验结果'}</span>
             </button>
           </div>
         </article>

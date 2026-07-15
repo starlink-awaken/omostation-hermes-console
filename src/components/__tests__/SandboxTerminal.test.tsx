@@ -20,9 +20,13 @@ describe('SandboxTerminal', () => {
   it('builds a sandbox workbench and routes follow-up pages', async () => {
     const onNavigate = vi.fn()
 
-    vi.mocked(fetch).mockResolvedValue({
+    vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ success: true, stdout: 'hello sandbox', output: { ok: true }, duration_ms: 12.3 }),
+    } as Response)
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ created: true, id: 'sandbox-result-1' }),
     } as Response)
 
     render(<SandboxTerminal onNavigate={onNavigate} />)
@@ -36,6 +40,12 @@ describe('SandboxTerminal', () => {
     await waitFor(() => {
       expect(screen.getByRole('log')).toHaveTextContent('hello sandbox')
     })
+
+    fireEvent.click(screen.getByRole('button', { name: '登记当前沙箱结果' }))
+    await waitFor(() => {
+      expect(screen.getByText('沙箱结果已登记到任务中心。')).toBeInTheDocument()
+    })
+    expect(fetch).toHaveBeenLastCalledWith('/api/cockpit/sandbox/queue', expect.objectContaining({ method: 'POST' }))
 
     fireEvent.click(screen.getByRole('button', { name: '打开沙箱承接到日志页' }))
     expect(onNavigate).toHaveBeenCalledWith('LogViewer')
