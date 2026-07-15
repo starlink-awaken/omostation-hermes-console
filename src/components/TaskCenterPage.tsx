@@ -91,6 +91,7 @@ interface Task {
       recorded_at?: string;
     } | null;
     controlled_execution?: boolean;
+    timeout_seconds?: number | null;
     controlled_process?: boolean;
     execution_process?: {
       status?: string;
@@ -2118,6 +2119,12 @@ export default function TaskCenterPage({
                     <span>
                       <strong>命令</strong>
                       <small>{selectedTask.execution_contract.command}</small>
+                    </span>
+                  )}
+                  {typeof selectedTask.execution_contract.timeout_seconds === 'number' && (
+                    <span>
+                      <strong>超时窗口</strong>
+                      <small>{selectedTask.execution_contract.timeout_seconds} 秒</small>
                     </span>
                   )}
                   {selectedTask.execution_contract.executes === false && selectedTask.execution_contract.command && (
