@@ -118,43 +118,33 @@ export default function ComputeView({
   const toggleCircuitBreaker = async () => {
     const nextVal = !circuitBroken;
     setControlMessage(null);
-    setCircuitBroken(nextVal);
     try {
-      const res = await fetch('/api/omos/circuit-break', {
+      const res = await fetch('/api/cockpit/compute/control/queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ broken: nextVal })
+        body: JSON.stringify({ operation: 'circuit_break', broken: nextVal })
       });
-      if (!res.ok) throw new Error('API failed');
       const result = await res.json();
-      if (result.status !== 'ok') {
-        setCircuitBroken(!nextVal);
-        setControlMessage({ tone: 'error', text: '修改熔断状态失败：' + (result.error || '后端未确认') });
-      } else {
-        setControlMessage({ tone: 'success', text: nextVal ? '已启用熔断' : '已恢复云端路由' });
-      }
+      if (!res.ok) throw new Error(result.detail || result.error || '登记失败');
+      setControlMessage({ tone: 'success', text: nextVal ? '熔断变更已登记，等待人工审批' : '恢复云端路由已登记，等待人工审批' });
+      onNavigate?.('TaskCenter');
     } catch (err: any) {
-      setCircuitBroken(!nextVal);
       setControlMessage({ tone: 'error', text: '修改熔断状态发生异常：' + err.message });
     }
   };
 
   const updateBudget = async (val: number) => {
     setControlMessage(null);
-    setDailyBudget(val);
     try {
-      const res = await fetch('/api/omos/budget', {
+      const res = await fetch('/api/cockpit/compute/control/queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ budget: val })
+        body: JSON.stringify({ operation: 'budget', budget: val })
       });
-      if (!res.ok) throw new Error('API failed');
       const result = await res.json();
-      if (result.status !== 'ok') {
-        setControlMessage({ tone: 'error', text: '修改预算失败：' + (result.error || '后端未确认') });
-      } else {
-        setControlMessage({ tone: 'success', text: `每日预算已更新为 $${val}` });
-      }
+      if (!res.ok) throw new Error(result.detail || result.error || '登记失败');
+      setControlMessage({ tone: 'success', text: `每日预算 $${val} 变更已登记，等待人工审批` });
+      onNavigate?.('TaskCenter');
     } catch (err: any) {
       setControlMessage({ tone: 'error', text: '修改预算异常：' + err.message });
     }
