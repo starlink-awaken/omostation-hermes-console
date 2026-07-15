@@ -1564,6 +1564,30 @@ export default function SystemMapView({
     }
   };
 
+  const queueCoverageDrafts = async () => {
+    setActionNotice('');
+    setActionError('');
+    setBulkTriagePending(true);
+    try {
+      const response = await fetch('/api/cockpit/coverage/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: 'all', limit: 40 }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '全站缺口承接失败');
+      const summary = payload.summary || {};
+      setActionNotice(`已批量承接全站缺口：${summary.queued || 0} 条，跳过 ${summary.skipped || 0} 条，失败 ${summary.errors || 0} 条。`);
+      if (onOpenTarget && (summary.queued || 0) > 0) {
+        onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-' });
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '全站缺口承接失败');
+    } finally {
+      setBulkTriagePending(false);
+    }
+  };
+
   useEffect(() => {
     load();
   }, []);
@@ -4286,6 +4310,16 @@ export default function SystemMapView({
             <p className="text-muted">把运行探针、验证证据和项目清单缺口转换成可复制命令，仍由人确认后执行。</p>
           </div>
           <div className="system-map-section-actions">
+            <button
+              className="antd-btn antd-btn-primary"
+              aria-label="批量承接全站缺口"
+              disabled={bulkTriagePending}
+              onClick={() => void queueCoverageDrafts()}
+              title="把项目组合、领域应用、能力缺口和页面成熟度草稿统一登记为 OMO 计划任务"
+            >
+              <Layers size={13} />
+              <span>{bulkTriagePending ? '正在承接' : '承接全站缺口'}</span>
+            </button>
             <button
               className="antd-btn antd-btn-primary"
               aria-label="批量承接验证缺口"

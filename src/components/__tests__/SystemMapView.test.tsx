@@ -835,6 +835,12 @@ describe('SystemMapView', () => {
           executes: false,
         })
       }
+      if (url === '/api/cockpit/coverage/queue') {
+        return okJson({
+          summary: { queued: 4, skipped: 2, errors: 0 },
+          executes: false,
+        })
+      }
       throw new Error(`Unexpected fetch: ${url}`)
     })
   })
@@ -953,6 +959,29 @@ describe('SystemMapView', () => {
       )
       expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' })
       expect(screen.getByRole('status')).toHaveTextContent('已批量承接运行探针：2 条')
+    })
+  })
+
+  it('batches all coverage drafts into OMO tasks without executing them', async () => {
+    const onOpenTarget = vi.fn()
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '批量承接全站缺口' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '批量承接全站缺口' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/cockpit/coverage/queue',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ category: 'all', limit: 40 }),
+        }),
+      )
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-' })
+      expect(screen.getByRole('status')).toHaveTextContent('已批量承接全站缺口：4 条')
     })
   })
 
