@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Route,
   Search,
+  Server,
   ShieldAlert,
   X,
 } from 'lucide-react';
@@ -1534,6 +1535,30 @@ export default function SystemMapView({
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '验证缺口承接失败');
+    } finally {
+      setBulkTriagePending(false);
+    }
+  };
+
+  const queueRuntimeTriage = async () => {
+    setActionNotice('');
+    setActionError('');
+    setBulkTriagePending(true);
+    try {
+      const response = await fetch('/api/cockpit/triage/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: 'runtime' }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '运行探针承接失败');
+      const summary = payload.summary || {};
+      setActionNotice(`已批量承接运行探针：${summary.queued || 0} 条，跳过 ${summary.skipped || 0} 条，失败 ${summary.errors || 0} 条。`);
+      if (onOpenTarget && (summary.queued || 0) > 0) {
+        onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '运行探针承接失败');
     } finally {
       setBulkTriagePending(false);
     }
@@ -4270,6 +4295,16 @@ export default function SystemMapView({
             >
               <ClipboardCheck size={13} />
               <span>{bulkTriagePending ? '正在承接' : '承接验证缺口'}</span>
+            </button>
+            <button
+              className="antd-btn"
+              aria-label="批量承接运行探针"
+              disabled={bulkTriagePending || systemMap.project_triage.summary.runtime_commands === 0}
+              onClick={() => void queueRuntimeTriage()}
+              title="优先登记端口检查；无端口时登记端口注册排查，不会直接执行"
+            >
+              <Server size={13} />
+              <span>{bulkTriagePending ? '正在承接' : '承接运行探针'}</span>
             </button>
             <span className="status-badge degraded">
               <ClipboardCheck size={13} />

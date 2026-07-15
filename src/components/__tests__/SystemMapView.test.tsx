@@ -394,7 +394,7 @@ const systemMapPayload = {
     ],
     summary: {
       total_commands: 1,
-      runtime_commands: 0,
+      runtime_commands: 1,
       verification_commands: 1,
       coverage_commands: 0,
     },
@@ -930,6 +930,29 @@ describe('SystemMapView', () => {
       )
       expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' })
       expect(screen.getByRole('status')).toHaveTextContent('已批量承接验证缺口：2 条')
+    })
+  })
+
+  it('batches runtime probe triage without executing commands', async () => {
+    const onOpenTarget = vi.fn()
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '批量承接运行探针' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '批量承接运行探针' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/cockpit/triage/queue',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ category: 'runtime' }),
+        }),
+      )
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' })
+      expect(screen.getByRole('status')).toHaveTextContent('已批量承接运行探针：2 条')
     })
   })
 
