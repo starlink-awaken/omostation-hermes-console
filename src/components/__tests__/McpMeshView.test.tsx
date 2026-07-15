@@ -71,6 +71,36 @@ describe('McpMeshView', () => {
     expect(onNavigate).not.toHaveBeenCalled()
   })
 
+  it('opens the acceptance task after registering a mesh instance', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/bos/services') return Promise.resolve(okJson({ services: [] }))
+      if (url === '/api/bos/health') return Promise.resolve(okJson({ status: 'ok', total_routes: 0, domains: {}, metrics: {} }))
+      if (url === '/api/instance') return Promise.resolve(okJson({
+        status: 'ok',
+        msg: '实例 mesh-router 注册成功',
+        task_id: 'cockpit-mcp-registration-mesh-router',
+        task_created: true,
+      }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<McpMeshView onOpenTarget={onOpenTarget} />)
+    const serviceInput = await screen.findByPlaceholderText('例如: family-hub')
+    const endpointInput = await screen.findByPlaceholderText('例如: http://localhost:8000/mcp')
+    fireEvent.change(serviceInput, { target: { value: 'mesh-router' } })
+    fireEvent.change(endpointInput, { target: { value: 'http://localhost:8000/mcp' } })
+    fireEvent.click(screen.getByRole('button', { name: '提交实例注册' }))
+
+    const taskButton = await screen.findByRole('button', { name: '打开 MCP 验收任务 cockpit-mcp-registration-mesh-router' })
+    fireEvent.click(taskButton)
+    expect(onOpenTarget).toHaveBeenCalledWith({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit-mcp-registration-mesh-router',
+    })
+  })
+
   it('surfaces mesh closure routing when focus hits missing domain handoff', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()

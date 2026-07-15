@@ -63,6 +63,8 @@ export default function McpMeshView({
   const [registerName, setRegisterName] = useState('');
   const [registerEndpoint, setRegisterEndpoint] = useState('');
   const [registerStatus, setRegisterStatus] = useState<string | null>(null);
+  const [registerTaskId, setRegisterTaskId] = useState<string | null>(null);
+  const [registerTaskCreated, setRegisterTaskCreated] = useState<boolean | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
   // URI 解析器
@@ -121,6 +123,8 @@ export default function McpMeshView({
     e.preventDefault();
     if (!registerName || !registerEndpoint) return;
     setRegisterStatus(null);
+    setRegisterTaskId(null);
+    setRegisterTaskCreated(null);
     setRegisterError(null);
     const validationError = validateInstanceRegistration(registerName, registerEndpoint);
     if (validationError) {
@@ -140,7 +144,13 @@ export default function McpMeshView({
 
       const data = await res.json();
       if (res.ok && data.status === 'ok') {
-        setRegisterStatus(data.msg || '注册成功！');
+        setRegisterTaskId(data.task_id || null);
+        setRegisterTaskCreated(data.task_created ?? null);
+        setRegisterStatus(
+          data.task_created === false
+            ? `${data.msg || '注册成功！'} 但验收任务创建失败，请稍后重试。`
+            : (data.msg || '注册成功！'),
+        );
         setRegisterName('');
         setRegisterEndpoint('');
         fetchData(); // 刷新网格
@@ -816,8 +826,19 @@ export default function McpMeshView({
             </button>
 
             {registerStatus && (
-              <div style={{ color: 'var(--antd-success)', fontSize: '12px', marginTop: '6px' }}>
+              <div style={{ color: registerTaskCreated === false ? 'var(--antd-warning)' : 'var(--antd-success)', fontSize: '12px', marginTop: '6px' }}>
                 ✓ {registerStatus}
+                {registerTaskId && registerTaskCreated !== false && (
+                  <button
+                    type="button"
+                    className="antd-btn small"
+                    aria-label={`打开 MCP 验收任务 ${registerTaskId}`}
+                    onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: registerTaskId }, onNavigate, onOpenTarget)}
+                    style={{ marginLeft: 8 }}
+                  >
+                    打开验收任务
+                  </button>
+                )}
               </div>
             )}
             {registerError && (
