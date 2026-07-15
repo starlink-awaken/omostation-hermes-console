@@ -39,6 +39,9 @@ describe('WorkflowsView', () => {
       if (url === '/api/metaos/workflows/wf-approval-42/approve') {
         return Promise.resolve(okJson({ status: 'ok' }))
       }
+      if (url === '/api/cockpit/metaos/workflows/wf-approval-42/queue') {
+        return Promise.resolve(okJson({ id: 'cockpit-metaos-workflow-wf-approval-42', created: true, executes: false }))
+      }
       return Promise.resolve(okJson({}))
     })
   })
@@ -83,6 +86,26 @@ describe('WorkflowsView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'Workflows', taskQuery: 'wf-approval-42' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'wf-approval-42' })
     expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('queues the selected workflow as a follow-up task', async () => {
+    const onOpenTarget = vi.fn()
+    render(<WorkflowsView onOpenTarget={onOpenTarget} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '处理授权 wf-approval-42' }))
+    const queueButton = await screen.findByRole('button', { name: '承接跟进任务' })
+    fireEvent.click(queueButton)
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/cockpit/metaos/workflows/wf-approval-42/queue', expect.objectContaining({
+        method: 'POST',
+      }))
+      expect(onOpenTarget).toHaveBeenCalledWith({
+        tab: 'TaskCenter',
+        taskQuery: 'cockpit-metaos-workflow-wf-approval-42',
+      })
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('已承接为任务')
   })
 
   it('surfaces workflow closure routing when focus hits system map handoff', async () => {

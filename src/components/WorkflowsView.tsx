@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, CheckCircle, Clock, FileText, GitBranch, Play, RefreshCw, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, ClipboardCheck, Clock, FileText, GitBranch, Play, RefreshCw, XCircle } from 'lucide-react';
 import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
@@ -60,6 +60,7 @@ export default function WorkflowsView({
   const [refreshing, setRefreshing] = useState(false);
   const [selectedWf, setSelectedWf] = useState<WorkflowDetail | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [queueingId, setQueueingId] = useState<string | null>(null);
   const [approvalMessage, setApprovalMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
 
@@ -130,6 +131,33 @@ export default function WorkflowsView({
       setApprovalMessage({ tone: 'error', text: `工作流 ${id} 授权失败：${e.message || '网络异常'}` });
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const handleQueueFollowup = async (workflow: WorkflowDetail) => {
+    setQueueingId(workflow.workflow_id);
+    setApprovalMessage(null);
+    try {
+      const res = await fetch(`/api/cockpit/metaos/workflows/${encodeURIComponent(workflow.workflow_id)}/queue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: workflow.status,
+          task: workflow.task_description,
+          node_count: workflow.nodes?.length || 0,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || data.error || '工作流任务承接失败');
+      setApprovalMessage({
+        tone: 'success',
+        text: data.created === false ? `任务已存在：${data.id}` : `已承接为任务：${data.id}`,
+      });
+      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+    } catch (error: any) {
+      setApprovalMessage({ tone: 'error', text: `工作流任务承接失败：${error.message || '网络异常'}` });
+    } finally {
+      setQueueingId(null);
     }
   };
 
@@ -619,7 +647,18 @@ export default function WorkflowsView({
             <>
               <div className="section-header" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Activity size={20} style={{ color: 'var(--antd-primary)' }} />
-                <h2 style={{ fontSize: '1.2rem', margin: 0 }}>工作流详情 & 人机协作 (HITL)</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1.2rem', margin: 0 }}>工作流详情 & 人机协作 (HITL)</h2>
+                  <button
+                    type="button"
+                    className="antd-btn"
+                    onClick={() => void handleQueueFollowup(selectedWf)}
+                    disabled={queueingId === selectedWf.workflow_id}
+                  >
+                    {queueingId === selectedWf.workflow_id ? <RefreshCw size={14} className="animate-spin" /> : <ClipboardCheck size={14} />}
+                    {queueingId === selectedWf.workflow_id ? '承接中...' : '承接跟进任务'}
+                  </button>
+                </div>
               </div>
 
               {approvalMessage && (
