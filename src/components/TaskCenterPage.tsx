@@ -62,6 +62,21 @@ interface Task {
       done_when?: string;
     }[];
   };
+  execution_contract?: {
+    risk_level?: string | null;
+    allowed_operation_level?: string | null;
+    human_approval_required?: boolean;
+    entry_gate?: string[];
+    evidence_required?: string[];
+    deliverables?: string[];
+    test_plan?: string[];
+    source_docs?: string[];
+    command?: string | null;
+    executes?: boolean;
+    approval_ref?: string | null;
+    run_ref?: string | null;
+    review_ref?: string | null;
+  };
 }
 
 interface TaskHistoryEntry {
@@ -1762,6 +1777,55 @@ export default function TaskCenterPage({
                   </div>
                 </div>
               </>
+            )}
+            {!selectedTask.read_only && selectedTask.execution_contract && (
+              <div className="detail-row task-evidence-detail">
+                <span className="detail-label">执行契约:</span>
+                <div className="task-evidence-list">
+                  <span>
+                    <strong>风险 / 操作级别</strong>
+                    <small>{selectedTask.execution_contract.risk_level || '未登记'} · {selectedTask.execution_contract.allowed_operation_level || '未登记'}</small>
+                  </span>
+                  <span>
+                    <strong>审批</strong>
+                    <small>{selectedTask.execution_contract.human_approval_required ? '需要人工审批' : '无需额外审批'}</small>
+                  </span>
+                  <span>
+                    <strong>执行方式</strong>
+                    <small>{selectedTask.execution_contract.executes === false ? 'Cockpit 只登记，不直接执行' : '由受控执行面负责'}</small>
+                  </span>
+                  {selectedTask.execution_contract.command && (
+                    <span>
+                      <strong>命令</strong>
+                      <small>{selectedTask.execution_contract.command}</small>
+                    </span>
+                  )}
+                  {(selectedTask.execution_contract.entry_gate || []).length > 0 && (
+                    <span>
+                      <strong>入口门</strong>
+                      <small>{selectedTask.execution_contract.entry_gate?.join(' · ')}</small>
+                    </span>
+                  )}
+                  {(selectedTask.execution_contract.evidence_required || []).length > 0 && (
+                    <span>
+                      <strong>必留证据</strong>
+                      <small>{selectedTask.execution_contract.evidence_required?.join(' · ')}</small>
+                    </span>
+                  )}
+                  {(selectedTask.execution_contract.deliverables || []).length > 0 && (
+                    <span>
+                      <strong>交付物</strong>
+                      <small>{selectedTask.execution_contract.deliverables?.join(' · ')}</small>
+                    </span>
+                  )}
+                  {(selectedTask.execution_contract.test_plan || []).length > 0 && (
+                    <span>
+                      <strong>验收计划</strong>
+                      <small>{selectedTask.execution_contract.test_plan?.join(' · ')}</small>
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
             {selectedTask.assignee && (
               <div className="detail-row">

@@ -41,7 +41,17 @@ const domainAppsPayload = {
         app_root: { path: '/Users/xiamingxing/Documents/@家庭生活/family-dashboard-app', exists: true },
       },
       links: { launch_url: 'http://localhost:3000', api_url: 'http://localhost:3000/api' },
-      actions: [],
+      actions: [
+        {
+          id: 'copy-start',
+          label: '复制启动命令',
+          kind: 'copy_command',
+          value: 'cd /tmp/family-hub && bun run api',
+          enabled: true,
+          risk: 'medium',
+          guard: '人工确认后执行。',
+        },
+      ],
       security_gates: [],
       security_checks: [
         {
@@ -210,6 +220,36 @@ describe('DomainAppsView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开领域建设任务 家庭激励闭环' }))
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'family-quest-loop' })
+  }, 20000)
+
+  it('queues a domain app command without executing it', async () => {
+    const onOpenTarget = vi.fn()
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (init?.method === 'POST') return Promise.resolve(okJson({ id: 'cockpit-domain-app-family-dashboard-app-copy-start' }))
+      if (url === '/api/domain-apps') return Promise.resolve(okJson(domainAppsPayload))
+      if (url === '/api/opc/workspace') return Promise.resolve(okJson(opcPayload))
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<DomainAppsView onOpenTarget={onOpenTarget} taskQuery="family-dashboard-app" />)
+
+    const queueButtons = await screen.findAllByRole('button', { name: '登记领域应用动作 复制启动命令' }, { timeout: 5000 })
+    fireEvent.click(queueButtons[0])
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({
+        tab: 'TaskCenter',
+        taskQuery: 'cockpit-domain-app-family-dashboard-app-copy-start',
+      })
+      expect(screen.getByRole('status')).toHaveTextContent('已登记“复制启动命令”')
+    })
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      '/api/cockpit/domain-apps/family-dashboard-app/actions/copy-start/queue',
+      { method: 'POST' },
+    )
   }, 20000)
 
   it('renders security posture summary and checks', async () => {

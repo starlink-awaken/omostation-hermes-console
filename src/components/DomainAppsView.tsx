@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AppWindow,
   CheckCircle,
+  ClipboardCheck,
   Copy,
   ExternalLink,
   FileText,
@@ -271,15 +272,34 @@ function attentionReasons(app: DomainApp): string[] {
   return reasons;
 }
 
-function DomainActionButtons({ actions }: { actions: DomainApp['actions'] }) {
+function DomainActionButtons({
+  actions,
+  onQueueAction,
+}: {
+  actions: DomainApp['actions'];
+  onQueueAction?: (action: DomainApp['actions'][number]) => void;
+}) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
       {actions.map((action) => (
         action.kind === 'copy_command' ? (
-          <button key={action.id} className="antd-btn" onClick={() => void copyText(action.value)} title={action.guard}>
-            <Copy size={14} />
-            <span>{action.label}</span>
-          </button>
+          <React.Fragment key={action.id}>
+            <button className="antd-btn" onClick={() => void copyText(action.value)} title={action.guard}>
+              <Copy size={14} />
+              <span>{action.label}</span>
+            </button>
+            {onQueueAction && action.enabled && (
+              <button
+                className="antd-btn"
+                aria-label={`登记领域应用动作 ${action.label}`}
+                onClick={() => onQueueAction(action)}
+                title="登记为 OMO 计划任务，不会直接执行命令"
+              >
+                <ClipboardCheck size={14} />
+                <span>登记任务</span>
+              </button>
+            )}
+          </React.Fragment>
         ) : (
           <a
             key={action.id}
@@ -323,7 +343,15 @@ function DataTable({ rows, empty }: { rows: Record<string, string>[]; empty: str
   );
 }
 
-function DomainAppCard({ app, focused = false }: { app: DomainApp; focused?: boolean }) {
+function DomainAppCard({
+  app,
+  focused = false,
+  onQueueAction,
+}: {
+  app: DomainApp;
+  focused?: boolean;
+  onQueueAction?: (action: DomainApp['actions'][number]) => void;
+}) {
   return (
     <article
       id={`domain-app-${app.id}`}
@@ -361,7 +389,7 @@ function DomainAppCard({ app, focused = false }: { app: DomainApp; focused?: boo
         </div>
       </div>
 
-      <DomainActionButtons actions={app.actions} />
+      <DomainActionButtons actions={app.actions} onQueueAction={onQueueAction} />
 
       <div className="domain-security-panel">
         <div className="domain-security-head">
@@ -455,6 +483,8 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
   const [error, setError] = useState('');
   const [attentionFilter, setAttentionFilter] = useState<DomainAttentionFilter>('all');
   const [focusedAppId, setFocusedAppId] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -592,6 +622,22 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       return;
     }
     onNavigate?.('SystemMap');
+  };
+
+  const queueDomainAction = async (app: DomainApp, action: DomainApp['actions'][number]) => {
+    setActionNotice(null);
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/cockpit/domain-apps/${app.id}/actions/${action.id}/queue`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || '领域应用动作登记失败');
+      setActionNotice(`已登记“${action.label}”，任务中心将负责后续审批与留证。`);
+      if (onOpenTarget) {
+        onOpenTarget({ tab: 'TaskCenter', taskQuery: payload.id });
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '领域应用动作登记失败');
+    }
   };
 
   const focusSignals = useMemo(() => {
@@ -766,6 +812,16 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
           },
         ]}
       />
+
+      {(actionNotice || actionError) && (
+        <div
+          className={`system-map-action-feedback ${actionError ? 'error' : 'success'}`}
+          role={actionError ? 'alert' : 'status'}
+          style={{ marginTop: 16 }}
+        >
+          {actionError || actionNotice}
+        </div>
+      )}
 
       <section className="services-section" aria-label="领域承接路径" style={{ marginBottom: 20 }}>
         <div className="section-header" style={{ marginBottom: 12 }}>
@@ -1178,7 +1234,10 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                   <span>跟进任务</span>
                 </button>
               </div>
-              <DomainActionButtons actions={app.actions.slice(0, 3)} />
+              <DomainActionButtons
+                actions={app.actions.slice(0, 3)}
+                onQueueAction={(action) => void queueDomainAction(app, action)}
+              />
             </article>
           ))}
           {filteredAttentionItems.length === 0 && (
@@ -1409,7 +1468,11 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
         {apps.items.map((app) => (
           <div key={app.id} style={{ display: 'grid', gap: 8 }}>
-            <DomainAppCard app={app} focused={app.id === focusedAppId} />
+            <DomainAppCard
+              app={app}
+              focused={app.id === focusedAppId}
+              onQueueAction={(action) => void queueDomainAction(app, action)}
+            />
             <div className="home-focus-actions" style={{ marginTop: 0 }}>
               <button className="antd-btn small" onClick={() => setFocusedAppId(app.id)}>
                 <FileText size={13} />
