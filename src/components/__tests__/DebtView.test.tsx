@@ -128,4 +128,41 @@ describe('DebtView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'security' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('queues a debt item and hands the created task to TaskCenter', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(okJson({
+        total: 1,
+        open: 1,
+        closed: 0,
+        items: [{
+          id: 'debt-1',
+          title: '补家庭 app 鉴权',
+          severity: 'p0',
+          lifecycle_state: 'open',
+          opened_at: '2026-07-07T09:00:00Z',
+          owner: 'security',
+          dimension: 'security',
+        }],
+      }))
+      .mockResolvedValueOnce(okJson({
+        id: 'cockpit-debt-debt-1',
+        created: true,
+        status: 'pending',
+      }))
+
+    render(<DebtView onOpenTarget={onOpenTarget} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '承接债务 补家庭 app 鉴权' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenNthCalledWith(2, '/api/cockpit/debt/debt-1/queue', { method: 'POST' })
+      expect(onOpenTarget).toHaveBeenCalledWith({
+        tab: 'TaskCenter',
+        taskQuery: 'cockpit-debt-debt-1',
+      })
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('已承接为任务：cockpit-debt-debt-1')
+  })
 })

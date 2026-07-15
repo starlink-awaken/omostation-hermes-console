@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, ShieldAlert, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, ShieldAlert, CheckCircle, AlertCircle, RefreshCw, ClipboardCheck } from 'lucide-react';
 import './Dashboard.css';
 import GovernanceDomainWorkbench from './GovernanceDomainWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -49,6 +49,9 @@ export default function DebtView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [queueingDebtId, setQueueingDebtId] = useState<string | null>(null);
+  const [queueNotice, setQueueNotice] = useState<string | null>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
 
   // 过滤与搜索状态
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,6 +86,23 @@ export default function DebtView({
   const handleRefresh = () => {
     setRefreshing(true);
     fetchDebt();
+  };
+
+  const handleQueueDebt = async (item: DebtItem) => {
+    setQueueingDebtId(item.id);
+    setQueueNotice(null);
+    setQueueError(null);
+    try {
+      const response = await fetch(`/api/cockpit/debt/${encodeURIComponent(item.id)}/queue`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || `HTTP ${response.status}`);
+      setQueueNotice(payload.created === false ? `任务已存在：${payload.id}` : `已承接为任务：${payload.id}`);
+      openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+    } catch (caught: any) {
+      setQueueError(caught?.message || '债务任务承接失败');
+    } finally {
+      setQueueingDebtId(null);
+    }
   };
 
   if (loading) {
@@ -268,6 +288,14 @@ export default function DebtView({
           },
         ]}
       />
+
+      {(queueNotice || queueError) && (
+        <div role={queueError ? 'alert' : 'status'} aria-live="polite" style={{ marginTop: 12 }}>
+          <span className={`status-badge ${queueError ? 'degraded' : 'online'}`}>
+            {queueError || queueNotice}
+          </span>
+        </div>
+      )}
 
       {focusedDebtCard && (
         <section className="services-section overview-ops-panel" aria-label="当前债务承接焦点">
@@ -558,12 +586,13 @@ export default function DebtView({
               <th scope="col">等级</th>
               <th scope="col">治理状态</th>
               <th scope="col">所有者</th>
+              <th scope="col">操作</th>
             </tr>
           </thead>
           <tbody>
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '48px', color: 'rgba(255,255,255,0.45)' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '48px', color: 'rgba(255,255,255,0.45)' }}>
                   <AlertCircle size={24} style={{ margin: '0 auto 8px auto', display: 'block' }} />
                   没有找到符合过滤条件的债务项
                 </td>
@@ -607,6 +636,19 @@ export default function DebtView({
                     </span>
                   </td>
                   <td className="text-muted">{item.owner}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="antd-btn"
+                      aria-label={`承接债务 ${item.title}`}
+                      onClick={() => handleQueueDebt(item)}
+                      disabled={queueingDebtId === item.id}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+                    >
+                      <ClipboardCheck size={13} />
+                      <span>{queueingDebtId === item.id ? '承接中' : '承接任务'}</span>
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
