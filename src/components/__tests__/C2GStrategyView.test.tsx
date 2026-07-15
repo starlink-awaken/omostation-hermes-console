@@ -84,4 +84,33 @@ describe('C2GStrategyView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'card-42' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('queues SSOT drift repair into TaskCenter instead of auto-fixing inline', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/cards/check') {
+        return Promise.resolve(okJson({ compliant: false, violations: ['drift'], guidance: '需要人工复核' }))
+      }
+      if (url === '/api/cards') return Promise.resolve(okJson([]))
+      if (url === '/api/v1/proposals') return Promise.resolve(okJson({ status: 'ok', proposals: [] }))
+      if (url === '/api/omos/status') return Promise.resolve(okJson({ system: {}, governance: {} }))
+      if (url === '/api/omos/violations') return Promise.resolve(okJson({ status: 'ok', violations: [] }))
+      if (url === '/api/cockpit/governance/queue') {
+        expect(init?.method).toBe('POST')
+        expect(init?.body).toBe(JSON.stringify({ action: 'fix-drift' }))
+        return Promise.resolve(okJson({ id: 'cockpit-governance-fix-drift', executes: false }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<C2GStrategyView onOpenTarget={onOpenTarget} />)
+    const button = await screen.findByRole('button', { name: '承接治理修复' })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-governance-fix-drift' })
+      expect(screen.getByText(/已承接治理修复任务/)).toBeInTheDocument()
+    })
+  })
 })

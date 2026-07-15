@@ -113,13 +113,17 @@ export default function C2GStrategyView({
     setFixing(true);
     setFixResult(null);
     try {
-      const res = await fetch('/api/omos/fix-drift', { method: 'POST' });
+      const res = await fetch('/api/cockpit/governance/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'fix-drift' }),
+      });
       const data = await res.json();
-      if (res.ok && data.status === 'ok') {
-        setFixResult(data.msg || '自愈完成');
-        fetchData();
+      if (res.ok && data.executes === false) {
+        setFixResult(`已承接治理修复任务 ${data.id || ''}，请到任务中心审批后执行。`);
+        if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
       } else {
-        setFixResult('自愈失败: ' + (data.error || '原因未知'));
+        setFixResult('治理修复承接失败: ' + (data.detail || data.error || '原因未知'));
       }
     } catch (err: any) {
       setFixResult('网络异常: ' + err.message);
@@ -620,7 +624,7 @@ export default function C2GStrategyView({
                   flexShrink: 0
                 }}
               >
-                {fixing ? '正在修复...' : '一键自愈'}
+                {fixing ? '正在承接...' : '承接治理修复'}
               </button>
             )}
           </div>
