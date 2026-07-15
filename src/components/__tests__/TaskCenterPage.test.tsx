@@ -290,6 +290,7 @@ describe('TaskCenterPage', () => {
       title: '重试 Cockpit 验证',
       execution_contract: {
         controlled_execution: true,
+        executes: false,
         command: 'uv run pytest',
         execution_audit: {
           exit_code: 124,
@@ -336,6 +337,48 @@ describe('TaskCenterPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '用执行证据完成任务' }))
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith('/api/tasks/successful-verification/complete-from-execution', { method: 'POST' })
+    })
+  })
+
+  it('runs workflow closeout for a successful controlled task', async () => {
+    const successfulControlledTask = {
+      ...mockTasks[0],
+      id: 'closeout-verification',
+      title: '登记 workflow closeout',
+      status: 'in_progress' as const,
+      read_only: false,
+      execution_contract: {
+        controlled_execution: true,
+        executes: false,
+        command: 'uv run pytest',
+        execution_audit: {
+          exit_code: 0,
+          log_ref: 'runtime/omo/closeout-verification.log',
+        },
+      },
+    }
+    mockTaskCenterFetch([successfulControlledTask])
+
+    render(<TaskCenterPage />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('登记 workflow closeout').length).toBeGreaterThan(0)
+    })
+    const closeoutTitle = screen.getAllByText('登记 workflow closeout').find((element) => element.classList.contains('task-title'))
+    fireEvent.click(closeoutTitle?.closest('.task-card') as HTMLElement)
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'agent-workflow run_id' })).toBeInTheDocument()
+    })
+    fireEvent.change(screen.getByRole('textbox', { name: 'agent-workflow run_id' }), {
+      target: { value: '20260715T120000Z-project-code-change-demo' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '运行 workflow closeout' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/tasks/closeout-verification/workflow-closeout',
+        expect.objectContaining({ method: 'POST' }),
+      )
     })
   })
 

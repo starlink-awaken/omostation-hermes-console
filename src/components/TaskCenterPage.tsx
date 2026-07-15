@@ -316,6 +316,7 @@ export default function TaskCenterPage({
   const [executionLogInput, setExecutionLogInput] = useState('');
   const [executionExitCodeInput, setExecutionExitCodeInput] = useState('0');
   const [executionCloseoutInput, setExecutionCloseoutInput] = useState('');
+  const [workflowRunIdInput, setWorkflowRunIdInput] = useState('');
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -877,6 +878,47 @@ export default function TaskCenterPage({
       setRefreshToken((value) => value + 1);
     } catch (error) {
       setActionError(`执行证据归档失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  const runWorkflowCloseout = async (task: Task) => {
+    const runId = workflowRunIdInput.trim();
+    if (!runId) {
+      setActionError('请填写 agent-workflow run_id。');
+      return;
+    }
+    setActionPending(task.id);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/workflow-closeout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ run_id: runId }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || 'workflow closeout 失败');
+      const update = (current: Task) => current.id === task.id
+        ? {
+            ...current,
+            execution_contract: {
+              ...(current.execution_contract || {}),
+              execution_audit: {
+                ...(current.execution_contract?.execution_audit || {}),
+                closeout_ref: payload.closeout_ref,
+              },
+            },
+          }
+        : current;
+      setTasks((current) => current.map(update));
+      setSelectedTask((current) => current ? update(current) : current);
+      setWorkflowRunIdInput('');
+      setActionNotice(`workflow closeout 已完成：${payload.closeout_ref || runId}`);
+      setRefreshToken((value) => value + 1);
+    } catch (error) {
+      setActionError(`workflow closeout 失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setActionPending(null);
     }
@@ -2171,9 +2213,34 @@ export default function TaskCenterPage({
                     <span>
                       <strong>执行回执</strong>
                       {selectedTask.execution_contract.execution_audit ? (
-                        <small>
-                          exit {selectedTask.execution_contract.execution_audit.exit_code} · {selectedTask.execution_contract.execution_audit.log_ref || '日志未登记'}
-                        </small>
+                        <>
+                          <small>
+                            exit {selectedTask.execution_contract.execution_audit.exit_code} · {selectedTask.execution_contract.execution_audit.log_ref || '日志未登记'}
+                            {selectedTask.execution_contract.execution_audit.closeout_ref
+                              ? ` · closeout ${selectedTask.execution_contract.execution_audit.closeout_ref}`
+                              : ''}
+                          </small>
+                          {selectedTask.execution_contract.execution_audit.exit_code === 0
+                            && !selectedTask.execution_contract.execution_audit.closeout_ref && (
+                            <label>
+                              <small>输入已有 agent-workflow run_id，执行受控 closeout</small>
+                              <input
+                                value={workflowRunIdInput}
+                                onChange={(event) => setWorkflowRunIdInput(event.target.value)}
+                                placeholder="20260715T...-project-code-change-..."
+                                aria-label="agent-workflow run_id"
+                              />
+                              <button
+                                className="btn btn-sm btn-outline"
+                                disabled={actionPending === selectedTask.id}
+                                onClick={() => { void runWorkflowCloseout(selectedTask); }}
+                              >
+                                <History size={14} />
+                                运行 workflow closeout
+                              </button>
+                            </label>
+                          )}
+                        </>
                       ) : (
                         <label>
                           <small>填写日志路径、退出码；workflow 完成后可补 closeout 文件路径</small>
