@@ -186,6 +186,9 @@ export default function TopologyView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retryToken, setRetryToken] = useState(0);
+  const [taskPending, setTaskPending] = useState(false);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -232,6 +235,34 @@ export default function TopologyView({
     }))
     .filter((service) => service.status !== 'online' || service.dependencyCount === 0)
     .slice(0, 4);
+  const createTopologyTask = async () => {
+    const service = attentionServices[0];
+    const subject = service?.name || '全局拓扑';
+    setTaskPending(true);
+    setTaskNotice(null);
+    setTaskError(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `拓扑依赖治理：${subject}`,
+          description: `针对 ${subject} 的拓扑异常核对显式依赖、节点健康和下游影响，并把结果回写到算力、网格与日志证据链。`,
+          priority: service?.status === 'offline' ? 'high' : 'medium',
+          risk_level: 'L1',
+          evidence_required: ['拓扑节点与依赖快照', '节点健康或端口证据', '网格与日志处理结果', 'task closeout'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '拓扑任务登记失败');
+      setTaskNotice(`已登记拓扑治理任务：${payload.title || subject}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+    } catch (taskRequestError) {
+      setTaskError(taskRequestError instanceof Error ? taskRequestError.message : '拓扑任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
   const firstAttentionService = attentionServices[0] || null;
   const firstOfflineService = attentionServices.find((service) => service.status === 'offline') || null;
   const firstIsolatedService = attentionServices.find((service) => service.dependencyCount === 0) || null;
@@ -379,6 +410,30 @@ export default function TopologyView({
         items={topologyActionItems}
         onNavigate={onNavigate}
       />
+
+      <section className="services-section" aria-label="拓扑正式任务">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>拓扑正式任务</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>把异常节点或依赖链直接登记为可审批、可留证、可 closeout 的治理任务。</p>
+          </div>
+          <button
+            type="button"
+            className="antd-btn"
+            disabled={taskPending}
+            aria-label="登记拓扑治理任务"
+            onClick={() => { void createTopologyTask(); }}
+          >
+            <AlertTriangle size={14} />
+            <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
+          </button>
+        </div>
+        {(taskNotice || taskError) && (
+          <p role={taskError ? 'alert' : 'status'} className={taskError ? 'text-danger' : 'text-muted'} style={{ margin: '8px 0 0', fontSize: 12 }}>
+            {taskError || taskNotice}
+          </p>
+        )}
+      </section>
 
       {focusedTopologyCard && (
         <section className="services-section overview-ops-panel" aria-label="当前拓扑承接焦点">

@@ -58,6 +58,12 @@ describe('TopologyView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开拓扑承接到网格页' }))
     expect(onNavigate).toHaveBeenCalledWith('McpMesh')
+
+    vi.mocked(fetch).mockResolvedValueOnce(okJson({ id: 'topology-task-1', title: '拓扑任务' }))
+    fireEvent.click(screen.getByRole('button', { name: '登记拓扑治理任务' }))
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('已登记拓扑治理任务：拓扑任务')
+    })
   })
 
   it('only builds edges from explicit service dependencies', () => {
