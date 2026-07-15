@@ -101,6 +101,7 @@ describe('SettingsView', () => {
   })
 
   it('submits instance registration and shows returned status', async () => {
+    const onOpenTarget = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/metrics/history') {
@@ -115,12 +116,12 @@ describe('SettingsView', () => {
         return Promise.resolve(okJson(domainAppsPayload))
       }
       if (url === '/api/instance' && init?.method === 'POST') {
-        return Promise.resolve(okJson({ ok: true, registered: 'gbrain-local' }))
+        return Promise.resolve(okJson({ ok: true, registered: 'gbrain-local', task_id: 'cockpit-mcp-registration-gbrain-local' }))
       }
       return Promise.resolve(okJson({}))
     })
 
-    render(<SettingsView />)
+    render(<SettingsView onOpenTarget={onOpenTarget} />)
 
     await waitFor(() => {
       expect(screen.getByText('注册分布式新实例 (Instance)')).toBeInTheDocument()
@@ -133,6 +134,11 @@ describe('SettingsView', () => {
     await waitFor(() => {
       expect(screen.getByText(/"registered": "gbrain-local"/)).toBeInTheDocument()
       expect(screen.getByText('已返回')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: '打开实例验收任务' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit-mcp-registration-gbrain-local',
     })
   })
 

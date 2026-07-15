@@ -576,6 +576,18 @@ export default function SettingsView({
             <pre style={{ margin: 0, fontSize: '12px', color: registerResult.error ? 'var(--antd-error)' : 'var(--antd-success)', fontFamily: 'monospace' }}>
               {JSON.stringify(registerResult, null, 2)}
             </pre>
+            {registerResult.task_id && (
+              <button
+                type="button"
+                className="antd-btn"
+                style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                aria-label="打开实例验收任务"
+                onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: registerResult.task_id }, onNavigate, onOpenTarget)}
+              >
+                <ClipboardCheck size={14} />
+                打开验收任务
+              </button>
+            )}
           </div>
         )}
       </div>
