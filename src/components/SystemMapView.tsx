@@ -75,6 +75,11 @@ type ProjectAction = {
   category?: string;
   project_id?: string;
   reason?: string;
+  task?: {
+    task_id?: string;
+    status?: string;
+    execution_audit?: Record<string, unknown>;
+  };
 };
 
 type ProjectCoverageCheck = {
@@ -1078,6 +1083,16 @@ function ProjectTriageQueues({
   queues: ProjectTriageQueue[];
   onQueueCommand?: (command: ProjectAction) => void;
 }) {
+  const taskStatusLabel = (status?: string) => {
+    switch (status) {
+      case 'planned': return '已排队';
+      case 'active': return '执行中';
+      case 'succeeded': return '已通过';
+      case 'failed': return '已失败';
+      case 'completed': return '已完成';
+      default: return '';
+    }
+  };
   return (
     <div className="system-map-triage-grid">
       {queues.map((queue) => (
@@ -1108,15 +1123,18 @@ function ProjectTriageQueues({
                     <span>
                       <strong>{command.project_id} · {command.label}</strong>
                       <small>{command.reason}</small>
+                      {command.task?.status && command.task.status !== 'not_queued' && (
+                        <small className="system-map-triage-task-status">任务：{taskStatusLabel(command.task.status)}</small>
+                      )}
                       <code>{command.value}</code>
                     </span>
                   </button>
                   {onQueueCommand && (
                     <button
                       className={`system-map-triage-queue ${statusClass(command.risk)}`}
-                      disabled={!command.enabled}
+                      disabled={!command.enabled || Boolean(command.task?.status && command.task.status !== 'not_queued')}
                       aria-label={`承接排查命令 ${command.project_id} ${command.label}`}
-                      title="登记为 OMO 计划任务，不会直接执行命令"
+                      title={command.task?.status && command.task.status !== 'not_queued' ? '该命令已有 OMO 任务' : '登记为 OMO 计划任务，不会直接执行命令'}
                       onClick={() => onQueueCommand(command)}
                     >
                       <ClipboardCheck size={12} />
