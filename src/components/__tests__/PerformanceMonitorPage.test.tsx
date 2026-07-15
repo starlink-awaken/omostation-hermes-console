@@ -81,6 +81,30 @@ describe('PerformanceMonitorPage', () => {
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
   })
 
+  it('registers the performance draft as a governed task', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).startsWith('/api/metrics/system')) {
+        return Promise.resolve(okJson({ cpu: [], memory: [], disk: [], network: [] }))
+      }
+      if (String(input) === '/api/services/status') {
+        return Promise.resolve(okJson({ items: [{ name: 'cockpit-api', status: 'degraded', cpu: 91, memory: 82 }] }))
+      }
+      expect(init?.method).toBe('POST')
+      return Promise.resolve(okJson({ id: 'cockpit-performance-task', title: '性能任务' }))
+    })
+
+    render(<PerformanceMonitorPage onOpenTarget={onOpenTarget} />)
+
+    await screen.findByRole('region', { name: '性能补位任务' })
+    fireEvent.click(screen.getByRole('button', { name: '登记性能治理任务 补齐性能页对 cockpit-api 的承接' }))
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-performance-task' })
+      expect(screen.getByText('已登记性能治理任务：性能任务')).toBeInTheDocument()
+    })
+  })
+
   it('surfaces focus handoff for a matched performance service', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()

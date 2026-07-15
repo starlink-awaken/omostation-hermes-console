@@ -65,6 +65,8 @@ export default function PerformanceMonitorPage({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
+  const [taskPending, setTaskPending] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -152,6 +154,33 @@ export default function PerformanceMonitorPage({
       logTarget: { tab: 'LogViewer' },
     };
   })();
+  const createPerformanceTask = async () => {
+    const serviceName = leadPerformanceService?.name || '性能监控';
+    setTaskPending(true);
+    setTaskError(null);
+    setDraftNotice(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: performanceTaskDraft.title,
+          description: performanceTaskDraft.description,
+          priority: firstDegradedService ? 'high' : 'medium',
+          risk_level: 'L1',
+          evidence_required: ['性能指标时间点', '告警或日志证据', '根因与处理结果', 'task closeout'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '性能任务登记失败');
+      setDraftNotice(`已登记性能治理任务：${payload.title || serviceName}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+    } catch (taskRequestError) {
+      setTaskError(taskRequestError instanceof Error ? taskRequestError.message : '性能任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
   const performanceClosureRows: PerformanceClosureRow[] = [
     {
       id: 'hotspot-triage',
@@ -480,6 +509,16 @@ export default function PerformanceMonitorPage({
             <button
               type="button"
               className="antd-btn"
+              disabled={taskPending}
+              aria-label={`登记性能治理任务 ${performanceTaskDraft.title}`}
+              onClick={() => { void createPerformanceTask(); }}
+            >
+              <Activity size={14} />
+              <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
               aria-label={`复制性能补位任务 ${performanceTaskDraft.title}`}
               onClick={async () => {
                 await navigator.clipboard.writeText(performanceTaskDraft.copyText);
@@ -520,6 +559,9 @@ export default function PerformanceMonitorPage({
         </article>
         {draftNotice && (
           <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{draftNotice}</p>
+        )}
+        {taskError && (
+          <p role="alert" className="text-danger" style={{ margin: 0, fontSize: 12 }}>{taskError}</p>
         )}
       </section>
 
