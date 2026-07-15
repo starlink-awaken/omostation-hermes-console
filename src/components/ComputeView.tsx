@@ -162,23 +162,23 @@ export default function ComputeView({
 
   const wakeupNode = async (node: any) => {
     if (!node?.id || node.status === 'online') return;
-    const confirmed = window.confirm(`确认发送网络唤醒包给节点“${node.name || node.id}”？`);
+    const confirmed = window.confirm(`确认把节点“${node.name || node.id}”登记为唤醒任务？`);
     if (!confirmed) return;
 
     setWakeupNodeId(node.id);
     setControlMessage(null);
     try {
-      const res = await fetch('/api/governance/compute/wakeup', {
+      const res = await fetch('/api/cockpit/compute/queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ node_id: node.id }),
+        body: JSON.stringify({ operation: 'wakeup', node_id: node.id }),
       });
       const result = await res.json().catch(() => ({}));
-      if (!res.ok || result.success === false) {
+      if (!res.ok || result.executes !== false) {
         throw new Error(result.message || result.detail || '节点唤醒失败');
       }
-      setControlMessage({ tone: 'success', text: result.message || `已向 ${node.name || node.id} 发送唤醒请求` });
-      setRefreshToken((value) => value + 1);
+      setControlMessage({ tone: 'success', text: `已登记节点唤醒任务 ${result.id || ''}，请到任务中心审批后执行。` });
+      if (result.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: result.id });
     } catch (err: any) {
       setControlMessage({ tone: 'error', text: `节点唤醒失败：${err.message || '请求异常'}` });
     } finally {
