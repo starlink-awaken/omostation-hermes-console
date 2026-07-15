@@ -277,4 +277,22 @@ describe('AlertCenterPage', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'alert-1' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('shows which alert source failed and keeps a retry action available', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/alerts') {
+        return Promise.resolve({ ok: false, status: 503, json: async () => ({}) } as Response)
+      }
+      if (String(input) === '/api/alerts/rules') {
+        return Promise.resolve({ ok: true, json: async () => ({ items: mockRules }) } as Response)
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ items: [] }) } as Response)
+    })
+
+    render(<AlertCenterPage />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('告警数据 HTTP 503')
+    fireEvent.click(screen.getByRole('button', { name: '重试告警中心数据' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/alerts'))
+  })
 })

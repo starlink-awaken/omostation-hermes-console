@@ -86,6 +86,8 @@ export default function AlertCenterPage({
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [queueingAlertId, setQueueingAlertId] = useState<string | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -99,17 +101,24 @@ export default function AlertCenterPage({
           fetch('/api/alerts/rules'),
         ]);
 
+        const failures: string[] = [];
         if (alertsRes.ok) {
           const data = await alertsRes.json();
           setAlerts(data.items || []);
+        } else {
+          failures.push(`告警数据 HTTP ${alertsRes.status}`);
         }
 
         if (rulesRes.ok) {
           const data = await rulesRes.json();
           setRules(data.items || []);
+        } else {
+          failures.push(`规则数据 HTTP ${rulesRes.status}`);
         }
+        setDataError(failures.length ? failures.join('；') : null);
       } catch (error) {
         console.error('Failed to fetch alerts data:', error);
+        setDataError(error instanceof Error ? error.message : '告警服务暂不可用');
       } finally {
         setLoading(false);
       }
@@ -118,7 +127,7 @@ export default function AlertCenterPage({
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshToken]);
 
   useEffect(() => {
     if (!focusTaskQuery) return;
@@ -435,6 +444,24 @@ export default function AlertCenterPage({
   return (
     <div className="alert-center-page">
       <RuntimeOpsWorkbench currentPage="AlertCenter" onNavigate={onNavigate} />
+
+      {dataError && (
+        <div role="alert" className="alert-action-error" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <span>告警中心数据加载失败：{dataError}</span>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            aria-label="重试告警中心数据"
+            onClick={() => {
+              setDataError(null);
+              setLoading(true);
+              setRefreshToken((value) => value + 1);
+            }}
+          >
+            重试
+          </button>
+        </div>
+      )}
 
       <ActionSurfacePanel
         title="告警动作区"
