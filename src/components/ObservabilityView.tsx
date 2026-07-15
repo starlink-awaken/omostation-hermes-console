@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './Dashboard.css';
-import { Activity, AlertTriangle, ClipboardCheck, Route, ShieldCheck } from 'lucide-react';
+import { Activity, AlertTriangle, ClipboardCheck, RefreshCw, Route, ShieldCheck } from 'lucide-react';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
@@ -38,22 +38,36 @@ export default function ObservabilityView({
   const [archData, setArchData] = useState<any>(null);
   const [bosData, setBosData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/v1/arch-health').then((response) => (response.ok ? response.json() : null)),
-      fetch('/api/bos/metrics').then((response) => (response.ok ? response.json() : null)),
-    ])
-      .then(([arch, bos]) => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [archResponse, bosResponse] = await Promise.all([
+          fetch('/api/v1/arch-health'),
+          fetch('/api/bos/metrics'),
+        ]);
+        const [arch, bos] = await Promise.all([
+          archResponse.json().catch(() => ({})),
+          bosResponse.json().catch(() => ({})),
+        ]);
+        if (!archResponse.ok || !bosResponse.ok || bos?.data_quality === 'unavailable' || bos?.status === 'unavailable') {
+          throw new Error(arch?.error || bos?.error || '可观测数据不可用');
+        }
         setArchData(arch);
         setBosData(bos);
+        setError(null);
+      } catch (loadError) {
+        console.error('Failed to load observability data:', loadError);
+        setError(loadError instanceof Error ? loadError.message : '可观测数据不可用');
+      } finally {
         setLoading(false);
-      })
-      .catch((error) => {
-        console.error(error);
-        setLoading(false);
-      });
-  }, []);
+      }
+    };
+    void load();
+  }, [retryToken]);
 
   const observabilityBacklog = useMemo(() => {
     const domains = Array.isArray(bosData?.domains) ? bosData.domains : [];
@@ -191,6 +205,16 @@ export default function ObservabilityView({
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <PlatformControlWorkbench currentPage="Observability" onNavigate={onNavigate} />
+
+      {error && (
+        <div className="shell-data-banner" role="alert">
+          <span>{error}，当前观测数字不代表系统为 0。</span>
+          <button type="button" onClick={() => setRetryToken((token) => token + 1)}>
+            <RefreshCw size={14} aria-hidden="true" />
+            <span>重试</span>
+          </button>
+        </div>
+      )}
 
       <ActionSurfacePanel
         title="观测动作区"

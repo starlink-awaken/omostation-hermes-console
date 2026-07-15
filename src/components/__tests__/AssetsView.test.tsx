@@ -120,4 +120,16 @@ describe('AssetsView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '知识供给入资产' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('shows which asset sources are unavailable instead of rendering zeroes silently', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: '资产服务不可用' }),
+    } as Response)
+
+    render(<AssetsView />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('资产数据部分不可用')
+    expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
+  })
 })

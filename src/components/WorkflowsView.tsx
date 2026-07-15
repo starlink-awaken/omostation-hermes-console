@@ -61,18 +61,20 @@ export default function WorkflowsView({
   const [selectedWf, setSelectedWf] = useState<WorkflowDetail | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [approvalMessage, setApprovalMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   const fetchWorkflows = async () => {
     try {
       const res = await fetch('/api/metaos/workflows');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'ok') {
-          setWorkflows(data.workflows);
-        }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.status !== 'ok') {
+        throw new Error(data.error || '工作流运行数据不可用');
       }
+      setWorkflows(Array.isArray(data.workflows) ? data.workflows : []);
+      setDataError(null);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load workflows:', e);
+      setDataError(e instanceof Error ? e.message : '工作流运行数据不可用');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -298,6 +300,13 @@ export default function WorkflowsView({
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <KnowledgeExecutionWorkbench currentPage="Workflows" onNavigate={onNavigate} />
+
+      {dataError && (
+        <div className="shell-data-banner" role="alert">
+          <span>{dataError}，当前列表不代表没有工作流记录。</span>
+          <button type="button" onClick={() => { setRefreshing(true); void fetchWorkflows(); }}>重试</button>
+        </div>
+      )}
 
       <section className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div className="section-header" style={{ marginBottom: 0 }}>

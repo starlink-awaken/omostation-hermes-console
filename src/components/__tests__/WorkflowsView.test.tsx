@@ -107,4 +107,16 @@ describe('WorkflowsView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '系统地图与任务收口' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('shows a retryable degraded state when workflow data is unavailable', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'MetaOS 工作流服务不可用' }),
+    } as Response)
+
+    render(<WorkflowsView />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('MetaOS 工作流服务不可用')
+    expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
+  })
 })

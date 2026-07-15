@@ -145,4 +145,16 @@ describe('ObservabilityView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(1, { tab: 'SystemMap', pageId: 'Observability' })
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '系统地图与任务中心回挂' })
   })
+
+  it('shows a retryable degraded state when observation sources are unavailable', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'BOS 指标服务不可用' }),
+    } as Response)
+
+    render(<ObservabilityView />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('BOS 指标服务不可用')
+    expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
+  })
 })

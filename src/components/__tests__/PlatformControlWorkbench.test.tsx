@@ -82,4 +82,35 @@ describe('PlatformControlWorkbench', () => {
       expect(screen.getByText('当前没有待完成冒险')).toBeInTheDocument()
     })
   })
+
+  it('exposes unavailable control evidence and retries the sources', async () => {
+    let bosCalls = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/bos/metrics') {
+        bosCalls += 1
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({
+            status: 'unavailable',
+            data_quality: 'unavailable',
+            error: 'BOS 指标证据尚未产生',
+            next_action: '先执行一条 BOS 路由。',
+          }),
+        } as Response)
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<PlatformControlWorkbench currentPage="Observability" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('控制面数据需要补证')
+      expect(screen.getByText('观测证据不可用')).toBeInTheDocument()
+      expect(screen.getByText('BOS 证据不可用')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /重试/ }))
+    await waitFor(() => expect(bosCalls).toBe(2))
+  })
 })

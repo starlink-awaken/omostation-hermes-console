@@ -119,9 +119,13 @@ type ProjectItem = {
   cockpit_page: string;
   coverage: string;
   path: string;
+  source_location?: string;
   exists: boolean;
   operational: {
     status: string;
+    surface_type?: string;
+    declared_location?: string;
+    resolved_location?: string | null;
     docs: {
       present: number;
       expected: number;
@@ -845,7 +849,9 @@ function uniquePageMaturityItems(items: Array<PageMaturity | null | undefined>):
 }
 
 function compactPath(path: string): string {
-  return path.replace('/Users/xiamingxing/Workspace/', '');
+  const marker = '/Workspace/';
+  const markerIndex = path.indexOf(marker);
+  return markerIndex >= 0 ? path.slice(markerIndex + marker.length) : path;
 }
 
 function shortDate(value: string): string {
@@ -1138,6 +1144,17 @@ function ProjectDetailPanel({
         <span className={`status-badge ${statusClass(project.coverage)}`}>{project.coverage === 'native' ? '原生入口' : '定位入口'}</span>
         <span className={`status-badge ${statusClass(project.portfolio.status)}`}>组合 {portfolioStatusText(project.portfolio.status)} · {project.portfolio.score}%</span>
       </div>
+
+      <article className="system-map-project-detail-source">
+        <h3>实现位置</h3>
+        <div className="system-map-project-detail-facts">
+          <span>形态：{project.operational.surface_type || 'native'}</span>
+          <code>{project.operational.resolved_location || project.source_location || project.path}</code>
+          {project.operational.declared_location && project.operational.declared_location !== project.operational.resolved_location && (
+            <span className="system-map-risk-line">注册声明：{project.operational.declared_location}</span>
+          )}
+        </div>
+      </article>
 
       <div className="system-map-project-detail-grid">
         <article className="system-map-project-detail-wide">

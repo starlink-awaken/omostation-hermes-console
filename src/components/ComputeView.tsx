@@ -55,6 +55,7 @@ export default function ComputeView({
   const [controlMessage, setControlMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [circuitBroken, setCircuitBroken] = useState<boolean>(false);
   const [dailyBudget, setDailyBudget] = useState<number | null>(null);
+  const [wakeupNodeId, setWakeupNodeId] = useState<string | null>(null);
   // 本地生成 (经 /api/governance/compute/generate → BOS → omlx)
   const [genPrompt, setGenPrompt] = useState<string>('');
   const [genModel, setGenModel] = useState<string>('coder');
@@ -156,6 +157,32 @@ export default function ComputeView({
       }
     } catch (err: any) {
       setControlMessage({ tone: 'error', text: '修改预算异常：' + err.message });
+    }
+  };
+
+  const wakeupNode = async (node: any) => {
+    if (!node?.id || node.status === 'online') return;
+    const confirmed = window.confirm(`确认发送网络唤醒包给节点“${node.name || node.id}”？`);
+    if (!confirmed) return;
+
+    setWakeupNodeId(node.id);
+    setControlMessage(null);
+    try {
+      const res = await fetch('/api/governance/compute/wakeup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id: node.id }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || result.success === false) {
+        throw new Error(result.message || result.detail || '节点唤醒失败');
+      }
+      setControlMessage({ tone: 'success', text: result.message || `已向 ${node.name || node.id} 发送唤醒请求` });
+      setRefreshToken((value) => value + 1);
+    } catch (err: any) {
+      setControlMessage({ tone: 'error', text: `节点唤醒失败：${err.message || '请求异常'}` });
+    } finally {
+      setWakeupNodeId(null);
     }
   };
 
@@ -543,7 +570,7 @@ export default function ComputeView({
                   >
                     <div>
                       <strong>{node.name}</strong>
-                      <p>{node.status} · CPU {node.cpu_usage ?? 0}% · GPU {node.gpu_usage ?? 0}%</p>
+                      <p>{node.status} · CPU {node.cpu_usage == null ? '-' : `${node.cpu_usage}%`} · GPU {node.gpu_usage == null ? '-' : `${node.gpu_usage}%`}</p>
                       <span className="text-muted" style={{ fontSize: 12 }}>去网格页核对路由与下游调用。</span>
                     </div>
                     <Cpu size={14} />
@@ -812,8 +839,8 @@ export default function ComputeView({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
           {nodes.map((node: any) => {
-            const cpuLoad = node.cpu_usage ?? 0;
-            const gpuLoad = node.gpu_usage ?? 0;
+            const cpuLoad = node.cpu_usage;
+            const gpuLoad = node.gpu_usage;
             const isOnline = node.status === 'online';
 
             return (
@@ -849,6 +876,19 @@ export default function ComputeView({
                     <span style={{ display: 'block', fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>
                       {node.type}
                     </span>
+                    {node.status !== 'online' && (
+                      <button
+                        type="button"
+                        className="antd-btn small"
+                        aria-label={`唤醒节点 ${node.name}`}
+                        onClick={() => void wakeupNode(node)}
+                        disabled={wakeupNodeId === node.id}
+                        style={{ marginTop: 8 }}
+                      >
+                        <Zap size={13} />
+                        <span>{wakeupNodeId === node.id ? '唤醒中' : '唤醒节点'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -858,13 +898,13 @@ export default function ComputeView({
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
                       <span className="text-muted">CPU 占用率</span>
-                      <span style={{ color: 'var(--antd-primary)', fontWeight: 600 }}>{cpuLoad}%</span>
+                      <span style={{ color: 'var(--antd-primary)', fontWeight: 600 }}>{cpuLoad == null ? '-' : `${cpuLoad}%`}</span>
                     </div>
                     <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                       <div style={{
                         height: '100%',
-                        width: `${cpuLoad}%`,
-                        backgroundColor: 'var(--antd-primary)',
+                        width: `${cpuLoad ?? 0}%`,
+                        backgroundColor: cpuLoad == null ? 'var(--antd-text-muted)' : 'var(--antd-primary)',
                         transition: 'width 1.2s ease-in-out'
                       }}></div>
                     </div>
@@ -875,13 +915,13 @@ export default function ComputeView({
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
                         <span className="text-muted">GPU (NVIDIA/Apple M) VRAM 占用</span>
-                        <span style={{ color: 'var(--antd-accent)', fontWeight: 600 }}>{gpuLoad}%</span>
+                        <span style={{ color: 'var(--antd-accent)', fontWeight: 600 }}>{gpuLoad == null ? '-' : `${gpuLoad}%`}</span>
                       </div>
                       <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                         <div style={{
                           height: '100%',
-                          width: `${gpuLoad}%`,
-                          backgroundColor: 'var(--antd-accent)',
+                          width: `${gpuLoad ?? 0}%`,
+                          backgroundColor: gpuLoad == null ? 'var(--antd-text-muted)' : 'var(--antd-accent)',
                           transition: 'width 1.2s ease-in-out'
                         }}></div>
                       </div>
@@ -1037,7 +1077,11 @@ export default function ComputeView({
               </div>
             ) : (
               quota.map((q: any, i: number) => {
-                const usedPercent = q.used_percent !== undefined ? q.used_percent : Math.round((q.usage?.total_used / q.usage?.total_granted) * 100);
+                const usedPercent = q.used_percent !== undefined && q.used_percent !== null
+                  ? q.used_percent
+                  : q.usage?.total_granted
+                    ? Math.round((q.usage.total_used / q.usage.total_granted) * 100)
+                    : null;
                 const balance = q.balance_usd !== undefined ? q.balance_usd : null;
                 return (
                   <div 
@@ -1065,7 +1109,7 @@ export default function ComputeView({
                     ) : (
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginBottom: '6px' }}>
-                          <span>额度已用: <strong>{usedPercent}%</strong></span>
+                          <span>额度已用: <strong>{usedPercent === null ? '-' : `${usedPercent}%`}</strong></span>
                           {balance !== null && (
                             <span>可用余额: <strong style={{ color: 'var(--antd-success)' }}>${balance.toFixed(2)}</strong></span>
                           )}
@@ -1073,8 +1117,10 @@ export default function ComputeView({
                         <div style={{ height: '5px', borderRadius: '2.5px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                           <div style={{
                             height: '100%',
-                            width: `${usedPercent}%`,
-                            backgroundColor: usedPercent > 80 ? 'var(--antd-error)' : usedPercent > 50 ? 'var(--antd-warning)' : 'var(--antd-success)'
+                            width: `${usedPercent ?? 0}%`,
+                            backgroundColor: usedPercent === null
+                              ? 'var(--antd-text-muted)'
+                              : usedPercent > 80 ? 'var(--antd-error)' : usedPercent > 50 ? 'var(--antd-warning)' : 'var(--antd-success)'
                           }}></div>
                         </div>
                       </div>
@@ -1151,7 +1197,7 @@ export default function ComputeView({
                       {m.tokens_per_second ? `${m.tokens_per_second} T/s` : '-'}
                     </td>
                     <td className="text-muted">
-                      {m.calls_today.toLocaleString()} 次
+                      {m.calls_today === null || m.calls_today === undefined ? '-' : `${m.calls_today.toLocaleString()} 次`}
                     </td>
                   </tr>
                 ))

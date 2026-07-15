@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Activity, Cpu, Gift, Settings2, TerminalSquare } from 'lucide-react';
+import { Activity, AlertTriangle, Cpu, Gift, RefreshCw, Settings2, TerminalSquare } from 'lucide-react';
 
 interface ArchHealthPayload {
   system?: {
@@ -15,6 +15,10 @@ interface ArchHealthPayload {
 }
 
 interface BosMetricsPayload {
+  status?: string;
+  data_quality?: string;
+  error?: string;
+  next_action?: string;
   summary?: {
     total_calls?: number;
     avg_latency?: number;
@@ -34,6 +38,9 @@ interface PipelinesPayload {
 }
 
 interface MetricsPayload {
+  status?: string;
+  data_quality?: string;
+  error?: string;
   timestamp?: string;
   services?: number;
   healthy?: number;
@@ -94,10 +101,20 @@ const PLATFORM_STEPS = [
 async function fetchJson<T>(url: string, fallback: T): Promise<T> {
   try {
     const response = await fetch(url);
-    if (!response || !response.ok) {
+    if (!response) {
       return fallback;
     }
-    return (await response.json()) as T;
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const fallbackRecord = (fallback && typeof fallback === 'object' ? fallback : {}) as Record<string, unknown>;
+      return {
+        ...fallbackRecord,
+        ...(payload && typeof payload === 'object' ? payload : {}),
+        status: 'unavailable',
+        data_quality: 'unavailable',
+      } as T;
+    }
+    return payload as T;
   } catch (error) {
     console.error(`Failed to fetch ${url}:`, error);
     return fallback;
@@ -124,6 +141,7 @@ export default function PlatformControlWorkbench({
   const [pipelines, setPipelines] = useState<string[]>([]);
   const [metrics, setMetrics] = useState<MetricsPayload>({});
   const [quests, setQuests] = useState<QuestPayload>({});
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -152,14 +170,22 @@ export default function PlatformControlWorkbench({
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshToken]);
+
+  const unavailableSources = useMemo(() => {
+    const sources: string[] = [];
+    if (bosMetrics.data_quality === 'unavailable') sources.push('BOS 链路');
+    if (metrics.data_quality === 'unavailable') sources.push('服务观测');
+    return sources;
+  }, [bosMetrics.data_quality, metrics.data_quality]);
 
   const summary = useMemo(() => {
     const archScore = archHealth.system?.health_score || 0;
+    const bosUnavailable = bosMetrics.data_quality === 'unavailable';
     const avgLatency = bosMetrics.summary?.avg_latency || 0;
     const totalCalls = bosMetrics.summary?.total_calls || 0;
     const successCount = bosMetrics.summary?.success_count || 0;
-    const successRate = totalCalls > 0 ? Math.round((successCount / totalCalls) * 100) : 0;
+    const successRate = bosUnavailable ? null : totalCalls > 0 ? Math.round((successCount / totalCalls) * 100) : 0;
     const activeQuests = (quests.quests || []).filter((quest) => quest.completed === 0);
     const topDomain = (bosMetrics.domains || []).slice().sort((left, right) => right.total - left.total)[0];
     const topQuest = activeQuests[0];
@@ -168,7 +194,7 @@ export default function PlatformControlWorkbench({
 
     let nextAction = '先回观测页确认是否有新的系统异常。';
     let nextTab = 'Observability';
-    if (archScore < 90 || avgLatency > 1200 || successRate < 95) {
+    if (bosUnavailable || archScore < 90 || avgLatency > 1200 || (successRate !== null && successRate < 95)) {
       nextAction = `观测面还有波动，先看 Observability 里的链路和健康度。`;
       nextTab = 'Observability';
     } else if (pipelines.length > 0) {
@@ -186,6 +212,7 @@ export default function PlatformControlWorkbench({
       archScore,
       avgLatency,
       successRate,
+      bosUnavailable,
       topDomain,
       topQuest,
       activeQuests,
@@ -218,6 +245,21 @@ export default function PlatformControlWorkbench({
         </div>
       </div>
 
+      {unavailableSources.length > 0 && (
+        <div className="overview-inline-error" role="alert">
+          <AlertTriangle size={16} />
+          <div>
+            <strong>控制面数据需要补证</strong>
+            <span>{unavailableSources.join('、')}暂时不可用，不把缺失证据当成平稳状态。</span>
+            {bosMetrics.next_action && <small>{bosMetrics.next_action}</small>}
+          </div>
+          <button type="button" className="antd-btn" onClick={() => setRefreshToken((value) => value + 1)}>
+            <RefreshCw size={14} />
+            <span>重试</span>
+          </button>
+        </div>
+      )}
+
       <div className="platform-workbench-summary">
         <div className="platform-workbench-card">
           <span>架构健康</span>
@@ -226,8 +268,8 @@ export default function PlatformControlWorkbench({
         </div>
         <div className="platform-workbench-card">
           <span>BOS 链路</span>
-          <strong>{summary.successRate}%</strong>
-          <small>调用 {bosMetrics.summary?.total_calls || 0} · 延迟 {summary.avgLatency || 0}ms</small>
+          <strong>{summary.bosUnavailable ? '-' : `${summary.successRate}%`}</strong>
+          <small>{summary.bosUnavailable ? 'BOS 证据不可用' : `调用 ${bosMetrics.summary?.total_calls || 0} · 延迟 ${summary.avgLatency || 0}ms`}</small>
         </div>
         <div className="platform-workbench-card">
           <span>调度与控制</span>
@@ -286,8 +328,9 @@ export default function PlatformControlWorkbench({
               </button>
             ) : (
               <div className="platform-workbench-item platform-workbench-empty">
-                <strong>观测面当前比较安静</strong>
-                <span>如果还要继续排查，可以回 Observability 看架构健康和 BOS 摘要。</span>
+                <strong>{summary.bosUnavailable ? '观测证据不可用' : '观测面当前比较安静'}</strong>
+                <span>{summary.bosUnavailable ? bosMetrics.error || 'BOS 尚未产生可核验指标。' : '如果还要继续排查，可以回 Observability 看架构健康和 BOS 摘要。'}</span>
+                {summary.bosUnavailable && bosMetrics.next_action && <small>{bosMetrics.next_action}</small>}
               </div>
             )}
             <div className="platform-workbench-item">

@@ -5210,6 +5210,28 @@
   margin-top: 12px;
 }
 
+.system-map-project-detail-source {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--antd-border-color);
+  border-radius: var(--antd-radius-lg);
+  background: rgba(6, 9, 19, 0.24);
+}
+
+.system-map-project-detail-source h3 {
+  margin: 0;
+  color: var(--antd-text-primary);
+  font-size: 13px;
+}
+
+.system-map-project-detail-source code {
+  overflow-wrap: anywhere;
+  color: var(--antd-text-secondary);
+  font-size: 12px;
+}
+
 .system-map-project-detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));

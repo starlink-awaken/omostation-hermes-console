@@ -55,6 +55,7 @@ export default function AssetsView({
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   const [selectedPipeline, setSelectedPipeline] = useState('');
   const [pipelineGoal, setPipelineGoal] = useState('分析代码库是否有高风险的技术债');
@@ -67,28 +68,32 @@ export default function AssetsView({
 
   const fetchData = async () => {
     try {
-      const skillsRes = await fetch('/api/ecos/skills');
-      if (skillsRes.ok) {
-        const data = await skillsRes.json();
-        setSkills(data.skills || []);
-      }
-
-      const pipelinesRes = await fetch('/api/pipelines');
-      if (pipelinesRes.ok) {
-        const data = await pipelinesRes.json();
-        setPipelines(data.pipelines || []);
-        if (data.pipelines && data.pipelines.length > 0 && !selectedPipeline) {
-          setSelectedPipeline(data.pipelines[0]);
-        }
-      }
-
-      const workflowsRes = await fetch('/api/ecos/workflows');
-      if (workflowsRes.ok) {
-        const data = await workflowsRes.json();
-        setWorkflows(data.workflows || []);
-      }
+      const read = async (url: string, label: string) => {
+        const response = await fetch(url);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `${label}不可用`);
+        return payload;
+      };
+      const results = await Promise.allSettled([
+        read('/api/ecos/skills', '技能索引'),
+        read('/api/pipelines', '工具管线'),
+        read('/api/ecos/workflows', '自动化工作流'),
+      ]);
+      const failures: string[] = [];
+      const [skillsResult, pipelinesResult, workflowsResult] = results;
+      if (skillsResult.status === 'fulfilled') setSkills(skillsResult.value.skills || []);
+      else failures.push(skillsResult.reason?.message || '技能索引不可用');
+      if (pipelinesResult.status === 'fulfilled') {
+        const pipelinesData = pipelinesResult.value;
+        setPipelines(pipelinesData.pipelines || []);
+        if (pipelinesData.pipelines?.length > 0 && !selectedPipeline) setSelectedPipeline(pipelinesData.pipelines[0]);
+      } else failures.push(pipelinesResult.reason?.message || '工具管线不可用');
+      if (workflowsResult.status === 'fulfilled') setWorkflows(workflowsResult.value.workflows || []);
+      else failures.push(workflowsResult.reason?.message || '自动化工作流不可用');
+      setDataError(failures.length ? `资产数据部分不可用：${failures.join('；')}` : null);
     } catch (e) {
       console.error('Failed to fetch assets data:', e);
+      setDataError(e instanceof Error ? e.message : '技术资产数据不可用');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -352,6 +357,13 @@ export default function AssetsView({
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <KnowledgeExecutionWorkbench currentPage="Assets" onNavigate={onNavigate} />
+
+      {dataError && (
+        <div className="shell-data-banner" role="alert">
+          <span>{dataError}，当前清单不代表资产为 0。</span>
+          <button type="button" onClick={handleRefresh}>重试</button>
+        </div>
+      )}
 
       <section className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div className="section-header" style={{ marginBottom: 0 }}>
