@@ -283,6 +283,33 @@ describe('TaskCenterPage', () => {
     expect(screen.getByText('加载中...')).toBeInTheDocument()
   })
 
+  it('keeps a retry action available after a controlled verification fails', async () => {
+    const failedControlledTask = {
+      ...mockTasks[0],
+      id: 'failed-verification',
+      title: '重试 Cockpit 验证',
+      execution_contract: {
+        controlled_execution: true,
+        command: 'uv run pytest',
+        execution_audit: {
+          exit_code: 124,
+          timed_out: true,
+          log_ref: 'runtime/omo/failed-verification.log',
+        },
+      },
+    }
+    mockTaskCenterFetch([failedControlledTask])
+
+    render(<TaskCenterPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '重试受控验证' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '重试受控验证' }))
+    expect(fetch).toHaveBeenCalledWith('/api/tasks/failed-verification/execute', { method: 'POST' })
+  })
+
   it('renders fetched tasks and stats', async () => {
     mockTaskCenterFetch(mockTasks)
 

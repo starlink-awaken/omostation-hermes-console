@@ -84,6 +84,7 @@ interface Task {
     execution_audit?: {
       command?: string;
       exit_code?: number;
+      timed_out?: boolean;
       log_ref?: string;
       closeout_ref?: string | null;
       actor?: string;
@@ -113,6 +114,13 @@ interface TaskHistoryEntry {
   target?: string | null;
   source_ref?: string | null;
   ts?: string | null;
+}
+
+function canRunControlledVerification(task: Task): boolean {
+  const contract = task.execution_contract;
+  const audit = contract?.execution_audit;
+  if (!contract?.controlled_execution) return false;
+  return !audit || audit.exit_code !== 0 || audit.timed_out === true;
 }
 
 interface TaskExecutionSnapshot {
@@ -1864,10 +1872,11 @@ export default function TaskCenterPage({
                         <Play size={14} />
                       </button>
                     )
-                  ) : task.execution_contract?.controlled_execution && !task.execution_contract.execution_audit ? (
+                  ) : canRunControlledVerification(task) ? (
                     <button
                       className="btn btn-sm btn-outline"
-                      aria-label="执行受控验证"
+                      aria-label={task.execution_contract?.execution_audit ? '重试受控验证' : '执行受控验证'}
+                      title={task.execution_contract?.execution_audit ? '上次验证未通过，可重新执行' : '执行受控验证'}
                       disabled={actionPending === task.id}
                       onClick={(e) => { e.stopPropagation(); void executeControlledTask(task); }}
                     >
