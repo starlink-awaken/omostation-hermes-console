@@ -5112,6 +5112,14 @@
   gap: 8px;
 }
 
+.system-map-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .system-map-triage-command-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

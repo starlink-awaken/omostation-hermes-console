@@ -1427,6 +1427,7 @@ export default function SystemMapView({
   const [selectedFeatureDomainId, setSelectedFeatureDomainId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState('');
   const [actionError, setActionError] = useState('');
+  const [bulkTriagePending, setBulkTriagePending] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -1511,6 +1512,30 @@ export default function SystemMapView({
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '排查命令承接失败');
+    }
+  };
+
+  const queueVerificationTriage = async () => {
+    setActionNotice('');
+    setActionError('');
+    setBulkTriagePending(true);
+    try {
+      const response = await fetch('/api/cockpit/triage/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: 'verification', command_id: 'verification-rerun' }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '验证缺口承接失败');
+      const summary = payload.summary || {};
+      setActionNotice(`已批量承接验证缺口：${summary.queued || 0} 条，跳过 ${summary.skipped || 0} 条，失败 ${summary.errors || 0} 条。`);
+      if (onOpenTarget && (summary.queued || 0) > 0) {
+        onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '验证缺口承接失败');
+    } finally {
+      setBulkTriagePending(false);
     }
   };
 
@@ -4235,10 +4260,22 @@ export default function SystemMapView({
             <h2>排查命令队列</h2>
             <p className="text-muted">把运行探针、验证证据和项目清单缺口转换成可复制命令，仍由人确认后执行。</p>
           </div>
-          <span className="status-badge degraded">
-            <ClipboardCheck size={13} />
-            {filteredTriageCommandCount} / {systemMap.project_triage.summary.total_commands}
-          </span>
+          <div className="system-map-section-actions">
+            <button
+              className="antd-btn antd-btn-primary"
+              aria-label="批量承接验证缺口"
+              disabled={bulkTriagePending || systemMap.project_triage.summary.verification_commands === 0}
+              onClick={() => void queueVerificationTriage()}
+              title="只登记已有验证命令为 OMO 计划任务，不会直接执行"
+            >
+              <ClipboardCheck size={13} />
+              <span>{bulkTriagePending ? '正在承接' : '承接验证缺口'}</span>
+            </button>
+            <span className="status-badge degraded">
+              <ClipboardCheck size={13} />
+              {filteredTriageCommandCount} / {systemMap.project_triage.summary.total_commands}
+            </span>
+          </div>
         </div>
         <ProjectTriageQueues queues={filteredTriageQueues} onQueueCommand={(command) => void queueProjectTriageCommand(command)} />
       </section>

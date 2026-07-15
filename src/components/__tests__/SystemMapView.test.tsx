@@ -829,6 +829,12 @@ describe('SystemMapView', () => {
           executes: false,
         })
       }
+      if (url === '/api/cockpit/triage/queue') {
+        return okJson({
+          summary: { queued: 2, skipped: 1, errors: 0 },
+          executes: false,
+        })
+      }
       throw new Error(`Unexpected fetch: ${url}`)
     })
   })
@@ -901,6 +907,29 @@ describe('SystemMapView', () => {
         taskQuery: 'cockpit-triage-kairon-verification-rerun',
       })
       expect(screen.getByRole('status')).toHaveTextContent('已登记为计划任务')
+    })
+  })
+
+  it('batches verification triage into OMO tasks without executing commands', async () => {
+    const onOpenTarget = vi.fn()
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '批量承接验证缺口' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '批量承接验证缺口' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/cockpit/triage/queue',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ category: 'verification', command_id: 'verification-rerun' }),
+        }),
+      )
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' })
+      expect(screen.getByRole('status')).toHaveTextContent('已批量承接验证缺口：2 条')
     })
   })
 
