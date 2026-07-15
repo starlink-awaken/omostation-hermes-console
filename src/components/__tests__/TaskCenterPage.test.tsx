@@ -253,6 +253,13 @@ function mockTaskCenterFetch(items: unknown[], domainApps: unknown[] = [domainAp
     if (url.startsWith('/api/tasks/drafts/') && url.endsWith('/promote')) {
       return Promise.resolve(okJson({ id: 'cockpit-playbook-daily-health-check', status: 'pending', title: '操作清单：每日 5 分钟体检' }))
     }
+    if (url === '/api/tasks/task-1/history') {
+      return Promise.resolve(okJson({
+        task_id: 'task-1',
+        source: 'omo-ingress',
+        items: [{ kind: 'trail', action: 'promote_task_to_active', actor: 'cockpit-task-center', status: 'ok', ts: '2026-07-15T02:00:00Z', source_ref: 'cockpit:task:resume:task-1' }],
+      }))
+    }
     if (url.endsWith('/pause') || url.endsWith('/resume') || url.endsWith('/cancel')) {
       return Promise.resolve(okJson({}))
     }
@@ -544,6 +551,25 @@ describe('TaskCenterPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('任务操作失败')
       expect(screen.getAllByText('Deploy gateway').length).toBeGreaterThan(0)
+    })
+  })
+
+  it('shows OMO ingress history for a persisted task', async () => {
+    mockTaskCenterFetch(mockTasks)
+
+    render(<TaskCenterPage />)
+    await waitFor(() => {
+      expect(screen.getAllByText('Deploy gateway').length).toBeGreaterThan(0)
+    })
+
+    const taskCard = document.querySelector('.task-card')
+    expect(taskCard).not.toBeNull()
+    fireEvent.click(taskCard as HTMLElement)
+
+    await waitFor(() => {
+      expect(screen.getByText('OMO 历史:')).toBeInTheDocument()
+      expect(screen.getByText('promote_task_to_active')).toBeInTheDocument()
+      expect(screen.getByText('cockpit-task-center · 2026/7/15 10:00:00')).toBeInTheDocument()
     })
   })
 

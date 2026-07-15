@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Copy,
   ClipboardCheck,
+  History,
 } from 'lucide-react';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
@@ -61,6 +62,16 @@ interface Task {
       done_when?: string;
     }[];
   };
+}
+
+interface TaskHistoryEntry {
+  kind: string;
+  action: string;
+  actor: string;
+  status: string;
+  target?: string | null;
+  source_ref?: string | null;
+  ts?: string | null;
 }
 
 type TaskStatus = 'all' | 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
@@ -231,6 +242,9 @@ export default function TaskCenterPage({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [incomingDraftNotice, setIncomingDraftNotice] = useState<string | null>(null);
+  const [taskHistory, setTaskHistory] = useState<TaskHistoryEntry[]>([]);
+  const [taskHistoryLoading, setTaskHistoryLoading] = useState(false);
+  const [taskHistoryError, setTaskHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -265,6 +279,38 @@ export default function TaskCenterPage({
     setSearchQuery(initialSearchQuery);
     setActiveSourceFilter(isDraftSourceType(initialSearchQuery) ? initialSearchQuery : 'all');
   }, [initialSearchQuery]);
+
+  useEffect(() => {
+    if (!selectedTask || selectedTask.read_only) {
+      setTaskHistory([]);
+      setTaskHistoryError(null);
+      setTaskHistoryLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setTaskHistoryLoading(true);
+    setTaskHistoryError(null);
+    fetch(`/api/tasks/${selectedTask.id}/history`)
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.detail || response.statusText || '任务历史读取失败');
+        return payload;
+      })
+      .then((payload) => {
+        if (!cancelled) setTaskHistory(payload.items || []);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setTaskHistory([]);
+          setTaskHistoryError(error instanceof Error ? error.message : '任务历史读取失败');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setTaskHistoryLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedTask]);
 
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
@@ -1731,6 +1777,25 @@ export default function TaskCenterPage({
               <span className="detail-label">更新时间:</span>
               <span>{new Date(selectedTask.updated_at).toLocaleString('zh-CN')}</span>
             </div>
+            {!selectedTask.read_only && (
+              <div className="detail-row task-evidence-detail">
+                <span className="detail-label"><History size={14} /> OMO 历史:</span>
+                <div className="task-evidence-list">
+                  {taskHistoryLoading && <small>读取中...</small>}
+                  {taskHistoryError && <small className="text-danger">{taskHistoryError}</small>}
+                  {!taskHistoryLoading && !taskHistoryError && taskHistory.length === 0 && (
+                    <small className="text-muted">暂无可读的 ingress trail</small>
+                  )}
+                  {!taskHistoryLoading && !taskHistoryError && taskHistory.map((entry, index) => (
+                    <span key={`${entry.action}-${entry.ts}-${index}`}>
+                      <strong>{entry.action}</strong>
+                      <small>{entry.actor} · {entry.ts ? new Date(entry.ts).toLocaleString('zh-CN') : '时间未知'}</small>
+                      {entry.source_ref && <small>{entry.source_ref}</small>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             {selectedTask.status === 'in_progress' && (
               <div className="detail-row">
                 <span className="detail-label">进度:</span>
