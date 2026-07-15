@@ -91,7 +91,7 @@ export default function ComputeView({
         setError(null);
       }
       try {
-        const res = await fetch('/api/compute/status');
+        const res = await fetch('/api/governance/compute/status');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         if (cancelled) return;

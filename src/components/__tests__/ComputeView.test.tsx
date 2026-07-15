@@ -45,6 +45,7 @@ describe('ComputeView', () => {
     render(<ComputeView />)
 
     await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/governance/compute/status')
       expect(screen.getByRole('region', { name: '算力闭环总表' })).toBeInTheDocument()
       expect(screen.getByText('128 ms')).toBeInTheDocument()
       expect(screen.getByText('36 T/s')).toBeInTheDocument()
