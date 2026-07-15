@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Info,
   CheckCircle,
+  ClipboardCheck,
   Filter,
   Search,
   Download,
@@ -84,6 +85,7 @@ export default function AlertCenterPage({
   const [ruleForm, setRuleForm] = useState({ name: '', condition: '', level: 'warning', channels: 'slack', enabled: true });
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [queueingAlertId, setQueueingAlertId] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -172,6 +174,22 @@ export default function AlertCenterPage({
       setActionNotice('告警已解决，状态会在后续刷新中保留。');
     } catch (error) {
       setActionError(`解决告警失败：${error instanceof Error ? error.message : '请稍后重试'}`);
+    }
+  };
+
+  const handleQueueAlert = async (alert: Alert) => {
+    setQueueingAlertId(alert.id);
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/cockpit/alerts/${encodeURIComponent(alert.id)}/queue`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || payload.error || '告警任务承接失败');
+      setActionNotice(payload.created === false ? `任务已存在：${payload.id}` : `告警已承接为任务：${payload.id}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+    } catch (error) {
+      setActionError(`承接告警失败：${error instanceof Error ? error.message : '请稍后重试'}`);
+    } finally {
+      setQueueingAlertId(null);
     }
   };
 
@@ -736,6 +754,15 @@ export default function AlertCenterPage({
                     onClick={() => handleResolve(alert.id)}
                   >
                     解决
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline"
+                    aria-label={`承接告警任务 ${alert.message}`}
+                    disabled={queueingAlertId === alert.id}
+                    onClick={() => void handleQueueAlert(alert)}
+                  >
+                    <ClipboardCheck size={13} />
+                    {queueingAlertId === alert.id ? '承接中' : '承接任务'}
                   </button>
                 </div>
               </div>

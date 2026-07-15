@@ -91,6 +91,9 @@ function mockAlertCenterFetch() {
     if (url.endsWith('/acknowledge') || url.endsWith('/silence') || url.endsWith('/resolve')) {
       return Promise.resolve({ ok: true, json: async () => ({ ok: true }) } as Response)
     }
+    if (url === '/api/cockpit/alerts/alert-1/queue') {
+      return Promise.resolve({ ok: true, json: async () => ({ id: 'cockpit-alert-alert-1', created: true, executes: false }) } as Response)
+    }
     return Promise.resolve({ ok: true, json: async () => ({ items: [] }) } as Response)
   })
 }
@@ -180,6 +183,22 @@ describe('AlertCenterPage', () => {
         body: '{}',
       })
     })
+  })
+
+  it('queues a critical alert into TaskCenter', async () => {
+    const onOpenTarget = vi.fn()
+    mockAlertCenterFetch()
+
+    render(<AlertCenterPage onOpenTarget={onOpenTarget} />)
+    await waitFor(() => expect(screen.getAllByText('Mesh degradation').length).toBeGreaterThan(0))
+
+    fireEvent.click(screen.getByRole('button', { name: '承接告警任务 Mesh degradation' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/cockpit/alerts/alert-1/queue', { method: 'POST' })
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-alert-alert-1' })
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('告警已承接为任务：cockpit-alert-alert-1')
   })
 
   it('creates a custom alert rule from the rules workbench', async () => {
