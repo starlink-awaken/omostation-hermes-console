@@ -225,7 +225,18 @@ const cockpitProject = {
     runs: [{ ...workflowTrace.runs[0], run_id: 'run-cockpit', objective: '验证 cockpit' }],
   },
   source_refs: [sourceRef],
-  actions: [],
+  actions: [
+    {
+      id: 'copy-verify-command',
+      label: '复制验证',
+      kind: 'copy_command',
+      value: 'cd cockpit && uv run pytest',
+      enabled: true,
+      risk: 'low',
+      executes: false,
+      guard: '复制验证命令；不直接执行。',
+    },
+  ],
   triage_commands: [],
   coverage_checks: readyCoverageChecks,
   portfolio: {
@@ -645,7 +656,7 @@ const systemMapPayload = {
     gaps: 1,
     roadmap_items: 2,
     playbooks: 1,
-    project_actions: 0,
+    project_actions: 1,
     projects_needing_action: 1,
     project_triage_commands: 1,
     project_coverage_score: 75,
@@ -802,6 +813,14 @@ describe('SystemMapView', () => {
       if (url === `/api/cockpit/source-ref?target=${encodeURIComponent(sourceRef.target)}&context=4`) {
         return okJson(sourcePreviewPayload)
       }
+      if (url === '/api/cockpit/projects/cockpit/actions/copy-verify-command/queue') {
+        return okJson({
+          id: 'cockpit-action-cockpit-copy-verify-command',
+          status: 'pending',
+          title: '项目动作：Cockpit API · 复制验证',
+          executes: false,
+        })
+      }
       throw new Error(`Unexpected fetch: ${url}`)
     })
   })
@@ -828,6 +847,29 @@ describe('SystemMapView', () => {
       expect(screen.getByLabelText('kairon 项目详情')).toBeInTheDocument()
       expect(screen.getByText('工作流时间线')).toBeInTheDocument()
       expect(screen.getByText('run：run-kairon')).toBeInTheDocument()
+    })
+  })
+
+  it('queues an enabled project command without executing it', async () => {
+    const onOpenTarget = vi.fn()
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} focusProjectId="cockpit" />)
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: '承接项目动作 复制验证' }).length).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(screen.getAllByRole('button', { name: '承接项目动作 复制验证' })[0])
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/cockpit/projects/cockpit/actions/copy-verify-command/queue',
+        { method: 'POST' },
+      )
+      expect(onOpenTarget).toHaveBeenCalledWith({
+        tab: 'TaskCenter',
+        taskQuery: 'cockpit-action-cockpit-copy-verify-command',
+      })
+      expect(screen.getByRole('status')).toHaveTextContent('已登记为计划任务')
     })
   })
 

@@ -1015,27 +1015,47 @@ function SourceInspector({
   );
 }
 
-function ProjectActionList({ actions, onNavigate }: { actions?: ProjectAction[]; onNavigate: (tab: string) => void }) {
+function ProjectActionList({
+  actions,
+  onNavigate,
+  onQueueAction,
+}: {
+  actions?: ProjectAction[];
+  onNavigate: (tab: string) => void;
+  onQueueAction?: (action: ProjectAction) => void;
+}) {
   if (!actions || actions.length === 0) return <span className="text-muted">待登记</span>;
   return (
     <div className="system-map-action-list">
       {actions.slice(0, 4).map((action) => (
-        <button
-          key={action.id}
-          className={`system-map-project-action ${statusClass(action.risk)}`}
-          disabled={!action.enabled}
-          onClick={() => {
-            if (action.kind === 'navigate') {
-              onNavigate(action.value);
-              return;
-            }
-            void copyText(action.value);
-          }}
-          title={action.guard}
-        >
-          {action.kind === 'navigate' ? <ArrowRight size={12} /> : <Copy size={12} />}
-          <span>{action.label}</span>
-        </button>
+        <div key={action.id} className="system-map-project-action-group">
+          <button
+            className={`system-map-project-action ${statusClass(action.risk)}`}
+            disabled={!action.enabled}
+            onClick={() => {
+              if (action.kind === 'navigate') {
+                onNavigate(action.value);
+                return;
+              }
+              void copyText(action.value);
+            }}
+            title={action.guard}
+          >
+            {action.kind === 'navigate' ? <ArrowRight size={12} /> : <Copy size={12} />}
+            <span>{action.label}</span>
+          </button>
+          {action.kind === 'copy_command' && onQueueAction && (
+            <button
+              className={`system-map-project-action queue ${statusClass(action.risk)}`}
+              disabled={!action.enabled}
+              aria-label={`承接项目动作 ${action.label}`}
+              title="登记为 OMO 计划任务，不会直接执行命令"
+              onClick={() => onQueueAction(action)}
+            >
+              <ClipboardCheck size={12} />
+            </button>
+          )}
+        </div>
       ))}
     </div>
   );
@@ -1099,6 +1119,7 @@ function ProjectDetailPanel({
   relatedPlaybooks,
   relatedDrafts,
   onInspect,
+  onQueueAction,
   activeTarget,
 }: {
   project: ProjectItem;
@@ -1113,6 +1134,7 @@ function ProjectDetailPanel({
   relatedPlaybooks: OperatingPlaybook[];
   relatedDrafts: DraftTask[];
   onInspect: (ref: SourceRef) => void;
+  onQueueAction: (action: ProjectAction) => void;
   activeTarget: string;
 }) {
   const verification = project.runtime.latest_verification;
@@ -1258,7 +1280,11 @@ function ProjectDetailPanel({
 
         <article>
           <h3>受控动作</h3>
-          <ProjectActionList actions={project.actions} onNavigate={onNavigate} />
+          <ProjectActionList
+            actions={project.actions}
+            onNavigate={onNavigate}
+            onQueueAction={onQueueAction}
+          />
         </article>
 
         <article>
@@ -1367,6 +1393,8 @@ export default function SystemMapView({
   const [selectedGapId, setSelectedGapId] = useState<string | null>(null);
   const [selectedPageMaturityId, setSelectedPageMaturityId] = useState<string | null>(null);
   const [selectedFeatureDomainId, setSelectedFeatureDomainId] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -1411,6 +1439,25 @@ export default function SystemMapView({
       setSourceError(err instanceof Error ? err.message : '来源预览读取失败');
     } finally {
       setSourceLoading(false);
+    }
+  };
+
+  const queueProjectAction = async (projectId: string, action: ProjectAction) => {
+    setActionNotice('');
+    setActionError('');
+    try {
+      const response = await fetch(
+        `/api/cockpit/projects/${encodeURIComponent(projectId)}/actions/${encodeURIComponent(action.id)}/queue`,
+        { method: 'POST' },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '项目动作承接失败');
+      setActionNotice(`已登记为计划任务：${payload.title || action.label}`);
+      if (onOpenTarget) {
+        onOpenTarget({ tab: 'TaskCenter', taskQuery: payload.id });
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '项目动作承接失败');
     }
   };
 
@@ -2455,6 +2502,12 @@ export default function SystemMapView({
 
       <SummaryTileGrid className="system-map-summary-grid" items={systemSummaryTiles} minColumnWidth={180} />
 
+      {(actionNotice || actionError) && (
+        <div className={`system-map-action-feedback ${actionError ? 'error' : 'success'}`} role={actionError ? 'alert' : 'status'}>
+          {actionError || actionNotice}
+        </div>
+      )}
+
       <SourceInspector
         activeRef={activeSourceRef}
         preview={sourcePreview}
@@ -2645,6 +2698,7 @@ export default function SystemMapView({
           relatedPlaybooks={selectedProjectPlaybooks}
           relatedDrafts={selectedProjectDrafts}
           onInspect={inspectSourceRef}
+          onQueueAction={(action) => void queueProjectAction(selectedProject.id, action)}
           activeTarget={activeSourceTarget}
         />
       )}
@@ -4357,7 +4411,11 @@ export default function SystemMapView({
                         <BookOpen size={12} />
                         <span>详情</span>
                       </button>
-                      <ProjectActionList actions={project.actions} onNavigate={onNavigate} />
+                      <ProjectActionList
+                        actions={project.actions}
+                        onNavigate={onNavigate}
+                        onQueueAction={(action) => void queueProjectAction(project.id, action)}
+                      />
                       {project.triage_commands.length > 0 && (
                         <div className="system-map-triage-inline">
                           <small>排查</small>
