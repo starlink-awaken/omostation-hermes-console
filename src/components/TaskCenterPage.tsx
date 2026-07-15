@@ -94,6 +94,19 @@ interface TaskHistoryEntry {
   ts?: string | null;
 }
 
+interface TaskExecutionSnapshot {
+  status?: string;
+  dispatch_id?: string | null;
+  worker_id?: string | null;
+  run_ref?: string | null;
+  evidence_paths?: string[];
+  evidence_required?: string[];
+  evidence_ready?: boolean;
+  existing_artifacts?: string[];
+  next_action?: string;
+  artifacts?: Record<string, { ref?: string | null; exists?: boolean; valid?: boolean }>;
+}
+
 type TaskStatus = 'all' | 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
 type DraftSourceType =
   | 'system_map_project_portfolio'
@@ -265,6 +278,10 @@ export default function TaskCenterPage({
   const [taskHistory, setTaskHistory] = useState<TaskHistoryEntry[]>([]);
   const [taskHistoryLoading, setTaskHistoryLoading] = useState(false);
   const [taskHistoryError, setTaskHistoryError] = useState<string | null>(null);
+  const [taskExecution, setTaskExecution] = useState<TaskExecutionSnapshot | null>(null);
+  const [taskExecutionLoading, setTaskExecutionLoading] = useState(false);
+  const [taskExecutionError, setTaskExecutionError] = useState<string | null>(null);
+  const [evidenceInput, setEvidenceInput] = useState('');
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -305,29 +322,51 @@ export default function TaskCenterPage({
       setTaskHistory([]);
       setTaskHistoryError(null);
       setTaskHistoryLoading(false);
+      setTaskExecution(null);
+      setTaskExecutionError(null);
+      setTaskExecutionLoading(false);
+      setEvidenceInput('');
       return;
     }
 
     let cancelled = false;
     setTaskHistoryLoading(true);
     setTaskHistoryError(null);
-    fetch(`/api/tasks/${selectedTask.id}/history`)
+    setTaskExecutionLoading(true);
+    setTaskExecutionError(null);
+    setEvidenceInput('');
+    Promise.all([
+      fetch(`/api/tasks/${selectedTask.id}/history`),
+      fetch(`/api/tasks/${selectedTask.id}/execution`),
+    ])
       .then(async (response) => {
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.detail || response.statusText || '任务历史读取失败');
-        return payload;
+        const [historyResponse, executionResponse] = response;
+        const historyPayload = await historyResponse.json().catch(() => ({}));
+        const executionPayload = await executionResponse.json().catch(() => ({}));
+        if (!historyResponse.ok) throw new Error(historyPayload.detail || historyResponse.statusText || '任务历史读取失败');
+        if (!executionResponse.ok) throw new Error(executionPayload.detail || executionResponse.statusText || '执行态势读取失败');
+        return { historyPayload, executionPayload };
       })
-      .then((payload) => {
-        if (!cancelled) setTaskHistory(payload.items || []);
+      .then(({ historyPayload, executionPayload }) => {
+        if (!cancelled) {
+          setTaskHistory(historyPayload.items || []);
+          setTaskExecution(executionPayload.execution || null);
+        }
       })
       .catch((error) => {
         if (!cancelled) {
           setTaskHistory([]);
-          setTaskHistoryError(error instanceof Error ? error.message : '任务历史读取失败');
+          setTaskExecution(null);
+          const message = error instanceof Error ? error.message : '任务执行态势读取失败';
+          setTaskHistoryError(message);
+          setTaskExecutionError(message);
         }
       })
       .finally(() => {
-        if (!cancelled) setTaskHistoryLoading(false);
+        if (!cancelled) {
+          setTaskHistoryLoading(false);
+          setTaskExecutionLoading(false);
+        }
       });
     return () => { cancelled = true; };
   }, [selectedTask]);
@@ -635,7 +674,13 @@ export default function TaskCenterPage({
     setActionError(null);
     setActionNotice(null);
     try {
-      const response = await fetch(`/api/tasks/${taskId}/${action}`, { method: 'POST' });
+      const evidence_paths = action === 'complete'
+        ? evidenceInput.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+        : undefined;
+      const response = await fetch(`/api/tasks/${taskId}/${action}`, {
+        method: 'POST',
+        ...(evidence_paths?.length ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ evidence_paths }) } : {}),
+      });
       let payload: { error?: string } = {};
       try {
         payload = await response.json();
@@ -648,6 +693,7 @@ export default function TaskCenterPage({
       )));
       setSelectedTask((currentTask) => currentTask?.id === taskId ? { ...currentTask, status: nextStatus } : currentTask);
       setActionNotice(`任务已${action === 'pause' ? '暂停' : action === 'resume' ? '恢复' : '完成'}。`);
+      if (action === 'complete') setEvidenceInput('');
     } catch (error) {
       console.error('Failed to pause task:', error);
       setActionError(`任务操作失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
@@ -1934,6 +1980,45 @@ export default function TaskCenterPage({
               <div className="detail-row">
                 <span className="detail-label">负责人:</span>
                 <span>{selectedTask.assignee}</span>
+              </div>
+            )}
+            {!selectedTask.read_only && (
+              <div className="detail-row task-evidence-detail">
+                <span className="detail-label">Worker 执行态势:</span>
+                <div className="task-evidence-list">
+                  {taskExecutionLoading && <small>读取中...</small>}
+                  {taskExecutionError && <small className="text-danger">{taskExecutionError}</small>}
+                  {!taskExecutionLoading && !taskExecutionError && taskExecution && (
+                    <>
+                      <span>
+                        <strong>{taskExecution.status || 'not_dispatched'} · {taskExecution.worker_id || '未分配 worker'}</strong>
+                        <small>{taskExecution.next_action || '等待执行面动作'}</small>
+                      </span>
+                      {Object.entries(taskExecution.artifacts || {}).map(([name, artifact]) => (
+                        <span key={name}>
+                          <strong>{name}</strong>
+                          <small>{artifact.exists ? '已产生' : '未产生'}{artifact.ref ? ` · ${artifact.ref}` : ''}</small>
+                        </span>
+                      ))}
+                      {(taskExecution.evidence_required || []).length > 0 && (
+                        <label>
+                          <strong>完成证据路径</strong>
+                          <small>每行一个工作区相对路径，文件必须已存在</small>
+                          <textarea
+                            value={evidenceInput}
+                            onChange={(event) => setEvidenceInput(event.target.value)}
+                            placeholder={(taskExecution.existing_artifacts || []).join('\n')}
+                            rows={3}
+                            aria-label="完成证据路径"
+                          />
+                        </label>
+                      )}
+                    </>
+                  )}
+                  {!taskExecutionLoading && !taskExecutionError && !taskExecution && (
+                    <small className="text-muted">暂无 worker 执行记录</small>
+                  )}
+                </div>
               </div>
             )}
             <div className="detail-row">
