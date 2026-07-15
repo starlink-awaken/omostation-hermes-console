@@ -252,6 +252,56 @@ describe('DomainAppsView', () => {
     )
   }, 20000)
 
+  it('executes the explicit low-risk verification action through the controlled path', async () => {
+    const onOpenTarget = vi.fn()
+    const verificationPayload = {
+      ...domainAppsPayload,
+      items: [{
+        ...domainAppsPayload.items[0],
+        actions: [
+          ...domainAppsPayload.items[0].actions,
+          {
+            id: 'copy-verify',
+            label: '复制验证命令',
+            kind: 'copy_command',
+            value: 'uv run pytest',
+            enabled: true,
+            risk: 'low',
+            guard: '受控低风险验证。',
+          },
+        ],
+      }],
+    }
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/verify') && init?.method === 'POST') {
+        return Promise.resolve(okJson({ id: 'cockpit-domain-app-family-dashboard-app-copy-verify', exit_code: 0 }))
+      }
+      if (url === '/api/domain-apps') return Promise.resolve(okJson(verificationPayload))
+      if (url === '/api/opc/workspace') return Promise.resolve(okJson(opcPayload))
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<DomainAppsView onOpenTarget={onOpenTarget} taskQuery="family-dashboard-app" />)
+
+    const verifyButtons = await screen.findAllByRole('button', { name: '执行领域应用验证 复制验证命令' }, { timeout: 5000 })
+    fireEvent.click(verifyButtons[0])
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/cockpit/domain-apps/family-dashboard-app/verify',
+        { method: 'POST' },
+      )
+      expect(onOpenTarget).toHaveBeenCalledWith({
+        tab: 'TaskCenter',
+        taskQuery: 'cockpit-domain-app-family-dashboard-app-copy-verify',
+      })
+      expect(screen.getByRole('status')).toHaveTextContent('验证完成')
+    })
+  }, 20000)
+
   it('renders security posture summary and checks', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

@@ -7,6 +7,7 @@ import {
   ExternalLink,
   FileText,
   Map,
+  Play,
   RefreshCw,
   Route,
   ShieldAlert,
@@ -275,9 +276,11 @@ function attentionReasons(app: DomainApp): string[] {
 function DomainActionButtons({
   actions,
   onQueueAction,
+  onExecuteVerification,
 }: {
   actions: DomainApp['actions'];
   onQueueAction?: (action: DomainApp['actions'][number]) => void;
+  onExecuteVerification?: (action: DomainApp['actions'][number]) => void;
 }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
@@ -297,6 +300,17 @@ function DomainActionButtons({
               >
                 <ClipboardCheck size={14} />
                 <span>登记任务</span>
+              </button>
+            )}
+            {onExecuteVerification && action.id === 'copy-verify' && action.enabled && (
+              <button
+                className="antd-btn antd-btn-primary"
+                aria-label={`执行领域应用验证 ${action.label}`}
+                onClick={() => onExecuteVerification(action)}
+                title="仅执行登记的低风险验证命令，并写入 OMO 证据"
+              >
+                <Play size={14} />
+                <span>执行验证</span>
               </button>
             )}
           </React.Fragment>
@@ -347,10 +361,12 @@ function DomainAppCard({
   app,
   focused = false,
   onQueueAction,
+  onExecuteVerification,
 }: {
   app: DomainApp;
   focused?: boolean;
   onQueueAction?: (action: DomainApp['actions'][number]) => void;
+  onExecuteVerification?: (action: DomainApp['actions'][number]) => void;
 }) {
   return (
     <article
@@ -389,7 +405,7 @@ function DomainAppCard({
         </div>
       </div>
 
-      <DomainActionButtons actions={app.actions} onQueueAction={onQueueAction} />
+      <DomainActionButtons actions={app.actions} onQueueAction={onQueueAction} onExecuteVerification={onExecuteVerification} />
 
       <div className="domain-security-panel">
         <div className="domain-security-head">
@@ -637,6 +653,21 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '领域应用动作登记失败');
+    }
+  };
+
+  const executeDomainVerification = async (app: DomainApp) => {
+    if (!window.confirm(`将执行 ${app.name} 登记的低风险验证命令，并写入 OMO 执行证据。继续吗？`)) return;
+    setActionNotice(null);
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/cockpit/domain-apps/${app.id}/verify`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || '领域应用验证执行失败');
+      setActionNotice(`验证完成：${app.name} exit ${payload.exit_code ?? 'unknown'}，已写入任务证据。`);
+      if (onOpenTarget && payload.id) onOpenTarget({ tab: 'TaskCenter', taskQuery: payload.id });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '领域应用验证执行失败');
     }
   };
 
@@ -1237,6 +1268,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               <DomainActionButtons
                 actions={app.actions.slice(0, 3)}
                 onQueueAction={(action) => void queueDomainAction(app, action)}
+                onExecuteVerification={() => void executeDomainVerification(app)}
               />
             </article>
           ))}
@@ -1472,6 +1504,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               app={app}
               focused={app.id === focusedAppId}
               onQueueAction={(action) => void queueDomainAction(app, action)}
+              onExecuteVerification={() => void executeDomainVerification(app)}
             />
             <div className="home-focus-actions" style={{ marginTop: 0 }}>
               <button className="antd-btn small" onClick={() => setFocusedAppId(app.id)}>
