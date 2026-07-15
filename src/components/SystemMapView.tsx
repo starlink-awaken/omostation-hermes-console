@@ -1631,6 +1631,31 @@ export default function SystemMapView({
     }
   };
 
+  const executeRuntimeTriage = async () => {
+    if (!window.confirm('将按顺序执行最多 8 条已获批的运行探针，并把监听结果写入 OMO 执行证据。继续吗？')) return;
+    setActionNotice('');
+    setActionError('');
+    setBulkTriagePending(true);
+    try {
+      const response = await fetch('/api/cockpit/triage/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: 'runtime', limit: 8 }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '运行探针执行失败');
+      const summary = payload.summary || {};
+      setActionNotice(`运行探针完成：通过 ${summary.succeeded || 0} 条，失败 ${summary.failed || 0} 条，已批准候选 ${summary.candidates || 0} 条。`);
+      if (onOpenTarget && (summary.selected || 0) > 0) {
+        onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '运行探针执行失败');
+    } finally {
+      setBulkTriagePending(false);
+    }
+  };
+
   const queueCoverageDrafts = async () => {
     setActionNotice('');
     setActionError('');
@@ -4416,6 +4441,16 @@ export default function SystemMapView({
             >
               <Send size={13} />
               <span>{bulkTriagePending ? '正在执行' : '执行待补验证'}</span>
+            </button>
+            <button
+              className="antd-btn"
+              aria-label="执行已批准运行探针"
+              disabled={bulkTriagePending || (systemMap.project_triage.queues.find((queue) => queue.id === 'runtime')?.queued || 0) === 0}
+              onClick={() => void executeRuntimeTriage()}
+              title="只执行已经获批并恢复到 active 的运行探针，不会绕过审批"
+            >
+              <Server size={13} />
+              <span>{bulkTriagePending ? '正在执行' : '执行已批准探针'}</span>
             </button>
             <span className="status-badge degraded">
               <ClipboardCheck size={13} />
