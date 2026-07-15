@@ -61,11 +61,14 @@ export default function ComputeView({
   const [genModel, setGenModel] = useState<string>('coder');
   const [genResult, setGenResult] = useState<string>('');
   const [genLoading, setGenLoading] = useState<boolean>(false);
+  const [genQueueLoading, setGenQueueLoading] = useState<boolean>(false);
+  const [genQueueMessage, setGenQueueMessage] = useState<string | null>(null);
 
   const runGenerate = async () => {
     if (!genPrompt.trim()) return;
     setGenLoading(true);
     setGenResult('');
+    setGenQueueMessage(null);
     try {
       const res = await fetch('/api/governance/compute/generate', {
         method: 'POST',
@@ -80,6 +83,27 @@ export default function ComputeView({
       setGenResult('❌ ' + (err.message || String(err)));
     } finally {
       setGenLoading(false);
+    }
+  };
+
+  const queueGenerationResult = async () => {
+    if (!genPrompt.trim() || !genResult || genResult.startsWith('❌')) return;
+    setGenQueueLoading(true);
+    setGenQueueMessage(null);
+    try {
+      const res = await fetch('/api/cockpit/compute/generation/queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: genPrompt, model: genModel || 'coder', content: genResult }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || data.error || '结果登记失败');
+      setGenQueueMessage(data.created === false ? '这份生成结果已经登记过。' : '生成结果已登记到任务中心。');
+      if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
+    } catch (err: any) {
+      setGenQueueMessage(`生成结果登记失败：${err.message || '请稍后重试。'}`);
+    } finally {
+      setGenQueueLoading(false);
     }
   };
 
@@ -668,6 +692,21 @@ export default function ComputeView({
         {genResult && (
           <div style={{ marginTop: '12px', padding: '12px', borderRadius: '6px', background: 'var(--antd-bg-layout, #f5f5f5)', color: 'var(--antd-text-primary)', whiteSpace: 'pre-wrap', fontSize: '13px', lineHeight: 1.6 }}>
             {genResult}
+          </div>
+        )}
+        {genResult && !genResult.startsWith('❌') && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="antd-btn antd-btn-primary"
+              aria-label="登记本地生成结果"
+              disabled={genQueueLoading}
+              onClick={() => void queueGenerationResult()}
+            >
+              <Shield size={14} />
+              <span>{genQueueLoading ? '登记中...' : '登记生成结果'}</span>
+            </button>
+            {genQueueMessage && <span className="text-muted" role="status">{genQueueMessage}</span>}
           </div>
         )}
         <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--antd-text-secondary, #888)' }}>

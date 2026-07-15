@@ -148,4 +148,33 @@ describe('ComputeView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '本地算力生成' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('registers local generation output as a task-center follow-up', async () => {
+    const onNavigate = vi.fn()
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(okJson({
+        summary: { avg_latency_ms: 128, avg_tokens_per_second: 36 },
+        cost_board: { interception_rate: 0.5, saved_vs_cloud_usd: 1.2 },
+        nodes: [{ id: 'local-mac', name: '本地主机', status: 'online', cpu_usage: 17, gpu_usage: 0 }],
+        quota: { quota: [] },
+        traffic_by_node: [],
+        scheduled_tasks: [],
+        circuit_broken: false,
+        daily_budget: 100,
+      }))
+      .mockResolvedValueOnce(okJson({ status: 'success', content: '分层架构建议' }))
+      .mockResolvedValueOnce(okJson({ created: true, id: 'generation-task-1' }))
+
+    render(<ComputeView onNavigate={onNavigate} />)
+
+    await waitFor(() => expect(screen.getByText('本地算力生成')).toBeInTheDocument())
+    fireEvent.change(screen.getByPlaceholderText('输入提示词，回车或点生成…'), { target: { value: '总结架构' } })
+    fireEvent.click(screen.getByRole('button', { name: '生成' }))
+    await waitFor(() => expect(screen.getByText('分层架构建议')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: '登记本地生成结果' }))
+    await waitFor(() => expect(screen.getByText('生成结果已登记到任务中心。')).toBeInTheDocument())
+    expect(fetch).toHaveBeenLastCalledWith('/api/cockpit/compute/generation/queue', expect.objectContaining({ method: 'POST' }))
+    expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+  })
 })
