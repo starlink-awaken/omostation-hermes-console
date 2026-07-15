@@ -122,17 +122,15 @@ export default function EnginesView({
     setRunning(true);
     setRunResult(null);
     try {
-      const fd = new FormData();
-      fd.append('name', selectedPipeline);
-      fd.append('goal', pipelineInput);
-      
-      const res = await fetch('/api/pipeline', {
+      const res = await fetch('/api/cockpit/engine/queue', {
         method: 'POST',
-        body: fd
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ engine: 'pipeline', pipeline: selectedPipeline, task: pipelineInput }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.error || '管线任务承接失败');
       setRunResult(data);
-      fetchData(); // refresh events
+      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
     } catch (e: any) {
       setRunResult({ error: e.message });
     } finally {
@@ -167,15 +165,17 @@ export default function EnginesView({
   const handleExecuteTask = async () => {
     if (!pipelineInput) return;
     setRunning(true);
+    setRunResult(null);
     try {
-      const res = await fetch('/api/metaos/execute', {
+      const res = await fetch('/api/cockpit/engine/queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task: pipelineInput })
+        body: JSON.stringify({ engine: 'metaos', task: pipelineInput }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.error || 'MetaOS 任务承接失败');
       setRunResult(data);
-      fetchData(); // refresh events
+      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
     } catch (e: any) {
       setRunResult({ error: e.message });
     } finally {
@@ -466,7 +466,7 @@ export default function EnginesView({
               style={{ flex: 1, height: '36px', borderColor: 'var(--antd-success)', color: 'var(--antd-success)' }}
             >
               {running ? <div className="spinner" style={{ width: 16, height: 16, borderTopColor: 'var(--antd-success)' }}></div> : <Play size={16} />}
-              {running ? '执行中...' : 'Start Execution'}
+              {running ? '正在承接...' : '承接计划'}
             </button>
           )}
 
@@ -478,7 +478,7 @@ export default function EnginesView({
               style={{ flex: 1, height: '36px' }}
             >
               {running ? <div className="spinner" style={{ width: 16, height: 16, borderTopColor: 'var(--antd-primary)' }}></div> : <Play size={16} />}
-              {running ? '管线执行中...' : '调度引擎'}
+              {running ? '正在承接...' : '承接管线任务'}
             </button>
           )}
         </div>

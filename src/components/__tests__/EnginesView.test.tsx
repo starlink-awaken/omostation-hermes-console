@@ -81,4 +81,33 @@ describe('EnginesView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'family-weekly-report' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('queues pipeline execution into TaskCenter instead of launching it directly', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/pipelines') {
+        return Promise.resolve(okJson({ pipelines: ['health-check'] }))
+      }
+      if (url === '/api/cockpit/engine/queue') {
+        expect(init?.method).toBe('POST')
+        expect(init?.body).toBe(JSON.stringify({ engine: 'pipeline', pipeline: 'health-check', task: '核对运行状态' }))
+        return Promise.resolve(okJson({ id: 'cockpit-engine-health-check', executes: false }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<EnginesView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('health-check')).toBeInTheDocument()
+    })
+    fireEvent.change(screen.getByLabelText('执行指令 / 目标'), { target: { value: '核对运行状态' } })
+    fireEvent.click(screen.getByRole('button', { name: '承接管线任务' }))
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-engine-health-check' })
+      expect(screen.getByText(/executes/)).toBeInTheDocument()
+    })
+  })
 })
