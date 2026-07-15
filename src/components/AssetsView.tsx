@@ -131,22 +131,24 @@ export default function AssetsView({
     setPipelineOutput(null);
 
     try {
-      const res = await fetch('/api/pipeline', {
+      const res = await fetch('/api/cockpit/engine/queue', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: selectedPipeline,
-          goal: pipelineGoal,
+          engine: 'pipeline',
+          pipeline: selectedPipeline,
+          task: pipelineGoal,
         }),
       });
 
       const data = await res.json();
-      if (res.ok && data.status === 'ok') {
-        setPipelineOutput(data.result || '管线执行完毕，无输出');
+      if (res.ok && data.executes === false) {
+        setPipelineOutput(`已登记为任务 ${data.id || '待定'}，请到任务中心审批后执行。`);
+        if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
       } else {
-        setPipelineError(data.error || '管线执行失败');
+        setPipelineError(data.detail || data.error || '管线任务承接失败');
       }
     } catch (err: any) {
       setPipelineError(err.message || '网络通讯异常');
@@ -823,13 +825,13 @@ export default function AssetsView({
                 }}
               >
                 <Play size={14} />
-                <span>{pipelineRunning ? '管线调度执行中...' : '调度工具管线'}</span>
+                <span>{pipelineRunning ? '正在承接任务...' : '承接工具管线任务'}</span>
               </button>
             </div>
           </div>
 
           <div className="services-section" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>调度终端日志 (Terminal Output)</h3>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>任务承接结果</h3>
 
             <div
               style={{
@@ -849,7 +851,7 @@ export default function AssetsView({
             >
               {pipelineRunning && (
                 <div style={{ color: 'var(--antd-primary)' }} className="blink-fast">
-                  ⚙️ Agora Pipeline: 正在调度子进程执行该管线，载入上下文...
+                  任务会先进入 OMO 计划队列，审批后再由任务中心派发执行。
                 </div>
               )}
               {pipelineError && (
@@ -860,7 +862,7 @@ export default function AssetsView({
               {pipelineOutput && <div>{pipelineOutput}</div>}
               {!pipelineRunning && !pipelineError && !pipelineOutput && (
                 <div style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  等待管线调度。启动后，子系统反馈的流输出将在此滚动呈递。
+                  等待管线承接。提交后可从任务中心查看审批、派发和执行证据。
                 </div>
               )}
             </div>

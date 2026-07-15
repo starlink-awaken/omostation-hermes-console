@@ -54,6 +54,32 @@ describe('AssetsView', () => {
     })
   })
 
+  it('queues an asset pipeline into TaskCenter instead of launching it directly', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/pipelines') return Promise.resolve(okJson({ pipelines: ['risk-audit'] }))
+      if (url === '/api/ecos/skills') return Promise.resolve(okJson({ skills: [] }))
+      if (url === '/api/ecos/workflows') return Promise.resolve(okJson({ workflows: [] }))
+      if (url === '/api/cockpit/engine/queue') {
+        expect(init?.method).toBe('POST')
+        return Promise.resolve(okJson({ id: 'cockpit-engine-risk-audit', executes: false }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<AssetsView onOpenTarget={onOpenTarget} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /工具管线 \(Pipelines: 1\)/ })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /工具管线 \(Pipelines: 1\)/ }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '承接工具管线任务' })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '承接工具管线任务' }))
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-engine-risk-audit' })
+      expect(screen.getAllByText(/已登记为任务/).length).toBeGreaterThan(0)
+    })
+  })
+
   it('surfaces an asset workbench and navigates toward governance and workflow follow-up', async () => {
     const onNavigate = vi.fn()
     render(<AssetsView onNavigate={onNavigate} />)
