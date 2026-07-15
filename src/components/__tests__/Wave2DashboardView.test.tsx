@@ -118,4 +118,32 @@ describe('Wave2DashboardView', () => {
       expect(screen.getByText(/加载失败/)).toBeInTheDocument()
     })
   })
+
+  it('loads demo seed then refreshes dashboard', async () => {
+    let dashboardCalls = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/wave2/dashboard') {
+        dashboardCalls += 1
+        return Promise.resolve(okJson(sample))
+      }
+      if (url === '/api/wave2/demo-seed' && init?.method === 'POST') {
+        return Promise.resolve(
+          okJson({
+            status: 'ok',
+            seeded: ['demo-a', 'demo-b'],
+            pitch_count: 6,
+          }),
+        )
+      }
+      return Promise.resolve(okJson({}))
+    })
+    render(<Wave2DashboardView />)
+    await waitFor(() => expect(screen.getByTestId('wave2-demo-seed')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('wave2-demo-seed'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wave2-seed-msg')).toHaveTextContent(/已加载演示数据/)
+    })
+    expect(dashboardCalls).toBeGreaterThanOrEqual(2)
+  })
 })

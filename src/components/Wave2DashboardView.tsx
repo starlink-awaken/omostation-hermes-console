@@ -117,6 +117,8 @@ export default function Wave2DashboardView({
   const [planActions, setPlanActions] = useState<PlanAction[] | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [seedMsg, setSeedMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -162,6 +164,30 @@ export default function Wave2DashboardView({
     onOpenTarget?.({ tab: 'TaskCenter', taskQuery: q });
   };
 
+  const loadDemoSeed = useCallback(async () => {
+    setSeedLoading(true);
+    setSeedMsg(null);
+    try {
+      const res = await fetch('/api/wave2/demo-seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reset: true }),
+      });
+      const body = await res.json();
+      if (!res.ok || body.status === 'error') {
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      setSeedMsg(
+        `已加载演示数据: seeded=${(body.seeded || []).length} total=${body.pitch_count ?? '?'}`,
+      );
+      await load();
+    } catch (e: unknown) {
+      setSeedMsg(`演示数据失败: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSeedLoading(false);
+    }
+  }, [load]);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -187,7 +213,7 @@ export default function Wave2DashboardView({
             {data?.auto_mutate_rules === false ? ' · 不自动改写 GaC 规则' : ''}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-200 hover:bg-white/10"
@@ -196,6 +222,15 @@ export default function Wave2DashboardView({
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             刷新
+          </button>
+          <button
+            type="button"
+            data-testid="wave2-demo-seed"
+            className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-sm text-emerald-100 hover:bg-emerald-500/20"
+            onClick={() => void loadDemoSeed()}
+            disabled={seedLoading}
+          >
+            {seedLoading ? '加载中…' : '加载演示数据'}
           </button>
           <button
             type="button"
@@ -213,6 +248,15 @@ export default function Wave2DashboardView({
           </button>
         </div>
       </div>
+
+      {seedMsg ? (
+        <div
+          className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-100"
+          data-testid="wave2-seed-msg"
+        >
+          {seedMsg}
+        </div>
+      ) : null}
 
       {error ? (
         <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">
