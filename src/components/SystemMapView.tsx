@@ -141,7 +141,16 @@ type ProjectItem = {
     profile: string;
     needs_runtime: boolean;
     probe_reason: string;
-    ports: { port: number; service: string; type: string; listening: boolean; source_ref?: SourceRef }[];
+    checked_at?: string;
+    ports: {
+      port: number;
+      service: string;
+      type: string;
+      listening: boolean | null;
+      probe_status?: string;
+      probe_reason?: string;
+      source_ref?: SourceRef;
+    }[];
     listening_count: number;
     latest_verification: {
       status: string;
@@ -1226,13 +1235,18 @@ function ProjectDetailPanel({
             <span>状态：{runtimeStatusText(project.runtime.status)}</span>
             <span>形态：{runtimeProfileText(project.runtime.profile)}</span>
             <span>监听：{project.runtime.listening_count} / {project.runtime.ports.length}</span>
+            <span>探测：{project.runtime.checked_at ? shortDate(project.runtime.checked_at) : '暂无'}</span>
           </div>
           <div className="system-map-risk-line">{project.runtime.probe_reason}</div>
           {project.runtime.ports.length > 0 && (
             <div className="system-map-port-list">
               {project.runtime.ports.slice(0, 6).map((port) => (
-                <span key={port.port} className={port.listening ? 'online' : 'offline'}>
-                  :{port.port} {port.service}
+                <span
+                  key={port.port}
+                  className={port.listening ? 'online' : port.probe_status === 'not_probeable' ? 'degraded' : 'offline'}
+                  title={port.probe_reason || port.service}
+                >
+                  :{port.port} {port.service} · {port.probe_status === 'not_probeable' ? '不可探测' : port.listening ? '监听' : '未监听'}
                 </span>
               ))}
             </div>
