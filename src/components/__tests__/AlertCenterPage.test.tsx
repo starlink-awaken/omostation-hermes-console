@@ -122,6 +122,26 @@ describe('AlertCenterPage', () => {
     expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2)
   })
 
+  it('keeps alerts available when the rules API fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/alerts') {
+        return Promise.resolve({ ok: true, json: async () => ({ items: mockAlerts }) } as Response)
+      }
+      if (url === '/api/alerts/rules') {
+        return Promise.reject(new Error('rules service offline'))
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ items: [] }) } as Response)
+    })
+
+    render(<AlertCenterPage />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Mesh degradation').length).toBeGreaterThan(0)
+      expect(screen.getByRole('alert')).toHaveTextContent('规则数据：rules service offline')
+    })
+  })
+
   it('switches to history tab', async () => {
     mockAlertCenterFetch()
 

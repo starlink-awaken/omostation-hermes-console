@@ -67,6 +67,23 @@ function matchesAlertFocusQuery(values: Array<string | null | undefined>, query?
   return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
 }
 
+async function readAlertResponse<T>(
+  result: PromiseSettledResult<Response>,
+  label: string,
+): Promise<{ ok: boolean; data: T | null; error?: string }> {
+  if (result.status === 'rejected') {
+    return { ok: false, data: null, error: `${label}：${result.reason instanceof Error ? result.reason.message : '请求失败'}` };
+  }
+  if (!result.value.ok) {
+    return { ok: false, data: null, error: `${label} HTTP ${result.value.status}` };
+  }
+  try {
+    return { ok: true, data: await result.value.json() as T };
+  } catch {
+    return { ok: false, data: null, error: `${label}：响应格式无效` };
+  }
+}
+
 export default function AlertCenterPage({
   onNavigate,
   onOpenTarget,
@@ -96,26 +113,18 @@ export default function AlertCenterPage({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [alertsRes, rulesRes] = await Promise.all([
+        const [alertsResult, rulesResult] = await Promise.allSettled([
           fetch('/api/alerts'),
           fetch('/api/alerts/rules'),
         ]);
 
-        const failures: string[] = [];
-        if (alertsRes.ok) {
-          const data = await alertsRes.json();
-          setAlerts(data.items || []);
-        } else {
-          failures.push(`告警数据 HTTP ${alertsRes.status}`);
-        }
-
-        if (rulesRes.ok) {
-          const data = await rulesRes.json();
-          setRules(data.items || []);
-        } else {
-          failures.push(`规则数据 HTTP ${rulesRes.status}`);
-        }
-        setDataError(failures.length ? failures.join('；') : null);
+        const [{ ok: alertsOk, data: alertsData, error: alertsError }, { ok: rulesOk, data: rulesData, error: rulesError }] = await Promise.all([
+          readAlertResponse<{ items?: Alert[] }>(alertsResult, '告警数据'),
+          readAlertResponse<{ items?: AlertRule[] }>(rulesResult, '规则数据'),
+        ]);
+        if (alertsOk && alertsData) setAlerts(alertsData.items || []);
+        if (rulesOk && rulesData) setRules(rulesData.items || []);
+        setDataError([alertsError, rulesError].filter(Boolean).join('；') || null);
       } catch (error) {
         console.error('Failed to fetch alerts data:', error);
         setDataError(error instanceof Error ? error.message : '告警服务暂不可用');
