@@ -2837,7 +2837,7 @@ export default function SystemMapView({
               <h2>当前聚焦能力缺口</h2>
               <p className="text-muted">从任务草稿或全局搜索带回来的缺口，会在这里先给你一个落点。</p>
             </div>
-            <button className="antd-btn" onClick={() => onNavigate('TaskCenter')}>
+            <button className="antd-btn" onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', gapId: selectedGap.id, taskQuery: selectedGap.id }, draftTasks), onNavigate, onOpenTarget)}>
               <ClipboardCheck size={14} />
               <span>回任务中心</span>
             </button>
@@ -3087,7 +3087,7 @@ export default function SystemMapView({
               <h2>使用路径工作台</h2>
               <p className="text-muted">先选目标，再看它覆盖哪些页面、清单、能力域和待补路线图。</p>
             </div>
-            <button className="antd-btn" onClick={() => onNavigate('TaskCenter')}>
+            <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', usagePathId: activeUsagePath.id, taskQuery: activeUsagePath.id }, onNavigate, onOpenTarget)}>
               <ClipboardCheck size={14} />
               <span>任务草稿</span>
             </button>
@@ -3244,7 +3244,7 @@ export default function SystemMapView({
                 <div className="system-map-usage-detail">
                   <div className="system-map-usage-detail-head">
                     <h4>任务草稿</h4>
-                    <button className="antd-btn small" onClick={() => onNavigate('TaskCenter')}>
+                    <button className="antd-btn small" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', usagePathId: activeUsagePath.id, taskQuery: activeUsagePath.id }, onNavigate, onOpenTarget)}>
                       <ClipboardCheck size={13} />
                       <span>全部草稿</span>
                     </button>
@@ -3259,7 +3259,15 @@ export default function SystemMapView({
                               void copyText(task.draft.copy_text);
                               return;
                             }
-                            onNavigate('TaskCenter');
+                            openSystemMapTarget(
+                              withTaskDraftHandoff({
+                                tab: 'TaskCenter',
+                                usagePathId: activeUsagePath.id,
+                                taskQuery: task.source?.id || task.id || activeUsagePath.id,
+                              }, draftTasks),
+                              onNavigate,
+                              onOpenTarget,
+                            );
                           }}
                           title={task.draft?.guard || '复制草稿'}
                         >
@@ -3508,7 +3516,7 @@ export default function SystemMapView({
               <h2>项目维度修复台</h2>
               <p className="text-muted">按最薄弱维度组织项目、下一步和排查命令，选中维度会同步过滤下方项目矩阵。</p>
             </div>
-            <button className="antd-btn" onClick={() => onNavigate('TaskCenter')}>
+            <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', coverageDimensionId: activeRepairDimension.id, taskQuery: activeRepairDimension.id }, onNavigate, onOpenTarget)}>
               <ClipboardCheck size={14} />
               <span>任务中心</span>
             </button>
@@ -3602,7 +3610,7 @@ export default function SystemMapView({
             <h2>统一建设控制台</h2>
             <p className="text-muted">把页面能力、领域挂载合同、验证补证和路线图优先项拉到一张桌子上，先做真正影响日用的建设动作。</p>
           </div>
-          <button className="antd-btn" onClick={() => onNavigate('TaskCenter')}>
+          <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: buildControlTower.priorityItems[0]?.id || buildControlTower.pageItems[0]?.page.id || '建设' }, onNavigate, onOpenTarget)}>
             <ClipboardCheck size={14} />
             <span>统一承接到任务中心</span>
           </button>
@@ -3744,7 +3752,7 @@ export default function SystemMapView({
             <h2>能力建设 Backlog</h2>
             <p className="text-muted">把待补页面、待收口领域、显性能力缺口和未完成路线图收成一个建设面，不用在多个区块之间自己拼。</p>
           </div>
-          <button className="antd-btn" onClick={() => onNavigate('TaskCenter')}>
+          <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: capabilityBuildBacklog.pagesWithoutUsage[0]?.page.id || capabilityBuildBacklog.domainAttention[0]?.id || '能力建设' }, onNavigate, onOpenTarget)}>
             <ClipboardCheck size={14} />
             <span>任务中心</span>
           </button>
@@ -4437,7 +4445,7 @@ export default function SystemMapView({
                     <span>打开</span>
                   </a>
                 )}
-                <button className="antd-btn" onClick={() => onNavigate('DomainApps')}>
+                <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'DomainApps', taskQuery: app.id }, onNavigate, onOpenTarget)}>
                   <ArrowRight size={13} />
                   <span>应用中心</span>
                 </button>
