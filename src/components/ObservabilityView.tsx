@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './Dashboard.css';
-import { Activity, AlertTriangle, ClipboardCheck, RefreshCw, Route, ShieldCheck } from 'lucide-react';
+import { Activity, AlertTriangle, ClipboardCheck, RefreshCw, Route, Search, ShieldCheck, X } from 'lucide-react';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
@@ -40,6 +40,8 @@ export default function ObservabilityView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
+  const [domainQuery, setDomainQuery] = useState('');
+  const [domainStatus, setDomainStatus] = useState<'all' | 'degraded' | 'healthy'>('all');
 
   useEffect(() => {
     const load = async () => {
@@ -69,10 +71,20 @@ export default function ObservabilityView({
     void load();
   }, [retryToken]);
 
-  const observabilityBacklog = useMemo(() => {
+  const filteredDomains = useMemo(() => {
     const domains = Array.isArray(bosData?.domains) ? bosData.domains : [];
-    const degradedDomains = domains.filter((domain: any) => (domain.error || 0) > 0 || (domain.avg_latency || 0) >= 700);
-    const hottestDomains = (degradedDomains.length ? degradedDomains : domains).slice(0, 3);
+    const normalizedQuery = domainQuery.trim().toLowerCase();
+    return domains.filter((domain: any) => {
+      const matchesQuery = !normalizedQuery || String(domain.domain || '').toLowerCase().includes(normalizedQuery);
+      const degraded = (domain.error || 0) > 0 || (domain.avg_latency || 0) >= 700;
+      const matchesStatus = domainStatus === 'all' || (domainStatus === 'degraded' ? degraded : !degraded);
+      return matchesQuery && matchesStatus;
+    });
+  }, [bosData, domainQuery, domainStatus]);
+
+  const observabilityBacklog = useMemo(() => {
+    const degradedDomains = filteredDomains.filter((domain: any) => (domain.error || 0) > 0 || (domain.avg_latency || 0) >= 700);
+    const hottestDomains = (degradedDomains.length ? degradedDomains : filteredDomains).slice(0, 3);
     const governanceHealth = archData?.governance?.health || 'unknown';
     const gitDirty = archData?.git?.status && archData.git.status !== 'clean';
     return {
@@ -81,7 +93,7 @@ export default function ObservabilityView({
       gitDirty,
       healthScore: archData?.system?.health_score ?? null,
     };
-  }, [archData, bosData]);
+  }, [archData, filteredDomains]);
 
   const observabilityClosureRows = useMemo<ObservabilityClosureRow[]>(() => {
     const firstDomain = observabilityBacklog.degradedDomains[0];
@@ -256,6 +268,43 @@ export default function ObservabilityView({
           },
         ]}
       />
+
+      <section className="services-section" aria-label="观测域筛选">
+        <div className="section-header">
+          <div>
+            <h2>观测域筛选</h2>
+            <p className="text-muted">统一收敛热点、闭环承接和 BOS 域明细，按域名或健康状态定位证据。</p>
+          </div>
+          <span className="status-badge online">匹配 {filteredDomains.length}/{Array.isArray(bosData?.domains) ? bosData.domains.length : 0}</span>
+        </div>
+        <div className="list-filters">
+          <label className="filter-search">
+            <Search size={16} aria-hidden="true" />
+            <span className="sr-only">搜索观测域</span>
+            <input
+              type="search"
+              value={domainQuery}
+              onChange={(event) => setDomainQuery(event.target.value)}
+              placeholder="搜索观测域"
+              aria-label="搜索观测域"
+            />
+          </label>
+          <label>
+            <span className="sr-only">观测域状态</span>
+            <select aria-label="观测域状态" value={domainStatus} onChange={(event) => setDomainStatus(event.target.value as 'all' | 'degraded' | 'healthy')}>
+              <option value="all">全部状态</option>
+              <option value="degraded">异常域</option>
+              <option value="healthy">健康域</option>
+            </select>
+          </label>
+          {(domainQuery || domainStatus !== 'all') && (
+            <button type="button" className="antd-btn" onClick={() => { setDomainQuery(''); setDomainStatus('all'); }}>
+              <X size={14} aria-hidden="true" />
+              <span>清除筛选</span>
+            </button>
+          )}
+        </div>
+      </section>
 
       {focusedObservabilityCard && (
         <section className="services-section overview-ops-panel" aria-label="当前观测承接焦点">
@@ -524,7 +573,7 @@ export default function ObservabilityView({
         </div>
 
         <div className="services-list">
-          {bosData?.domains?.length > 0 ? (
+          {filteredDomains.length > 0 ? (
             <table className="services-table" aria-label="BOS 路由域名流量分布表">
               <thead>
                 <tr>
@@ -536,7 +585,7 @@ export default function ObservabilityView({
                 </tr>
               </thead>
               <tbody>
-                {bosData.domains.map((domain: any) => (
+                {filteredDomains.map((domain: any) => (
                   <tr key={domain.domain} className="service-row">
                     <td style={{ fontFamily: 'monospace', fontWeight: 500 }}>{domain.domain}</td>
                     <td>{domain.total}</td>
@@ -548,7 +597,9 @@ export default function ObservabilityView({
               </tbody>
             </table>
           ) : (
-            <p className="text-muted" style={{ padding: '24px', fontSize: '13px', textAlign: 'center' }}>暂无域名流量分布数据</p>
+            <p className="text-muted" style={{ padding: '24px', fontSize: '13px', textAlign: 'center' }}>
+              {Array.isArray(bosData?.domains) && bosData.domains.length > 0 ? '当前筛选下没有匹配的域名流量数据' : '暂无域名流量分布数据'}
+            </p>
           )}
         </div>
       </div>

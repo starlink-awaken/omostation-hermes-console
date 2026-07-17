@@ -30,6 +30,7 @@ describe('ObservabilityView', () => {
           summary: { total_calls: 32, avg_latency: 780, success_count: 30 },
           domains: [
             { domain: 'governance', total: 12, success: 11, error: 1, avg_latency: 650 },
+            { domain: 'healthy-worker', total: 8, success: 8, error: 0, avg_latency: 120 },
           ],
         }))
       }
@@ -59,6 +60,16 @@ describe('ObservabilityView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开观测闭环对象 网格路由复核' }))
     expect(onNavigate).toHaveBeenCalledWith('McpMesh')
+
+    const domainTable = screen.getByRole('table', { name: 'BOS 路由域名流量分布表' })
+    fireEvent.change(screen.getByRole('searchbox', { name: '搜索观测域' }), { target: { value: 'healthy' } })
+    expect(within(domainTable).getByText('healthy-worker')).toBeInTheDocument()
+    expect(within(domainTable).queryByText('governance')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '清除筛选' }))
+    fireEvent.change(screen.getByRole('combobox', { name: '观测域状态' }), { target: { value: 'degraded' } })
+    expect(within(domainTable).getByText('governance')).toBeInTheDocument()
+    expect(within(domainTable).queryByText('healthy-worker')).not.toBeInTheDocument()
   })
 
   it('surfaces focus handoff for a matched observability domain', async () => {
