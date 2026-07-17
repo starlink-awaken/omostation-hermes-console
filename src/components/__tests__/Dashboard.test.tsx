@@ -156,6 +156,47 @@ describe('Dashboard global search', () => {
     })
   })
 
+  it('exports a full-site snapshot across every shell data dimension', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({ items: [] }))
+    const createObjectURL = vi.fn().mockReturnValue('blob:cockpit-snapshot')
+    const revokeObjectURL = vi.fn()
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL })
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL })
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    render(<Dashboard />)
+    fireEvent.click(await screen.findByRole('button', { name: '导出全站运行快照' }))
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('快照已导出'))
+
+    const payload = JSON.parse(await (createObjectURL.mock.calls[0][0] as Blob).text()) as {
+      schema_version: number
+      endpoint_count: number
+      active_tab: string
+      endpoints: Record<string, { ok: boolean }>
+    }
+    expect(payload.schema_version).toBe(2)
+    expect(payload.endpoint_count).toBe(12)
+    expect(payload.active_tab).toBe('Home')
+    expect(Object.keys(payload.endpoints)).toEqual(expect.arrayContaining([
+      'system_map',
+      'tasks',
+      'domain_apps',
+      'alerts',
+      'mesh_services',
+      'compute_status',
+      'logs',
+      'research',
+      'metaos_workflows',
+      'skills',
+      'pipelines',
+      'ecos_workflows',
+    ]))
+    expect(anchorClick).toHaveBeenCalled()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:cockpit-snapshot')
+    anchorClick.mockRestore()
+  })
+
   it('keeps static page dimensions visible when the system map is unavailable', async () => {
     vi.mocked(fetch).mockResolvedValue(okJson({}))
 

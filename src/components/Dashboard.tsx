@@ -32,6 +32,7 @@ import {
   Menu,
   X,
   RefreshCw,
+  Download,
 } from 'lucide-react';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
@@ -1201,6 +1202,7 @@ export default function Dashboard() {
   const [pageAuditExpanded, setPageAuditExpanded] = useState(false);
   const [closureDraftNotice, setClosureDraftNotice] = useState<string | null>(null);
   const [pageSprintDraftNotice, setPageSprintDraftNotice] = useState<string | null>(null);
+  const [snapshotExportState, setSnapshotExportState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
   const globalSearchInputRef = useRef<HTMLInputElement>(null);
   const taskCenterIncomingDraft = useMemo(() => readTaskCenterDraft(taskDraftKey), [taskDraftKey]);
 
@@ -2835,33 +2837,53 @@ export default function Dashboard() {
     };
 
     const exportSnapshot = async () => {
+      setSnapshotExportState('exporting');
       const endpoints = {
         system_map: '/api/cockpit/system-map',
         tasks: '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80',
         domain_apps: '/api/domain-apps',
+        alerts: '/api/alerts?limit=80',
+        mesh_services: '/api/bos/services',
+        compute_status: '/api/governance/compute/status',
+        logs: '/api/logs?limit=100',
+        research: '/api/cockpit/research-hub',
+        metaos_workflows: '/api/metaos/workflows',
+        skills: '/api/ecos/skills',
+        pipelines: '/api/pipelines',
+        ecos_workflows: '/api/ecos/workflows',
       } as const;
-      const snapshot = await Promise.all(Object.entries(endpoints).map(async ([key, url]) => {
-        try {
-          const response = await fetch(url);
-          return [key, response.ok ? await response.json() : { error: `HTTP ${response.status}` }] as const;
-        } catch (error) {
-          return [key, { error: error instanceof Error ? error.message : '读取失败' }] as const;
-        }
-      }));
-      const payload = {
-        generated_at: new Date().toISOString(),
-        source: 'cockpit-ui',
-        ...Object.fromEntries(snapshot),
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `cockpit-snapshot-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
+      try {
+        const snapshot = await Promise.all(Object.entries(endpoints).map(async ([key, url]) => {
+          try {
+            const response = await fetch(url);
+            const data = await response.json().catch(() => null);
+            return [key, { ok: response.ok, status: response.status, data }] as const;
+          } catch (error) {
+            return [key, { ok: false, status: null, error: error instanceof Error ? error.message : '读取失败' }] as const;
+          }
+        }));
+        const payload = {
+          schema_version: 2,
+          generated_at: new Date().toISOString(),
+          source: 'cockpit-ui',
+          active_tab: activeTab,
+          endpoint_count: Object.keys(endpoints).length,
+          endpoints: Object.fromEntries(snapshot),
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = `cockpit-snapshot-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(objectUrl);
+        setSnapshotExportState('success');
+      } catch (error) {
+        console.error('Failed to export cockpit snapshot:', error);
+        setSnapshotExportState('error');
+      }
     };
 
     window.addEventListener('cockpit:focus-search', focusGlobalSearch);
@@ -2870,7 +2892,7 @@ export default function Dashboard() {
       window.removeEventListener('cockpit:focus-search', focusGlobalSearch);
       window.removeEventListener('cockpit:export-snapshot', exportSnapshot);
     };
-  }, []);
+  }, [activeTab]);
 
   const openSearchTarget = (target: SearchTarget) => {
     const matchedDraft = target.context?.draftId
@@ -3886,6 +3908,21 @@ export default function Dashboard() {
             >
               <RefreshCw size={16} aria-hidden="true" />
             </button>
+            <button
+              type="button"
+              className="topbar-btn"
+              aria-label="导出全站运行快照"
+              title="导出全站运行快照"
+              disabled={snapshotExportState === 'exporting'}
+              onClick={() => { window.dispatchEvent(new Event('cockpit:export-snapshot')); }}
+            >
+              <Download size={16} aria-hidden="true" />
+            </button>
+            {snapshotExportState !== 'idle' && (
+              <span className="text-muted" role="status" aria-live="polite">
+                {snapshotExportState === 'exporting' ? '导出中...' : snapshotExportState === 'success' ? '快照已导出' : '快照导出失败'}
+              </span>
+            )}
             <button
               className="topbar-btn"
               onClick={openCommandPalette}
