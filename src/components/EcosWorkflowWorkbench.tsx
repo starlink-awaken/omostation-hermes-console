@@ -12,6 +12,7 @@ type Workflow = {
 };
 
 type JsonValue = Record<string, unknown>;
+type RetryOperation = 'catalog' | 'inspect' | 'test' | 'dry-run' | 'queue';
 
 const EMPTY: JsonValue = {};
 
@@ -22,7 +23,14 @@ type EcosWorkflowWorkbenchProps = {
 async function fetchJson(url: string, init?: RequestInit): Promise<JsonValue> {
   const response = await fetch(url, init);
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `${response.status} ${response.statusText}`);
+  if (!response.ok) {
+    const message = typeof data.detail === 'string'
+      ? data.detail
+      : typeof data.error === 'string'
+        ? data.error
+        : `${response.status} ${response.statusText}`;
+    throw new Error(message);
+  }
   if (typeof data.error === 'string' && data.error) throw new Error(data.error);
   return data;
 }
@@ -44,6 +52,7 @@ export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWork
   const [loading, setLoading] = useState<string | null>(null);
   const [lastRunMode, setLastRunMode] = useState<'test' | 'dry_run'>('test');
   const [queueResult, setQueueResult] = useState<JsonValue | null>(null);
+  const [retryOperation, setRetryOperation] = useState<RetryOperation>('catalog');
 
   const selectedWorkflow = useMemo(
     () => workflows.find((workflow) => workflow.name === selectedName) || null,
@@ -52,6 +61,7 @@ export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWork
 
   const loadCatalog = async () => {
     setLoading('catalog');
+    setRetryOperation('catalog');
     setError(null);
     try {
       const [catalog, backendPayload, actionPayload, logsPayload] = await Promise.all([
@@ -76,6 +86,7 @@ export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWork
   const inspectWorkflow = async (name: string) => {
     if (!name) return;
     setLoading('inspect');
+    setRetryOperation('inspect');
     setError(null);
     setDetail(null);
     setValidation(null);
@@ -99,6 +110,7 @@ export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWork
   const testWorkflow = async (dryRun: boolean) => {
     if (!selectedName) return;
     setLoading(dryRun ? 'dry-run' : 'test');
+    setRetryOperation(dryRun ? 'dry-run' : 'test');
     setError(null);
     try {
       const endpoint = dryRun
@@ -117,6 +129,7 @@ export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWork
   const queueVerification = async () => {
     if (!selectedName) return;
     setLoading('queue');
+    setRetryOperation('queue');
     setError(null);
     try {
       const queued = await fetchJson(
@@ -134,6 +147,33 @@ export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWork
     }
   };
 
+  const retryFailedAction = () => {
+    switch (retryOperation) {
+      case 'inspect':
+        void inspectWorkflow(selectedName);
+        break;
+      case 'test':
+        void testWorkflow(false);
+        break;
+      case 'dry-run':
+        void testWorkflow(true);
+        break;
+      case 'queue':
+        void queueVerification();
+        break;
+      default:
+        void loadCatalog();
+    }
+  };
+
+  const retryLabel = {
+    catalog: '重试目录',
+    inspect: '重试校验',
+    test: '重试模拟测试',
+    'dry-run': '重试 Dry-run',
+    queue: '重试任务承接',
+  }[retryOperation];
+
   return (
     <section className="services-section" role="region" aria-label="eCOS工作流验证台">
       <div className="section-header">
@@ -146,7 +186,7 @@ export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWork
         </button>
       </div>
 
-      {error && <div className="error-banner" role="alert"><ShieldAlert size={16} /> {error}<button type="button" className="antd-btn" onClick={() => void loadCatalog()}>重试</button></div>}
+      {error && <div className="error-banner" role="alert"><ShieldAlert size={16} /> <span>{error}</span><button type="button" className="antd-btn" onClick={retryFailedAction}>{retryLabel}</button></div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 0.8fr) minmax(0, 1.8fr)', gap: 16 }}>
         <div className="antd-card" style={{ padding: 16, display: 'grid', gap: 10, alignContent: 'start' }}>

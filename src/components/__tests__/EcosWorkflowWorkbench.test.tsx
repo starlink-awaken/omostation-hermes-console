@@ -45,4 +45,38 @@ describe('EcosWorkflowWorkbench', () => {
       taskQuery: 'cockpit-ecos-workflow-health-check-test',
     }))
   })
+
+  it('retries the failed verification action instead of reloading only the catalog', async () => {
+    let testAttempts = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/ecos/workflow/list') return Promise.resolve(response({ workflows: [{ name: 'health-check', display: '健康检查' }] }))
+      if (url === '/api/ecos/workflow/backends') return Promise.resolve(response({ backends: [] }))
+      if (url === '/api/ecos/workflow/actions') return Promise.resolve(response({ actions: [] }))
+      if (url === '/api/ecos/workflow/logs?recent=8') return Promise.resolve(response({ runs: [] }))
+      if (url.includes('/describe/')) return Promise.resolve(response({ name: 'health-check', steps: [] }))
+      if (url.includes('/validate/')) return Promise.resolve(response({ name: 'health-check', valid: true }))
+      if (url.includes('/workflow/test?name=health-check')) {
+        testAttempts += 1
+        return Promise.resolve(testAttempts === 1
+          ? ({ ok: false, status: 503, statusText: 'Unavailable', json: async () => ({ error: '测试执行器暂不可用' }) } as Response)
+          : response({ status: 'ok', passed: 1, failed: 0 }))
+      }
+      return Promise.resolve(response({}))
+    })
+
+    render(<EcosWorkflowWorkbench />)
+    await screen.findByRole('option', { name: '健康检查' })
+    fireEvent.click(await screen.findByRole('button', { name: '模拟测试' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('测试执行器暂不可用')
+    fireEvent.click(screen.getByRole('button', { name: '重试模拟测试' }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/最近验证结果/)).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+    expect(testAttempts).toBe(2)
+    expect(fetch).toHaveBeenCalledWith('/api/ecos/workflow/test?name=health-check', expect.objectContaining({ method: 'POST' }))
+  })
 })
