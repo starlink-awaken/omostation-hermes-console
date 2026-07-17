@@ -56,6 +56,8 @@ export default function WorkflowsView({
   focusTaskQuery,
 }: WorkflowsViewProps) {
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
+  const [workflowQuery, setWorkflowQuery] = useState('');
+  const [workflowStatusFilter, setWorkflowStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedWf, setSelectedWf] = useState<WorkflowDetail | null>(null);
@@ -94,13 +96,30 @@ export default function WorkflowsView({
 
   useEffect(() => {
     if (!focusTaskQuery) return;
-    const matchedWorkflow = workflows.find((workflow) => (
+    const matchedWorkflow = filteredWorkflows.find((workflow) => (
       matchesWorkflowFocusQuery([workflow.id, workflow.task, workflow.status], focusTaskQuery)
     ));
     if (matchedWorkflow) {
       void loadDetail(matchedWorkflow.id);
     }
   }, [focusTaskQuery, workflows]);
+
+  const filteredWorkflows = useMemo(() => {
+    const query = workflowQuery.trim().toLowerCase();
+    return workflows.filter((workflow) => {
+      if (workflowStatusFilter === 'stalled' && ['awaiting_approval', 'running', 'completed'].includes(workflow.status)) return false;
+      if (workflowStatusFilter !== 'all' && workflowStatusFilter !== 'stalled' && workflow.status !== workflowStatusFilter) return false;
+      if (!query) return true;
+      return [workflow.id, workflow.task, workflow.status].join(' ').toLowerCase().includes(query);
+    });
+  }, [workflowQuery, workflowStatusFilter, workflows]);
+
+  useEffect(() => {
+    if (selectedWf && !filteredWorkflows.some((workflow) => workflow.id === selectedWf.workflow_id)) {
+      setSelectedWf(null);
+      setDetailId(null);
+    }
+  }, [filteredWorkflows, selectedWf]);
 
   const loadDetail = async (id: string) => {
     setDetailId(id);
@@ -184,17 +203,17 @@ export default function WorkflowsView({
   };
 
   const workflowSummary = useMemo(() => {
-    const awaitingApproval = workflows.filter((workflow) => workflow.status === 'awaiting_approval');
-    const running = workflows.filter((workflow) => workflow.status === 'running');
-    const completed = workflows.filter((workflow) => workflow.status === 'completed');
-    const stalled = workflows.filter((workflow) => !['awaiting_approval', 'running', 'completed'].includes(workflow.status));
+    const awaitingApproval = filteredWorkflows.filter((workflow) => workflow.status === 'awaiting_approval');
+    const running = filteredWorkflows.filter((workflow) => workflow.status === 'running');
+    const completed = filteredWorkflows.filter((workflow) => workflow.status === 'completed');
+    const stalled = filteredWorkflows.filter((workflow) => !['awaiting_approval', 'running', 'completed'].includes(workflow.status));
     return {
       awaitingApproval,
       running,
       completed,
       stalled,
     };
-  }, [workflows]);
+  }, [filteredWorkflows]);
 
   const actionItems = useMemo(() => ([
     {
@@ -332,7 +351,7 @@ export default function WorkflowsView({
     }
 
     return null;
-  }, [focusPageId, focusTaskQuery, selectedWf, workflowClosureRows, workflows]);
+  }, [filteredWorkflows, focusPageId, focusTaskQuery, selectedWf, workflowClosureRows]);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -387,7 +406,7 @@ export default function WorkflowsView({
       <ActionSurfacePanel
         title="工作流处理区"
         subtitle="先处理待授权，再回资产与协议面补证据，最后把异常承接进任务中心。"
-        statusText={workflows.length ? `${workflows.length} 条工作流记录` : '等待工作流记录'}
+        statusText={filteredWorkflows.length ? `${filteredWorkflows.length}/${workflows.length} 条工作流记录` : workflows.length ? '当前筛选无工作流记录' : '等待工作流记录'}
         items={actionItems}
         onNavigate={onNavigate}
       />
@@ -480,6 +499,68 @@ export default function WorkflowsView({
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="工作流筛选">
+        <div className="section-header" style={{ marginBottom: 0 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>运行流检索</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              同一组条件作用于摘要、闭环、处理台、历史和详情焦点，避免状态切片后仍然看见旧上下文。
+            </p>
+          </div>
+          <span className="status-badge online">显示 {filteredWorkflows.length}/{workflows.length}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="search"
+            aria-label="搜索工作流"
+            placeholder="工作流 ID、任务描述或状态"
+            value={workflowQuery}
+            onChange={(event) => setWorkflowQuery(event.target.value)}
+            style={{
+              flex: '1 1 280px',
+              minWidth: 220,
+              padding: '9px 12px',
+              borderRadius: 6,
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#fff',
+              fontSize: 13,
+              outline: 'none',
+            }}
+          />
+          <select
+            aria-label="按状态筛选工作流"
+            value={workflowStatusFilter}
+            onChange={(event) => setWorkflowStatusFilter(event.target.value)}
+            style={{
+              minWidth: 150,
+              padding: '9px 12px',
+              borderRadius: 6,
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#fff',
+              fontSize: 13,
+              outline: 'none',
+            }}
+          >
+            <option value="all">全部状态</option>
+            <option value="awaiting_approval">待授权</option>
+            <option value="running">运行中</option>
+            <option value="stalled">需补证</option>
+            <option value="completed">已完成</option>
+          </select>
+          <button
+            type="button"
+            className="antd-btn"
+            aria-label="清除工作流筛选"
+            onClick={() => { setWorkflowQuery(''); setWorkflowStatusFilter('all'); }}
+            disabled={!workflowQuery && workflowStatusFilter === 'all'}
+          >
+            清除
+          </button>
         </div>
       </section>
 
@@ -607,11 +688,13 @@ export default function WorkflowsView({
               <div className="spinner" aria-hidden="true"></div>
               <p>加载中...</p>
             </div>
-          ) : workflows.length === 0 ? (
-            <p style={{ color: 'var(--antd-text-secondary)', textAlign: 'center', marginTop: '2rem' }}>暂无记录。</p>
+          ) : filteredWorkflows.length === 0 ? (
+            <p style={{ color: 'var(--antd-text-secondary)', textAlign: 'center', marginTop: '2rem' }}>
+              {workflows.length === 0 ? '暂无记录。' : '当前筛选下暂无工作流记录。'}
+            </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} role="list" aria-label="工作流历史列表">
-              {workflows.map((workflow) => (
+              {filteredWorkflows.map((workflow) => (
                 <div
                   key={workflow.id}
                   className="antd-input"

@@ -88,6 +88,55 @@ describe('WorkflowsView', () => {
     expect(onNavigate).not.toHaveBeenCalled()
   })
 
+  it('filters the workflow summary, workbench, history, and focus from shared conditions', async () => {
+    const records = [
+      {
+        id: 'wf-approval-42',
+        task: '发布治理变更',
+        status: 'awaiting_approval',
+        created: '2026-07-10T10:00:00Z',
+        updated: '2026-07-10T10:00:00Z',
+      },
+      {
+        id: 'wf-running-7',
+        task: '刷新服务拓扑',
+        status: 'running',
+        created: '2026-07-10T11:00:00Z',
+        updated: '2026-07-10T11:00:00Z',
+      },
+      {
+        id: 'wf-failed-9',
+        task: '补协议证据',
+        status: 'failed',
+        created: '2026-07-10T12:00:00Z',
+        updated: '2026-07-10T12:00:00Z',
+      },
+    ]
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/metaos/workflows') return Promise.resolve(okJson({ status: 'ok', workflows: records }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<WorkflowsView />)
+    const filterRegion = await screen.findByRole('region', { name: '工作流筛选' })
+    expect(within(filterRegion).getByText('显示 3/3')).toBeInTheDocument()
+
+    fireEvent.change(within(filterRegion).getByRole('searchbox', { name: '搜索工作流' }), { target: { value: '发布' } })
+    await waitFor(() => {
+      expect(within(filterRegion).getByText('显示 1/3')).toBeInTheDocument()
+      expect(screen.getAllByText('发布治理变更').length).toBeGreaterThan(0)
+      expect(screen.queryByText('刷新服务拓扑')).not.toBeInTheDocument()
+    })
+
+    fireEvent.change(within(filterRegion).getByRole('searchbox', { name: '搜索工作流' }), { target: { value: '' } })
+    fireEvent.change(within(filterRegion).getByRole('combobox', { name: '按状态筛选工作流' }), { target: { value: 'stalled' } })
+    await waitFor(() => {
+      expect(within(filterRegion).getByText('显示 1/3')).toBeInTheDocument()
+      expect(screen.getAllByText('补协议证据').length).toBeGreaterThan(0)
+      expect(screen.queryByText('发布治理变更')).not.toBeInTheDocument()
+    })
+  })
+
   it('queues the selected workflow as a follow-up task', async () => {
     const onOpenTarget = vi.fn()
     render(<WorkflowsView onOpenTarget={onOpenTarget} />)
