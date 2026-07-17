@@ -276,15 +276,20 @@ interface SearchCockpitPage {
 
 const PAGE_REGISTRY_BY_ID = new globalThis.Map(COCKPIT_PAGE_REGISTRY.map((page) => [page.id, page] as const));
 
-const SIDEBAR_NAV_SECTIONS = [
-  { id: 'group-home', title: '入口', tabs: ['Home', 'Guide', 'SystemMap'] },
-  { id: 'group-monitoring', title: '运行大盘', tabs: ['Overview', 'McpMesh', 'Topology', 'Compute'] },
-  { id: 'group-intelligence', title: '智能与知识', tabs: ['Research', 'Knowledge', 'Engines', 'Assets', 'Protocol', 'Workflows'] },
-  { id: 'group-governance', title: '系统治理', tabs: ['C2G', 'AlertCenter', 'L4Health', 'Debt', 'Observability'] },
-  { id: 'group-devtools', title: '开发工具', tabs: ['LogViewer', 'TaskCenter', 'Performance', 'Sandbox'] },
-  { id: 'group-domain-apps', title: '领域应用', tabs: ['QuestBoard', 'DomainApps'] },
-  { id: 'group-config', title: '系统配置', tabs: ['Settings'] },
+const SIDEBAR_GROUP_ORDER = [
+  { id: 'group-home', title: '入口' },
+  { id: 'group-monitoring', title: '运行大盘' },
+  { id: 'group-intelligence', title: '智能与知识' },
+  { id: 'group-governance', title: '系统治理' },
+  { id: 'group-devtools', title: '开发工具' },
+  { id: 'group-domain-apps', title: '领域应用' },
+  { id: 'group-config', title: '系统配置' },
 ] as const;
+
+const SIDEBAR_NAV_SECTIONS = SIDEBAR_GROUP_ORDER.map((group) => ({
+  ...group,
+  tabs: COCKPIT_PAGE_REGISTRY.filter((page) => page.group === group.title).map((page) => page.id),
+}));
 
 const GROUP_ENTRY_TABS: Record<string, string> = {
   入口: 'Home',
@@ -957,33 +962,41 @@ function SidebarUsagePathsPanel({
   );
 }
 
-const searchTargets: SearchTarget[] = [
-  { id: 'page-home', tab: 'Home', label: '首页', group: '入口', keywords: ['home', '健康', '告警', '任务', '指标'] },
-  { id: 'page-guide', tab: 'Guide', label: '站内导览', group: '入口', keywords: ['guide', '导览', '导航', '使用方法', '功能架构', '从哪开始'] },
-  { id: 'page-system-map', tab: 'SystemMap', label: '系统地图', group: '入口', keywords: ['map', '架构', '项目', '能力', '路线图', '功能缺口', 'cockpit'] },
-  { id: 'page-domain-apps', tab: 'DomainApps', label: '应用中心', group: '领域应用', keywords: ['domain', '家庭', 'OPC', 'family-hub', '领域应用'] },
-  { id: 'page-overview', tab: 'Overview', label: '概览中心', group: '运行大盘', keywords: ['overview', '服务', '集群', '运行'] },
-  { id: 'page-mcpmesh', tab: 'McpMesh', label: '网格与 MCP', group: '运行大盘', keywords: ['mcp', 'bos', 'agora', '路由', '通信'] },
-  { id: 'page-topology', tab: 'Topology', label: '全局拓扑', group: '运行大盘', keywords: ['topology', '拓扑', '服务关系'] },
-  { id: 'page-compute', tab: 'Compute', label: '算力调配', group: '运行大盘', keywords: ['compute', 'aetherforge', '模型', '网关', '成本'] },
-  { id: 'page-research', tab: 'Research', label: '研究中枢', group: '智能与知识', keywords: ['research', '研究', 'publish', 'timeline', 'dossier', 'minerva'] },
-  { id: 'page-knowledge', tab: 'Knowledge', label: '知识中枢', group: '智能与知识', keywords: ['knowledge', 'gbrain', 'kos', '检索', '记忆'] },
-  { id: 'page-engines', tab: 'Engines', label: '引擎调度', group: '智能与知识', keywords: ['engine', 'kairon', 'gbrain', '引擎'] },
-  { id: 'page-assets', tab: 'Assets', label: '技术资产库', group: '智能与知识', keywords: ['assets', 'ecos', '技能', '管线', 'workflow'] },
-  { id: 'page-protocol', tab: 'Protocol', label: '协议工作台', group: '智能与知识', keywords: ['protocol', 'ecos', 'model-driven', 'mof', 'lifecycle', '元模型'] },
-  { id: 'page-workflows', tab: 'Workflows', label: 'MetaOS 工作流', group: '智能与知识', keywords: ['workflow', 'metaos', '编排', 'agent'] },
-  { id: 'page-c2g', tab: 'C2G', label: 'C2G 战略中心', group: '系统治理', keywords: ['c2g', '战略', '治理', 'omo', 'task'] },
-  { id: 'page-alert-center', tab: 'AlertCenter', label: '告警中心', group: '系统治理', keywords: ['alert', '告警', '规则'] },
-  { id: 'page-l4-health', tab: 'L4Health', label: 'L4 域健康', group: '系统治理', keywords: ['l4', '域', '健康', 'l4-kernel'] },
-  { id: 'page-debt', tab: 'Debt', label: '技术债务', group: '系统治理', keywords: ['debt', '债务', '质量', 'omo-debt'] },
-  { id: 'page-observability', tab: 'Observability', label: '运行可观测', group: '系统治理', keywords: ['observability', '日志', '链路', 'langfuse'] },
-  { id: 'page-log-viewer', tab: 'LogViewer', label: '日志查看器', group: '开发工具', keywords: ['log', '日志', 'debug'] },
-  { id: 'page-task-center', tab: 'TaskCenter', label: '任务中心', group: '开发工具', keywords: ['task', '任务', '执行'] },
-  { id: 'page-performance', tab: 'Performance', label: '性能监控', group: '开发工具', keywords: ['performance', 'cpu', '内存', '网络'] },
-  { id: 'page-sandbox', tab: 'Sandbox', label: '隔离沙箱', group: '开发工具', keywords: ['sandbox', '终端', '执行'] },
-  { id: 'page-quest-board', tab: 'QuestBoard', label: '积分冒险', group: '领域应用', keywords: ['quest', '积分', '家庭', 'family'] },
-  { id: 'page-settings', tab: 'Settings', label: '底层设置', group: '系统配置', keywords: ['settings', '配置', 'token', '端口'] },
-];
+const PAGE_SEARCH_KEYWORDS: Record<string, string[]> = {
+  Home: ['home', '健康', '告警', '任务', '指标'],
+  Guide: ['guide', '导览', '导航', '使用方法', '功能架构', '从哪开始'],
+  SystemMap: ['map', '架构', '项目', '能力', '路线图', '功能缺口', 'cockpit'],
+  DomainApps: ['domain', '家庭', 'OPC', 'family-hub', '领域应用'],
+  Overview: ['overview', '服务', '集群', '运行'],
+  McpMesh: ['mcp', 'bos', 'agora', '路由', '通信'],
+  Topology: ['topology', '拓扑', '服务关系'],
+  Compute: ['compute', 'aetherforge', '模型', '网关', '成本'],
+  Research: ['research', '研究', 'publish', 'timeline', 'dossier', 'minerva'],
+  Knowledge: ['knowledge', 'gbrain', 'kos', '检索', '记忆'],
+  Engines: ['engine', 'kairon', 'gbrain', '引擎'],
+  Assets: ['assets', 'ecos', '技能', '管线', 'workflow'],
+  Protocol: ['protocol', 'ecos', 'model-driven', 'mof', 'lifecycle', '元模型'],
+  Workflows: ['workflow', 'metaos', '编排', 'agent'],
+  C2G: ['c2g', '战略', '治理', 'omo', 'task'],
+  AlertCenter: ['alert', '告警', '规则'],
+  L4Health: ['l4', '域', '健康', 'l4-kernel'],
+  Debt: ['debt', '债务', '质量', 'omo-debt'],
+  Observability: ['observability', '日志', '链路', 'langfuse'],
+  LogViewer: ['log', '日志', 'debug'],
+  TaskCenter: ['task', '任务', '执行'],
+  Performance: ['performance', 'cpu', '内存', '网络'],
+  Sandbox: ['sandbox', '终端', '执行'],
+  QuestBoard: ['quest', '积分', '家庭', 'family'],
+  Settings: ['settings', '配置', 'token', '端口'],
+};
+
+const searchTargets: SearchTarget[] = COCKPIT_PAGE_REGISTRY.map((page) => ({
+  id: `page-${page.id.toLowerCase()}`,
+  tab: page.id,
+  label: page.title,
+  group: page.group,
+  keywords: PAGE_SEARCH_KEYWORDS[page.id] || [],
+}));
 
 const GROUP_DESCRIPTIONS: Record<string, string> = {
   入口: '从首页、导览和系统地图进入整站，先确定当前关注面。',

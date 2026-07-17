@@ -109,6 +109,14 @@ describe('Dashboard global search', () => {
     expect(within(nav).queryByText('亲子冒险')).not.toBeInTheDocument()
     expect(within(nav).getByRole('menuitem', { name: '积分冒险' })).toBeInTheDocument()
     expect(within(nav).getByRole('menuitem', { name: '应用中心' })).toBeInTheDocument()
+    for (const page of COCKPIT_PAGE_REGISTRY) {
+      expect(within(nav).getByRole('menuitem', { name: page.title })).toBeInTheDocument()
+    }
+
+    fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: '路由' } })
+    await waitFor(() => {
+      expect(screen.getAllByText('网格与 MCP').length).toBeGreaterThan(0)
+    })
   })
 
   it('exposes every registered page through the command palette', async () => {
