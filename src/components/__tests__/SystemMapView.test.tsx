@@ -906,6 +906,19 @@ describe('SystemMapView', () => {
     })
   })
 
+  it('keeps the project context when opening its cockpit entry from the project matrix', async () => {
+    const onOpenTarget = vi.fn()
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
+
+    const projectMatrix = await screen.findByRole('heading', { name: '项目矩阵' })
+    const matrixSection = projectMatrix.closest('section')
+    expect(matrixSection).not.toBeNull()
+
+    fireEvent.click(within(matrixSection as HTMLElement).getAllByRole('button', { name: '系统地图' })[0])
+
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'cockpit' })
+  })
+
   it('queues an enabled project command without executing it', async () => {
     const onOpenTarget = vi.fn()
     render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} focusProjectId="cockpit" />)

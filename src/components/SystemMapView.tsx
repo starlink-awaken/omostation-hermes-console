@@ -4778,7 +4778,7 @@ export default function SystemMapView({
                     <td>{project.role || project.stack}</td>
                     <td>
                       {page ? (
-                        <button className="antd-btn system-map-table-btn" onClick={() => onNavigate(page.id)}>
+                        <button className="antd-btn system-map-table-btn" onClick={() => openSystemMapTarget({ tab: page.id, projectId: project.id }, onNavigate, onOpenTarget)}>
                           {page.title}
                         </button>
                       ) : '—'}
