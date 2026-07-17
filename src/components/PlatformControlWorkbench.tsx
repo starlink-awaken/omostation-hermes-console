@@ -100,26 +100,29 @@ const PLATFORM_STEPS = [
   },
 ];
 
-async function fetchJson<T>(url: string, fallback: T): Promise<T> {
+async function fetchJson<T>(url: string, fallback: T, label: string): Promise<{ data: T; error: string | null }> {
   try {
     const response = await fetch(url);
     if (!response) {
-      return fallback;
+      return { data: fallback, error: `${label}：请求无响应` };
     }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const fallbackRecord = (fallback && typeof fallback === 'object' ? fallback : {}) as Record<string, unknown>;
       return {
-        ...fallbackRecord,
-        ...(payload && typeof payload === 'object' ? payload : {}),
-        status: 'unavailable',
-        data_quality: 'unavailable',
-      } as T;
+        data: {
+          ...fallbackRecord,
+          ...(payload && typeof payload === 'object' ? payload : {}),
+          status: 'unavailable',
+          data_quality: 'unavailable',
+        } as T,
+        error: `${label} HTTP ${response.status}`,
+      };
     }
-    return payload as T;
+    return { data: payload as T, error: null };
   } catch (error) {
     console.error(`Failed to fetch ${url}:`, error);
-    return fallback;
+    return { data: fallback, error: `${label}：${error instanceof Error ? error.message : '请求失败'}` };
   }
 }
 
@@ -144,29 +147,32 @@ export default function PlatformControlWorkbench({
   const [pipelines, setPipelines] = useState<string[]>([]);
   const [metrics, setMetrics] = useState<MetricsPayload>({});
   const [quests, setQuests] = useState<QuestPayload>({});
+  const [sourceErrors, setSourceErrors] = useState<string[]>([]);
   const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     let active = true;
 
     const load = async () => {
-      const [archPayload, bosPayload, pipelinePayload, metricsPayload, questPayload] = await Promise.all([
-        fetchJson<ArchHealthPayload>('/api/v1/arch-health', {}),
-        fetchJson<BosMetricsPayload>('/api/bos/metrics', {}),
-        fetchJson<PipelinesPayload>('/api/pipelines', { pipelines: [] }),
-        fetchJson<MetricsPayload>('/api/metrics/history', {}),
-        fetchJson<QuestPayload>('/api/omos/quests', {}),
+      const [archResult, bosResult, pipelineResult, metricsResult, questResult] = await Promise.all([
+        fetchJson<ArchHealthPayload>('/api/v1/arch-health', {}, '架构健康'),
+        fetchJson<BosMetricsPayload>('/api/bos/metrics', {}, 'BOS 链路'),
+        fetchJson<PipelinesPayload>('/api/pipelines', { pipelines: [] }, '调度管线'),
+        fetchJson<MetricsPayload>('/api/metrics/history', {}, '服务观测'),
+        fetchJson<QuestPayload>('/api/omos/quests', {}, '冒险板'),
       ]);
 
       if (!active) {
         return;
       }
 
-      setArchHealth(archPayload || {});
-      setBosMetrics(bosPayload || {});
-      setPipelines(pipelinePayload.pipelines || []);
-      setMetrics(metricsPayload || {});
-      setQuests(questPayload || {});
+      setArchHealth(archResult.data || {});
+      setBosMetrics(bosResult.data || {});
+      setPipelines(pipelineResult.data.pipelines || []);
+      setMetrics(metricsResult.data || {});
+      setQuests(questResult.data || {});
+      setSourceErrors([archResult.error, bosResult.error, pipelineResult.error, metricsResult.error, questResult.error]
+        .filter((error): error is string => Boolean(error)));
     };
 
     void load();
@@ -177,10 +183,11 @@ export default function PlatformControlWorkbench({
 
   const unavailableSources = useMemo(() => {
     const sources: string[] = [];
+    sources.push(...sourceErrors);
     if (bosMetrics.data_quality === 'unavailable') sources.push('BOS 链路');
     if (metrics.data_quality === 'unavailable') sources.push('服务观测');
-    return sources;
-  }, [bosMetrics.data_quality, metrics.data_quality]);
+    return Array.from(new Set(sources));
+  }, [bosMetrics.data_quality, metrics.data_quality, sourceErrors]);
 
   const summary = useMemo(() => {
     const archScore = archHealth.system?.health_score || 0;

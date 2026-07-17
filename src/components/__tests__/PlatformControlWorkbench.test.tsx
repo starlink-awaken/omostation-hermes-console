@@ -113,4 +113,21 @@ describe('PlatformControlWorkbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /重试/ }))
     await waitFor(() => expect(bosCalls).toBe(2))
   })
+
+  it('keeps the control chain visible when a non-metric source fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/pipelines') {
+        return Promise.reject(new Error('pipeline source offline'))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<PlatformControlWorkbench currentPage="Engines" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('调度管线：pipeline source offline')
+      expect(screen.getByText('还没有可调度管线')).toBeInTheDocument()
+    })
+  })
 })
