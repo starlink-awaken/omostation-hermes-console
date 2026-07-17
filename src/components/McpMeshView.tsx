@@ -60,6 +60,8 @@ export default function McpMeshView({
   const [dataError, setDataError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [selectedDomain, setSelectedDomain] = useState('all');
+  const [meshQuery, setMeshQuery] = useState('');
+  const [transportFilter, setTransportFilter] = useState('all');
   
   // 实例注册表单
   const [registerName, setRegisterName] = useState('');
@@ -203,7 +205,20 @@ export default function McpMeshView({
     }
   };
 
-  const filteredServices = services.filter((service) => selectedDomain === 'all' || service.domain === selectedDomain);
+  const transportOptions = useMemo(() => Array.from(new Set(services.map((service) => service.transport).filter(Boolean))), [services]);
+  const filteredServices = useMemo(() => {
+    const query = meshQuery.trim().toLowerCase();
+    return services.filter((service) => {
+      if (selectedDomain !== 'all' && service.domain !== selectedDomain) return false;
+      if (transportFilter !== 'all' && service.transport !== transportFilter) return false;
+      if (!query) return true;
+      return [service.uri, service.domain, service.action, service.transport]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [meshQuery, selectedDomain, services, transportFilter]);
   const domains = MESH_DOMAINS;
 
   const meshBacklog = (() => {
@@ -567,7 +582,7 @@ export default function McpMeshView({
             <p className="text-muted">把热点域、待补域和实例注册承接成下一步动作，不让网格页只剩一堆路由表。</p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span className="status-badge online">已注册路由 {services.length}</span>
+            <span className="status-badge online">已注册路由 {filteredServices.length}/{services.length}</span>
             <span className="status-badge degraded">待补域 {meshBacklog.missingDomains.length}</span>
             <span className="status-badge degraded">HTTP 实例 {meshBacklog.registrationCount}</span>
           </div>
@@ -885,10 +900,19 @@ export default function McpMeshView({
             <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>BOS URI 网格路由明细</h3>
           </div>
 
-          {/* 筛选域 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>过滤域:</span>
+          {/* 筛选域、传输方式与路由文本 */}
+          <div role="region" aria-label="网格路由筛选" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <input
+              type="search"
+              aria-label="搜索网格路由"
+              placeholder="URI、Action 或传输方式"
+              value={meshQuery}
+              onChange={(event) => setMeshQuery(event.target.value)}
+              style={{ minWidth: 190, padding: '4px 8px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '12px' }}
+            />
+            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>域:</span>
             <select
+              aria-label="按域筛选网格路由"
               value={selectedDomain}
               onChange={(e) => setSelectedDomain(e.target.value)}
               style={{
@@ -907,8 +931,24 @@ export default function McpMeshView({
                 </option>
               ))}
             </select>
+            <select
+              aria-label="按传输方式筛选网格路由"
+              value={transportFilter}
+              onChange={(event) => setTransportFilter(event.target.value)}
+              style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '12px' }}
+            >
+              <option value="all">全部传输</option>
+              {transportOptions.map((transport) => <option key={transport} value={transport}>{transport}</option>)}
+            </select>
+            {(meshQuery || selectedDomain !== 'all' || transportFilter !== 'all') && (
+              <button type="button" className="antd-btn small" aria-label="清除网格路由筛选" onClick={() => { setMeshQuery(''); setSelectedDomain('all'); setTransportFilter('all'); }}>
+                清除筛选
+              </button>
+            )}
           </div>
         </div>
+
+        <div className="text-muted" style={{ fontSize: 12, marginBottom: 10 }}>显示 {filteredServices.length}/{services.length} 条路由</div>
 
         <div className="services-list">
           <table className="services-table" aria-label="BOS 网格路由清单">

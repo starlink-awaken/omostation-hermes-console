@@ -137,4 +137,33 @@ describe('McpMeshView', () => {
     fireEvent.click(screen.getByRole('button', { name: '重试网格数据' }))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/bos/health'))
   })
+
+  it('filters mesh routes by URI and transport while keeping domain controls aligned', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/bos/services') {
+        return Promise.resolve(okJson({ services: [
+          { uri: 'bos://memory/kos/search', domain: 'memory', action: 'search', transport: 'http' },
+          { uri: 'bos://memory/kos/write', domain: 'memory', action: 'write', transport: 'stdio' },
+          { uri: 'bos://governance/audit/run', domain: 'governance', action: 'audit', transport: 'http' },
+        ] }))
+      }
+      if (url === '/api/bos/health') return Promise.resolve(okJson({ status: 'ok', total_routes: 3, domains: {}, metrics: {} }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<McpMeshView />)
+    await waitFor(() => expect(screen.getByText('显示 3/3 条路由')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText('搜索网格路由'), { target: { value: 'write' } })
+    expect(screen.getByText('显示 1/3 条路由')).toBeInTheDocument()
+    expect(screen.getByText('bos://memory/kos/write')).toBeInTheDocument()
+    expect(screen.queryByText('bos://memory/kos/search')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('按传输方式筛选网格路由'), { target: { value: 'http' } })
+    expect(screen.getByText('暂无对应域的路由定义')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '清除网格路由筛选' }))
+    expect(screen.getByText('显示 3/3 条路由')).toBeInTheDocument()
+  })
 })
