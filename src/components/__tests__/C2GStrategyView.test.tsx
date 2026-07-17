@@ -65,7 +65,7 @@ describe('C2GStrategyView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'card-42' })
 
     fireEvent.click(screen.getByRole('button', { name: '打开治理承接到债务页' }))
-    expect(onNavigate).toHaveBeenCalledWith('Debt')
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Debt', taskQuery: 'card-42' })
   })
 
   it('filters cards, proposals, and direct-io violations from one governance query', async () => {

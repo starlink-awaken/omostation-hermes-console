@@ -461,7 +461,7 @@ export default function L4HealthView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`查看域健康 ${domain.id}`}
-                    onClick={() => onNavigate?.(domain.has_status ? 'DomainApps' : 'SystemMap')}
+                    onClick={() => openCockpitNavigationTarget({ tab: domain.has_status ? 'DomainApps' : 'SystemMap', taskQuery: domain.id || focusTaskQuery || 'L4Health' }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -504,7 +504,7 @@ export default function L4HealthView({
                 type="button"
                 className="action-surface-item"
                 aria-label={page.aria}
-                onClick={() => onNavigate?.(page.id)}
+                onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: focusTaskQuery || filteredDomains[0]?.id || 'L4Health' }, onNavigate, onOpenTarget)}
                 style={{ textAlign: 'left', width: '100%' }}
               >
                 <div>

@@ -621,7 +621,7 @@ export default function WorkflowsView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>运行与补证</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>运行中和异常流要么继续跟踪，要么回协议/系统地图补证。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.('SystemMap')}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: focusTaskQuery || selectedWf?.workflow_id || filteredWorkflows[0]?.id || 'Workflows' }, onNavigate, onOpenTarget)}>
                 <GitBranch size={14} />
                 <span>看系统地图</span>
               </button>
@@ -669,7 +669,7 @@ export default function WorkflowsView({
                   type="button"
                   className="action-surface-item"
                   aria-label={`进入承接页面 ${page.label}`}
-                  onClick={() => onNavigate?.(page.id)}
+                  onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: focusTaskQuery || selectedWf?.workflow_id || filteredWorkflows[0]?.id || 'Workflows' }, onNavigate, onOpenTarget)}
                   style={{ textAlign: 'left', width: '100%' }}
                 >
                   <div>

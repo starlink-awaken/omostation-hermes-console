@@ -527,7 +527,7 @@ export default function AssetsView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>技能治理</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>本地技能先补描述、归类和协议位置，再谈复用。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Protocol')}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Protocol', taskQuery: focusTaskQuery || filteredSkills[0]?.name || 'Assets' }, onNavigate, onOpenTarget)}>
                 <ShieldAlert size={14} />
                 <span>进入协议面</span>
               </button>
@@ -542,7 +542,7 @@ export default function AssetsView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`治理技能 ${skill.name}`}
-                    onClick={() => onNavigate?.('Protocol')}
+                    onClick={() => openCockpitNavigationTarget({ tab: 'Protocol', taskQuery: skill.id || skill.name || focusTaskQuery || 'Assets' }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -604,7 +604,7 @@ export default function AssetsView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>工作流验收</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>资产层 workflow 试跑完以后，回到运行页看实际编排与授权链。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Workflows')}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Workflows', taskQuery: focusTaskQuery || filteredWorkflows[0]?.name || 'Assets' }, onNavigate, onOpenTarget)}>
                 <GitPullRequest size={14} />
                 <span>进入工作流页</span>
               </button>
@@ -619,7 +619,7 @@ export default function AssetsView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`处理工作流 ${workflow.name}`}
-                    onClick={() => onNavigate?.('Workflows')}
+                    onClick={() => openCockpitNavigationTarget({ tab: 'Workflows', taskQuery: workflow.name || focusTaskQuery || 'Assets' }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
