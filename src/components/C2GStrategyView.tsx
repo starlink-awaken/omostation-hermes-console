@@ -74,6 +74,50 @@ interface DirectIoViolation {
   detail: string;
 }
 
+interface Wave2Proposal {
+  id: string;
+  title?: string;
+  priority?: string;
+  severity?: string;
+  status?: string;
+  task_query?: string;
+  handoff?: { taskQuery?: string };
+  suggested_task?: { title?: string };
+}
+
+interface Wave2Dashboard {
+  schema?: string;
+  status?: string;
+  error?: string;
+  cards?: {
+    pitch_count?: number;
+    mean_success?: number;
+    trend?: string;
+    critical?: number;
+    elevated?: number;
+    proposal_count?: number;
+    p0_proposals?: number;
+  };
+  backtest?: {
+    completed_tasks?: number;
+    failed_tasks?: number;
+    mean_success_score?: number;
+  };
+  forecast?: {
+    n?: number;
+    mean?: number;
+    trend?: string;
+  };
+  proposals?: Wave2Proposal[];
+}
+
+interface Wave2ProposalPlan {
+  status?: string;
+  error?: string;
+  proposal_count?: number;
+  task_actions?: Array<{ action?: string; title?: string; task_id?: string }>;
+}
+
 interface C2GStrategyViewProps {
   onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
@@ -99,6 +143,10 @@ export default function C2GStrategyView({
   const [check, setCheck] = useState<CardCheck | null>(null);
   const [proposals, setProposals] = useState<ProposalItem[]>([]);
   const [violations, setViolations] = useState<DirectIoViolation[]>([]);
+  const [wave2, setWave2] = useState<Wave2Dashboard | null>(null);
+  const [wave2Error, setWave2Error] = useState<string | null>(null);
+  const [wave2Plan, setWave2Plan] = useState<Wave2ProposalPlan | null>(null);
+  const [wave2PlanLoading, setWave2PlanLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,6 +241,21 @@ export default function C2GStrategyView({
     }
   };
 
+  const handleLoadWave2Plan = async () => {
+    setWave2PlanLoading(true);
+    setWave2Error(null);
+    try {
+      const res = await fetch('/api/wave2/proposals/plan');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || data.error || `Wave2 规划返回 HTTP ${res.status}`);
+      setWave2Plan(data as Wave2ProposalPlan);
+    } catch (err: any) {
+      setWave2Error(err.message || 'Wave2 规划暂不可用');
+    } finally {
+      setWave2PlanLoading(false);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setError(null);
@@ -243,6 +306,19 @@ export default function C2GStrategyView({
         }
       } catch (vErr) {
         console.error("Failed to fetch violations", vErr);
+      }
+
+      const wave2Result = await Promise.allSettled([
+        fetch('/api/wave2/dashboard'),
+      ]);
+      const wave2Response = wave2Result[0];
+      if (wave2Response.status === 'fulfilled' && wave2Response.value.ok) {
+        setWave2(await wave2Response.value.json() as Wave2Dashboard);
+        setWave2Error(null);
+      } else if (wave2Response.status === 'fulfilled') {
+        setWave2Error(`Wave2 看板返回 HTTP ${wave2Response.value.status}`);
+      } else {
+        setWave2Error(wave2Response.reason instanceof Error ? wave2Response.reason.message : 'Wave2 看板暂不可用');
       }
 
       setStatus(statusData);
@@ -307,6 +383,10 @@ export default function C2GStrategyView({
   const priorityCards = filteredCards.slice(0, 4);
   const activeProposals = filteredProposals.filter((proposal) => proposal.status !== 'rejected').slice(0, 3);
   const directIoViolations = filteredViolations.slice(0, 3);
+  const wave2Cards = wave2?.cards || {};
+  const wave2Backtest = wave2?.backtest || {};
+  const wave2Forecast = wave2?.forecast || {};
+  const wave2Proposals = Array.isArray(wave2?.proposals) ? wave2.proposals.slice(0, 4) : [];
   const hasGovernanceFilter = Boolean(normalizedGovernanceQuery) || governanceStatusFilter !== 'all';
   const focusedC2GCard = (() => {
     const matchedCard = cards.find((card) => (
@@ -452,6 +532,58 @@ export default function C2GStrategyView({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="C2G Wave2结果智能">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>Wave2 结果与预测</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              把 pitch 成功率、回测、预测热度和建议提案接到战略入口；规划接口只读 dry-run，不会自动改写治理状态。
+            </p>
+          </div>
+          <span className={`status-badge ${wave2?.status === 'ok' ? 'online' : wave2Error || wave2?.status === 'degraded' ? 'degraded' : 'offline'}`}>
+            {wave2?.status === 'ok' ? '数据正常' : wave2Error || wave2?.status === 'degraded' ? '数据降级' : '等待数据'}
+          </span>
+        </div>
+        {wave2Error && <div className="error-banner" role="status"><AlertTriangle size={16} /> {wave2Error}</div>}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+          {[
+            ['Pitch 数', wave2Cards.pitch_count ?? 0],
+            ['平均成功率', `${((wave2Cards.mean_success ?? 0) * 100).toFixed(1)}%`],
+            ['关键风险', wave2Cards.critical ?? 0],
+            ['回测完成', wave2Backtest.completed_tasks ?? 0],
+            ['回测失败', wave2Backtest.failed_tasks ?? 0],
+            ['预测趋势', wave2Forecast.trend || 'flat'],
+          ].map(([label, value]) => (
+            <div className="stat-card" key={label}>
+              <div className="text-muted">{label}</div>
+              <strong>{value}</strong>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+          {wave2Proposals.length > 0 ? wave2Proposals.map((proposal) => {
+            const taskQuery = proposal.task_query || proposal.handoff?.taskQuery || proposal.suggested_task?.title || proposal.id;
+            return (
+              <div className="action-surface-item" key={proposal.id} style={{ alignItems: 'flex-start' }}>
+                <div>
+                  <strong>{proposal.title || proposal.id}</strong>
+                  <p>{proposal.priority || proposal.severity || '建议'} · {proposal.status || '待承接'}</p>
+                </div>
+                <button type="button" className="antd-btn" aria-label={`打开 Wave2 提案任务 ${proposal.id}`} onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery }, onNavigate, onOpenTarget)}>
+                  <ClipboardList size={14} /> 承接任务
+                </button>
+              </div>
+            );
+          }) : <p className="text-muted" style={{ margin: 0 }}>当前没有 Wave2 建议提案，仍可查看 dry-run 规划结果。</p>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+          <button type="button" className="antd-btn" onClick={() => void handleLoadWave2Plan()} disabled={wave2PlanLoading} aria-label="加载Wave2提案规划">
+            {wave2PlanLoading ? <RefreshCw size={14} className="spinner" /> : <Sparkles size={14} />} {wave2PlanLoading ? '规划中...' : '查看 dry-run 规划'}
+          </button>
+          {wave2Plan && <span className="text-muted" role="status">规划 {wave2Plan.proposal_count ?? 0} 项 · {wave2Plan.task_actions?.length ?? 0} 个任务动作 · 不写入</span>}
+        </div>
+      </section>
 
       <section className="services-section">
         <div className="section-header">

@@ -43,6 +43,16 @@ describe('C2GStrategyView', () => {
       if (url === '/api/omos/violations') {
         return Promise.resolve(okJson({ status: 'ok', violations: [] }))
       }
+      if (url === '/api/wave2/dashboard') {
+        return Promise.resolve(okJson({
+          schema: 'c2g.wave2.dashboard.v1',
+          status: 'ok',
+          cards: { pitch_count: 4, mean_success: 0.75, critical: 1 },
+          backtest: { completed_tasks: 3, failed_tasks: 1 },
+          forecast: { trend: 'up' },
+          proposals: [{ id: 'wave2-proposal-1', title: '补齐回测证据', priority: 'P1', status: 'pending', task_query: 'C2G-FB-wave2-proposal-1' }],
+        }))
+      }
       return Promise.resolve(okJson({}))
     })
   })
@@ -56,6 +66,8 @@ describe('C2GStrategyView', () => {
     await waitFor(() => {
       expect(screen.getByText('治理承接工作台')).toBeInTheDocument()
       expect(screen.getAllByText('补齐项目状态面').length).toBeGreaterThan(0)
+      expect(screen.getByRole('region', { name: 'C2G Wave2结果智能' })).toBeInTheDocument()
+      expect(screen.getByText('补齐回测证据')).toBeInTheDocument()
     })
 
     expect(screen.getByRole('button', { name: '查看相关任务' })).toBeInTheDocument()
@@ -77,6 +89,28 @@ describe('C2GStrategyView', () => {
     fireEvent.click(screen.getByRole('button', { name: '查看相关任务' }))
 
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+  })
+
+  it('loads the Wave2 proposal plan as a read-only dry-run', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/omos/status') return Promise.resolve(okJson({ system: {}, governance: {} }))
+      if (url === '/api/cards') return Promise.resolve(okJson([]))
+      if (url === '/api/cards/check') return Promise.resolve(okJson({ compliant: true, violations: [] }))
+      if (url === '/api/v1/proposals') return Promise.resolve(okJson({ status: 'ok', proposals: [] }))
+      if (url === '/api/omos/violations') return Promise.resolve(okJson({ status: 'ok', violations: [] }))
+      if (url === '/api/wave2/dashboard') return Promise.resolve(okJson({ status: 'ok', cards: {}, backtest: {}, forecast: {}, proposals: [] }))
+      if (url === '/api/wave2/proposals/plan') {
+        return Promise.resolve(okJson({ status: 'ok', proposal_count: 2, task_actions: [{ action: 'create', title: '补齐回测证据' }] }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<C2GStrategyView />)
+    fireEvent.click(await screen.findByRole('button', { name: '加载Wave2提案规划' }))
+
+    await waitFor(() => expect(screen.getByText('规划 2 项 · 1 个任务动作 · 不写入')).toBeInTheDocument())
+    expect(fetch).toHaveBeenCalledWith('/api/wave2/proposals/plan')
   })
 
   it('filters cards, proposals, and direct-io violations from one governance query', async () => {
