@@ -608,7 +608,10 @@ export default function TopologyView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`查看拓扑服务 ${service.name}`}
-                    onClick={() => onNavigate?.(service.status === 'offline' ? 'Compute' : 'McpMesh')}
+                    onClick={() => openCockpitNavigationTarget({
+                      tab: service.status === 'offline' ? 'Compute' : 'McpMesh',
+                      taskQuery: service.name,
+                    }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -638,7 +641,10 @@ export default function TopologyView({
                 type="button"
                 className="action-surface-item"
                 aria-label={page.aria}
-                onClick={() => onNavigate?.(page.id)}
+                onClick={() => openCockpitNavigationTarget({
+                  tab: page.id,
+                  taskQuery: firstAttentionService?.name || topologyQuery.trim() || undefined,
+                }, onNavigate, onOpenTarget)}
                 style={{ textAlign: 'left', width: '100%' }}
               >
                 <div>

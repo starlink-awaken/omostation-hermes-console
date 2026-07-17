@@ -39,6 +39,7 @@ describe('TopologyView', () => {
 
   it('surfaces topology follow-up actions for abnormal services', async () => {
     const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
     vi.mocked(fetch).mockResolvedValue(okJson({
       items: [
         { name: 'gateway', status: 'degraded', dependencies: ['worker'] },
@@ -46,7 +47,7 @@ describe('TopologyView', () => {
       ],
     }))
 
-    render(<TopologyView onNavigate={onNavigate} />)
+    render(<TopologyView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />)
 
     await waitFor(() => {
       expect(screen.getByText('拓扑承接工作台')).toBeInTheDocument()
@@ -54,10 +55,10 @@ describe('TopologyView', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: '查看拓扑服务 worker' }))
-    expect(onNavigate).toHaveBeenCalledWith('Compute')
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Compute', taskQuery: 'worker' })
 
     fireEvent.click(screen.getByRole('button', { name: '打开拓扑承接到网格页' }))
-    expect(onNavigate).toHaveBeenCalledWith('McpMesh')
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'McpMesh', taskQuery: 'gateway' })
 
     vi.mocked(fetch).mockResolvedValueOnce(okJson({ id: 'topology-task-1', title: '拓扑任务' }))
     fireEvent.click(screen.getByRole('button', { name: '登记拓扑治理任务' }))
