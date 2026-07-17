@@ -461,6 +461,7 @@ export default function McpMeshView({
         statusText={services.length ? `${services.length} 条 BOS 路由` : '等待路由数据'}
         items={meshActionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       {focusedMeshCard && (

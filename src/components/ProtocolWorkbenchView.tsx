@@ -859,6 +859,7 @@ export default function ProtocolWorkbenchView({
         statusText={payload.summary.ready_layers ? `${payload.summary.ready_layers} 层就绪` : '等待层级数据'}
         items={actionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       <EcosWorkflowWorkbench onOpenTarget={onOpenTarget} />
