@@ -141,4 +141,20 @@ describe('KnowledgeExecutionWorkbench', () => {
       expect(screen.getByText('还没有高频路径')).toBeInTheDocument()
     })
   })
+
+  it('keeps the execution path visible when the skills source fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/ecos/skills') {
+        return Promise.reject(new Error('skills source offline'))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KnowledgeExecutionWorkbench currentPage="Assets" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('技能目录：skills source offline')
+      expect(screen.getByText('能力面还偏薄')).toBeInTheDocument()
+    })
+  })
 })

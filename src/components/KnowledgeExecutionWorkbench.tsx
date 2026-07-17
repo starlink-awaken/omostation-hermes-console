@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Bot, ClipboardList, GitBranch, PlayCircle } from 'lucide-react';
+import { BookOpen, Bot, ClipboardList, GitBranch, PlayCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface TaskItem {
@@ -106,16 +106,20 @@ const EXECUTION_STEPS = [
   },
 ];
 
-async function fetchJson<T>(url: string, fallback: T): Promise<T> {
+async function fetchJson<T>(url: string, fallback: T, label: string): Promise<{ data: T; error: string | null }> {
   try {
     const response = await fetch(url);
-    if (!response || !response.ok) {
-      return fallback;
+    if (!response) {
+      return { data: fallback, error: `${label}：请求无响应` };
     }
-    return (await response.json()) as T;
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { data: fallback, error: `${label} HTTP ${response.status}` };
+    }
+    return { data: payload as T, error: null };
   } catch (error) {
     console.error(`Failed to fetch ${url}:`, error);
-    return fallback;
+    return { data: fallback, error: `${label}：${error instanceof Error ? error.message : '请求失败'}` };
   }
 }
 
@@ -168,6 +172,8 @@ export default function KnowledgeExecutionWorkbench({
   const [pipelines, setPipelines] = useState<string[]>([]);
   const [workflowDefinitions, setWorkflowDefinitions] = useState<WorkflowDefinition[]>([]);
   const [systemMap, setSystemMap] = useState<SystemMapLite>({});
+  const [sourceErrors, setSourceErrors] = useState<string[]>([]);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -184,34 +190,38 @@ export default function KnowledgeExecutionWorkbench({
         fetchJson<{ items?: TaskItem[] }>(
           '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80',
           { items: [] },
+          '任务池',
         ),
         fetchJson<{ status?: string; workflows?: WorkflowRecord[] }>(
           '/api/metaos/workflows',
           { status: 'error', workflows: [] },
+          '工作流记录',
         ),
-        fetchJson<{ skills?: SkillItem[] }>('/api/ecos/skills', { skills: [] }),
-        fetchJson<PipelinePayload>('/api/pipelines', { pipelines: [] }),
-        fetchJson<{ workflows?: WorkflowDefinition[] }>('/api/ecos/workflows', { workflows: [] }),
-        fetchJson<SystemMapLite>('/api/cockpit/system-map', {}),
+        fetchJson<{ skills?: SkillItem[] }>('/api/ecos/skills', { skills: [] }, '技能目录'),
+        fetchJson<PipelinePayload>('/api/pipelines', { pipelines: [] }, '管线目录'),
+        fetchJson<{ workflows?: WorkflowDefinition[] }>('/api/ecos/workflows', { workflows: [] }, '工作流目录'),
+        fetchJson<SystemMapLite>('/api/cockpit/system-map', {}, '系统地图'),
       ]);
 
       if (!active) {
         return;
       }
 
-      setTasks(taskPayload.items || []);
-      setWorkflows(workflowPayload.workflows || []);
-      setSkills(skillPayload.skills || []);
-      setPipelines(pipelinePayload.pipelines || []);
-      setWorkflowDefinitions(workflowDefinitionPayload.workflows || []);
-      setSystemMap(systemMapPayload || {});
+      setTasks(taskPayload.data.items || []);
+      setWorkflows(workflowPayload.data.workflows || []);
+      setSkills(skillPayload.data.skills || []);
+      setPipelines(pipelinePayload.data.pipelines || []);
+      setWorkflowDefinitions(workflowDefinitionPayload.data.workflows || []);
+      setSystemMap(systemMapPayload.data || {});
+      setSourceErrors([taskPayload.error, workflowPayload.error, skillPayload.error, pipelinePayload.error, workflowDefinitionPayload.error, systemMapPayload.error]
+        .filter((error): error is string => Boolean(error)));
     };
 
     void load();
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshToken]);
 
   const summary = useMemo(() => {
     const pendingTasks = tasks.filter((task) => task.status === 'pending').length;
@@ -348,7 +358,22 @@ export default function KnowledgeExecutionWorkbench({
             把知识中枢、能力资产、自动化编排和任务落地串成一条日常可操作的路径。
           </p>
         </div>
+        <button type="button" className="antd-btn small" onClick={() => setRefreshToken((value) => value + 1)}>
+          <RefreshCw size={13} />
+          <span>重新加载</span>
+        </button>
       </div>
+
+      {sourceErrors.length > 0 && (
+        <div className="overview-inline-error" role="alert">
+          <AlertTriangle size={16} />
+          <div>
+            <strong>执行闭环数据不完整</strong>
+            <span>{sourceErrors.join('；')}，当前空状态不代表没有能力或任务。</span>
+          </div>
+          <button type="button" className="antd-btn" onClick={() => setRefreshToken((value) => value + 1)}>重试</button>
+        </div>
+      )}
 
       <div className="knowledge-execution-summary">
         <div className="knowledge-execution-card">
