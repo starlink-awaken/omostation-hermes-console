@@ -73,9 +73,13 @@ describe('McpMeshView', () => {
 
   it('opens the acceptance task after registering a mesh instance', async () => {
     const onOpenTarget = vi.fn()
+    let serviceCalls = 0
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
-      if (url === '/api/bos/services') return Promise.resolve(okJson({ services: [] }))
+      if (url === '/api/bos/services') {
+        serviceCalls += 1
+        return Promise.resolve(okJson({ services: [] }))
+      }
       if (url === '/api/bos/health') return Promise.resolve(okJson({ status: 'ok', total_routes: 0, domains: {}, metrics: {} }))
       if (url === '/api/instance') return Promise.resolve(okJson({
         status: 'ok',
@@ -99,6 +103,7 @@ describe('McpMeshView', () => {
       tab: 'TaskCenter',
       taskQuery: 'cockpit-mcp-registration-mesh-router',
     })
+    await waitFor(() => expect(serviceCalls).toBeGreaterThanOrEqual(2))
   })
 
   it('surfaces mesh closure routing when focus hits missing domain handoff', async () => {

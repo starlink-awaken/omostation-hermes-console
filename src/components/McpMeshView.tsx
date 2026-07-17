@@ -174,7 +174,7 @@ export default function McpMeshView({
         );
         setRegisterName('');
         setRegisterEndpoint('');
-        fetchData(); // 刷新网格
+        await fetchData(); // 刷新网格
       } else {
         setRegisterError(data.error || '注册失败');
       }

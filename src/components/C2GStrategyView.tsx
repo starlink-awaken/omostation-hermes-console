@@ -144,7 +144,7 @@ export default function C2GStrategyView({
       const data = await res.json();
       if (res.ok && data.status === 'ok') {
         setProposalSuccess(data.message || `提案 ${id} 已批准并执行`);
-        fetchData();
+        await fetchData();
       } else {
         setProposalError(`批准失败: ${data.error || '未知错误'}`);
       }
@@ -164,7 +164,7 @@ export default function C2GStrategyView({
       const data = await res.json();
       if (res.ok && data.status === 'ok') {
         setProposalSuccess(`提案 ${id} 已拒绝`);
-        fetchData();
+        await fetchData();
       } else {
         setProposalError(`拒绝失败: ${data.error || '未知错误'}`);
       }
@@ -1030,6 +1030,7 @@ export default function C2GStrategyView({
                         {/* Reject */}
                         <button 
                           className="antd-btn text-danger" 
+                          aria-label={`拒绝提案 ${prop.id}`}
                           disabled={approvingIds[prop.id] || rejectingIds[prop.id]}
                           style={{ 
                             padding: '4px 8px', 
@@ -1045,6 +1046,7 @@ export default function C2GStrategyView({
                         {/* Approve */}
                         <button 
                           className="antd-btn text-success" 
+                          aria-label={`批准提案 ${prop.id}`}
                           disabled={approvingIds[prop.id] || rejectingIds[prop.id]}
                           style={{ 
                             padding: '4px 10px', 

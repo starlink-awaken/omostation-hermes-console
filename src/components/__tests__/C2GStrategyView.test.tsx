@@ -202,4 +202,34 @@ describe('C2GStrategyView', () => {
     })
     await waitFor(() => expect(proposalCalls).toBeGreaterThanOrEqual(2))
   })
+
+  it('refreshes proposal state after approval', async () => {
+    let proposalCalls = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/omos/status') return Promise.resolve(okJson({ system: {}, governance: {} }))
+      if (url === '/api/cards') return Promise.resolve(okJson([]))
+      if (url === '/api/cards/check') return Promise.resolve(okJson({ compliant: true, violations: [] }))
+      if (url === '/api/omos/violations') return Promise.resolve(okJson({ status: 'ok', violations: [] }))
+      if (url === '/api/v1/proposals') {
+        proposalCalls += 1
+        return Promise.resolve(okJson({
+          status: 'ok',
+          proposals: [{ id: 'proposal-approve', type: 'capacity', debt_id: 'debt-runtime', status: 'pending' }],
+        }))
+      }
+      if (url === '/api/v1/proposals/proposal-approve/approve') {
+        return Promise.resolve(okJson({ status: 'ok', message: 'approved' }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<C2GStrategyView />)
+    fireEvent.click(await screen.findByRole('button', { name: '批准提案 proposal-approve' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('approved')).toBeInTheDocument()
+      expect(proposalCalls).toBeGreaterThanOrEqual(2)
+    })
+  })
 })
