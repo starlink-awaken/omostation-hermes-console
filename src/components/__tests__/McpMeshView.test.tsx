@@ -123,4 +123,18 @@ describe('McpMeshView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'analysis' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('shows a retryable error when the mesh health probe is unavailable', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/bos/services') return Promise.resolve(okJson({ services: [] }))
+      if (String(input) === '/api/bos/health') return Promise.resolve({ ok: false, status: 503, json: async () => ({}) } as Response)
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<McpMeshView />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('BOS 健康探针 HTTP 503')
+    fireEvent.click(screen.getByRole('button', { name: '重试网格数据' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/bos/health'))
+  })
 })

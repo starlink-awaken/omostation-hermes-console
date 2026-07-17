@@ -57,6 +57,8 @@ export default function McpMeshView({
   const [services, setServices] = useState<BosService[]>([]);
   const [health, setHealth] = useState<BosHealth | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   const [selectedDomain, setSelectedDomain] = useState('all');
   
   // 实例注册表单
@@ -81,24 +83,31 @@ export default function McpMeshView({
         fetch('/api/bos/health')
       ]);
 
+      const failures: string[] = [];
       if (servicesRes.ok) {
         const data = await servicesRes.json();
         setServices(data.services || []);
+      } else {
+        failures.push(`BOS 服务列表 HTTP ${servicesRes.status}`);
       }
       if (healthRes.ok) {
         const data = await healthRes.json();
         setHealth(data);
+      } else {
+        failures.push(`BOS 健康探针 HTTP ${healthRes.status}`);
       }
+      setDataError(failures.length ? failures.join('；') : null);
     } catch (e) {
       console.error('Failed to fetch McpMesh data:', e);
+      setDataError(e instanceof Error ? e.message : '网格数据暂不可用');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    void fetchData();
+  }, [refreshToken]);
 
   useEffect(() => {
     if (!focusTaskQuery) return;
@@ -386,6 +395,24 @@ export default function McpMeshView({
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <InfrastructureOpsWorkbench currentPage="McpMesh" onNavigate={onNavigate} />
+
+      {dataError && (
+        <div role="alert" className="antd-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', color: 'var(--antd-error)', border: '1px solid rgba(255,71,87,0.2)' }}>
+          <span>网格数据加载失败：{dataError}</span>
+          <button
+            type="button"
+            className="antd-btn"
+            aria-label="重试网格数据"
+            onClick={() => {
+              setDataError(null);
+              setLoading(true);
+              setRefreshToken((value) => value + 1);
+            }}
+          >
+            重试
+          </button>
+        </div>
+      )}
       
       {/* 顶部统计面板 */}
       <div className="stats-grid">
