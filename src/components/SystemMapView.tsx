@@ -934,9 +934,22 @@ async function copySourceRef(ref: SourceRef) {
   await copyText(sourceTarget(ref));
 }
 
-function PageButton({ page, onNavigate }: { page: CockpitPage; onNavigate: (tab: string) => void }) {
+function PageButton({
+  page,
+  onNavigate,
+  onOpenTarget,
+  contextQuery,
+}: {
+  page: CockpitPage;
+  onNavigate: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  contextQuery?: string;
+}) {
   return (
-    <button className="antd-btn" onClick={() => onNavigate(page.id)}>
+    <button
+      className="antd-btn"
+      onClick={() => openSystemMapTarget({ tab: page.id, pageId: page.id, taskQuery: contextQuery }, onNavigate, onOpenTarget)}
+    >
       <ArrowRight size={14} />
       <span>{page.title}</span>
     </button>
@@ -1237,7 +1250,7 @@ function ProjectDetailPanel({
           <p>{project.role || project.stack}</p>
         </div>
         <div className="system-map-project-detail-actions">
-          {page && <PageButton page={page} onNavigate={onNavigate} />}
+          {page && <PageButton page={page} onNavigate={onNavigate} onOpenTarget={onOpenTarget} contextQuery={project.id} />}
           <button className="antd-btn" onClick={onClose}>
             <X size={14} />
             <span>关闭</span>
@@ -3104,7 +3117,7 @@ export default function SystemMapView({
                 {activeUsagePath.pages.map((page, index) => (
                   <React.Fragment key={page.id}>
                     {index > 0 && <ArrowRight size={13} className="text-muted" />}
-                    <PageButton page={page} onNavigate={onNavigate} />
+                    <PageButton page={page} onNavigate={onNavigate} onOpenTarget={onOpenTarget} contextQuery={activeUsagePath.id} />
                   </React.Fragment>
                 ))}
               </div>
@@ -3891,7 +3904,7 @@ export default function SystemMapView({
                           </ul>
                         </div>
                       </div>
-                      {page && <PageButton page={page} onNavigate={onNavigate} />}
+                      {page && <PageButton page={page} onNavigate={onNavigate} onOpenTarget={onOpenTarget} contextQuery={item.id} />}
                       <SourceRefList
                         refs={item.source_refs}
                         compact
@@ -4112,7 +4125,7 @@ export default function SystemMapView({
                 {path.pages.map((page, index) => (
                   <React.Fragment key={page.id}>
                     {index > 0 && <ArrowRight size={13} className="text-muted" />}
-                    <PageButton page={page} onNavigate={onNavigate} />
+                    <PageButton page={page} onNavigate={onNavigate} onOpenTarget={onOpenTarget} contextQuery={path.id} />
                   </React.Fragment>
                 ))}
               </div>
@@ -4359,7 +4372,7 @@ export default function SystemMapView({
                   <button className="antd-btn" onClick={() => setSelectedFeatureDomainId(domain.id)}>
                     <span>查看剖面</span>
                   </button>
-                  {page && <PageButton page={page} onNavigate={onNavigate} />}
+                  {page && <PageButton page={page} onNavigate={onNavigate} onOpenTarget={onOpenTarget} contextQuery={domain.id} />}
                 </div>
               </article>
             );
