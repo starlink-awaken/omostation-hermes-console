@@ -103,6 +103,7 @@ describe('PerformanceMonitorPage', () => {
       expect(screen.getByText('显示服务 1/2')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '查看性能服务 offline-worker' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: '查看性能服务 healthy-worker' })).not.toBeInTheDocument()
+      expect(screen.queryByText('healthy-worker')).not.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: '清除性能服务筛选' }))

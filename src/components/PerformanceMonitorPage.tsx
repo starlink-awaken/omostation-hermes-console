@@ -726,10 +726,12 @@ export default function PerformanceMonitorPage({
 
       {/* 服务状态 */}
       <section className="services-status">
-        <h2>服务状态</h2>
+        <h2>服务状态 ({filteredServices.length}/{services.length})</h2>
         <div className="services-grid">
-          {services.map((service, index) => (
-            <div key={index} className="service-card">
+          {filteredServices.length === 0 ? (
+            <p className="text-muted">当前筛选下没有匹配的服务状态。</p>
+          ) : filteredServices.map((service) => (
+            <div key={service.name} className="service-card">
               <div className="service-header">
                 <div className="service-name">{service.name}</div>
                 <div
