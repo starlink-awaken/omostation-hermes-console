@@ -3948,7 +3948,7 @@ export default function SystemMapView({
               <h3>{group}</h3>
               <div className="system-map-page-list">
                 {pages.map((page) => (
-                  <button key={page.id} className="system-map-page-row" onClick={() => onNavigate(page.id)}>
+                  <button key={page.id} className="system-map-page-row" onClick={() => openSystemMapTarget({ tab: page.id, pageId: page.id }, onNavigate, onOpenTarget)}>
                     <span>
                       <strong>{page.title}</strong>
                       <small>{page.purpose}</small>
