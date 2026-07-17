@@ -89,7 +89,7 @@ describe('EnginesView', () => {
   })
 
   it('queues pipeline execution into TaskCenter instead of launching it directly', async () => {
-    const onOpenTarget = vi.fn()
+    const onNavigate = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/pipelines') {
@@ -103,7 +103,7 @@ describe('EnginesView', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<EnginesView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)
+    render(<EnginesView onNavigate={onNavigate} />)
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('health-check')).toBeInTheDocument()
@@ -112,7 +112,7 @@ describe('EnginesView', () => {
     fireEvent.click(screen.getByRole('button', { name: '承接管线任务' }))
 
     await waitFor(() => {
-      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-engine-health-check' })
+      expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
       expect(screen.getByText(/executes/)).toBeInTheDocument()
     })
   })

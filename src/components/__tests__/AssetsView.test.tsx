@@ -55,7 +55,7 @@ describe('AssetsView', () => {
   })
 
   it('queues an asset pipeline into TaskCenter instead of launching it directly', async () => {
-    const onOpenTarget = vi.fn()
+    const onNavigate = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/pipelines') return Promise.resolve(okJson({ pipelines: ['risk-audit'] }))
@@ -68,14 +68,14 @@ describe('AssetsView', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<AssetsView onOpenTarget={onOpenTarget} />)
+    render(<AssetsView onNavigate={onNavigate} />)
     await waitFor(() => expect(screen.getByRole('button', { name: /工具管线 \(Pipelines: 1\)/ })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /工具管线 \(Pipelines: 1\)/ }))
     await waitFor(() => expect(screen.getByRole('button', { name: '承接工具管线任务' })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: '承接工具管线任务' }))
 
     await waitFor(() => {
-      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-engine-risk-audit' })
+      expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
       expect(screen.getAllByText(/已登记为任务/).length).toBeGreaterThan(0)
     })
   })

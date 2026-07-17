@@ -203,7 +203,9 @@ export default function ComputeView({
         throw new Error(result.message || result.detail || '节点唤醒失败');
       }
       setControlMessage({ tone: 'success', text: `已登记节点唤醒任务 ${result.id || ''}，请到任务中心审批后执行。` });
-      if (result.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: result.id });
+      if (result.id) {
+        openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: result.id }, onNavigate, onOpenTarget);
+      }
     } catch (err: any) {
       setControlMessage({ tone: 'error', text: `节点唤醒失败：${err.message || '请求异常'}` });
     } finally {

@@ -147,7 +147,9 @@ export default function EnginesView({
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || data.error || '管线任务承接失败');
       setRunResult(data);
-      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+      if (data.id) {
+        openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
+      }
     } catch (e: any) {
       setRunResult({ error: e.message });
     } finally {
@@ -192,7 +194,9 @@ export default function EnginesView({
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || data.error || 'MetaOS 任务承接失败');
       setRunResult(data);
-      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+      if (data.id) {
+        openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
+      }
     } catch (e: any) {
       setRunResult({ error: e.message });
     } finally {

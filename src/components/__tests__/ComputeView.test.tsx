@@ -84,7 +84,6 @@ describe('ComputeView', () => {
 
   it('keeps compute control changes focused on their created task', async () => {
     const onNavigate = vi.fn()
-    const onOpenTarget = vi.fn()
     let resolveControl!: (response: Response) => void
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === '/api/governance/compute/status') {
@@ -105,17 +104,13 @@ describe('ComputeView', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<ComputeView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />)
+    render(<ComputeView onNavigate={onNavigate} />)
     await waitFor(() => expect(screen.getByRole('button', { name: /紧急拉闸/ })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /紧急拉闸/ }))
     expect(screen.getByRole('button', { name: '登记中...' })).toBeDisabled()
     resolveControl(okJson({ id: 'cockpit-compute-control-circuit_break-42', executes: false }))
 
-    await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({
-      tab: 'TaskCenter',
-      taskQuery: 'cockpit-compute-control-circuit_break-42',
-    }))
-    expect(onNavigate).not.toHaveBeenCalled()
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('TaskCenter'))
   })
 
   it('surfaces focus handoff for a matched compute provider risk', async () => {

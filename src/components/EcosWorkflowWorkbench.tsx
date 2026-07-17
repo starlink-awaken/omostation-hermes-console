@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ClipboardCheck, FlaskConical, GitBranch, Loader2, Play, RefreshCw, ShieldAlert } from 'lucide-react';
-import type { CockpitNavigationTarget } from './cockpitNavigation';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type Workflow = {
   name: string;
@@ -17,6 +17,7 @@ type RetryOperation = 'catalog' | 'inspect' | 'test' | 'dry-run' | 'queue';
 const EMPTY: JsonValue = {};
 
 type EcosWorkflowWorkbenchProps = {
+  onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
 };
 
@@ -39,7 +40,7 @@ function resultText(value: unknown) {
   return value === undefined ? '无结果' : JSON.stringify(value, null, 2);
 }
 
-export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWorkbenchProps) {
+export default function EcosWorkflowWorkbench({ onNavigate, onOpenTarget }: EcosWorkflowWorkbenchProps) {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [selectedName, setSelectedName] = useState('');
   const [detail, setDetail] = useState<JsonValue | null>(null);
@@ -138,7 +139,7 @@ export default function EcosWorkflowWorkbench({ onOpenTarget }: EcosWorkflowWork
       );
       setQueueResult(queued);
       if (typeof queued.id === 'string') {
-        onOpenTarget?.({ tab: 'TaskCenter', taskQuery: queued.id });
+        openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: queued.id }, onNavigate, onOpenTarget);
       }
     } catch (reason) {
       setError(`验证任务承接失败：${reason instanceof Error ? reason.message : '未知错误'}`);

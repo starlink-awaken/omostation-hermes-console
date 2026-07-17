@@ -149,7 +149,9 @@ export default function AssetsView({
       const data = await res.json();
       if (res.ok && data.executes === false) {
         setPipelineOutput(`已登记为任务 ${data.id || '待定'}，请到任务中心审批后执行。`);
-        if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+        if (data.id) {
+          openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
+        }
       } else {
         setPipelineError(data.detail || data.error || '管线任务承接失败');
       }
@@ -184,7 +186,9 @@ export default function AssetsView({
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.executes !== false) throw new Error(data.detail || data.error || '工作流验收任务承接失败');
       setWfQueueResults((prev) => ({ ...prev, [name]: data }));
-      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+      if (data.id) {
+        openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
+      }
     } catch (err: any) {
       setWfQueueResults((prev) => ({ ...prev, [name]: { error: err.message || '工作流验收任务承接失败' } }));
     } finally {

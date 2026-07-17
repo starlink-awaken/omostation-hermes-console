@@ -11,7 +11,7 @@ describe('EcosWorkflowWorkbench', () => {
   })
 
   it('loads a workflow catalog and runs a safe test against the selected workflow', async () => {
-    const onOpenTarget = vi.fn()
+    const onNavigate = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/ecos/workflow/list') return Promise.resolve(response({ workflows: [{ name: 'health-check', display: '健康检查', layer: 'L0', subtype: 'PipelineWorkflow' }] }))
@@ -30,7 +30,7 @@ describe('EcosWorkflowWorkbench', () => {
       return Promise.resolve(response({}))
     })
 
-    render(<EcosWorkflowWorkbench onOpenTarget={onOpenTarget} />)
+    render(<EcosWorkflowWorkbench onNavigate={onNavigate} />)
 
     expect(await screen.findByRole('option', { name: '健康检查' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText(/健康检查/)).toBeInTheDocument())
@@ -40,10 +40,7 @@ describe('EcosWorkflowWorkbench', () => {
     expect(screen.getByText(/"passed": 1/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '承接到任务中心' }))
-    await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({
-      tab: 'TaskCenter',
-      taskQuery: 'cockpit-ecos-workflow-health-check-test',
-    }))
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('TaskCenter'))
   })
 
   it('retries the failed verification action instead of reloading only the catalog', async () => {
