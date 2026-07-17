@@ -1071,10 +1071,14 @@ function SourceInspector({
 function ProjectActionList({
   actions,
   onNavigate,
+  onOpenTarget,
+  projectId,
   onQueueAction,
 }: {
   actions?: ProjectAction[];
   onNavigate: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  projectId?: string;
   onQueueAction?: (action: ProjectAction) => void;
 }) {
   if (!actions || actions.length === 0) return <span className="text-muted">待登记</span>;
@@ -1087,7 +1091,7 @@ function ProjectActionList({
             disabled={!action.enabled}
             onClick={() => {
               if (action.kind === 'navigate') {
-                onNavigate(action.value);
+                openSystemMapTarget({ tab: action.value, projectId }, onNavigate, onOpenTarget);
                 return;
               }
               void copyText(action.value);
@@ -1406,6 +1410,8 @@ function ProjectDetailPanel({
           <ProjectActionList
             actions={project.actions}
             onNavigate={onNavigate}
+            onOpenTarget={onOpenTarget}
+            projectId={project.id}
             onQueueAction={onQueueAction}
           />
         </article>
@@ -4880,12 +4886,14 @@ export default function SystemMapView({
                       <ProjectActionList
                         actions={project.actions}
                         onNavigate={onNavigate}
+                        onOpenTarget={onOpenTarget}
+                        projectId={project.id}
                         onQueueAction={(action) => void queueProjectAction(project.id, action)}
                       />
                       {project.triage_commands.length > 0 && (
                         <div className="system-map-triage-inline">
                           <small>排查</small>
-                          <ProjectActionList actions={project.triage_commands} onNavigate={onNavigate} />
+                          <ProjectActionList actions={project.triage_commands} onNavigate={onNavigate} onOpenTarget={onOpenTarget} projectId={project.id} />
                         </div>
                       )}
                     </td>

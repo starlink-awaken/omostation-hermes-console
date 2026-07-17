@@ -236,6 +236,16 @@ const cockpitProject = {
       executes: false,
       guard: '复制验证命令；不直接执行。',
     },
+    {
+      id: 'open-project-page',
+      label: '打开项目页面',
+      kind: 'navigate',
+      value: 'Overview',
+      enabled: true,
+      risk: 'low',
+      executes: false,
+      guard: '打开项目对应的页面入口。',
+    },
   ],
   triage_commands: [],
   coverage_checks: readyCoverageChecks,
@@ -1591,9 +1601,12 @@ describe('SystemMapView', () => {
 
     expectTaskCenterDraftCall(onOpenTarget, 0, 'kairon', '项目组合：修复 kairon')
 
+    fireEvent.click(within(screen.getByLabelText('kairon 项目详情')).getByRole('button', { name: '打开项目页面' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Overview', projectId: 'kairon' })
+
     fireEvent.click(screen.getByRole('button', { name: '打开系统地图闭环对象 kairon · 项目闭环' }))
 
-    expectTaskCenterDraftCall(onOpenTarget, 1, 'kairon', '项目组合：修复 kairon')
+    expectTaskCenterDraftCall(onOpenTarget, 2, 'kairon', '项目组合：修复 kairon')
 
     fireEvent.click(screen.getByText('查看覆盖维度'))
 
