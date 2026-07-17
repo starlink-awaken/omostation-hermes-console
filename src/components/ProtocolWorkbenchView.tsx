@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ClipboardCheck, Copy, GitBranch, Layers, RefreshCw, Route, ShieldAlert } from 'lucide-react';
+import { ClipboardCheck, Copy, GitBranch, Layers, RefreshCw, Route, Search, ShieldAlert, X } from 'lucide-react';
 import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import EcosWorkflowWorkbench from './EcosWorkflowWorkbench';
@@ -153,6 +153,8 @@ export default function ProtocolWorkbenchView({
   const [protocolDraftNotice, setProtocolDraftNotice] = useState<string | null>(null);
   const [protocolTaskPending, setProtocolTaskPending] = useState(false);
   const [protocolTaskError, setProtocolTaskError] = useState<string | null>(null);
+  const [protocolQuery, setProtocolQuery] = useState('');
+  const [protocolStatusFilter, setProtocolStatusFilter] = useState('all');
 
   const load = async () => {
     const data = await fetchJson<ProtocolPayload>('/api/cockpit/protocol-hub', EMPTY_PAYLOAD);
@@ -299,6 +301,32 @@ export default function ProtocolWorkbenchView({
     protocolSurfaces,
     workflowTarget,
   ]);
+
+  const normalizedProtocolQuery = protocolQuery.trim().toLowerCase();
+  const protocolObjectMatches = (values: Array<string | null | undefined>) => (
+    !normalizedProtocolQuery || values.some((value) => value?.toLowerCase().includes(normalizedProtocolQuery))
+  );
+  const filteredProtocolClosureRows = protocolClosureRows.filter((row) => {
+    const matchesStatus = protocolStatusFilter === 'all'
+      || (protocolStatusFilter === 'watch' && row.statusTone === 'degraded')
+      || (protocolStatusFilter === 'ready' && row.statusTone === 'online');
+    return matchesStatus && protocolObjectMatches([row.title, row.summary, row.signal, row.handoff]);
+  });
+  const filteredProtocolLayers = payload.layers.filter((layer) => {
+    const matchesStatus = protocolStatusFilter === 'all' || layer.status === protocolStatusFilter;
+    return matchesStatus && protocolObjectMatches([layer.id, layer.title, layer.role, layer.next_action, ...layer.facts]);
+  });
+  const filteredProtocolWorkflows = payload.recent_workflows.filter((workflow) => (
+    (protocolStatusFilter === 'all' || workflow.status === protocolStatusFilter)
+      && protocolObjectMatches([workflow.id, workflow.task, workflow.status])
+  ));
+  const filteredProtocolCommands = payload.commands.filter((command) => (
+    protocolStatusFilter === 'all' && protocolObjectMatches([command.id, command.label, command.value, command.detail])
+  ));
+  const filteredProtocolPages = payload.related_pages.filter((page) => (
+    protocolStatusFilter === 'all' && protocolObjectMatches([page.id, page.title, page.reason])
+  ));
+  const hasProtocolFilter = Boolean(normalizedProtocolQuery) || protocolStatusFilter !== 'all';
 
   const focusedProtocolCard = useMemo(() => {
     const matchedCommand = payload.commands.find((command) => (
@@ -582,6 +610,49 @@ export default function ProtocolWorkbenchView({
           </div>
           <span className="status-badge online">4 个子面板</span>
         </div>
+        <div
+          role="region"
+          aria-label="协议对象筛选"
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, margin: '14px 0 16px' }}
+        >
+          <Search size={16} className="text-muted" aria-hidden="true" />
+          <input
+            type="search"
+            className="antd-input"
+            aria-label="搜索协议对象"
+            placeholder="层、工作流、命令或承接页面"
+            value={protocolQuery}
+            onChange={(event) => setProtocolQuery(event.target.value)}
+            style={{ minWidth: 260, flex: '1 1 280px' }}
+          />
+          <select
+            className="antd-input"
+            aria-label="按协议状态筛选"
+            value={protocolStatusFilter}
+            onChange={(event) => setProtocolStatusFilter(event.target.value)}
+            style={{ minWidth: 150, flex: '0 1 180px' }}
+          >
+            <option value="all">全部协议对象</option>
+            <option value="watch">观察层</option>
+            <option value="ready">就绪层</option>
+            <option value="running">运行中</option>
+            <option value="completed">已完成</option>
+          </select>
+          {hasProtocolFilter && (
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label="清除协议对象筛选"
+              onClick={() => { setProtocolQuery(''); setProtocolStatusFilter('all'); }}
+            >
+              <X size={14} />
+              <span>清除</span>
+            </button>
+          )}
+          <span className="text-muted" style={{ fontSize: 12 }}>
+            闭环 {filteredProtocolClosureRows.length}/{protocolClosureRows.length} · 层 {filteredProtocolLayers.length}/{payload.layers.length} · 编排 {filteredProtocolWorkflows.length}/{payload.recent_workflows.length}
+          </span>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
           {protocolSurfaces.map((surface) => (
             <article key={surface.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
@@ -665,7 +736,11 @@ export default function ProtocolWorkbenchView({
           <span className="status-badge online">{protocolClosureRows.length} 条路由</span>
         </div>
         <div style={{ display: 'grid', gap: 12 }}>
-          {protocolClosureRows.map((row) => (
+          {filteredProtocolClosureRows.length === 0 ? (
+            <div className="antd-card" style={{ padding: 18, textAlign: 'center' }}>
+              <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的协议闭环对象。</p>
+            </div>
+          ) : filteredProtocolClosureRows.map((row) => (
             <article
               key={`protocol-closure-${row.id}`}
               className="antd-card"
@@ -796,7 +871,11 @@ export default function ProtocolWorkbenchView({
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {payload.layers.map((layer) => (
+          {filteredProtocolLayers.length === 0 ? (
+            <div className="antd-card" style={{ padding: 18, textAlign: 'center' }}>
+              <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的协议层。</p>
+            </div>
+          ) : filteredProtocolLayers.map((layer) => (
             <article key={layer.id} className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                 <div>
@@ -828,7 +907,11 @@ export default function ProtocolWorkbenchView({
             <div className="antd-card" style={{ padding: 18 }}>
               <p className="text-muted" style={{ margin: 0 }}>还没有最近 workflow 记录，先跑一条受控检查命令补证据。</p>
             </div>
-          ) : payload.recent_workflows.map((workflow) => (
+          ) : filteredProtocolWorkflows.length === 0 ? (
+            <div className="antd-card" style={{ padding: 18 }}>
+              <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的最近编排记录。</p>
+            </div>
+          ) : filteredProtocolWorkflows.map((workflow) => (
             <article key={workflow.id} className="antd-card" style={{ padding: 18, display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
               <div>
                 <strong>{workflow.task}</strong>
@@ -899,7 +982,9 @@ export default function ProtocolWorkbenchView({
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>命令先复制，运行状态再回看，别让协议页只停在“看定义”。</p>
             </div>
             <div style={{ display: 'grid', gap: 10 }}>
-              {payload.commands.map((command) => (
+              {filteredProtocolCommands.length === 0 ? (
+                <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的补证命令。</p>
+              ) : filteredProtocolCommands.map((command) => (
                 <button
                   key={command.id}
                   type="button"
@@ -967,7 +1052,9 @@ export default function ProtocolWorkbenchView({
             )}
 
             <div style={{ display: 'grid', gap: 10 }}>
-              {protocolBacklog.pageItems.map((page) => (
+              {filteredProtocolPages.length === 0 ? (
+                <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的承接页面。</p>
+              ) : filteredProtocolPages.map((page) => (
                 <button
                   key={page.id}
                   type="button"

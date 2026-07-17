@@ -197,4 +197,46 @@ describe('ProtocolWorkbenchView', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开协议补位任务 补齐协议承接：治理收口' }))
     expect(onOpenTarget).toHaveBeenLastCalledWith({ tab: 'TaskCenter', taskQuery: 'audit' })
   })
+
+  it('filters protocol layers, runs, commands, and pages from one protocol query', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({
+      summary: {
+        workflow_definitions: 2,
+        workflow_actions: 4,
+        workflow_backends: 1,
+        recent_runs: 1,
+        ready_layers: 1,
+        watch_layers: 1,
+        page_score: 80,
+      },
+      layers: [
+        { id: 'ecos-mof', title: 'L0 · ecos / MOF', status: 'ready', role: '定义元模型。', facts: ['snapshot ready'], next_action: '继续复核。' },
+        { id: 'model-driven', title: 'Model Driven Layer', status: 'watch', role: '承接模型驱动。', facts: ['bridge stale'], next_action: '补齐协议审计证据。' },
+      ],
+      recent_workflows: [
+        { id: 'wf-audit', task: '协议审计运行', status: 'running', updated_at: '2026-07-10T06:00:00Z' },
+      ],
+      commands: [
+        { id: 'protocol-audit', label: '协议巡检命令', value: 'cockpit protocol audit', detail: '补齐协议运行证据。' },
+      ],
+      related_pages: [
+        { id: 'Assets', title: '技术资产库', reason: '协议层依赖 workflow 资产。' },
+      ],
+      roadmap_item: null,
+      playbook: null,
+    }))
+
+    render(<ProtocolWorkbenchView />)
+
+    const filterRegion = await screen.findByRole('region', { name: '协议对象筛选' })
+    fireEvent.change(within(filterRegion).getByRole('searchbox', { name: '搜索协议对象' }), { target: { value: 'audit' } })
+    expect(screen.getAllByText('协议审计运行').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('协议巡检命令').length).toBeGreaterThan(0)
+    expect(within(filterRegion).getByText(/层 0\/2.*编排 1\/1/)).toBeInTheDocument()
+
+    fireEvent.click(within(filterRegion).getByRole('button', { name: '清除协议对象筛选' }))
+    fireEvent.change(within(filterRegion).getByRole('combobox', { name: '按协议状态筛选' }), { target: { value: 'watch' } })
+    expect(screen.getAllByText('Model Driven Layer').length).toBeGreaterThan(0)
+    expect(screen.queryByText('L0 · ecos / MOF')).not.toBeInTheDocument()
+  })
 })
