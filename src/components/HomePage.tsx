@@ -364,6 +364,21 @@ const DEFAULT_SITE_ARCHITECTURE: SiteArchitecture = {
   laneSummaries: [],
 };
 
+type HomeFetchResult<T> = {
+  ok: boolean;
+  data: T;
+};
+
+async function fetchHomeData<T>(url: string, fallback: T): Promise<HomeFetchResult<T>> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return { ok: false, data: fallback };
+    return { ok: true, data: await response.json() as T };
+  } catch {
+    return { ok: false, data: fallback };
+  }
+}
+
 const PAGE_GROUP_ORDER = ['入口', '运行大盘', '智能与知识', '系统治理', '开发工具', '领域应用', '系统配置'];
 
 function buildPageGroups(pages: CockpitPageMeta[]): PageGroupSummary[] {
@@ -2960,58 +2975,36 @@ export default function HomePage({
       setLoading(true);
       setHomeError(null);
       try {
-        // 并行获取所有数据
         const [summaryRes, alertsRes, tasksRes, metricsRes, thoughtsRes, systemMapRes, draftTasksRes] = await Promise.all([
-          fetch('/api/health/summary'),
-          fetch('/api/alerts?limit=3&status=active'),
-          fetch('/api/tasks?limit=3&sort=updated'),
-          fetch('/api/metrics/trend?range=24h'),
-          fetch('/api/omos/thoughts'),
-          fetch('/api/cockpit/system-map'),
-          fetch(HOME_DRAFT_TASKS_URL),
+          fetchHomeData('/api/health/summary', EMPTY_HEALTH_SUMMARY),
+          fetchHomeData('/api/alerts?limit=3&status=active', { items: [] as Alert[] }),
+          fetchHomeData('/api/tasks?limit=3&sort=updated', { items: [] as Task[] }),
+          fetchHomeData('/api/metrics/trend?range=24h', { health_score: [], requests: [], error_rate: [] }),
+          fetchHomeData('/api/omos/thoughts', { status: 'unavailable', thoughts: [] as Thought[] }),
+          fetchHomeData('/api/cockpit/system-map', {} as Record<string, any>),
+          fetchHomeData(HOME_DRAFT_TASKS_URL, { items: [] as DraftTaskSummary[] }),
         ]);
+        const failedSources = [
+          ['健康摘要', summaryRes.ok],
+          ['告警', alertsRes.ok],
+          ['任务', tasksRes.ok],
+          ['指标', metricsRes.ok],
+          ['洞察', thoughtsRes.ok],
+          ['系统地图', systemMapRes.ok],
+          ['任务草稿', draftTasksRes.ok],
+        ].filter(([, ok]) => !ok).map(([label]) => label);
+        setHomeError(failedSources.length > 0 ? `首页数据暂不可用：部分接口${failedSources.join('、')}失败` : null);
 
-        if (summaryRes.ok) {
-          const data = await summaryRes.json();
-          setHealthSummary(data);
-        } else {
-          throw new Error('健康摘要接口不可用');
-        }
-
-        if (alertsRes.ok) {
-          const data = await alertsRes.json();
-          setAlerts(data.items || []);
-        } else {
-          throw new Error('告警接口不可用');
-        }
-
-        if (tasksRes.ok) {
-          const data = await tasksRes.json();
-          setTasks(data.items || []);
-        } else {
-          throw new Error('任务接口不可用');
-        }
-
-        if (metricsRes.ok) {
-          const data = await metricsRes.json();
-          setHealthScoreData(data.health_score || []);
-          setRequestsData(data.requests || []);
-          setErrorRateData(data.error_rate || []);
-        } else {
-          throw new Error('指标接口不可用');
-        }
-
-        if (thoughtsRes.ok) {
-          const data = await thoughtsRes.json();
-          if (data.status === 'ok') {
-            setThoughts(data.thoughts || []);
-          }
-        } else {
-          throw new Error('洞察接口不可用');
-        }
+        setHealthSummary(summaryRes.data);
+        setAlerts(alertsRes.data.items || []);
+        setTasks(tasksRes.data.items || []);
+        setHealthScoreData(metricsRes.data.health_score || []);
+        setRequestsData(metricsRes.data.requests || []);
+        setErrorRateData(metricsRes.data.error_rate || []);
+        setThoughts(thoughtsRes.data.status === 'ok' ? thoughtsRes.data.thoughts || [] : []);
 
         if (systemMapRes.ok) {
-          const systemMap = await systemMapRes.json();
+          const systemMap = systemMapRes.data;
           const portfolio = systemMap.project_portfolio || {};
           const summary = portfolio.summary || {};
           const systemSummary = systemMap.summary || {};
@@ -3019,10 +3012,7 @@ export default function HomePage({
           const featureDomains = systemMap.feature_domains || [];
           const roadmapItems = systemMap.roadmap?.items || [];
           let draftItems: DraftTaskSummary[] = [];
-          if (draftTasksRes.ok) {
-            const draftData = await draftTasksRes.json();
-            draftItems = draftData.items || [];
-          }
+          draftItems = draftTasksRes.data.items || [];
           const readOnlyDraftItems = draftItems.filter((item) => item.read_only);
           setCockpitPages(cockpitPages);
           setRoadmapItems(roadmapItems);
@@ -3110,7 +3100,13 @@ export default function HomePage({
             })),
           });
         } else {
-          throw new Error('系统地图接口不可用');
+          setCockpitPages([]);
+          setUsagePaths([]);
+          setPlaybooks([]);
+          setRoadmapItems([]);
+          setReadOnlyDrafts([]);
+          setSiteArchitecture(DEFAULT_SITE_ARCHITECTURE);
+          setOperatingFocus(DEFAULT_OPERATING_FOCUS);
         }
       } catch (error) {
         console.error('Failed to fetch home data:', error);

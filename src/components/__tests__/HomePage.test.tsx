@@ -794,4 +794,32 @@ describe('HomePage', () => {
     expect(screen.queryByText('Phase 42')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '重试首页数据' })).toBeInTheDocument()
   })
+
+  it('keeps available homepage dimensions when one source fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/health/summary') {
+        return Promise.resolve(okJson({
+          health_score: 91,
+          health_score_change: 2,
+          active_services: 3,
+          total_services: 4,
+          active_tasks: 1,
+          today_requests: 18,
+          today_requests_change: 1,
+        }))
+      }
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      if (url === '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80') return Promise.resolve(okJson({ items: [] }))
+      return Promise.reject(new Error('optional source offline'))
+    })
+
+    render(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('首页数据暂不可用：部分接口')
+      expect(screen.getByText('系统健康总览')).toBeInTheDocument()
+      expect(screen.getAllByText('页面成熟度').length).toBeGreaterThan(0)
+    })
+  })
 })
