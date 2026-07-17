@@ -99,6 +99,7 @@ export default function SettingsView({
   const [instanceUrl, setInstanceUrl] = useState('');
   const [instanceService, setInstanceService] = useState('');
   const [registerResult, setRegisterResult] = useState<any>(null);
+  const [registering, setRegistering] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [securityQuery, setSecurityQuery] = useState('');
   const [securityStatusFilter, setSecurityStatusFilter] = useState('all');
@@ -297,11 +298,13 @@ export default function SettingsView({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (registering) return;
     const validationError = validateInstanceRegistration(instanceService, instanceUrl);
     if (validationError) {
       setRegisterResult({ error: validationError });
       return;
     }
+    setRegistering(true);
     try {
       const fd = new FormData();
       fd.append('service', instanceService);
@@ -314,6 +317,8 @@ export default function SettingsView({
       }
     } catch (e: any) {
       setRegisterResult({ error: e.message });
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -647,7 +652,9 @@ export default function SettingsView({
             />
           </div>
           
-          <button type="submit" className="antd-btn antd-btn-primary" style={{ width: 'fit-content' }}>注册实例</button>
+          <button type="submit" className="antd-btn antd-btn-primary" style={{ width: 'fit-content' }} disabled={registering}>
+            {registering ? '注册中...' : '注册实例'}
+          </button>
         </form>
 
         {registerResult && (

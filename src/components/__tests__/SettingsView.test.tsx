@@ -194,6 +194,28 @@ describe('SettingsView', () => {
     expect(fetch).not.toHaveBeenCalledWith('/api/instance', expect.anything())
   })
 
+  it('locks instance registration while the request is pending', async () => {
+    let resolveRegistration!: (response: Response) => void
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/metrics/history') return Promise.resolve(okJson(metricsPayload))
+      if (url === '/api/domain-apps') return Promise.resolve(okJson(domainAppsPayload))
+      if (url === '/api/instance' && init?.method === 'POST') {
+        return new Promise<Response>((resolve) => { resolveRegistration = resolve })
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<SettingsView />)
+    fireEvent.change(screen.getByLabelText('目标服务名称 (Service Name)'), { target: { value: 'gbrain-local' } })
+    fireEvent.change(screen.getByLabelText('MCP 接入点地址 (Endpoint URL)'), { target: { value: 'http://127.0.0.1:7431' } })
+    fireEvent.click(screen.getByRole('button', { name: '注册实例' }))
+
+    expect(screen.getByRole('button', { name: '注册中...' })).toBeDisabled()
+    resolveRegistration(okJson({ ok: true, registered: 'gbrain-local' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '注册实例' })).not.toBeDisabled())
+  })
+
   it('surfaces focus handoff for a matched control-plane metric', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()

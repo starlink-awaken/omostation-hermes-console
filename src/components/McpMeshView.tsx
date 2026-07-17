@@ -87,6 +87,7 @@ export default function McpMeshView({
   const [registerTaskId, setRegisterTaskId] = useState<string | null>(null);
   const [registerTaskCreated, setRegisterTaskCreated] = useState<boolean | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [registering, setRegistering] = useState(false);
 
   // URI 解析器
   const [resolveUri, setResolveUri] = useState('bos://memory/kos/search');
@@ -142,7 +143,7 @@ export default function McpMeshView({
 
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
-    if (!registerName || !registerEndpoint) return;
+    if (registering || !registerName || !registerEndpoint) return;
     setRegisterStatus(null);
     setRegisterTaskId(null);
     setRegisterTaskCreated(null);
@@ -153,6 +154,7 @@ export default function McpMeshView({
       return;
     }
 
+    setRegistering(true);
     try {
       const formData = new FormData();
       formData.append('service', registerName);
@@ -180,6 +182,8 @@ export default function McpMeshView({
       }
     } catch (err: any) {
       setRegisterError(err.message || '注册发生错误');
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -867,6 +871,7 @@ export default function McpMeshView({
             <button
               type="submit"
               className="antd-btn"
+              disabled={registering}
               style={{
                 width: '100%',
                 padding: '8px',
@@ -878,7 +883,7 @@ export default function McpMeshView({
                 marginTop: '10px'
               }}
             >
-              提交实例注册
+              {registering ? '注册中...' : '提交实例注册'}
             </button>
 
             {registerStatus && (

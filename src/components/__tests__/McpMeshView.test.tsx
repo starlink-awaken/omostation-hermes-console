@@ -106,6 +106,28 @@ describe('McpMeshView', () => {
     await waitFor(() => expect(serviceCalls).toBeGreaterThanOrEqual(2))
   })
 
+  it('locks mesh registration while the request is pending', async () => {
+    let resolveRegistration!: (response: Response) => void
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/bos/services') return Promise.resolve(okJson({ services: [] }))
+      if (url === '/api/bos/health') return Promise.resolve(okJson({ status: 'ok', total_routes: 0, domains: {}, metrics: {} }))
+      if (url === '/api/instance' && init?.method === 'POST') {
+        return new Promise<Response>((resolve) => { resolveRegistration = resolve })
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<McpMeshView />)
+    fireEvent.change(await screen.findByPlaceholderText('例如: family-hub'), { target: { value: 'mesh-router' } })
+    fireEvent.change(screen.getByPlaceholderText('例如: http://localhost:8000/mcp'), { target: { value: 'http://localhost:8000/mcp' } })
+    fireEvent.click(screen.getByRole('button', { name: '提交实例注册' }))
+
+    expect(screen.getByRole('button', { name: '注册中...' })).toBeDisabled()
+    resolveRegistration(okJson({ status: 'ok', msg: '注册成功', task_created: false }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '提交实例注册' })).not.toBeDisabled())
+  })
+
   it('surfaces mesh closure routing when focus hits missing domain handoff', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
