@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, ClipboardList, Clock3, Compass, Copy, ExternalLink, GitBranch, RefreshCw, Search, X } from 'lucide-react';
+import { AlertTriangle, BookOpen, ClipboardList, Clock3, Compass, Copy, ExternalLink, GitBranch, RefreshCw, Search, X } from 'lucide-react';
 import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
@@ -114,14 +114,16 @@ const EMPTY_PAYLOAD: ResearchHubPayload = {
   related_pages: [],
 };
 
-async function fetchJson<T>(url: string, fallback: T): Promise<T> {
+async function fetchJson<T>(url: string, fallback: T, label: string): Promise<{ data: T; error: string | null }> {
   try {
     const response = await fetch(url);
-    if (!response.ok) return fallback;
-    return (await response.json()) as T;
+    if (!response) return { data: fallback, error: `${label}：请求无响应` };
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) return { data: fallback, error: `${label} HTTP ${response.status}` };
+    return { data: payload as T, error: null };
   } catch (error) {
     console.error(`Failed to fetch ${url}:`, error);
-    return fallback;
+    return { data: fallback, error: `${label}：${error instanceof Error ? error.message : '请求失败'}` };
   }
 }
 
@@ -165,10 +167,12 @@ export default function ResearchHubView({
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [queueingResearchId, setQueueingResearchId] = useState<number | null>(null);
+  const [sourceError, setSourceError] = useState<string | null>(null);
 
   const load = async () => {
-    const data = await fetchJson<ResearchHubPayload>('/api/cockpit/research-hub', EMPTY_PAYLOAD);
-    setPayload(data);
+    const result = await fetchJson<ResearchHubPayload>('/api/cockpit/research-hub', EMPTY_PAYLOAD, '研究中枢');
+    setPayload(result.data);
+    setSourceError(result.error);
     setLoading(false);
     setRefreshing(false);
   };
@@ -235,12 +239,14 @@ export default function ResearchHubView({
     setResearchDetail(null);
     setDetailError(null);
     setDetailLoading(true);
-    const data = await fetchJson<ResearchDetailPayload>(
+    const result = await fetchJson<ResearchDetailPayload>(
       `/api/cockpit/research-hub/${researchId}`,
       { status: 'error', timeline: [], dossier: { parents: [], children: [], publications: [] } },
+      '研究对象详情',
     );
-    if (data.status !== 'ok' || !data.item) {
-      setDetailError('研究对象详情暂时读取失败，请稍后重试。');
+    const data = result.data;
+    if (result.error || data.status !== 'ok' || !data.item) {
+      setDetailError(result.error || '研究对象详情暂时读取失败，请稍后重试。');
     } else {
       setResearchDetail(data);
     }
@@ -474,6 +480,17 @@ export default function ResearchHubView({
             <span>刷新</span>
           </button>
         </div>
+
+        {sourceError && (
+          <div className="overview-inline-error" role="alert">
+            <AlertTriangle size={16} />
+            <div>
+              <strong>研究数据需要补证</strong>
+              <span>{sourceError}，当前空状态不代表没有研究对象。</span>
+            </div>
+            <button type="button" className="antd-btn" onClick={() => { setRefreshing(true); void load(); }}>重试</button>
+          </div>
+        )}
 
         <div className="stats-grid">
           {[

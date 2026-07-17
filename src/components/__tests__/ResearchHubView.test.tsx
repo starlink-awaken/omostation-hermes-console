@@ -86,6 +86,17 @@ describe('ResearchHubView', () => {
     expect(onNavigate).toHaveBeenCalledWith('Overview')
   })
 
+  it('shows the source failure instead of presenting an empty research hub', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('research source offline'))
+
+    render(<ResearchHubView />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('研究中枢：research source offline')
+      expect(screen.getByText(/还没有研究对象/)).toBeInTheDocument()
+    })
+  })
+
   it('opens a research object detail with timeline and publications', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       if (String(input) === '/api/cockpit/research-hub') {
