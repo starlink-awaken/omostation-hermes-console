@@ -1357,7 +1357,7 @@ export default function Dashboard() {
     [activeTab],
   );
   const currentCockpitPage = useMemo(
-    () => cockpitPages.find((page) => page.id === activeTab) || null,
+    () => cockpitPages.find((page) => page.id === activeTab) || PAGE_REGISTRY_BY_ID.get(activeTab) || null,
     [activeTab, cockpitPages],
   );
   const currentPageMaturity = useMemo(

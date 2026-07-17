@@ -151,6 +151,17 @@ describe('Dashboard global search', () => {
     })
   })
 
+  it('keeps static page dimensions visible when the system map is unavailable', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({}))
+
+    render(<Dashboard />)
+
+    const context = await screen.findByRole('region', { name: '当前页面承接' })
+    expect(within(context).getByText('健康')).toBeInTheDocument()
+    expect(within(context).getByText('告警')).toBeInTheDocument()
+    expect(within(context).getByText('任务')).toBeInTheDocument()
+  })
+
   it('searches dynamic projects and task drafts from SystemMap and TaskCenter', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
