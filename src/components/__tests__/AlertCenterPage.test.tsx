@@ -165,6 +165,20 @@ describe('AlertCenterPage', () => {
     expect(screen.getAllByText('Mesh degradation').length).toBeGreaterThan(0)
   })
 
+  it('finds alerts by id, source and description, not only message text', async () => {
+    mockAlertCenterFetch()
+
+    const { container } = render(<AlertCenterPage />)
+    await waitFor(() => expect(screen.getAllByText('Mesh degradation').length).toBeGreaterThan(0))
+
+    fireEvent.change(screen.getByPlaceholderText('搜索告警...'), { target: { value: 'alert-1' } })
+    await waitFor(() => expect(container.querySelectorAll('.alerts-list .alert-card')).toHaveLength(1))
+    expect(screen.getAllByText('Mesh degradation').length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByPlaceholderText('搜索告警...'), { target: { value: 'Latency spike detected' } })
+    await waitFor(() => expect(screen.getAllByText('Mesh degradation').length).toBeGreaterThan(0))
+  })
+
   it('acknowledges an alert', async () => {
     mockAlertCenterFetch()
 

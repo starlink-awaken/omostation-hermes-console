@@ -123,7 +123,16 @@ export default function LogViewerPage({
   const filteredLogs = logs.filter(log => {
     if (filterLevel !== 'all' && log.level !== filterLevel) return false;
     if (filterSource !== 'all' && log.source !== filterSource) return false;
-    if (searchQuery && !log.message.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery) {
+      const searchableText = [
+        log.timestamp,
+        log.level,
+        log.source,
+        log.message,
+        log.metadata ? JSON.stringify(log.metadata) : '',
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!searchableText.includes(searchQuery.toLowerCase())) return false;
+    }
     return true;
   });
   const criticalLogs = filteredLogs.filter((log) => log.level === 'error' || log.level === 'fatal');

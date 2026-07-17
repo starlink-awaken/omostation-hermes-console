@@ -50,6 +50,23 @@ describe('LogViewerPage', () => {
     expect(onNavigate).toHaveBeenCalledWith('Performance')
   })
 
+  it('finds logs by source, timestamp and metadata as well as message', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({
+      items: [
+        { timestamp: '2026-07-11T10:00:00Z', level: 'error', source: 'cockpit-api', message: 'database timeout', metadata: { request_id: 'req-42' } },
+        { timestamp: '2026-07-11T10:01:00Z', level: 'info', source: 'worker', message: 'job completed', metadata: { request_id: 'req-43' } },
+      ],
+    }))
+
+    const { container } = render(<LogViewerPage />)
+    await waitFor(() => expect(screen.getByText('database timeout')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByPlaceholderText('搜索日志...'), { target: { value: 'req-42' } })
+    await waitFor(() => expect(container.querySelectorAll('.log-table tbody tr')).toHaveLength(1))
+    expect(screen.getByText('database timeout')).toBeInTheDocument()
+    expect(screen.queryByText('job completed')).not.toBeInTheDocument()
+  })
+
   it('surfaces focus handoff for a matched log source', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()

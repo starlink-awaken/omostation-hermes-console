@@ -287,7 +287,19 @@ export default function AlertCenterPage({
   const filteredAlerts = alerts.filter(alert => {
     if (filterLevel !== 'all' && alert.level !== filterLevel) return false;
     if (filterSource !== 'all' && alert.source !== filterSource) return false;
-    if (searchQuery && !alert.message.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery) {
+      const searchableText = [
+        alert.id,
+        alert.level,
+        alert.source,
+        alert.message,
+        alert.description,
+        alert.status,
+        alert.acknowledged_by,
+        alert.resolved_by,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!searchableText.includes(searchQuery.toLowerCase())) return false;
+    }
     return true;
   });
 
