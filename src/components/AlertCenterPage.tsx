@@ -102,6 +102,7 @@ export default function AlertCenterPage({
   const [ruleForm, setRuleForm] = useState({ name: '', condition: '', level: 'warning', channels: 'slack', enabled: true });
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionAlertId, setActionAlertId] = useState<string | null>(null);
   const [queueingAlertId, setQueueingAlertId] = useState<string | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -153,19 +154,26 @@ export default function AlertCenterPage({
   }, [alerts, focusTaskQuery, rules]);
 
   const handleAcknowledge = async (alertId: string) => {
+    setActionAlertId(alertId);
+    setActionError(null);
     try {
       const response = await fetch(`/api/alerts/${alertId}/acknowledge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       if (!response.ok) throw new Error(response.statusText);
-      setAlerts(alerts.map(a =>
+      setAlerts((current) => current.map(a =>
         a.id === alertId ? { ...a, status: 'acknowledged' } : a
       ));
+      setRefreshToken((value) => value + 1);
       setActionNotice('告警已确认，状态会在后续刷新中保留。');
     } catch (error) {
       setActionError(`确认告警失败：${error instanceof Error ? error.message : '请稍后重试'}`);
+    } finally {
+      setActionAlertId(null);
     }
   };
 
   const handleSilence = async (alertId: string) => {
+    setActionAlertId(alertId);
+    setActionError(null);
     try {
       const response = await fetch(`/api/alerts/${alertId}/silence`, {
         method: 'POST',
@@ -173,25 +181,33 @@ export default function AlertCenterPage({
         body: JSON.stringify({ duration: 60 }),
       });
       if (!response.ok) throw new Error(response.statusText);
-      setAlerts(alerts.map(a =>
+      setAlerts((current) => current.map(a =>
         a.id === alertId ? { ...a, status: 'silenced' } : a
       ));
+      setRefreshToken((value) => value + 1);
       setActionNotice('告警已静默，状态会在后续刷新中保留。');
     } catch (error) {
       setActionError(`静默告警失败：${error instanceof Error ? error.message : '请稍后重试'}`);
+    } finally {
+      setActionAlertId(null);
     }
   };
 
   const handleResolve = async (alertId: string) => {
+    setActionAlertId(alertId);
+    setActionError(null);
     try {
       const response = await fetch(`/api/alerts/${alertId}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       if (!response.ok) throw new Error(response.statusText);
-      setAlerts(alerts.map(a =>
+      setAlerts((current) => current.map(a =>
         a.id === alertId ? { ...a, status: 'resolved' } : a
       ));
+      setRefreshToken((value) => value + 1);
       setActionNotice('告警已解决，状态会在后续刷新中保留。');
     } catch (error) {
       setActionError(`解决告警失败：${error instanceof Error ? error.message : '请稍后重试'}`);
+    } finally {
+      setActionAlertId(null);
     }
   };
 
@@ -792,26 +808,29 @@ export default function AlertCenterPage({
                 <div className="alert-actions">
                   <button
                     className="btn btn-sm btn-outline"
+                    disabled={actionAlertId === alert.id}
                     onClick={() => handleAcknowledge(alert.id)}
                   >
-                    确认
+                    {actionAlertId === alert.id ? '处理中' : '确认'}
                   </button>
                   <button
                     className="btn btn-sm btn-outline"
+                    disabled={actionAlertId === alert.id}
                     onClick={() => handleSilence(alert.id)}
                   >
-                    静默
+                    {actionAlertId === alert.id ? '处理中' : '静默'}
                   </button>
                   <button
                     className="btn btn-sm btn-primary"
+                    disabled={actionAlertId === alert.id}
                     onClick={() => handleResolve(alert.id)}
                   >
-                    解决
+                    {actionAlertId === alert.id ? '处理中' : '解决'}
                   </button>
                   <button
                     className="btn btn-sm btn-outline"
                     aria-label={`承接告警任务 ${alert.message}`}
-                    disabled={queueingAlertId === alert.id}
+                    disabled={queueingAlertId === alert.id || actionAlertId === alert.id}
                     onClick={() => void handleQueueAlert(alert)}
                   >
                     <ClipboardCheck size={13} />

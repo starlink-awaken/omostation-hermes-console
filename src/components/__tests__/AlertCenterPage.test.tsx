@@ -217,6 +217,9 @@ describe('AlertCenterPage', () => {
         body: '{}',
       })
     })
+    await waitFor(() => {
+      expect(vi.mocked(fetch).mock.calls.filter(([input]) => String(input) === '/api/alerts')).toHaveLength(2)
+    })
   })
 
   it('queues a critical alert into TaskCenter', async () => {
