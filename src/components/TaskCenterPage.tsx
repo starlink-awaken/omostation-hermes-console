@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
-import { openCockpitNavigationTarget } from './cockpitNavigation';
+import { type CockpitNavigationTarget, openCockpitNavigationTarget } from './cockpitNavigation';
+import { taskDraftSourceTarget } from './taskDraftHandoff';
 
 interface DomainAppSnapshot {
   id: string;
@@ -164,13 +165,7 @@ type DraftSourceType =
   | 'system_map_page_maturity';
 type DraftLaneFilter = 'all' | DraftSourceType;
 
-interface TaskNavigationTarget {
-  tab: string;
-  projectId?: string | null;
-  usagePathId?: string | null;
-  gapId?: string | null;
-  taskQuery?: string;
-}
+type TaskNavigationTarget = CockpitNavigationTarget;
 
 interface IncomingTaskDraft {
   title: string;
@@ -256,30 +251,7 @@ function sourceTypeDefaultTarget(type: DraftSourceType, task?: Task | null): Tas
 }
 
 function resolveTaskTarget(task: Task): TaskNavigationTarget | null {
-  if (!task.source?.type) return null;
-  if (task.source.type === 'system_map_project_portfolio') {
-    return { tab: 'SystemMap', projectId: task.source.id };
-  }
-  if (task.source.type === 'system_map_verification_ready') {
-    return { tab: 'SystemMap', projectId: task.source.id };
-  }
-  if (task.source.type === 'system_map_domain_app') {
-    return { tab: 'DomainApps', taskQuery: task.source.id };
-  }
-  if (task.source.type === 'system_map_capability_gap') {
-    return { tab: 'SystemMap', gapId: task.source.id };
-  }
-  if (task.source.type === 'system_map_page_maturity') {
-    return { tab: task.source.id || 'SystemMap' };
-  }
-  if (task.source.type === 'system_map_playbook') {
-    const pageIds = (task.draft?.evidence_fields || [])
-      .map((field) => field.page_id)
-      .filter(Boolean) as string[];
-    const preferredPage = pageIds.find((pageId) => pageId !== 'Home' && pageId !== 'SystemMap') || pageIds[0];
-    return { tab: preferredPage || 'SystemMap' };
-  }
-  return null;
+  return taskDraftSourceTarget(task);
 }
 
 function sourceActionLabel(task: Task): string {

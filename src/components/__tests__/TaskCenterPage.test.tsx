@@ -927,8 +927,8 @@ describe('TaskCenterPage', () => {
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'cockpit' })
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'DomainApps', taskQuery: 'family-hub' })
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', gapId: 'project-native-surface' })
-    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Performance' })
-    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'AlertCenter' })
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Performance', pageId: 'Performance' })
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'AlertCenter', pageId: 'AlertCenter' })
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'cockpit' })
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'kairon' })
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'kairon' })
@@ -1063,6 +1063,7 @@ describe('TaskCenterPage', () => {
   })
 
   it('renders page maturity drafts with evidence fields', async () => {
+    const onOpenTarget = vi.fn()
     Object.assign(navigator, {
       clipboard: {
         writeText: vi.fn().mockResolvedValue(undefined),
@@ -1078,7 +1079,7 @@ describe('TaskCenterPage', () => {
       pageMaturityDraft,
     ])
 
-    render(<TaskCenterPage initialSearchQuery="system_map_page_maturity" />)
+    render(<TaskCenterPage initialSearchQuery="system_map_page_maturity" onOpenTarget={onOpenTarget} />)
 
     await waitFor(() => {
       const tasksList = document.querySelector('.tasks-list')
@@ -1095,6 +1096,10 @@ describe('TaskCenterPage', () => {
       expect(screen.getByText('0%')).toBeInTheDocument()
       expect(screen.getAllByText('把页面接入至少一条使用路径。').length).toBeGreaterThan(0)
     })
+
+    const sourceButtons = screen.getAllByRole('button', { name: '打开来源页面' })
+    fireEvent.click(sourceButtons[sourceButtons.length - 1])
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Performance', pageId: 'Performance' })
 
     const copyButtons = screen.getAllByRole('button', { name: '复制任务草稿' })
     fireEvent.click(copyButtons[copyButtons.length - 1])
