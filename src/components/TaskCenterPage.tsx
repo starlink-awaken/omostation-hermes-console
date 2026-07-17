@@ -140,6 +140,20 @@ interface TaskExecutionSnapshot {
   artifacts?: Record<string, { ref?: string | null; exists?: boolean; valid?: boolean }>;
 }
 
+async function readTaskDetailResponse<T>(
+  result: PromiseSettledResult<Response>,
+  fallbackMessage: string,
+): Promise<{ ok: boolean; data: T | null; error?: string }> {
+  if (result.status === 'rejected') {
+    return { ok: false, data: null, error: result.reason instanceof Error ? result.reason.message : fallbackMessage };
+  }
+  const payload = await result.value.json().catch(() => ({}));
+  if (!result.value.ok) {
+    return { ok: false, data: null, error: payload.detail || result.value.statusText || fallbackMessage };
+  }
+  return { ok: true, data: payload as T };
+}
+
 type TaskStatus = 'all' | 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
 type DraftSourceType =
   | 'system_map_project_portfolio'
@@ -396,39 +410,32 @@ export default function TaskCenterPage({
     setTaskExecutionLoading(true);
     setTaskExecutionError(null);
     setEvidenceInput('');
-    Promise.all([
-      fetch(`/api/tasks/${selectedTask.id}/history`),
-      fetch(`/api/tasks/${selectedTask.id}/execution`),
-    ])
-      .then(async (response) => {
-        const [historyResponse, executionResponse] = response;
-        const historyPayload = await historyResponse.json().catch(() => ({}));
-        const executionPayload = await executionResponse.json().catch(() => ({}));
-        if (!historyResponse.ok) throw new Error(historyPayload.detail || historyResponse.statusText || '任务历史读取失败');
-        if (!executionResponse.ok) throw new Error(executionPayload.detail || executionResponse.statusText || '执行态势读取失败');
-        return { historyPayload, executionPayload };
-      })
-      .then(({ historyPayload, executionPayload }) => {
-        if (!cancelled) {
-          setTaskHistory(historyPayload.items || []);
-          setTaskExecution(executionPayload.execution || null);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setTaskHistory([]);
-          setTaskExecution(null);
-          const message = error instanceof Error ? error.message : '任务执行态势读取失败';
-          setTaskHistoryError(message);
-          setTaskExecutionError(message);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setTaskHistoryLoading(false);
-          setTaskExecutionLoading(false);
-        }
-      });
+    const loadTaskDetails = async () => {
+      const [historyResult, executionResult] = await Promise.allSettled([
+        fetch(`/api/tasks/${selectedTask.id}/history`),
+        fetch(`/api/tasks/${selectedTask.id}/execution`),
+      ]);
+      const [history, execution] = await Promise.all([
+        readTaskDetailResponse<{ items?: TaskHistoryEntry[] }>(historyResult, '任务历史读取失败'),
+        readTaskDetailResponse<{ execution?: TaskExecutionSnapshot | null }>(executionResult, '执行态势读取失败'),
+      ]);
+      if (cancelled) return;
+      if (history.ok && history.data) {
+        setTaskHistory(history.data.items || []);
+      } else {
+        setTaskHistory([]);
+        setTaskHistoryError(history.error || '任务历史读取失败');
+      }
+      if (execution.ok && execution.data) {
+        setTaskExecution(execution.data.execution || null);
+      } else {
+        setTaskExecution(null);
+        setTaskExecutionError(execution.error || '执行态势读取失败');
+      }
+      setTaskHistoryLoading(false);
+      setTaskExecutionLoading(false);
+    };
+    void loadTaskDetails();
     return () => { cancelled = true; };
   }, [selectedTask]);
 

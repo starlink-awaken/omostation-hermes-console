@@ -802,6 +802,31 @@ describe('TaskCenterPage', () => {
     })
   })
 
+  it('keeps execution status visible when task history is temporarily unavailable', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true') {
+        return Promise.resolve(okJson({ items: mockTasks }))
+      }
+      if (url === '/api/domain-apps') return Promise.resolve(okJson({ items: [] }))
+      if (url === '/api/tasks/task-1/history') return Promise.reject(new Error('history service offline'))
+      if (url === '/api/tasks/task-1/execution') {
+        return Promise.resolve(okJson({ execution: { status: 'queued', worker_id: 'worker-1', next_action: '等待执行' } }))
+      }
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<TaskCenterPage />)
+    await waitFor(() => expect(screen.getAllByText('Deploy gateway').length).toBeGreaterThan(0))
+
+    fireEvent.click(document.querySelector('.task-card') as HTMLElement)
+
+    await waitFor(() => {
+      expect(screen.getByText('queued · worker-1')).toBeInTheDocument()
+      expect(screen.getByText('history service offline')).toBeInTheDocument()
+    })
+  })
+
   it('renders playbook drafts as read-only copyable tasks', async () => {
     Object.assign(navigator, {
       clipboard: {
