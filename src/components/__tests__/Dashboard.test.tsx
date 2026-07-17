@@ -176,7 +176,7 @@ describe('Dashboard global search', () => {
       endpoints: Record<string, { ok: boolean }>
     }
     expect(payload.schema_version).toBe(2)
-    expect(payload.endpoint_count).toBe(12)
+    expect(payload.endpoint_count).toBe(44)
     expect(payload.active_tab).toBe('Home')
     expect(Object.keys(payload.endpoints)).toEqual(expect.arrayContaining([
       'system_map',
@@ -191,6 +191,15 @@ describe('Dashboard global search', () => {
       'skills',
       'pipelines',
       'ecos_workflows',
+      'health_summary',
+      'services_status',
+      'bos_health',
+      'l4_health',
+      'debt',
+      'protocol_hub',
+      'architecture_health',
+      'governance_summary',
+      'm0_status',
     ]))
     expect(anchorClick).toHaveBeenCalled()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:cockpit-snapshot')
