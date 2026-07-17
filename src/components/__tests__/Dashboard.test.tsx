@@ -959,5 +959,40 @@ describe('Dashboard global search', () => {
       expect(screen.getByText('Guide Mock')).toBeInTheDocument()
     })
     expect(window.location.hash).toBe('#guide')
+    })
   })
-})
+
+  it('searches runtime knowledge and technical assets from the global entry', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson({}))
+      if (url.startsWith('/api/tasks?')) return Promise.resolve(okJson({ items: [] }))
+      if (url === '/api/domain-apps') return Promise.resolve(okJson({ items: [] }))
+      if (url === '/api/alerts?limit=80') return Promise.resolve(okJson({ items: [] }))
+      if (url === '/api/cockpit/research-hub') {
+        return Promise.resolve(okJson({ recent: [{ id: 42, topic: '家庭研究', summary: '研究摘要', status: 'active', tags: ['家庭'] }] }))
+      }
+      if (url === '/api/metaos/workflows') {
+        return Promise.resolve(okJson({ workflows: [{ workflow_id: 'wf-42', task: '家庭执行链', status: 'running' }] }))
+      }
+      if (url === '/api/ecos/skills') {
+        return Promise.resolve(okJson({ skills: [{ id: 'skill-family', name: '家庭技能', description: '家庭工作技能' }] }))
+      }
+      if (url === '/api/pipelines') return Promise.resolve(okJson({ pipelines: ['family-pipeline'] }))
+      if (url === '/api/ecos/workflows') return Promise.resolve(okJson({ workflows: [{ name: 'family-workflow', description: '家庭资产工作流' }] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<Dashboard />)
+    const search = await screen.findByLabelText('全局搜索输入框')
+
+    fireEvent.change(search, { target: { value: '家庭研究' } })
+    await waitFor(() => expect(screen.getByText('研究：家庭研究')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('研究：家庭研究'))
+    await waitFor(() => expect(screen.getByText('Research Mock')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: 'skill-family' } })
+    await waitFor(() => expect(screen.getByText('技能资产：家庭技能')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('技能资产：家庭技能'))
+    await waitFor(() => expect(screen.getByText('Mock Page')).toBeInTheDocument())
+  })

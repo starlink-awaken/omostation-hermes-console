@@ -205,6 +205,39 @@ interface SearchAlert {
   created_at?: string;
 }
 
+interface SearchResearchItem {
+  id: number | string;
+  topic?: string;
+  summary?: string;
+  status?: string;
+  agent?: string;
+  next_action?: string;
+  tags?: string[];
+}
+
+interface SearchMetaosWorkflow {
+  id?: string;
+  workflow_id?: string;
+  task?: string;
+  status?: string;
+  created?: string;
+  updated?: string;
+}
+
+interface SearchAssetSkill {
+  id: string;
+  name?: string;
+  description?: string;
+  source?: string;
+  path?: string;
+}
+
+interface SearchAssetWorkflow {
+  name: string;
+  description?: string;
+  steps?: number;
+}
+
 interface SearchUsagePath {
   id: string;
   title?: string;
@@ -2869,11 +2902,16 @@ export default function Dashboard() {
   useEffect(() => {
     const buildDynamicSearch = async () => {
       try {
-        const [systemMapRes, tasksRes, domainAppsRes, alertsRes] = await Promise.all([
+        const [systemMapRes, tasksRes, domainAppsRes, alertsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes] = await Promise.all([
           fetch('/api/cockpit/system-map'),
           fetch('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80'),
           fetch('/api/domain-apps'),
           fetch('/api/alerts?limit=80'),
+          fetch('/api/cockpit/research-hub'),
+          fetch('/api/metaos/workflows'),
+          fetch('/api/ecos/skills'),
+          fetch('/api/pipelines'),
+          fetch('/api/ecos/workflows'),
         ]);
         const targets: SearchTarget[] = [];
 
@@ -3356,6 +3394,122 @@ export default function Dashboard() {
                 'alert',
                 '告警',
                 '异常',
+              ],
+            });
+          });
+        }
+
+        if (researchRes.ok) {
+          const researchPayload = await researchRes.json();
+          const researchItems: SearchResearchItem[] = researchPayload.recent || [];
+          researchItems.forEach((item) => {
+            const id = String(item.id);
+            targets.push({
+              id: `research-${id}`,
+              tab: 'Research',
+              label: `研究：${item.topic || id}`,
+              group: `研究对象 · ${item.status || 'unknown'}`,
+              context: { taskQuery: id },
+              keywords: [
+                id,
+                item.topic || '',
+                item.summary || '',
+                item.status || '',
+                item.agent || '',
+                item.next_action || '',
+                ...(item.tags || []),
+                'research',
+                '研究',
+                '知识',
+              ],
+            });
+          });
+        }
+
+        if (metaosWorkflowsRes.ok) {
+          const workflowsPayload = await metaosWorkflowsRes.json();
+          const workflows: SearchMetaosWorkflow[] = workflowsPayload.workflows || [];
+          workflows.forEach((workflow) => {
+            const id = workflow.workflow_id || workflow.id;
+            if (!id) return;
+            targets.push({
+              id: `metaos-workflow-${id}`,
+              tab: 'Workflows',
+              label: `运行工作流：${id}`,
+              group: `MetaOS 工作流 · ${workflow.status || 'unknown'}`,
+              context: { taskQuery: id },
+              keywords: [
+                id,
+                workflow.task || '',
+                workflow.status || '',
+                workflow.created || '',
+                workflow.updated || '',
+                'workflow',
+                '工作流',
+                '运行链',
+              ],
+            });
+          });
+        }
+
+        if (skillsRes.ok) {
+          const skillsPayload = await skillsRes.json();
+          const skills: SearchAssetSkill[] = skillsPayload.skills || [];
+          skills.forEach((skill) => {
+            targets.push({
+              id: `asset-skill-${skill.id}`,
+              tab: 'Assets',
+              label: `技能资产：${skill.name || skill.id}`,
+              group: '技术资产 · 技能',
+              context: { taskQuery: skill.id },
+              keywords: [
+                skill.id,
+                skill.name || '',
+                skill.description || '',
+                skill.source || '',
+                skill.path || '',
+                'asset',
+                'skill',
+                '技术资产',
+                '技能',
+              ],
+            });
+          });
+        }
+
+        if (pipelinesRes.ok) {
+          const pipelinesPayload = await pipelinesRes.json();
+          const pipelines: string[] = pipelinesPayload.pipelines || [];
+          pipelines.forEach((pipeline) => {
+            targets.push({
+              id: `asset-pipeline-${pipeline}`,
+              tab: 'Assets',
+              label: `工具管线：${pipeline}`,
+              group: '技术资产 · 管线',
+              context: { taskQuery: pipeline },
+              keywords: [pipeline, 'asset', 'pipeline', '技术资产', '工具管线'],
+            });
+          });
+        }
+
+        if (ecosWorkflowsRes.ok) {
+          const workflowsPayload = await ecosWorkflowsRes.json();
+          const workflows: SearchAssetWorkflow[] = workflowsPayload.workflows || [];
+          workflows.forEach((workflow) => {
+            targets.push({
+              id: `asset-workflow-${workflow.name}`,
+              tab: 'Assets',
+              label: `资产工作流：${workflow.name}`,
+              group: '技术资产 · 工作流',
+              context: { taskQuery: workflow.name },
+              keywords: [
+                workflow.name,
+                workflow.description || '',
+                String(workflow.steps ?? ''),
+                'asset',
+                'workflow',
+                '技术资产',
+                '工作流',
               ],
             });
           });
