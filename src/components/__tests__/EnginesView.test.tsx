@@ -12,8 +12,13 @@ vi.mock('../WorkflowGraph', () => ({
 }))
 
 class EventSourceMock {
+  static instances: EventSourceMock[] = []
   onmessage: ((event: MessageEvent) => void) | null = null
   close = vi.fn()
+
+  constructor() {
+    EventSourceMock.instances.push(this)
+  }
 }
 
 const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Response
@@ -21,6 +26,7 @@ const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Resp
 describe('EnginesView', () => {
   beforeEach(() => {
     vi.mocked(fetch).mockReset()
+    EventSourceMock.instances = []
     vi.stubGlobal('EventSource', EventSourceMock as unknown as typeof EventSource)
   })
 
@@ -163,5 +169,39 @@ describe('EnginesView', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
     expect(attempts).toBe(2)
+  })
+
+  it('filters pipeline choices and event evidence without changing the execution catalog', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/pipelines') {
+        return Promise.resolve(okJson({ pipelines: ['governance-sync', 'family-weekly-report', 'health-check'] }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<EnginesView />)
+    await waitFor(() => expect(screen.getByDisplayValue('governance-sync')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText('搜索引擎管线'), { target: { value: 'family' } })
+    expect(screen.getByRole('button', { name: '选择引擎管线 family-weekly-report' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '选择引擎管线 governance-sync' })).not.toBeInTheDocument()
+    expect(screen.getByText('显示 1/3 条管线')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('执行指令 / 目标'), { target: { value: '核对运行状态' } })
+    expect(screen.getByRole('option', { name: 'health-check' })).toBeInTheDocument()
+
+    const eventSource = EventSourceMock.instances[0]
+    eventSource.onmessage?.({ data: JSON.stringify({ id: 'event-1', type: 'pipeline:step:error', time: '2026-07-17T05:00:00Z', source: 'health-check', payload: { step_index: 2 } }) } as MessageEvent)
+    eventSource.onmessage?.({ data: JSON.stringify({ id: 'event-2', type: 'pipeline:step:ok', time: '2026-07-17T05:01:00Z', source: 'governance-sync', payload: { step_index: 1 } }) } as MessageEvent)
+
+    await waitFor(() => expect(screen.getAllByText('pipeline:step:error').length).toBeGreaterThan(1))
+    fireEvent.change(screen.getByLabelText('按事件类型筛选引擎事件'), { target: { value: 'pipeline:step:error' } })
+    const eventLog = screen.getByRole('log', { name: '消息总线追踪日志流' })
+    expect(within(eventLog).getByText('pipeline:step:error')).toBeInTheDocument()
+    expect(within(eventLog).queryByText('pipeline:step:ok')).not.toBeInTheDocument()
+    expect(screen.getByText('显示 1/2 条事件')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '清除引擎管线筛选' }))
+    expect(screen.getByRole('button', { name: '选择引擎管线 governance-sync' })).toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Cpu, Play, Activity, List, GitCommit, RefreshCw } from 'lucide-react';
 import WorkflowGraph from './WorkflowGraph';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
@@ -43,11 +43,23 @@ export default function EnginesView({
   const [runResult, setRunResult] = useState<any>(null);
   const [dataError, setDataError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [pipelineQuery, setPipelineQuery] = useState('');
+  const [eventTypeFilter, setEventTypeFilter] = useState('all');
   
   const [planning, setPlanning] = useState(false);
   const [metaosPlan, setMetaosPlan] = useState<any>(null);
-  const recentEvents = events.slice(0, 4);
-  const focusPipelines = pipelines.slice(0, 4);
+  const filteredPipelines = useMemo(() => {
+    const query = pipelineQuery.trim().toLowerCase();
+    if (!query) return pipelines;
+    return pipelines.filter((pipeline) => pipeline.toLowerCase().includes(query));
+  }, [pipelineQuery, pipelines]);
+  const eventTypes = useMemo(() => Array.from(new Set(events.map((event) => event.type).filter(Boolean))), [events]);
+  const filteredEvents = useMemo(() => {
+    if (eventTypeFilter === 'all') return events;
+    return events.filter((event) => event.type === eventTypeFilter);
+  }, [eventTypeFilter, events]);
+  const recentEvents = filteredEvents.slice(0, 4);
+  const focusPipelines = filteredPipelines.slice(0, 4);
 
   const fetchData = async () => {
     try {
@@ -340,7 +352,7 @@ export default function EnginesView({
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <span className="status-badge online">管线 {pipelines.length}</span>
-            <span className="status-badge degraded">事件 {events.length}</span>
+            <span className="status-badge degraded">事件 {filteredEvents.length}/{events.length}</span>
             <span className="status-badge degraded">激活步骤 {activeSteps.length}</span>
           </div>
         </div>
@@ -351,8 +363,26 @@ export default function EnginesView({
               <h3 style={{ margin: 0, fontSize: 15 }}>优先管线</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先挑最常用或当前正在看的管线，直接带入执行器。</p>
             </div>
-            {focusPipelines.length === 0 ? (
+            <div role="region" aria-label="引擎管线筛选" style={{ display: 'grid', gap: 8 }}>
+              <input
+                className="antd-input"
+                type="search"
+                aria-label="搜索引擎管线"
+                placeholder="搜索管线名称"
+                value={pipelineQuery}
+                onChange={(event) => setPipelineQuery(event.target.value)}
+              />
+              {pipelineQuery && (
+                <button type="button" className="antd-btn" aria-label="清除引擎管线筛选" onClick={() => setPipelineQuery('')}>
+                  清除管线筛选
+                </button>
+              )}
+              <span className="text-muted" style={{ fontSize: 12 }}>显示 {filteredPipelines.length}/{pipelines.length} 条管线</span>
+            </div>
+            {pipelines.length === 0 ? (
               <p className="text-muted" style={{ margin: 0 }}>当前没有可选管线。</p>
+            ) : focusPipelines.length === 0 ? (
+              <p className="text-muted" style={{ margin: 0 }}>没有匹配的管线。</p>
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
                 {focusPipelines.map((pipeline) => (
@@ -380,6 +410,23 @@ export default function EnginesView({
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>执行去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>执行前后要继续回资产、工作流和沙箱三处收口。</p>
+            </div>
+            <div role="region" aria-label="引擎事件筛选" style={{ display: 'grid', gap: 8 }}>
+              <select
+                className="antd-input"
+                aria-label="按事件类型筛选引擎事件"
+                value={eventTypeFilter}
+                onChange={(event) => setEventTypeFilter(event.target.value)}
+              >
+                <option value="all">全部事件类型</option>
+                {eventTypes.map((eventType) => <option key={eventType} value={eventType}>{eventType}</option>)}
+              </select>
+              {eventTypeFilter !== 'all' && (
+                <button type="button" className="antd-btn" aria-label="清除引擎事件筛选" onClick={() => setEventTypeFilter('all')}>
+                  清除事件筛选
+                </button>
+              )}
+              <span className="text-muted" style={{ fontSize: 12 }}>显示 {filteredEvents.length}/{events.length} 条事件</span>
             </div>
             {recentEvents.length > 0 && (
               <div style={{ display: 'grid', gap: 10 }}>
@@ -623,7 +670,7 @@ export default function EnginesView({
           {events.length === 0 ? (
             <p style={{ color: 'var(--antd-text-secondary)', textAlign: 'center', marginTop: '2rem' }}>总线暂无事件流。</p>
           ) : (
-            events.map((ev, i) => (
+            filteredEvents.map((ev, i) => (
               <div key={i} className="animate-fade-in" style={{ 
                 animationDelay: `${i * 0.05}s`,
                 padding: '0.75rem', 
