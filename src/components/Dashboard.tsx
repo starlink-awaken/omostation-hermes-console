@@ -1044,7 +1044,7 @@ const searchTargets: SearchTarget[] = COCKPIT_PAGE_REGISTRY.map((page) => ({
   tab: page.id,
   label: page.title,
   group: page.group,
-  keywords: PAGE_SEARCH_KEYWORDS[page.id] || [],
+  keywords: [...(PAGE_SEARCH_KEYWORDS[page.id] || []), ...page.dimensions],
 }));
 
 const GROUP_DESCRIPTIONS: Record<string, string> = {

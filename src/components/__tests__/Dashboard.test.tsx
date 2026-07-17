@@ -117,6 +117,11 @@ describe('Dashboard global search', () => {
     await waitFor(() => {
       expect(screen.getAllByText('网格与 MCP').length).toBeGreaterThan(0)
     })
+
+    fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: '记忆' } })
+    await waitFor(() => {
+      expect(screen.getAllByText('知识中枢').length).toBeGreaterThan(0)
+    })
   })
 
   it('exposes every registered page through the command palette', async () => {
