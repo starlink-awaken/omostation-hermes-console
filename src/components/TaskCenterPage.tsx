@@ -241,7 +241,7 @@ function sourceTypeDefaultTarget(type: DraftSourceType, task?: Task | null): Tas
 }
 
 function resolveTaskTarget(task: Task): TaskNavigationTarget | null {
-  if (!task.read_only || !task.source?.type) return null;
+  if (!task.source?.type) return null;
   if (task.source.type === 'system_map_project_portfolio') {
     return { tab: 'SystemMap', projectId: task.source.id };
   }
@@ -361,6 +361,16 @@ export default function TaskCenterPage({
     const interval = setInterval(fetchTasks, 30000);
     return () => clearInterval(interval);
   }, [refreshToken]);
+
+  useEffect(() => {
+    if (!selectedTask) return;
+    const refreshedTask = tasks.find((task) => task.id === selectedTask.id);
+    if (!refreshedTask) {
+      setSelectedTask(null);
+      return;
+    }
+    if (refreshedTask !== selectedTask) setSelectedTask(refreshedTask);
+  }, [tasks, selectedTask]);
 
   useEffect(() => {
     setSearchQuery(initialSearchQuery);
@@ -2209,6 +2219,20 @@ export default function TaskCenterPage({
               <div className="detail-row">
                 <span className="detail-label">描述:</span>
                 <span>{selectedTask.description}</span>
+              </div>
+            )}
+            {!selectedTask.read_only && selectedTask.source?.type && (
+              <div className="detail-row">
+                <span className="detail-label">来源对象:</span>
+                <div className="task-detail-actions">
+                  <span>{sourceTypeLabel(selectedTask.source.type)} · {selectedTask.source.id}</span>
+                  {resolveTaskTarget(selectedTask) && (
+                    <button className="btn btn-sm btn-outline" onClick={() => openTaskSource(selectedTask)}>
+                      <Eye size={14} />
+                      {sourceActionLabel(selectedTask)}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
             {selectedTask.read_only && selectedTask.draft && (

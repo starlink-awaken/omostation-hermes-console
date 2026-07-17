@@ -566,6 +566,35 @@ describe('TaskCenterPage', () => {
     })
   })
 
+  it('shows a back-link to the source object for formal tasks', async () => {
+    const onOpenTarget = vi.fn()
+    const formalTask = {
+      ...mockTasks[0],
+      id: 'formal-project-task',
+      title: '补齐项目验证证据',
+      source: {
+        type: 'system_map_project_portfolio',
+        id: 'kairon',
+        title: 'kairon 项目组合态势',
+      },
+    }
+    mockTaskCenterFetch([formalTask])
+
+    render(<TaskCenterPage onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('补齐项目验证证据').length).toBeGreaterThan(0)
+    })
+    fireEvent.click(screen.getByRole('button', { name: '查看任务 补齐项目验证证据' }))
+
+    await waitFor(() => {
+      expect(screen.getAllByText('项目组合 · kairon').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button', { name: '查看项目态势' })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: '查看项目态势' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'kairon' })
+  })
+
   it('filters tasks by search query', async () => {
     mockTaskCenterFetch(mockTasks)
 
