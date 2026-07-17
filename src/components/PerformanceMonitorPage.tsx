@@ -326,7 +326,7 @@ export default function PerformanceMonitorPage({
 
   return (
     <div className="performance-monitor-page">
-      <RuntimeOpsWorkbench currentPage="Performance" onNavigate={onNavigate} />
+      <RuntimeOpsWorkbench currentPage="Performance" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       <ActionSurfacePanel
         title="性能动作区"

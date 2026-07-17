@@ -409,7 +409,7 @@ export default function McpMeshView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <InfrastructureOpsWorkbench currentPage="McpMesh" onNavigate={onNavigate} />
+      <InfrastructureOpsWorkbench currentPage="McpMesh" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {dataError && (
         <div role="alert" className="antd-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', color: 'var(--antd-error)', border: '1px solid rgba(255,71,87,0.2)' }}>

@@ -1034,7 +1034,7 @@ export default function OverviewPage({
 
   return (
     <div className="animate-fade-in">
-      <RuntimeOpsWorkbench currentPage="Overview" onNavigate={onNavigate} />
+      <RuntimeOpsWorkbench currentPage="Overview" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
       <SystemAssuranceWorkbench onNavigate={onNavigate} />
 
       <ActionSurfacePanel

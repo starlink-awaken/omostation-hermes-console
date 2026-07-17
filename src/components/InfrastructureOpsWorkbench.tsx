@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, ArrowRight, Cpu, FileText, Gauge, Network, Route, Server, Workflow } from 'lucide-react';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type InfraPage = 'McpMesh' | 'Topology' | 'Compute' | 'Overview' | 'LogViewer' | string;
 
@@ -69,6 +70,7 @@ type BosService = {
 type InfrastructureOpsWorkbenchProps = {
   currentPage: InfraPage;
   onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
 };
 
 type InfrastructureState = {
@@ -115,7 +117,7 @@ function nextInfraAction(currentPage: InfraPage, degradedServices: RuntimeServic
   return '当前基础设施层没有明显红灯，抽样检查日志和慢链路即可。';
 }
 
-export default function InfrastructureOpsWorkbench({ currentPage, onNavigate }: InfrastructureOpsWorkbenchProps) {
+export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, onOpenTarget }: InfrastructureOpsWorkbenchProps) {
   const [state, setState] = useState<InfrastructureState>({
     loading: true,
     compute: null,
@@ -258,7 +260,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate }: 
                 key={domain}
                 className="infra-workbench-item"
                 aria-label={`查看网格域 ${domain}`}
-                onClick={() => onNavigate?.('McpMesh')}
+                onClick={() => openCockpitNavigationTarget({ tab: 'McpMesh', taskQuery: domain }, onNavigate, onOpenTarget)}
               >
                 <strong>{domain}</strong>
                 <span>{count} 条路由</span>
@@ -285,7 +287,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate }: 
                 key={node.id}
                 className="infra-workbench-item"
                 aria-label={`查看算力节点 ${node.name}`}
-                onClick={() => onNavigate?.('Compute')}
+                onClick={() => openCockpitNavigationTarget({ tab: 'Compute', taskQuery: node.id || node.name }, onNavigate, onOpenTarget)}
               >
                 <strong>{node.name}</strong>
                 <span>{node.status} · CPU {node.cpu_usage || 0}% · GPU {node.gpu_usage || 0}%</span>
@@ -297,7 +299,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate }: 
                 key={model.model_name}
                 className="infra-workbench-item"
                 aria-label={`查看模型 ${model.model_name}`}
-                onClick={() => onNavigate?.('Compute')}
+                onClick={() => openCockpitNavigationTarget({ tab: 'Compute', taskQuery: model.model_name }, onNavigate, onOpenTarget)}
               >
                 <strong>{model.model_name}</strong>
                 <span>{model.provider || 'provider'} · {model.status}</span>
@@ -329,7 +331,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate }: 
                 key={item.id}
                 className="infra-workbench-item"
                 aria-label={`进入基础设施落点 ${item.title}`}
-                onClick={() => onNavigate?.(item.page)}
+                onClick={() => openCockpitNavigationTarget({ tab: item.page, taskQuery: topDomains[0]?.[0] || unhealthyNodes[0]?.name || 'infrastructure' }, onNavigate, onOpenTarget)}
               >
                 <strong>{item.title}</strong>
                 <span>{item.detail}</span>

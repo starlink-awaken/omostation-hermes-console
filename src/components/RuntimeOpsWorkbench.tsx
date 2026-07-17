@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, BarChart3, FileText, Gauge, Network, Search, ShieldAlert, Terminal } from 'lucide-react';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type RuntimeWorkbenchPage = 'Overview' | 'AlertCenter' | 'Performance' | 'LogViewer' | 'Topology' | 'Sandbox' | string;
 
@@ -36,6 +37,7 @@ type RuntimeService = {
 type RuntimeOpsWorkbenchProps = {
   currentPage: RuntimeWorkbenchPage;
   onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
 };
 
 type RuntimeWorkbenchState = {
@@ -84,7 +86,7 @@ function nextAction(currentPage: RuntimeWorkbenchPage, activeAlerts: RuntimeAler
   return '当前运行面没有明显异常，抽样确认后可回首页或系统地图继续收口。';
 }
 
-export default function RuntimeOpsWorkbench({ currentPage, onNavigate }: RuntimeOpsWorkbenchProps) {
+export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTarget }: RuntimeOpsWorkbenchProps) {
   const [state, setState] = useState<RuntimeWorkbenchState>({
     loading: true,
     usagePath: null,
@@ -159,6 +161,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate }: Runtime
     () => state.services.filter((service) => service.status !== 'online').slice(0, 4),
     [state.services],
   );
+  const runtimeContextQuery = activeAlerts[0]?.source || degradedServices[0]?.name || 'runtime';
 
   const currentIndex = pathPages.findIndex((page) => page.id === currentPage);
   const recommended = nextAction(currentPage, activeAlerts, degradedServices);
@@ -228,7 +231,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate }: Runtime
                 key={alert.id}
                 className="runtime-workbench-item"
                 aria-label={`查看告警 ${alert.message}`}
-                onClick={() => onNavigate?.('AlertCenter')}
+                onClick={() => openCockpitNavigationTarget({ tab: 'AlertCenter', taskQuery: alert.id, alertTab: 'active' }, onNavigate, onOpenTarget)}
               >
                 <strong>{alert.message}</strong>
                 <span>{alert.source} · {alert.level}</span>
@@ -256,7 +259,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate }: Runtime
                 key={service.name}
                 className="runtime-workbench-item"
                 aria-label={`查看服务 ${service.name}`}
-                onClick={() => onNavigate?.('Performance')}
+                onClick={() => openCockpitNavigationTarget({ tab: 'Performance', taskQuery: service.name }, onNavigate, onOpenTarget)}
               >
                 <strong>{service.name}</strong>
                 <span>{service.status} · CPU {service.cpu ?? 0}% · 内存 {service.memory ?? 0}%</span>
@@ -289,7 +292,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate }: Runtime
                 key={item.id}
                 className="runtime-workbench-item"
                 aria-label={`进入落点 ${item.title}`}
-                onClick={() => onNavigate?.(item.page)}
+                onClick={() => openCockpitNavigationTarget({ tab: item.page, taskQuery: runtimeContextQuery }, onNavigate, onOpenTarget)}
               >
                 <strong>{item.title}</strong>
                 <span>{item.detail}</span>

@@ -421,7 +421,7 @@ export default function TopologyView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <InfrastructureOpsWorkbench currentPage="Topology" onNavigate={onNavigate} />
+      <InfrastructureOpsWorkbench currentPage="Topology" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       <ActionSurfacePanel
         title="拓扑动作区"

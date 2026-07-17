@@ -334,7 +334,7 @@ export default function LogViewerPage({
   if (error) {
     return (
       <div className="log-viewer-page">
-        <RuntimeOpsWorkbench currentPage="LogViewer" onNavigate={onNavigate} />
+        <RuntimeOpsWorkbench currentPage="LogViewer" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
         <ActionSurfacePanel
           title="日志动作区"
           subtitle="日志暂不可用时，先回告警和性能页确认外围证据，再回来重试。"
@@ -355,7 +355,7 @@ export default function LogViewerPage({
 
   return (
     <div className="log-viewer-page">
-      <RuntimeOpsWorkbench currentPage="LogViewer" onNavigate={onNavigate} />
+      <RuntimeOpsWorkbench currentPage="LogViewer" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       <ActionSurfacePanel
         title="日志动作区"

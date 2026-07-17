@@ -457,7 +457,7 @@ export default function ComputeView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <InfrastructureOpsWorkbench currentPage="Compute" onNavigate={onNavigate} />
+      <InfrastructureOpsWorkbench currentPage="Compute" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {error && (
         <div className="overview-inline-error" role="alert">

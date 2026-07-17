@@ -459,7 +459,7 @@ export default function AlertCenterPage({
 
   return (
     <div className="alert-center-page">
-      <RuntimeOpsWorkbench currentPage="AlertCenter" onNavigate={onNavigate} />
+      <RuntimeOpsWorkbench currentPage="AlertCenter" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {dataError && (
         <div role="alert" className="alert-action-error" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
