@@ -1665,6 +1665,7 @@ export default function CockpitGuideView({
         subtitle="你不用记住全部页面，按目标选一条路径就够了。"
         statusText={metrics.attentionPages > 0 ? `${metrics.attentionPages} 页待补位` : '导览已接通'}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
         items={[
           {
             id: 'guide-home',
@@ -1673,6 +1674,7 @@ export default function CockpitGuideView({
             actionLabel: '打开首页',
             actionType: 'navigate',
             actionValue: 'Home',
+            actionTarget: { tab: 'Home', taskQuery: focusTaskQuery || metrics.pageAttentionItems[0]?.page_id || 'CockpitGuide' },
           },
           {
             id: 'guide-map',
@@ -1681,6 +1683,7 @@ export default function CockpitGuideView({
             actionLabel: '打开系统地图',
             actionType: 'navigate',
             actionValue: 'SystemMap',
+            actionTarget: { tab: 'SystemMap', taskQuery: focusTaskQuery || metrics.weakestDimensions[0]?.id || 'CockpitGuide' },
           },
           {
             id: 'guide-domain',
@@ -1689,6 +1692,7 @@ export default function CockpitGuideView({
             actionLabel: '打开应用中心',
             actionType: 'navigate',
             actionValue: 'DomainApps',
+            actionTarget: { tab: 'DomainApps', taskQuery: focusTaskQuery || metrics.domainAttention[0]?.id || 'CockpitGuide' },
           },
           {
             id: 'guide-task',
@@ -1697,6 +1701,7 @@ export default function CockpitGuideView({
             actionLabel: '打开任务中心',
             actionType: 'navigate',
             actionValue: 'TaskCenter',
+            actionTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || metrics.closureDrafts[0]?.sourceId || metrics.closureDrafts[0]?.id || 'CockpitGuide' },
           },
         ]}
       />

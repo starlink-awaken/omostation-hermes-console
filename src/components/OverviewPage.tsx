@@ -924,6 +924,7 @@ export default function OverviewPage({
         actionLabel: '进入告警页',
         actionType: 'navigate' as const,
         actionValue: 'AlertCenter',
+        actionTarget: { tab: 'AlertCenter', taskQuery: focusTaskQuery || activeAlerts[0]?.id || 'Overview' },
       },
       {
         id: 'overview-tasks',
@@ -932,6 +933,7 @@ export default function OverviewPage({
         actionLabel: '进入任务中心',
         actionType: 'navigate' as const,
         actionValue: 'TaskCenter',
+        actionTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || readOnlyDrafts[0]?.source?.id || readOnlyDrafts[0]?.id || 'Overview' },
       },
       {
         id: 'overview-domain-apps',
@@ -940,9 +942,10 @@ export default function OverviewPage({
         actionLabel: '进入应用中心',
         actionType: 'navigate' as const,
         actionValue: 'DomainApps',
+        actionTarget: { tab: 'DomainApps', taskQuery: focusTaskQuery || domainAttention[0]?.id || 'Overview' },
       },
     ],
-    [activeAlerts.length, domainAttention.length, readOnlyDrafts.length],
+        [activeAlerts.length, domainAttention.length, readOnlyDrafts.length],
   );
   const overviewClosureRows = useMemo<OverviewClosureRow[]>(() => {
     const firstWeakDimension = weakestDimensions[0] || null;
