@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ClipboardCheck, Copy, GitBranch, Layers, RefreshCw, Route, Search, ShieldAlert, X } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, Copy, GitBranch, Layers, RefreshCw, Route, Search, ShieldAlert, X } from 'lucide-react';
 import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import EcosWorkflowWorkbench from './EcosWorkflowWorkbench';
@@ -100,14 +100,16 @@ const EMPTY_PAYLOAD: ProtocolPayload = {
   playbook: null,
 };
 
-async function fetchJson<T>(url: string, fallback: T): Promise<T> {
+async function fetchJson<T>(url: string, fallback: T, label: string): Promise<{ data: T; error: string | null }> {
   try {
     const response = await fetch(url);
-    if (!response.ok) return fallback;
-    return (await response.json()) as T;
+    if (!response) return { data: fallback, error: `${label}：请求无响应` };
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) return { data: fallback, error: `${label} HTTP ${response.status}` };
+    return { data: payload as T, error: null };
   } catch (error) {
     console.error(`Failed to fetch ${url}:`, error);
-    return fallback;
+    return { data: fallback, error: `${label}：${error instanceof Error ? error.message : '请求失败'}` };
   }
 }
 
@@ -155,10 +157,12 @@ export default function ProtocolWorkbenchView({
   const [protocolTaskError, setProtocolTaskError] = useState<string | null>(null);
   const [protocolQuery, setProtocolQuery] = useState('');
   const [protocolStatusFilter, setProtocolStatusFilter] = useState('all');
+  const [sourceError, setSourceError] = useState<string | null>(null);
 
   const load = async () => {
-    const data = await fetchJson<ProtocolPayload>('/api/cockpit/protocol-hub', EMPTY_PAYLOAD);
-    setPayload(data);
+    const result = await fetchJson<ProtocolPayload>('/api/cockpit/protocol-hub', EMPTY_PAYLOAD, '协议工作台');
+    setPayload(result.data);
+    setSourceError(result.error);
     setLoading(false);
     setRefreshing(false);
   };
@@ -523,6 +527,17 @@ export default function ProtocolWorkbenchView({
             <span>刷新</span>
           </button>
         </div>
+
+        {sourceError && (
+          <div className="overview-inline-error" role="alert">
+            <AlertTriangle size={16} />
+            <div>
+              <strong>协议证据不完整</strong>
+              <span>{sourceError}，当前空状态不代表协议层没有能力。</span>
+            </div>
+            <button type="button" className="antd-btn" onClick={() => { setRefreshing(true); void load(); }}>重试</button>
+          </div>
+        )}
 
         <div className="stats-grid">
           {[

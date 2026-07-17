@@ -70,6 +70,17 @@ describe('ProtocolWorkbenchView', () => {
     expect(onNavigate).toHaveBeenCalledWith('Assets')
   })
 
+  it('shows protocol source failure instead of hiding the evidence surface', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('protocol source offline'))
+
+    render(<ProtocolWorkbenchView />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('协议工作台：protocol source offline')
+      expect(screen.getByText('协议证据不完整')).toBeInTheDocument()
+    })
+  })
+
   it('surfaces focus handoff for a matched protocol page', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
