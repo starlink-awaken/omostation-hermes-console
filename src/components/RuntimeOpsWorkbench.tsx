@@ -45,6 +45,7 @@ type RuntimeWorkbenchState = {
   usagePath: RuntimeUsagePath | null;
   alerts: RuntimeAlert[];
   services: RuntimeService[];
+  error: string | null;
 };
 
 const DEFAULT_RUNTIME_PAGES: RuntimePathPage[] = [
@@ -86,20 +87,39 @@ function nextAction(currentPage: RuntimeWorkbenchPage, activeAlerts: RuntimeAler
   return '当前运行面没有明显异常，抽样确认后可回首页或系统地图继续收口。';
 }
 
+async function readRuntimeResponse<T>(
+  result: PromiseSettledResult<Response>,
+  label: string,
+): Promise<{ ok: boolean; data: T | null; error?: string }> {
+  if (result.status === 'rejected') {
+    return { ok: false, data: null, error: `${label}：${result.reason instanceof Error ? result.reason.message : '请求失败'}` };
+  }
+  if (!result.value.ok) {
+    return { ok: false, data: null, error: `${label} HTTP ${result.value.status}` };
+  }
+  try {
+    return { ok: true, data: await result.value.json() as T };
+  } catch {
+    return { ok: false, data: null, error: `${label}：响应格式无效` };
+  }
+}
+
 export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTarget }: RuntimeOpsWorkbenchProps) {
   const [state, setState] = useState<RuntimeWorkbenchState>({
     loading: true,
     usagePath: null,
     alerts: [],
     services: [],
+    error: null,
   });
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       try {
-        const [systemMapRes, alertsRes, servicesRes] = await Promise.all([
+        const [systemMapResult, alertsResult, servicesResult] = await Promise.allSettled([
           fetch('/api/cockpit/system-map'),
           fetch('/api/alerts?status=active&limit=20'),
           fetch('/api/services/status'),
@@ -110,30 +130,35 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
           usagePath: null,
           alerts: [],
           services: [],
+          error: null,
         };
 
-        if (systemMapRes.ok) {
-          const systemMap = await systemMapRes.json();
+        const [{ ok: systemMapOk, data: systemMap, error: systemMapError }, { ok: alertsOk, data: alertsData, error: alertsError }, { ok: servicesOk, data: servicesData, error: servicesError }] = await Promise.all([
+          readRuntimeResponse<{ usage_paths?: RuntimeUsagePath[] }>(systemMapResult, '系统地图数据'),
+          readRuntimeResponse<{ items?: RuntimeAlert[] }>(alertsResult, '活跃告警数据'),
+          readRuntimeResponse<{ items?: RuntimeService[] }>(servicesResult, '服务状态数据'),
+        ]);
+
+        if (systemMapOk && systemMap) {
           const usagePaths = (systemMap.usage_paths || []) as RuntimeUsagePath[];
           nextState.usagePath = usagePaths.find((path) => path.id === 'runtime-diagnostics')
             || usagePaths.find((path) => path.pages?.some((page) => page.id === currentPage))
             || null;
         }
 
-        if (alertsRes.ok) {
-          const alertsData = await alertsRes.json();
+        if (alertsOk && alertsData) {
           nextState.alerts = alertsData.items || [];
         }
 
-        if (servicesRes.ok) {
-          const servicesData = await servicesRes.json();
+        if (servicesOk && servicesData) {
           nextState.services = servicesData.items || [];
         }
+        nextState.error = [systemMapError, alertsError, servicesError].filter(Boolean).join('；') || null;
 
         if (!cancelled) setState(nextState);
       } catch (error) {
         if (!cancelled) {
-          setState((previous) => ({ ...previous, loading: false }));
+          setState((previous) => ({ ...previous, loading: false, error: error instanceof Error ? error.message : '运行诊断数据暂不可用' }));
         }
       }
     };
@@ -142,7 +167,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
     return () => {
       cancelled = true;
     };
-  }, [currentPage]);
+  }, [currentPage, retryToken]);
 
   const pathPages = useMemo(
     () => (state.usagePath?.pages && state.usagePath.pages.length > 0 ? state.usagePath.pages : DEFAULT_RUNTIME_PAGES),
@@ -179,6 +204,13 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
           {state.loading ? '同步中' : activeAlerts.length > 0 || degradedServices.length > 0 ? '需要排查' : '运行平稳'}
         </span>
       </div>
+
+      {state.error && (
+        <div className="shell-data-banner" role="alert">
+          <span>{state.error}，当前运行热点可能不完整。</span>
+          <button type="button" onClick={() => setRetryToken((token) => token + 1)}>重试</button>
+        </div>
+      )}
 
       <div className="runtime-workbench-summary">
         <div className="runtime-workbench-card">
