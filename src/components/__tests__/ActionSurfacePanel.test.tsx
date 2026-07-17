@@ -48,4 +48,31 @@ describe('ActionSurfacePanel', () => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('echo test')
     })
   })
+
+  it('preserves an object context when an action provides a navigation target', () => {
+    const onNavigate = vi.fn()
+    const onOpenTarget = vi.fn()
+
+    render(
+      <ActionSurfacePanel
+        title="动作区"
+        subtitle="上下文导航测试"
+        items={[{
+          id: 'contextual-nav',
+          title: '打开告警对象',
+          detail: '保留告警上下文',
+          actionLabel: '查看对象',
+          actionType: 'navigate',
+          actionValue: 'AlertCenter',
+          actionTarget: { tab: 'AlertCenter', taskQuery: 'alert-42', alertTab: 'active' },
+        }]}
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '查看对象' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'AlertCenter', taskQuery: 'alert-42', alertTab: 'active' })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
 })

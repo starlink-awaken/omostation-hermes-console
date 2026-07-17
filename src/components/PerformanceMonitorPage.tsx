@@ -162,8 +162,8 @@ export default function PerformanceMonitorPage({
       checklist,
       copyText,
       taskTarget: { tab: 'TaskCenter', taskQuery: serviceName },
-      alertTarget: { tab: 'AlertCenter' },
-      logTarget: { tab: 'LogViewer' },
+      alertTarget: { tab: 'AlertCenter', taskQuery: serviceName },
+      logTarget: { tab: 'LogViewer', taskQuery: serviceName },
     };
   })();
   const createPerformanceTask = async () => {
@@ -293,6 +293,7 @@ export default function PerformanceMonitorPage({
       actionLabel: '进入告警页',
       actionType: 'navigate' as const,
       actionValue: 'AlertCenter',
+      actionTarget: performanceTaskDraft.alertTarget,
     },
     {
       id: 'perf-logs',
@@ -301,6 +302,7 @@ export default function PerformanceMonitorPage({
       actionLabel: '进入日志页',
       actionType: 'navigate' as const,
       actionValue: 'LogViewer',
+      actionTarget: performanceTaskDraft.logTarget,
     },
     {
       id: 'perf-tasks',
@@ -309,6 +311,7 @@ export default function PerformanceMonitorPage({
       actionLabel: '进入任务中心',
       actionType: 'navigate' as const,
       actionValue: 'TaskCenter',
+      actionTarget: performanceTaskDraft.taskTarget,
     },
   ];
 
@@ -331,6 +334,7 @@ export default function PerformanceMonitorPage({
         statusText={services.length ? `${services.length} 个服务样本` : '等待性能数据'}
         items={performanceActionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       {focusedPerformanceCard && (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, Copy } from 'lucide-react';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type ActionSurfaceItem = {
   id: string;
@@ -8,6 +9,7 @@ type ActionSurfaceItem = {
   actionLabel: string;
   actionType: 'navigate' | 'copy';
   actionValue: string;
+  actionTarget?: CockpitNavigationTarget;
 };
 
 interface ActionSurfacePanelProps {
@@ -16,6 +18,7 @@ interface ActionSurfacePanelProps {
   statusText?: string;
   items: ActionSurfaceItem[];
   onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
 }
 
 async function copyText(value: string) {
@@ -28,6 +31,7 @@ export default function ActionSurfacePanel({
   statusText,
   items,
   onNavigate,
+  onOpenTarget,
 }: ActionSurfacePanelProps) {
   return (
     <section className="action-surface-panel antd-card">
@@ -52,7 +56,11 @@ export default function ActionSurfacePanel({
               className="antd-btn"
               onClick={() => {
                 if (item.actionType === 'navigate') {
-                  onNavigate?.(item.actionValue);
+                  openCockpitNavigationTarget(
+                    item.actionTarget || { tab: item.actionValue },
+                    onNavigate,
+                    onOpenTarget,
+                  );
                   return;
                 }
                 void copyText(item.actionValue);

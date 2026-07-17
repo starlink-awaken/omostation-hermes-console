@@ -204,6 +204,7 @@ export default function ObservabilityView({
 
     return null;
   }, [archData, bosData, focusPageId, focusTaskQuery, observabilityClosureRows]);
+  const observabilityContextQuery = observabilityBacklog.degradedDomains[0]?.domain || domainQuery.trim() || focusTaskQuery || 'Observability';
 
   if (loading) {
     return (
@@ -241,6 +242,7 @@ export default function ObservabilityView({
             actionLabel: '看性能页',
             actionType: 'navigate',
             actionValue: 'Performance',
+            actionTarget: { tab: 'Performance', taskQuery: observabilityContextQuery },
           },
           {
             id: 'logs',
@@ -249,6 +251,7 @@ export default function ObservabilityView({
             actionLabel: '看日志页',
             actionType: 'navigate',
             actionValue: 'LogViewer',
+            actionTarget: { tab: 'LogViewer', taskQuery: observabilityContextQuery },
           },
           {
             id: 'alerts',
@@ -257,6 +260,7 @@ export default function ObservabilityView({
             actionLabel: '看告警页',
             actionType: 'navigate',
             actionValue: 'AlertCenter',
+            actionTarget: { tab: 'AlertCenter', taskQuery: observabilityContextQuery },
           },
           {
             id: 'mesh',
@@ -265,8 +269,10 @@ export default function ObservabilityView({
             actionLabel: '去网格页',
             actionType: 'navigate',
             actionValue: 'McpMesh',
+            actionTarget: { tab: 'McpMesh', taskQuery: observabilityContextQuery },
           },
         ]}
+        onOpenTarget={onOpenTarget}
       />
 
       <section className="services-section" aria-label="观测域筛选">

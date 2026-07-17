@@ -313,6 +313,7 @@ export default function AlertCenterPage({
   const firstActiveAlert = allActiveAlerts[0] || alerts[0] || null;
   const firstHistoryAlert = allHistoryAlerts[0] || null;
   const firstRule = rules[0] || null;
+  const alertContextQuery = firstActiveAlert?.id || firstHistoryAlert?.id || 'AlertCenter';
   const alertClosureRows: AlertClosureRow[] = [
     {
       id: 'severity-triage',
@@ -373,6 +374,7 @@ export default function AlertCenterPage({
       actionLabel: '进入性能页',
       actionType: 'navigate' as const,
       actionValue: 'Performance',
+      actionTarget: { tab: 'Performance', taskQuery: alertContextQuery },
     },
     {
       id: 'alert-logs',
@@ -381,6 +383,7 @@ export default function AlertCenterPage({
       actionLabel: '进入日志页',
       actionType: 'navigate' as const,
       actionValue: 'LogViewer',
+      actionTarget: { tab: 'LogViewer', taskQuery: alertContextQuery },
     },
     {
       id: 'alert-tasks',
@@ -389,6 +392,7 @@ export default function AlertCenterPage({
       actionLabel: '进入任务中心',
       actionType: 'navigate' as const,
       actionValue: 'TaskCenter',
+      actionTarget: { tab: 'TaskCenter', taskQuery: alertContextQuery },
     },
   ];
   const focusedAlertCard = (() => {
@@ -481,6 +485,7 @@ export default function AlertCenterPage({
         statusText={activeAlerts.length ? `${activeAlerts.length} 条活跃告警` : '当前无活跃告警'}
         items={diagnosticTargets}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
       {actionNotice && <div role="status" className="alert-action-notice">{actionNotice}</div>}
       {actionError && <div role="alert" className="alert-action-error">{actionError}</div>}

@@ -141,6 +141,7 @@ export default function LogViewerPage({
   const closureHotSources = [...new Set((closureCriticalLogs.length ? closureCriticalLogs : logs).map((log) => log.source))].slice(0, 3);
   const firstCriticalLog = closureCriticalLogs[0] || logs[0] || null;
   const firstHotSource = closureHotSources[0] || null;
+  const logContextQuery = firstCriticalLog?.source || firstHotSource || 'LogViewer';
   const logClosureRows: LogClosureRow[] = [
     {
       id: 'alerts-correlation',
@@ -238,6 +239,7 @@ export default function LogViewerPage({
       actionLabel: '进入告警页',
       actionType: 'navigate' as const,
       actionValue: 'AlertCenter',
+      actionTarget: { tab: 'AlertCenter', taskQuery: logContextQuery },
     },
     {
       id: 'logs-performance',
@@ -246,6 +248,7 @@ export default function LogViewerPage({
       actionLabel: '进入性能页',
       actionType: 'navigate' as const,
       actionValue: 'Performance',
+      actionTarget: { tab: 'Performance', taskQuery: logContextQuery },
     },
     {
       id: 'logs-tasks',
@@ -254,6 +257,7 @@ export default function LogViewerPage({
       actionLabel: '进入任务中心',
       actionType: 'navigate' as const,
       actionValue: 'TaskCenter',
+      actionTarget: { tab: 'TaskCenter', taskQuery: logContextQuery },
     },
   ];
 
@@ -337,6 +341,7 @@ export default function LogViewerPage({
           statusText="日志数据不可用"
           items={logActionItems}
           onNavigate={onNavigate}
+          onOpenTarget={onOpenTarget}
         />
         <div role="alert" className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <Search size={32} className="text-warning" />
@@ -358,6 +363,7 @@ export default function LogViewerPage({
         statusText={filteredLogs.length ? `${filteredLogs.length} 条过滤后日志` : '等待日志样本'}
         items={logActionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       {(actionError || actionNotice) && (
