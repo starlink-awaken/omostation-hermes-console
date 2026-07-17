@@ -101,6 +101,34 @@ describe('AssetsView', () => {
     expect(onNavigate).toHaveBeenCalledWith('Workflows')
   })
 
+  it('filters skills, pipelines, and workflows from one shared asset query', async () => {
+    render(<AssetsView />)
+
+    const filterRegion = await screen.findByRole('region', { name: '技术资产筛选' })
+    const query = within(filterRegion).getByRole('searchbox', { name: '搜索技术资产' })
+
+    fireEvent.change(query, { target: { value: '治理闭环' } })
+    await waitFor(() => {
+      expect(within(filterRegion).getByText('技能 1/2 · 管线 0/2 · 工作流 0/1')).toBeInTheDocument()
+      expect(screen.getAllByText('自定义治理技能').length).toBeGreaterThan(0)
+      expect(screen.queryByText('plugin-skill')).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /工具管线 \(Pipelines: 2\)/ }))
+    fireEvent.change(query, { target: { value: 'risk-audit' } })
+    await waitFor(() => {
+      expect(within(filterRegion).getByText('技能 0/2 · 管线 1/2 · 工作流 0/1')).toBeInTheDocument()
+      expect(screen.getAllByText('risk-audit').length).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /自动化工作流 \(1\)/ }))
+    fireEvent.change(query, { target: { value: '夜间' } })
+    await waitFor(() => {
+      expect(within(filterRegion).getByText('技能 0/2 · 管线 0/2 · 工作流 1/1')).toBeInTheDocument()
+      expect(screen.getAllByText('nightly-governance').length).toBeGreaterThan(0)
+    })
+  })
+
   it('surfaces focus handoff for a matched asset pipeline', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()

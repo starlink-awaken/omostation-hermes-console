@@ -50,6 +50,7 @@ export default function AssetsView({
   focusTaskQuery,
 }: AssetsViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'skills' | 'pipelines' | 'workflows'>('skills');
+  const [assetQuery, setAssetQuery] = useState('');
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [pipelines, setPipelines] = useState<string[]>([]);
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
@@ -193,10 +194,40 @@ export default function AssetsView({
 
   const pluginSkills = useMemo(() => skills.filter((skill) => skill.source.startsWith('plugin')), [skills]);
   const localSkills = useMemo(() => skills.filter((skill) => !skill.source.startsWith('plugin')), [skills]);
+  const filteredSkills = useMemo(() => {
+    const query = assetQuery.trim().toLowerCase();
+    if (!query) return skills;
+    return skills.filter((skill) => (
+      [skill.id, skill.name, skill.description, skill.source, skill.path]
+        .join(' ')
+        .toLowerCase()
+        .includes(query)
+    ));
+  }, [assetQuery, skills]);
+  const filteredPipelines = useMemo(() => {
+    const query = assetQuery.trim().toLowerCase();
+    if (!query) return pipelines;
+    return pipelines.filter((pipeline) => pipeline.toLowerCase().includes(query));
+  }, [assetQuery, pipelines]);
+  const filteredWorkflows = useMemo(() => {
+    const query = assetQuery.trim().toLowerCase();
+    if (!query) return workflows;
+    return workflows.filter((workflow) => (
+      [workflow.name, workflow.description].join(' ').toLowerCase().includes(query)
+    ));
+  }, [assetQuery, workflows]);
   const testedWorkflowCount = useMemo(
     () => Object.values(wfTestResults).filter((result) => result && !result.error).length,
     [wfTestResults],
   );
+
+  useEffect(() => {
+    if (filteredPipelines.length === 0) {
+      if (selectedPipeline) setSelectedPipeline('');
+      return;
+    }
+    if (!filteredPipelines.includes(selectedPipeline)) setSelectedPipeline(filteredPipelines[0]);
+  }, [filteredPipelines, selectedPipeline]);
 
   const actionItems = useMemo(() => {
     const items = [
@@ -229,10 +260,10 @@ export default function AssetsView({
   }, [localSkills.length, workflows.length]);
 
   const assetBacklog = useMemo(() => ({
-    skillItems: (localSkills.length ? localSkills : skills).slice(0, 3),
-    pipelineItems: (pipelines.length ? pipelines : selectedPipeline ? [selectedPipeline] : []).slice(0, 3),
-    workflowItems: workflows.slice(0, 3),
-  }), [localSkills, pipelines, selectedPipeline, skills, workflows]);
+    skillItems: (filteredSkills.length ? filteredSkills : []).slice(0, 3),
+    pipelineItems: (filteredPipelines.length ? filteredPipelines : selectedPipeline ? [selectedPipeline] : []).slice(0, 3),
+    workflowItems: filteredWorkflows.slice(0, 3),
+  }), [filteredPipelines, filteredSkills, filteredWorkflows, selectedPipeline]);
 
   const assetClosureRows = useMemo<AssetClosureRow[]>(() => {
     const firstLocalSkill = assetBacklog.skillItems[0];
@@ -702,14 +733,57 @@ export default function AssetsView({
         </button>
       </div>
 
+      <section className="services-section" role="region" aria-label="技术资产筛选">
+        <div className="section-header" style={{ marginBottom: 0 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>资产检索</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              同一查询同时作用于技能、管线和工作流，先定位对象，再进入对应的治理、试跑或验收动作。
+            </p>
+          </div>
+          <span className="status-badge online">
+            技能 {filteredSkills.length}/{skills.length} · 管线 {filteredPipelines.length}/{pipelines.length} · 工作流 {filteredWorkflows.length}/{workflows.length}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="search"
+            aria-label="搜索技术资产"
+            placeholder="名称、描述、路径或来源"
+            value={assetQuery}
+            onChange={(event) => setAssetQuery(event.target.value)}
+            style={{
+              flex: '1 1 280px',
+              minWidth: 220,
+              padding: '9px 12px',
+              borderRadius: 6,
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#fff',
+              fontSize: 13,
+              outline: 'none',
+            }}
+          />
+          <button
+            type="button"
+            className="antd-btn"
+            aria-label="清除技术资产搜索"
+            onClick={() => setAssetQuery('')}
+            disabled={!assetQuery}
+          >
+            清除
+          </button>
+        </div>
+      </section>
+
       {activeSubTab === 'skills' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-          {skills.length === 0 ? (
+          {filteredSkills.length === 0 ? (
             <div style={{ gridColumn: 'span 3', textAlign: 'center', padding: '48px', color: 'rgba(255,255,255,0.4)' }}>
-              未扫描到已装载技能
+              {skills.length === 0 ? '未扫描到已装载技能' : '当前搜索下没有匹配的技能'}
             </div>
           ) : (
-            skills.map((skill) => (
+            filteredSkills.map((skill) => (
               <div
                 key={skill.id}
                 className="antd-card"
@@ -799,7 +873,7 @@ export default function AssetsView({
                     outline: 'none',
                   }}
                 >
-                  {pipelines.map((pipeline) => (
+                  {filteredPipelines.map((pipeline) => (
                     <option key={pipeline} value={pipeline}>{pipeline}</option>
                   ))}
                 </select>
@@ -891,12 +965,12 @@ export default function AssetsView({
 
       {activeSubTab === 'workflows' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {workflows.length === 0 ? (
+          {filteredWorkflows.length === 0 ? (
             <div className="antd-card" style={{ padding: '32px', textAlign: 'center' }}>
-              <p className="text-muted">暂无已装载的自动化工作流</p>
+              <p className="text-muted">{workflows.length === 0 ? '暂无已装载的自动化工作流' : '当前搜索下没有匹配的自动化工作流'}</p>
             </div>
           ) : (
-            workflows.map((workflow) => (
+            filteredWorkflows.map((workflow) => (
               <div
                 key={workflow.name}
                 className="service-row"
