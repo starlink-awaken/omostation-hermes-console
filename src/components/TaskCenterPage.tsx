@@ -508,6 +508,16 @@ export default function TaskCenterPage({
     return true;
   });
 
+  useEffect(() => {
+    if (selectedTask && !filteredTasks.some((task) => task.id === selectedTask.id)) {
+      setSelectedTask(null);
+      setTaskHistory([]);
+      setTaskExecution(null);
+      setTaskHistoryError(null);
+      setTaskExecutionError(null);
+    }
+  }, [filteredTasks, selectedTask]);
+
   const getStatusStats = () => {
     return {
       pending: tasks.filter(t => t.status === 'pending').length,
@@ -578,7 +588,10 @@ export default function TaskCenterPage({
       return weight(right.priority) - weight(left.priority);
     })
     .slice(0, 4);
-  const focusTask = selectedTask || focusTasks[0] || null;
+  const selectedTaskMatchesFilter = Boolean(selectedTask && filteredTasks.some((task) => task.id === selectedTask.id));
+  const focusTask = (selectedTaskMatchesFilter && selectedTask)
+    ? selectedTask
+    : focusTasks[0] || null;
   const focusTaskTarget = focusTask ? resolveTaskTarget(focusTask) : null;
   const focusTaskRelatedApp = focusTask?.source?.type === 'system_map_domain_app'
     ? domainApps.find((app) => app.id === focusTask.source?.id) || null
@@ -1268,7 +1281,12 @@ export default function TaskCenterPage({
                   <button
                     className="antd-btn small"
                     aria-label={`查看执行路由代表任务 ${lane.title}`}
-                    onClick={() => setSelectedTask(lane.topTask as Task)}
+                    onClick={() => {
+                      const representativeTask = lane.topTask as Task;
+                      setSelectedTask(representativeTask);
+                      setActiveSourceFilter(lane.type);
+                      setSearchQuery(representativeTask.source?.id || representativeTask.title || lane.keyword);
+                    }}
                   >
                     <Copy size={13} />
                     <span>看代表任务</span>
@@ -2190,7 +2208,7 @@ export default function TaskCenterPage({
       </div>
 
       {/* 任务详情 */}
-      {selectedTask && (
+      {selectedTask && selectedTaskMatchesFilter && (
         <div className="task-detail-panel">
           <div className="detail-header">
             <h3>{selectedTask.title}</h3>

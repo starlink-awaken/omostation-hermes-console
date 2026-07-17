@@ -566,6 +566,29 @@ describe('TaskCenterPage', () => {
     })
   })
 
+  it('clears a selected task when the active filters exclude it', async () => {
+    mockTaskCenterFetch(mockTasks)
+
+    render(<TaskCenterPage />)
+    await waitFor(() => expect(screen.getByRole('button', { name: '查看任务 Deploy gateway' })).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: '查看任务 Deploy gateway' }))
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: '当前任务来源工作台' })).toBeInTheDocument()
+      expect(screen.getAllByText('Deploy gateway').length).toBeGreaterThan(0)
+    })
+
+    fireEvent.change(screen.getByDisplayValue('全部状态'), { target: { value: 'completed' } })
+    await waitFor(() => {
+      const tasksList = document.querySelector('.tasks-list')
+      expect(tasksList).not.toBeNull()
+      expect(within(tasksList as HTMLElement).queryByText('Deploy gateway')).not.toBeInTheDocument()
+      expect(screen.getByText('当前任务来源工作台')).toBeInTheDocument()
+      expect(screen.getAllByText('Run tests').length).toBeGreaterThan(0)
+      expect(document.querySelector('.task-detail-panel')).toBeNull()
+    })
+  })
+
   it('shows a back-link to the source object for formal tasks', async () => {
     const onOpenTarget = vi.fn()
     const formalTask = {
