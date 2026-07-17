@@ -511,9 +511,10 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
         fetch('/api/opc/workspace'),
         fetch('/api/cockpit/system-map'),
       ]);
-      if (!appsRes.ok || !opcRes.ok) throw new Error('领域应用数据读取失败');
-      const appsPayload = await appsRes.json();
-      const opcPayload = await opcRes.json();
+      const appsPayload = await appsRes.json().catch(() => ({}));
+      const opcPayload = await opcRes.json().catch(() => ({}));
+      if (!appsRes.ok) throw new Error(appsPayload.detail || appsPayload.error || '领域应用清单读取失败');
+      if (!opcRes.ok) throw new Error(opcPayload.detail || opcPayload.error || 'OPC 工作区读取失败');
       const systemMapPayload = systemMapRes.ok ? await systemMapRes.json() : {};
       const pagesById = new globalThis.Map<string, { id: string; title?: string }>(
         ((systemMapPayload.cockpit_pages || []) as Array<{ id?: string; title?: string }>)
@@ -782,6 +783,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
   if (error || !apps || !opc) {
     return (
       <div
+        role="alert"
         style={{
           display: 'flex',
           gap: 8,
@@ -795,6 +797,10 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       >
         <ShieldAlert size={18} />
         <span>{error || '领域应用数据不可用'}</span>
+        <button type="button" className="antd-btn" onClick={() => void load()}>
+          <RefreshCw size={14} aria-hidden="true" />
+          <span>重试领域应用</span>
+        </button>
       </div>
     );
   }

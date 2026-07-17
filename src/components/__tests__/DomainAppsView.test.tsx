@@ -320,6 +320,33 @@ describe('DomainAppsView', () => {
     await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('TaskCenter'))
   }, 20000)
 
+  it('shows the source error and retries the domain app catalog', async () => {
+    let attempts = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/domain-apps') {
+        attempts += 1
+        return Promise.resolve(attempts === 1
+          ? ({ ok: false, status: 503, json: async () => ({ error: '领域应用服务暂时不可用' }) } as Response)
+          : okJson(domainAppsPayload))
+      }
+      if (url === '/api/opc/workspace') return Promise.resolve(okJson(opcPayload))
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<DomainAppsView />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('领域应用服务暂时不可用')
+    fireEvent.click(screen.getByRole('button', { name: '重试领域应用' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('领域挂载执行区')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+    expect(attempts).toBe(2)
+  }, 20000)
+
   it('renders security posture summary and checks', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
