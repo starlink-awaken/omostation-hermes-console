@@ -184,6 +184,7 @@ export default function C2GStrategyView({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || data.error || '提案任务承接失败');
       setProposalSuccess(data.created === false ? `任务已存在：${data.id}` : `提案已承接为任务：${data.id}`);
+      await fetchData();
       if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
     } catch (err: any) {
       setProposalError(`承接失败: ${err.message || '网络异常'}`);

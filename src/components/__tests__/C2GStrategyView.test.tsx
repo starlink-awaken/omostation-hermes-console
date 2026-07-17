@@ -161,13 +161,16 @@ describe('C2GStrategyView', () => {
 
   it('queues a board proposal into TaskCenter before approval', async () => {
     const onOpenTarget = vi.fn()
+    let proposalCalls = 0
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/omos/status') return Promise.resolve(okJson({ system: {}, governance: {} }))
       if (url === '/api/cards') return Promise.resolve(okJson([]))
       if (url === '/api/cards/check') return Promise.resolve(okJson({ compliant: true, violations: [] }))
       if (url === '/api/omos/violations') return Promise.resolve(okJson({ status: 'ok', violations: [] }))
-      if (url === '/api/v1/proposals') return Promise.resolve(okJson({
+      if (url === '/api/v1/proposals') {
+        proposalCalls += 1
+        return Promise.resolve(okJson({
         status: 'ok',
         proposals: [{
           id: 'proposal-42',
@@ -176,7 +179,8 @@ describe('C2GStrategyView', () => {
           target_model: 'safe-model',
           status: 'pending',
         }],
-      }))
+        }))
+      }
       if (url === '/api/cockpit/proposals/proposal-42/queue') {
         expect(init?.method).toBe('POST')
         return Promise.resolve(okJson({ id: 'cockpit-proposal-proposal-42', created: true, executes: false }))
@@ -196,5 +200,6 @@ describe('C2GStrategyView', () => {
       })
       expect(screen.getByText('提案已承接为任务：cockpit-proposal-proposal-42')).toBeInTheDocument()
     })
+    await waitFor(() => expect(proposalCalls).toBeGreaterThanOrEqual(2))
   })
 })
