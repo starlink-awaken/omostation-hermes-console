@@ -81,6 +81,41 @@ describe('PerformanceMonitorPage', () => {
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
   })
 
+  it('filters performance services before choosing hotspot follow-up actions', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.startsWith('/api/metrics/system')) {
+        return Promise.resolve(okJson({ cpu: [], memory: [], disk: [], network: [] }))
+      }
+      return Promise.resolve(okJson({
+        items: [
+          { name: 'healthy-worker', status: 'online', cpu: 22, memory: 31 },
+          { name: 'offline-worker', status: 'offline', cpu: null, memory: null },
+        ],
+      }))
+    })
+
+    render(<PerformanceMonitorPage />)
+    await screen.findByRole('region', { name: '性能服务筛选' })
+
+    fireEvent.change(screen.getByRole('searchbox', { name: '搜索性能服务' }), { target: { value: 'offline' } })
+    await waitFor(() => {
+      expect(screen.getByText('显示服务 1/2')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '查看性能服务 offline-worker' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '查看性能服务 healthy-worker' })).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '清除性能服务筛选' }))
+    fireEvent.change(screen.getByRole('combobox', { name: '按状态筛选性能服务' }), { target: { value: 'online' } })
+    await waitFor(() => {
+      expect(screen.getByText('显示服务 1/2')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '查看性能服务 healthy-worker' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '清除性能服务筛选' }))
+    expect(screen.getByText('显示服务 2/2')).toBeInTheDocument()
+  })
+
   it('registers the performance draft as a governed task', async () => {
     const onOpenTarget = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {

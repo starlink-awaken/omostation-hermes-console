@@ -61,6 +61,8 @@ export default function PerformanceMonitorPage({
   const [services, setServices] = useState<ServiceStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | '7d'>('1h');
+  const [serviceQuery, setServiceQuery] = useState('');
+  const [serviceStatusFilter, setServiceStatusFilter] = useState<'all' | ServiceStatus['status']>('all');
   const [refreshToken, setRefreshToken] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,9 +116,19 @@ export default function PerformanceMonitorPage({
     }
   };
 
-  const degradedServices = services.filter((service) => service.status !== 'online' || (service.cpu ?? 0) >= 80 || (service.memory ?? 0) >= 80);
-  const hotServices = (degradedServices.length ? degradedServices : services).slice(0, 3);
-  const leadPerformanceService = hotServices[0] || services[0] || null;
+  const filteredServices = services.filter((service) => {
+    if (serviceStatusFilter !== 'all' && service.status !== serviceStatusFilter) return false;
+    const query = serviceQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [service.name, service.status, service.uptime]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  });
+  const degradedServices = filteredServices.filter((service) => service.status !== 'online' || (service.cpu ?? 0) >= 80 || (service.memory ?? 0) >= 80);
+  const hotServices = (degradedServices.length ? degradedServices : filteredServices).slice(0, 3);
+  const leadPerformanceService = hotServices[0] || filteredServices[0] || null;
   const firstDegradedService = degradedServices[0] || null;
   const performanceTaskDraft = (() => {
     const serviceName = leadPerformanceService?.name || '性能监控';
@@ -420,9 +432,40 @@ export default function PerformanceMonitorPage({
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <span className="status-badge degraded">异常服务 {degradedServices.length}</span>
-            <span className="status-badge online">样本服务 {services.length}</span>
+            <span className="status-badge online">显示服务 {filteredServices.length}/{services.length}</span>
             <span className="status-badge degraded">时间范围 {timeRange}</span>
           </div>
+        </div>
+
+        <div role="region" aria-label="性能服务筛选" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+          <input
+            type="search"
+            aria-label="搜索性能服务"
+            placeholder="服务名称、状态或运行时长"
+            value={serviceQuery}
+            onChange={(event) => setServiceQuery(event.target.value)}
+            style={{ flex: '1 1 260px', minWidth: 220 }}
+          />
+          <select
+            aria-label="按状态筛选性能服务"
+            value={serviceStatusFilter}
+            onChange={(event) => setServiceStatusFilter(event.target.value as typeof serviceStatusFilter)}
+          >
+            <option value="all">全部状态</option>
+            <option value="online">在线</option>
+            <option value="degraded">降级</option>
+            <option value="offline">离线</option>
+          </select>
+          {(serviceQuery || serviceStatusFilter !== 'all') && (
+            <button
+              type="button"
+              className="antd-btn small"
+              aria-label="清除性能服务筛选"
+              onClick={() => { setServiceQuery(''); setServiceStatusFilter('all'); }}
+            >
+              清除筛选
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
@@ -432,7 +475,7 @@ export default function PerformanceMonitorPage({
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>优先处理离线、降级或资源使用偏高的服务。</p>
             </div>
             {hotServices.length === 0 ? (
-              <p className="text-muted" style={{ margin: 0 }}>当前没有可追踪的服务样本。</p>
+              <p className="text-muted" style={{ margin: 0 }}>{services.length ? '没有匹配的性能服务。' : '当前没有可追踪的服务样本。'}</p>
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
                 {hotServices.map((service) => (
