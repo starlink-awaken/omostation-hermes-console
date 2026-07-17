@@ -109,6 +109,8 @@ export default function C2GStrategyView({
   const [queueingProposalIds, setQueueingProposalIds] = useState<Record<string, boolean>>({});
   const [proposalError, setProposalError] = useState<string | null>(null);
   const [proposalSuccess, setProposalSuccess] = useState<string | null>(null);
+  const [governanceQuery, setGovernanceQuery] = useState('');
+  const [governanceStatusFilter, setGovernanceStatusFilter] = useState('all');
 
   const handleFixDrift = async () => {
     setFixing(true);
@@ -287,9 +289,28 @@ export default function C2GStrategyView({
   const sysHealth = status?.system?.health_score ?? 95;
   const govHealth = status?.governance?.health_score ?? 98;
   const currentPhase = status?.system?.current_phase || 'Wave 2 (迭代研发期)';
-  const priorityCards = cards.slice(0, 4);
-  const activeProposals = proposals.filter((proposal) => proposal.status !== 'rejected').slice(0, 3);
-  const directIoViolations = violations.slice(0, 3);
+  const normalizedGovernanceQuery = governanceQuery.trim().toLowerCase();
+  const filteredCards = cards.filter((card) => {
+    const matchesQuery = !normalizedGovernanceQuery || [card.id, card.type, card.status, card.title, card.priority, card.domain]
+      .some((value) => value.toLowerCase().includes(normalizedGovernanceQuery));
+    const matchesStatus = governanceStatusFilter === 'all' || card.status === governanceStatusFilter;
+    return matchesQuery && matchesStatus;
+  });
+  const filteredProposals = proposals.filter((proposal) => {
+    const matchesQuery = !normalizedGovernanceQuery || [proposal.id, proposal.type, proposal.debt_id, proposal.target_model, proposal.scope, proposal.status, proposal.description]
+      .some((value) => value?.toLowerCase().includes(normalizedGovernanceQuery));
+    const matchesStatus = governanceStatusFilter === 'all' || proposal.status === governanceStatusFilter;
+    return matchesQuery && matchesStatus;
+  });
+  const filteredViolations = violations.filter((violation) => {
+    if (governanceStatusFilter !== 'all') return false;
+    return !normalizedGovernanceQuery || [violation.file, String(violation.line), violation.detail]
+      .some((value) => value.toLowerCase().includes(normalizedGovernanceQuery));
+  });
+  const priorityCards = filteredCards.slice(0, 4);
+  const activeProposals = filteredProposals.filter((proposal) => proposal.status !== 'rejected').slice(0, 3);
+  const directIoViolations = filteredViolations.slice(0, 3);
+  const hasGovernanceFilter = Boolean(normalizedGovernanceQuery) || governanceStatusFilter !== 'all';
   const focusedC2GCard = (() => {
     const matchedCard = cards.find((card) => (
       matchesC2GFocusQuery([card.id, card.title, card.priority, card.domain, card.status], focusTaskQuery)
@@ -353,7 +374,7 @@ export default function C2GStrategyView({
       <ActionSurfacePanel
         title="治理执行区"
         subtitle="看完治理状态后，直接跳去系统地图、债务页或任务中心推进下一步。"
-        statusText={`卡片 ${cards.length} · 提案 ${proposals.length} · 违规 ${violations.length}`}
+        statusText={`卡片 ${filteredCards.length}/${cards.length} · 提案 ${filteredProposals.length}/${proposals.length} · 违规 ${filteredViolations.length}/${violations.length}`}
         onNavigate={onNavigate}
         items={[
           {
@@ -440,10 +461,50 @@ export default function C2GStrategyView({
             </p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span className="status-badge degraded">卡片 {cards.length}</span>
-            <span className="status-badge degraded">提案 {proposals.length}</span>
-            <span className="status-badge online">违规 {violations.length}</span>
+            <span className="status-badge degraded">卡片 {filteredCards.length}/{cards.length}</span>
+            <span className="status-badge degraded">提案 {filteredProposals.length}/{proposals.length}</span>
+            <span className="status-badge online">违规 {filteredViolations.length}/{violations.length}</span>
           </div>
+        </div>
+
+        <div
+          role="region"
+          aria-label="治理对象筛选"
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, margin: '14px 0 16px' }}
+        >
+          <input
+            className="antd-input"
+            aria-label="搜索治理对象"
+            placeholder="卡片、提案、债务、文件或违规内容"
+            value={governanceQuery}
+            onChange={(event) => setGovernanceQuery(event.target.value)}
+            style={{ minWidth: 260, flex: '1 1 280px' }}
+          />
+          <select
+            className="antd-input"
+            aria-label="按状态筛选治理对象"
+            value={governanceStatusFilter}
+            onChange={(event) => setGovernanceStatusFilter(event.target.value)}
+            style={{ minWidth: 150, flex: '0 1 180px' }}
+          >
+            <option value="all">全部状态</option>
+            <option value="pending">待处理</option>
+            <option value="in_progress">进行中</option>
+            <option value="approved">已批准</option>
+            <option value="rejected">已拒绝</option>
+            <option value="completed">已完成</option>
+          </select>
+          {hasGovernanceFilter && (
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label="清除治理对象筛选"
+              onClick={() => { setGovernanceQuery(''); setGovernanceStatusFilter('all'); }}
+            >
+              <X size={14} />
+              <span>清除</span>
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
@@ -673,7 +734,7 @@ export default function C2GStrategyView({
       )}
 
       {/* 直写违规代码定位舱 */}
-      {violations.length > 0 && (
+      {filteredViolations.length > 0 && (
         <div style={{
           backgroundColor: 'rgba(255, 71, 87, 0.05)',
           border: '1px solid rgba(255, 71, 87, 0.25)',
@@ -690,7 +751,7 @@ export default function C2GStrategyView({
             </h4>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
-            {violations.map((v, i) => (
+            {filteredViolations.map((v, i) => (
               <div key={i} style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -758,14 +819,14 @@ export default function C2GStrategyView({
             </div>
 
             <div style={{ minHeight: '300px' }}>
-              {cards.length === 0 ? (
+              {filteredCards.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', color: 'rgba(255,255,255,0.45)' }}>
                   <CheckCircle2 size={36} style={{ marginBottom: '12px', strokeWidth: 1.5 }} className="text-muted" />
-                  <p style={{ margin: 0, fontSize: '13px' }}>当前没有活跃的治理卡片。系统处于洁净态。</p>
+                  <p style={{ margin: 0, fontSize: '13px' }}>{hasGovernanceFilter ? '当前筛选下没有匹配的治理卡片。' : '当前没有活跃的治理卡片。系统处于洁净态。'}</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {cards.map(card => (
+                  {filteredCards.map(card => (
                     <div key={card.id} className="service-row" style={{
                       display: 'grid',
                       gridTemplateColumns: '80px 1fr 100px 80px',
@@ -886,14 +947,14 @@ export default function C2GStrategyView({
             )}
 
             <div style={{ minHeight: '180px' }}>
-              {proposals.length === 0 ? (
+              {filteredProposals.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '180px', color: 'rgba(255,255,255,0.45)' }}>
                   <ShieldCheck size={36} style={{ marginBottom: '12px', strokeWidth: 1.5 }} className="text-success" />
-                  <p style={{ margin: 0, fontSize: '13px' }}>暂无待审批的架构提议或算力调整提案。</p>
+                  <p style={{ margin: 0, fontSize: '13px' }}>{hasGovernanceFilter ? '当前筛选下没有匹配的治理提案。' : '暂无待审批的架构提议或算力调整提案。'}</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {proposals.map(prop => (
+                  {filteredProposals.map(prop => (
                     <div key={prop.id} className="service-row animate-fade-in" style={{
                       display: 'grid',
                       gridTemplateColumns: '120px 1fr 220px',

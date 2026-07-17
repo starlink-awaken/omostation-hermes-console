@@ -68,6 +68,51 @@ describe('C2GStrategyView', () => {
     expect(onNavigate).toHaveBeenCalledWith('Debt')
   })
 
+  it('filters cards, proposals, and direct-io violations from one governance query', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/omos/status') return Promise.resolve(okJson({ system: {}, governance: {} }))
+      if (url === '/api/cards') return Promise.resolve(okJson([
+        { id: 'card-42', type: 'governance', status: 'in_progress', title: '补齐项目状态面', priority: 'P1', domain: 'workspace', created: '2026-07-10' },
+        { id: 'card-99', type: 'governance', status: 'pending', title: '梳理认证债务', priority: 'P0', domain: 'auth', created: '2026-07-11' },
+      ]))
+      if (url === '/api/cards/check') return Promise.resolve(okJson({ compliant: true, violations: [] }))
+      if (url === '/api/v1/proposals') return Promise.resolve(okJson({ status: 'ok', proposals: [
+        { id: 'proposal-42', type: 'model_swap', debt_id: 'debt-auth', status: 'pending' },
+        { id: 'proposal-99', type: 'capacity', debt_id: 'debt-cache', status: 'approved' },
+      ] }))
+      if (url === '/api/omos/violations') return Promise.resolve(okJson({ status: 'ok', violations: [
+        { file: 'auth/service.py', line: 42, detail: 'direct write to auth state' },
+        { file: 'cache/store.py', line: 99, detail: 'direct write to cache state' },
+      ] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<C2GStrategyView />)
+
+    expect((await screen.findAllByText('梳理认证债务')).length).toBeGreaterThan(0)
+    expect(screen.getByText('卡片 2/2')).toBeInTheDocument()
+    expect(screen.getByText('提案 2/2')).toBeInTheDocument()
+    expect(screen.getByText('违规 2/2')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: '搜索治理对象' }), { target: { value: 'auth' } })
+    expect(screen.getByText('卡片 1/2')).toBeInTheDocument()
+    expect(screen.getByText('提案 1/2')).toBeInTheDocument()
+    expect(screen.getByText('违规 1/2')).toBeInTheDocument()
+    expect(screen.getAllByText('auth/service.py').length).toBeGreaterThan(0)
+    expect(screen.queryByText('cache/store.py')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('combobox', { name: '按状态筛选治理对象' }), { target: { value: 'approved' } })
+    expect(screen.getByText('卡片 0/2')).toBeInTheDocument()
+    expect(screen.getByText('提案 0/2')).toBeInTheDocument()
+    expect(screen.getByText('当前筛选下没有匹配的治理卡片。')).toBeInTheDocument()
+    expect(screen.getByText('当前筛选下没有匹配的治理提案。')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '清除治理对象筛选' }))
+    expect(screen.getByText('卡片 2/2')).toBeInTheDocument()
+    expect(screen.getAllByText('cache/store.py').length).toBeGreaterThan(0)
+  })
+
   it('surfaces focus handoff for a matched governance card', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
