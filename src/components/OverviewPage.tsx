@@ -554,7 +554,7 @@ function FocusedOverviewClosureSection({
             概览页先把你刚从系统地图带回来的对象入口和任务承接摆出来，避免总览层只停在抽象指标。
           </p>
         </div>
-        <button className="antd-btn small" aria-label="回系统地图继续定位" onClick={() => onNavigate?.('SystemMap')}>
+        <button className="antd-btn small" aria-label="回系统地图继续定位" onClick={() => openOverviewTarget(card.objectTarget, onNavigate, onOpenTarget)}>
           <FileText size={13} />
           <span>回系统地图</span>
         </button>
@@ -1234,7 +1234,7 @@ export default function OverviewPage({
               不同角色和场景先看哪里、再去哪里、任务落到哪一页，这里直接给出整站使用编排。
             </p>
           </div>
-          <button className="antd-btn" onClick={() => onNavigate?.('Home')}>
+          <button className="antd-btn" onClick={() => openOverviewTarget({ tab: 'Home', taskQuery: focusTaskQuery || 'Overview' }, onNavigate, onOpenTarget)}>
             <Route size={14} />
             <span>回首页模式台</span>
           </button>
@@ -1708,7 +1708,7 @@ export default function OverviewPage({
           <article className="overview-ops-column">
             <div className="overview-ops-head">
               <strong>页面与入口分层</strong>
-              <button className="antd-btn small" aria-label="打开功能架构到首页" onClick={() => onNavigate?.('Home')}>
+              <button className="antd-btn small" aria-label="打开功能架构到首页" onClick={() => openOverviewTarget({ tab: 'Home', taskQuery: focusTaskQuery || 'architecture' }, onNavigate, onOpenTarget)}>
                 <Layers size={13} />
                 <span>回首页</span>
               </button>
@@ -1735,7 +1735,7 @@ export default function OverviewPage({
           <article className="overview-ops-column">
             <div className="overview-ops-head">
               <strong>能力域与使用路径</strong>
-              <button className="antd-btn small" aria-label="打开功能架构到系统地图" onClick={() => onNavigate?.('SystemMap')}>
+              <button className="antd-btn small" aria-label="打开功能架构到系统地图" onClick={() => openOverviewTarget({ tab: 'SystemMap', featureDomainId: featureDomains[0]?.id || null, usagePathId: usagePaths[0]?.id || null }, onNavigate, onOpenTarget)}>
                 <Compass size={13} />
                 <span>去能力地图</span>
               </button>
@@ -1774,7 +1774,7 @@ export default function OverviewPage({
           <article className="overview-ops-column">
             <div className="overview-ops-head">
               <strong>操作清单与路线图</strong>
-              <button className="antd-btn small" aria-label="打开功能架构到任务中心" onClick={() => onNavigate?.('TaskCenter')}>
+              <button className="antd-btn small" aria-label="打开功能架构到任务中心" onClick={() => openOverviewTarget({ tab: 'TaskCenter', taskQuery: playbooks[0]?.title || usagePaths[0]?.title || 'architecture' }, onNavigate, onOpenTarget)}>
                 <ClipboardCheck size={13} />
                 <span>去任务中心</span>
               </button>
@@ -1830,7 +1830,7 @@ export default function OverviewPage({
           <article className="overview-ops-column">
             <div className="overview-ops-head">
               <strong>服务态势</strong>
-              <button className="antd-btn small" aria-label="打开运行总面到性能页" onClick={() => onNavigate?.('Performance')}>
+              <button className="antd-btn small" aria-label="打开运行总面到性能页" onClick={() => openOverviewTarget({ tab: 'Performance', taskQuery: unstableRuntime[0]?.name || focusTaskQuery || 'Overview' }, onNavigate, onOpenTarget)}>
                 <ExternalLink size={13} />
                 <span>去性能页</span>
               </button>
@@ -1841,7 +1841,7 @@ export default function OverviewPage({
                   key={service.name}
                   className="overview-ops-item"
                   aria-label={`查看运行服务 ${service.name}`}
-                  onClick={() => onNavigate?.('Performance')}
+                  onClick={() => openOverviewTarget({ tab: 'Performance', taskQuery: service.name }, onNavigate, onOpenTarget)}
                 >
                   <strong>{service.name}</strong>
                   <span>{statusText(service.status)} · CPU {service.cpu ?? 0}% · 内存 {service.memory ?? 0}%</span>
@@ -1857,7 +1857,7 @@ export default function OverviewPage({
           <article className="overview-ops-column">
             <div className="overview-ops-head">
               <strong>项目关注</strong>
-              <button className="antd-btn small" aria-label="打开运行总面到系统地图" onClick={() => onNavigate?.('SystemMap')}>
+              <button className="antd-btn small" aria-label="打开运行总面到系统地图" onClick={() => openOverviewTarget({ tab: 'SystemMap', projectId: priorityProjects[0]?.id || null }, onNavigate, onOpenTarget)}>
                 <FileText size={13} />
                 <span>去系统地图</span>
               </button>
@@ -1884,7 +1884,7 @@ export default function OverviewPage({
           <article className="overview-ops-column">
             <div className="overview-ops-head">
               <strong>修复动作</strong>
-              <button className="antd-btn small" aria-label="打开运行总面到日志页" onClick={() => onNavigate?.('LogViewer')}>
+              <button className="antd-btn small" aria-label="打开运行总面到日志页" onClick={() => openOverviewTarget({ tab: 'LogViewer', taskQuery: triageActions[0]?.projectId || unstableRuntime[0]?.name || 'Overview' }, onNavigate, onOpenTarget)}>
                 <Zap size={13} />
                 <span>去日志页</span>
               </button>
@@ -1898,7 +1898,7 @@ export default function OverviewPage({
                     <small>{command.reason || command.label}</small>
                   </div>
                   <div className="overview-ops-command-actions">
-                    <button className="antd-btn small" onClick={() => onNavigate?.(cockpitPage)}>
+                    <button className="antd-btn small" onClick={() => openOverviewTarget({ tab: cockpitPage, taskQuery: projectId }, onNavigate, onOpenTarget)}>
                       <ExternalLink size={13} />
                       <span>入口</span>
                     </button>
