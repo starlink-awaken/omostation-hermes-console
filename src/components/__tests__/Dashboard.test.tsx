@@ -996,3 +996,28 @@ describe('Dashboard global search', () => {
     fireEvent.click(screen.getByText('技能资产：家庭技能'))
     await waitFor(() => expect(screen.getByText('Mock Page')).toBeInTheDocument())
   })
+
+  it('searches live mesh, compute and log objects from the global entry', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson({}))
+      if (url.startsWith('/api/tasks?')) return Promise.resolve(okJson({ items: [] }))
+      if (url === '/api/domain-apps' || url === '/api/alerts?limit=80') return Promise.resolve(okJson({ items: [] }))
+      if (url === '/api/bos/services') return Promise.resolve(okJson({ services: [{ uri: 'bos://memory/kos/search', domain: 'memory', action: 'search', transport: 'http' }] }))
+      if (url === '/api/governance/compute/status') return Promise.resolve(okJson({ nodes: [{ id: 'local-mac', name: '本地主机', model: 'coder', status: 'online' }], quota: { quota: [{ provider: 'openai', available: false }] } }))
+      if (url === '/api/logs?limit=100') return Promise.resolve(okJson({ items: [{ source: 'gateway', level: 'error', message: 'upstream timeout' }] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<Dashboard />)
+    const search = await screen.findByLabelText('全局搜索输入框')
+
+    fireEvent.change(search, { target: { value: 'bos://memory/kos/search' } })
+    await waitFor(() => expect(screen.getByText('网格路由：bos://memory/kos/search')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: 'local-mac' } })
+    await waitFor(() => expect(screen.getByText('算力节点：本地主机')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: 'gateway' } })
+    await waitFor(() => expect(screen.getByText('日志来源：gateway')).toBeInTheDocument())
+  })

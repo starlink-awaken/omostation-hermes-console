@@ -2902,11 +2902,14 @@ export default function Dashboard() {
   useEffect(() => {
     const buildDynamicSearch = async () => {
       try {
-        const [systemMapRes, tasksRes, domainAppsRes, alertsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes] = await Promise.all([
+        const [systemMapRes, tasksRes, domainAppsRes, alertsRes, meshServicesRes, computeStatusRes, logsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes] = await Promise.all([
           fetch('/api/cockpit/system-map'),
           fetch('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80'),
           fetch('/api/domain-apps'),
           fetch('/api/alerts?limit=80'),
+          fetch('/api/bos/services'),
+          fetch('/api/governance/compute/status'),
+          fetch('/api/logs?limit=100'),
           fetch('/api/cockpit/research-hub'),
           fetch('/api/metaos/workflows'),
           fetch('/api/ecos/skills'),
@@ -3395,6 +3398,76 @@ export default function Dashboard() {
                 '告警',
                 '异常',
               ],
+            });
+          });
+        }
+
+        if (meshServicesRes.ok) {
+          const meshPayload = await meshServicesRes.json();
+          const services = meshPayload.services || [];
+          services.forEach((service: { uri?: string; domain?: string; action?: string; transport?: string }) => {
+            if (!service.uri) return;
+            targets.push({
+              id: `mesh-route-${service.uri}`,
+              tab: 'McpMesh',
+              label: `网格路由：${service.uri}`,
+              group: `网格路由 · ${service.domain || '未分域'}`,
+              context: { taskQuery: service.uri },
+              keywords: [
+                service.uri,
+                service.domain || '',
+                service.action || '',
+                service.transport || '',
+                'mesh',
+                'MCP',
+                '网格',
+                '路由',
+              ],
+            });
+          });
+        }
+
+        if (computeStatusRes.ok) {
+          const computePayload = await computeStatusRes.json();
+          (computePayload.nodes || []).forEach((node: { id?: string; name?: string; model?: string; type?: string; status?: string }) => {
+            if (!node.id) return;
+            targets.push({
+              id: `compute-node-${node.id}`,
+              tab: 'Compute',
+              label: `算力节点：${node.name || node.id}`,
+              group: `算力节点 · ${node.status || 'unknown'}`,
+              context: { taskQuery: node.id },
+              keywords: [node.id, node.name || '', node.model || '', node.type || '', node.status || '', 'compute', '算力', '节点'],
+            });
+          });
+          ((computePayload.quota?.quota || []) as { provider?: string; available?: boolean; error?: unknown }[]).forEach((provider) => {
+            if (!provider.provider) return;
+            targets.push({
+              id: `compute-provider-${provider.provider}`,
+              tab: 'Compute',
+              label: `算力供应商：${provider.provider}`,
+              group: `算力配额 · ${provider.available === false ? '异常' : '可用'}`,
+              context: { taskQuery: provider.provider },
+              keywords: [provider.provider, provider.available === false ? 'unavailable' : 'available', String(provider.error || ''), 'compute', '算力', '配额', '供应商'],
+            });
+          });
+        }
+
+        if (logsRes.ok) {
+          const logsPayload = await logsRes.json();
+          const logs = logsPayload.items || [];
+          const sources = new globalThis.Map<string, { level?: string; message?: string }>();
+          logs.forEach((log: { source?: string; level?: string; message?: string }) => {
+            if (log.source && !sources.has(log.source)) sources.set(log.source, log);
+          });
+          sources.forEach((log, source) => {
+            targets.push({
+              id: `log-source-${source}`,
+              tab: 'LogViewer',
+              label: `日志来源：${source}`,
+              group: `运行日志 · ${log.level || 'unknown'}`,
+              context: { taskQuery: source },
+              keywords: [source, log.level || '', log.message || '', 'logs', '日志', '运行证据'],
             });
           });
         }
