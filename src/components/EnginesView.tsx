@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, Play, Activity, List, GitCommit } from 'lucide-react';
+import { Cpu, Play, Activity, List, GitCommit, RefreshCw } from 'lucide-react';
 import WorkflowGraph from './WorkflowGraph';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -41,6 +41,8 @@ export default function EnginesView({
   const [pipelineInput, setPipelineInput] = useState('');
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<any>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   
   const [planning, setPlanning] = useState(false);
   const [metaosPlan, setMetaosPlan] = useState<any>(null);
@@ -50,22 +52,25 @@ export default function EnginesView({
   const fetchData = async () => {
     try {
       const pipeRes = await fetch('/api/pipelines');
-      if (pipeRes.ok) {
-        const pipeData = await pipeRes.json();
-        setPipelines(pipeData.pipelines || []);
-        if (pipeData.pipelines?.length > 0 && !selectedPipeline) {
-          setSelectedPipeline(pipeData.pipelines[0]);
-        }
+      const pipeData = await pipeRes.json().catch(() => ({}));
+      if (!pipeRes.ok || !Array.isArray(pipeData.pipelines)) {
+        throw new Error(pipeData.error || `管线服务不可用（HTTP ${pipeRes.status}）`);
       }
-    } catch (e) {
-      console.error('Failed to fetch pipelines', e);
+      setPipelines(pipeData.pipelines);
+      setDataError(null);
+      if (pipeData.pipelines.length > 0 && !selectedPipeline) {
+        setSelectedPipeline(pipeData.pipelines[0]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch pipelines', error);
+      setDataError(error instanceof Error ? error.message : '管线数据不可用');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
     const interval = setInterval(fetchData, 10000); // Polling for pipelines
     
     // SSE setup for real-time events
@@ -107,7 +112,7 @@ export default function EnginesView({
       clearInterval(interval);
       eventSource.close();
     };
-  }, []);
+  }, [refreshToken]);
 
   useEffect(() => {
     if (!focusTaskQuery) return;
@@ -233,6 +238,16 @@ export default function EnginesView({
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <PlatformControlWorkbench currentPage="Engines" onNavigate={onNavigate} />
+
+      {dataError && (
+        <div className="shell-data-banner" role="alert">
+          <span>{dataError}，当前不能据此判断没有可用管线。</span>
+          <button type="button" onClick={() => setRefreshToken((token) => token + 1)}>
+            <RefreshCw size={14} aria-hidden="true" />
+            <span>重试管线</span>
+          </button>
+        </div>
+      )}
 
       <ActionSurfacePanel
         title="引擎协作区"

@@ -140,4 +140,28 @@ describe('EnginesView', () => {
 
     await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-engine-metaos-42' }))
   })
+
+  it('shows a retryable error when the pipeline catalog is unavailable', async () => {
+    let attempts = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/pipelines') {
+        attempts += 1
+        return Promise.resolve(attempts === 1
+          ? ({ ok: false, status: 503, json: async () => ({ error: '管线服务暂时不可用' }) } as Response)
+          : okJson({ pipelines: ['recovered-pipeline'] }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<EnginesView />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('管线服务暂时不可用')
+    fireEvent.click(screen.getByRole('button', { name: '重试管线' }))
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('recovered-pipeline')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+    expect(attempts).toBe(2)
+  })
 })
