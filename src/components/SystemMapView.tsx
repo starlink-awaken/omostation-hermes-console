@@ -2881,7 +2881,7 @@ export default function SystemMapView({
                   {selectedGapClosureRow.page && (
                     <button
                       className="system-map-page-focus-action"
-                      onClick={() => onNavigate(selectedGapClosureRow.page?.page.id || 'SystemMap')}
+                      onClick={() => openSystemMapTarget({ tab: selectedGapClosureRow.page?.page.id || 'SystemMap', gapId: selectedGapClosureRow.gap.id }, onNavigate, onOpenTarget)}
                     >
                       <span>查看页面</span>
                       <small>{selectedGapClosureRow.page.page.title}</small>
@@ -2968,7 +2968,7 @@ export default function SystemMapView({
                     <span>定位缺口</span>
                   </button>
                   {row.page && (
-                    <button type="button" className="antd-btn" onClick={() => onNavigate(row.page?.page.id || 'SystemMap')}>
+                    <button type="button" className="antd-btn" onClick={() => openSystemMapTarget({ tab: row.page?.page.id || 'SystemMap', gapId: row.gap.id }, onNavigate, onOpenTarget)}>
                       <ArrowRight size={14} />
                       <span>查看页面</span>
                     </button>
@@ -3133,7 +3133,7 @@ export default function SystemMapView({
                       <small>{playbook.goal}</small>
                       <div className="system-map-usage-mini-steps">
                         {playbook.steps.slice(0, 4).map((step, index) => (
-                          <button key={step.id} onClick={() => onNavigate(step.page.id)} title={step.done_when}>
+                          <button key={step.id} onClick={() => openSystemMapTarget({ tab: step.page.id, taskQuery: playbook.id }, onNavigate, onOpenTarget)} title={step.done_when}>
                             {index + 1}. {step.page.title}
                           </button>
                         ))}
@@ -3151,7 +3151,7 @@ export default function SystemMapView({
                       <button
                         className="system-map-usage-domain"
                         key={domain.id}
-                        onClick={() => onNavigate(domain.cockpit_page)}
+                        onClick={() => openSystemMapTarget({ tab: domain.cockpit_page, featureDomainId: domain.id }, onNavigate, onOpenTarget)}
                       >
                         <strong>{domain.title}</strong>
                         <small>{domain.providers.slice(0, 3).join(' · ') || domain.english}</small>
@@ -3170,7 +3170,7 @@ export default function SystemMapView({
                     <button
                       className="system-map-usage-roadmap"
                       key={item.id}
-                      onClick={() => onNavigate(item.cockpit_page)}
+                      onClick={() => openSystemMapTarget({ tab: item.cockpit_page, taskQuery: item.id }, onNavigate, onOpenTarget)}
                       title={item.problem}
                     >
                       <span className={`status-badge ${statusClass(item.status)}`}>{item.priority}</span>
@@ -3716,7 +3716,7 @@ export default function SystemMapView({
                     key={`control-priority-roadmap-${item.roadmap.id}`}
                     className="system-map-build-item"
                     aria-label={`打开路线图优先项 ${item.roadmap.id}`}
-                    onClick={() => onNavigate(item.roadmap.cockpit_page)}
+                    onClick={() => openSystemMapTarget({ tab: item.roadmap.cockpit_page, taskQuery: item.roadmap.id }, onNavigate, onOpenTarget)}
                   >
                     <strong>{item.roadmap.title}</strong>
                     <span>路线图 · {item.roadmap.priority} · {item.roadmap.status}</span>
@@ -3797,7 +3797,7 @@ export default function SystemMapView({
                   key={`build-domain-app-${app.id}`}
                   className="system-map-build-item"
                   aria-label={`打开待收口领域 ${app.id}`}
-                  onClick={() => onNavigate('DomainApps')}
+                  onClick={() => openSystemMapTarget({ tab: 'DomainApps', taskQuery: app.id }, onNavigate, onOpenTarget)}
                 >
                   <strong>{app.name}</strong>
                   <span>领域收口 · {app.runtime_status} · {app.risk_level}</span>
@@ -3833,7 +3833,7 @@ export default function SystemMapView({
                   key={`build-roadmap-${item.id}`}
                   className="system-map-build-item"
                   aria-label={`打开待完成路线图 ${item.id}`}
-                  onClick={() => onNavigate(item.cockpit_page)}
+                  onClick={() => openSystemMapTarget({ tab: item.cockpit_page, taskQuery: item.id }, onNavigate, onOpenTarget)}
                 >
                   <strong>{item.title}</strong>
                   <span>路线图 · {item.priority} · {item.status}</span>
@@ -3970,7 +3970,7 @@ export default function SystemMapView({
                 <h3>{selectedPageMaturity.page.title}</h3>
                 <p>{selectedPageMaturity.page.group} · {selectedPageMaturity.page.id} · {selectedPageMaturity.page.purpose}</p>
               </div>
-              <button className="antd-btn" onClick={() => onNavigate(selectedPageMaturity.page.id)}>
+              <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: selectedPageMaturity.page.id, pageId: selectedPageMaturity.page.id }, onNavigate, onOpenTarget)}>
                 <ArrowRight size={14} />
                 <span>进入页面</span>
               </button>
@@ -4038,7 +4038,7 @@ export default function SystemMapView({
                     <button
                       className="system-map-page-focus-action"
                       key={`page-roadmap-${item.id}`}
-                      onClick={() => onNavigate(item.cockpit_page)}
+                      onClick={() => openSystemMapTarget({ tab: item.cockpit_page, taskQuery: item.id }, onNavigate, onOpenTarget)}
                     >
                       <span>查看路线图</span>
                       <small>{item.title}</small>
@@ -4096,7 +4096,7 @@ export default function SystemMapView({
                 <button className="antd-btn" onClick={() => setSelectedPageMaturityId(item.page.id)}>
                   <span>查看剖面</span>
                 </button>
-                <button className="antd-btn" onClick={() => onNavigate(item.page.id)}>
+                <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: item.page.id, pageId: item.page.id }, onNavigate, onOpenTarget)}>
                   <ArrowRight size={14} />
                   <span>进入页面</span>
                 </button>
@@ -4180,7 +4180,7 @@ export default function SystemMapView({
                       <small>证据：{step.evidence}</small>
                       <small>完成：{step.done_when}</small>
                     </div>
-                    <button className="antd-btn system-map-step-btn" onClick={() => onNavigate(step.page.id)}>
+                    <button className="antd-btn system-map-step-btn" onClick={() => openSystemMapTarget({ tab: step.page.id, taskQuery: playbook.id }, onNavigate, onOpenTarget)}>
                       <span>{step.page.title}</span>
                       <ArrowRight size={13} />
                     </button>
@@ -4212,7 +4212,7 @@ export default function SystemMapView({
                   <button
                     key={project.id}
                     className={`system-map-chip ${statusClass(project.coverage)}`}
-                    onClick={() => onNavigate(project.cockpit_page)}
+                    onClick={() => openSystemMapTarget({ tab: project.cockpit_page, projectId: project.id }, onNavigate, onOpenTarget)}
                     title={`${project.role} · ${project.stack}`}
                   >
                     {project.id}
@@ -4249,7 +4249,7 @@ export default function SystemMapView({
                 <p>{selectedFeatureDomain.english || 'Capability Domain'} · {selectedFeatureDomain.id} · 页面 {selectedFeatureDomain.cockpit_page}</p>
               </div>
               {selectedFeaturePage && (
-                <button className="antd-btn" onClick={() => onNavigate(selectedFeaturePage.id)}>
+                <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: selectedFeaturePage.id, pageId: selectedFeaturePage.id, featureDomainId: selectedFeatureDomain.id }, onNavigate, onOpenTarget)}>
                   <ArrowRight size={14} />
                   <span>进入页面</span>
                 </button>
@@ -4331,7 +4331,7 @@ export default function SystemMapView({
                     <button
                       className="system-map-page-focus-action"
                       key={`feature-roadmap-${item.id}`}
-                      onClick={() => onNavigate(item.cockpit_page)}
+                      onClick={() => openSystemMapTarget({ tab: item.cockpit_page, taskQuery: item.id }, onNavigate, onOpenTarget)}
                     >
                       <span>查看路线图</span>
                       <small>{item.title}</small>

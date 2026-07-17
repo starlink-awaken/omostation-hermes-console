@@ -1258,7 +1258,10 @@ describe('SystemMapView', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /进入页面/ })[0])
 
-    expect(onNavigate).toHaveBeenCalledWith('AlertCenter')
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'AlertCenter',
+      pageId: 'AlertCenter',
+    }))
   })
 
   it('builds a focused feature-domain repair profile with reverse links', async () => {
@@ -1292,7 +1295,11 @@ describe('SystemMapView', () => {
 
     fireEvent.click(within(screen.getByRole('region', { name: '当前聚焦能力域' })).getByText('进入页面'))
 
-    expect(onNavigate).toHaveBeenCalledWith('Home')
+    expect(onOpenTarget).toHaveBeenCalledWith(expect.objectContaining({
+      tab: 'Home',
+      pageId: 'Home',
+      featureDomainId: 'runtime-ops',
+    }))
   })
 
   it('filters the project matrix by project focus queue', async () => {
@@ -1483,13 +1490,13 @@ describe('SystemMapView', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /打开待收口领域 family-hub/ }))
-    expect(onNavigate).toHaveBeenCalledWith('DomainApps')
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'DomainApps', taskQuery: 'family-hub' })
 
     fireEvent.click(screen.getByRole('button', { name: /打开待完成路线图 daily-ops-console/ }))
-    expect(onNavigate).toHaveBeenCalledWith('Home')
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Home', taskQuery: 'daily-ops-console' })
 
     fireEvent.click(screen.getByRole('button', { name: /打开建设草稿 页面能力：补齐 首页/ }))
-    expectTaskCenterDraftCall(onOpenTarget, 0, 'Home', '页面能力：补齐 首页')
+    expectTaskCenterDraftCall(onOpenTarget, 2, 'Home', '页面能力：补齐 首页')
   })
 
   it('builds a unified construction control tower across pages, domains, verification, and roadmap', async () => {
