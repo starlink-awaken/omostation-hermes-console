@@ -141,6 +141,12 @@ export default function DebtView({
 
     return matchesSearch && matchesSeverity && matchesDimension;
   });
+  const hasActiveFilters = Boolean(searchQuery.trim()) || selectedSeverity !== 'all' || selectedDimension !== 'all';
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedSeverity('all');
+    setSelectedDimension('all');
+  };
   const focusDebtItems = [...filteredItems]
     .sort((left, right) => {
       const weight = (severity: string) => (
@@ -572,7 +578,21 @@ export default function DebtView({
             <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
             <span>刷新</span>
           </button>
+          <button
+            type="button"
+            onClick={clearFilters}
+            disabled={!hasActiveFilters}
+            className="antd-btn"
+            aria-label="清除债务筛选"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px' }}
+          >
+            <span>清除筛选</span>
+          </button>
         </div>
+      </div>
+
+      <div className="text-muted" style={{ margin: '10px 0', fontSize: 12 }} aria-live="polite">
+        当前显示 {filteredItems.length} / {data.items.length} 条债务
       </div>
 
       {/* Debt Table list */}

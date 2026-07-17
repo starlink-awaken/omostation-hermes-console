@@ -59,6 +59,12 @@ describe('DebtView', () => {
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('severity:p0 lifecycle_state:open')
     })
+
+    fireEvent.change(screen.getByPlaceholderText('搜索债务标题、ID 或负责人...'), { target: { value: 'not-found' } })
+    expect(screen.getByText('当前显示 0 / 1 条债务')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '清除债务筛选' }))
+    expect(screen.getByPlaceholderText('搜索债务标题、ID 或负责人...')).toHaveValue('')
+    expect(screen.getByText('当前显示 1 / 1 条债务')).toBeInTheDocument()
   })
 
   it('surfaces focus handoff for a matched debt item', async () => {
