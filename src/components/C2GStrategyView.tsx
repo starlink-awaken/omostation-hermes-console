@@ -385,6 +385,7 @@ export default function C2GStrategyView({
             actionLabel: '去系统地图',
             actionType: 'navigate',
             actionValue: 'SystemMap',
+            actionTarget: { tab: 'SystemMap', taskQuery: focusTaskQuery || priorityCards[0]?.id || 'C2G' },
           },
           {
             id: 'debt',
@@ -393,6 +394,7 @@ export default function C2GStrategyView({
             actionLabel: '去债务页',
             actionType: 'navigate',
             actionValue: 'Debt',
+            actionTarget: { tab: 'Debt', taskQuery: focusTaskQuery || priorityCards[0]?.id || 'C2G' },
           },
           {
             id: 'tasks',
@@ -401,6 +403,7 @@ export default function C2GStrategyView({
             actionLabel: '去任务中心',
             actionType: 'navigate',
             actionValue: 'TaskCenter',
+            actionTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || priorityCards[0]?.id || 'C2G' },
           },
           {
             id: 'copy-sync',

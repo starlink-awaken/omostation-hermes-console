@@ -297,6 +297,7 @@ export default function L4HealthView({
             actionLabel: '去应用中心',
             actionType: 'navigate',
             actionValue: 'DomainApps',
+            actionTarget: { tab: 'DomainApps', taskQuery: focusTaskQuery || healthData?.domains?.[0]?.id || 'L4Health' },
           },
           {
             id: 'system-map',
@@ -305,6 +306,7 @@ export default function L4HealthView({
             actionLabel: '去系统地图',
             actionType: 'navigate',
             actionValue: 'SystemMap',
+            actionTarget: { tab: 'SystemMap', taskQuery: focusTaskQuery || healthData?.domains?.[0]?.id || 'L4Health' },
           },
           {
             id: 'observability',
@@ -313,6 +315,7 @@ export default function L4HealthView({
             actionLabel: '去观测页',
             actionType: 'navigate',
             actionValue: 'Observability',
+            actionTarget: { tab: 'Observability', taskQuery: focusTaskQuery || signalData?.risks?.[0]?.risk || 'L4Health' },
           },
           {
             id: 'copy-check',

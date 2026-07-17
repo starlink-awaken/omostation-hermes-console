@@ -176,6 +176,7 @@ export default function SandboxTerminal({
             actionLabel: '去引擎页',
             actionType: 'navigate',
             actionValue: 'Engines',
+            actionTarget: { tab: 'Engines', taskQuery: focusTaskQuery || sandboxTaskDraft.title },
           },
           {
             id: 'logs',
@@ -184,6 +185,7 @@ export default function SandboxTerminal({
             actionLabel: '去日志页',
             actionType: 'navigate',
             actionValue: 'LogViewer',
+            actionTarget: { tab: 'LogViewer', taskQuery: focusTaskQuery || sandboxTaskDraft.title },
           },
           {
             id: 'tasks',
@@ -192,6 +194,7 @@ export default function SandboxTerminal({
             actionLabel: '去任务中心',
             actionType: 'navigate',
             actionValue: 'TaskCenter',
+            actionTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || sandboxTaskDraft.title },
           },
         ]}
       />
@@ -280,7 +283,7 @@ export default function SandboxTerminal({
                 type="button"
                 className="action-surface-item"
                 aria-label={page.aria}
-                onClick={() => onNavigate?.(page.id)}
+                onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: focusTaskQuery || sandboxTaskDraft.title }, onNavigate, onOpenTarget)}
                 style={{ textAlign: 'left', width: '100%' }}
               >
                 <div>

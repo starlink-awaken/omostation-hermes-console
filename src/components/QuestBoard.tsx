@@ -327,6 +327,7 @@ export default function QuestBoard({
             actionLabel: '去应用中心',
             actionType: 'navigate',
             actionValue: 'DomainApps',
+            actionTarget: { tab: 'DomainApps', taskQuery: focusTaskQuery || activeQuests[0]?.title || 'QuestBoard' },
           },
           {
             id: 'task-center',
@@ -335,6 +336,7 @@ export default function QuestBoard({
             actionLabel: '去任务中心',
             actionType: 'navigate',
             actionValue: 'TaskCenter',
+            actionTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || activeQuests[0]?.title || 'QuestBoard' },
           },
           {
             id: 'knowledge',
@@ -343,6 +345,7 @@ export default function QuestBoard({
             actionLabel: '去知识页',
             actionType: 'navigate',
             actionValue: 'Knowledge',
+            actionTarget: { tab: 'Knowledge', taskQuery: focusTaskQuery || activeQuests[0]?.title || 'QuestBoard' },
           },
           {
             id: 'copy-quest',
