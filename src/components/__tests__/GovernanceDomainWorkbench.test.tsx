@@ -128,4 +128,28 @@ describe('GovernanceDomainWorkbench', () => {
       expect(screen.getByText('领域挂载侧暂无注意项')).toBeInTheDocument()
     })
   })
+
+  it('keeps project governance visible when the debt source fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/cockpit/system-map') {
+        return Promise.resolve(okJson({
+          project_portfolio: {
+            summary: { score: 81, blocked: 1, at_risk: 0 },
+            priority_projects: [{ id: 'cockpit', status: 'blocked', score: 61, primary_gap: '待补验证' }],
+          },
+        }))
+      }
+      if (url === '/api/debt') return Promise.reject(new Error('debt source offline'))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<GovernanceDomainWorkbench currentPage="C2G" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('cockpit')).toBeInTheDocument()
+      expect(screen.getByRole('alert')).toHaveTextContent('技术债账本：debt source offline')
+      expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
+    })
+  })
 })

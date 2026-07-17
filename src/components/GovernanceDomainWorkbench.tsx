@@ -139,16 +139,20 @@ const GOVERNANCE_STEPS = [
   },
 ];
 
-async function fetchJson<T>(url: string, fallback: T): Promise<T> {
+async function fetchGovernanceSource<T>(url: string, label: string, fallback: T): Promise<{ data: T; error: string | null }> {
   try {
     const response = await fetch(url);
-    if (!response || !response.ok) {
-      return fallback;
+    if (!response) {
+      return { data: fallback, error: `${label}：请求无响应` };
     }
-    return (await response.json()) as T;
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { data: fallback, error: `${label} HTTP ${response.status}` };
+    }
+    return { data: payload as T, error: null };
   } catch (error) {
     console.error(`Failed to fetch ${url}:`, error);
-    return fallback;
+    return { data: fallback, error: `${label}：${error instanceof Error ? error.message : '请求失败'}` };
   }
 }
 
@@ -178,33 +182,36 @@ export default function GovernanceDomainWorkbench({
   const [debt, setDebt] = useState<DebtPayload>({});
   const [omoStatus, setOmoStatus] = useState<OmoStatusPayload>({});
   const [l4Health, setL4Health] = useState<L4HealthPayload>({});
+  const [sourceErrors, setSourceErrors] = useState<string[]>([]);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     let active = true;
 
     const load = async () => {
-      const [systemMapPayload, debtPayload, omoStatusPayload, l4HealthPayload] = await Promise.all([
-        fetchJson<SystemMapGovernanceLite>('/api/cockpit/system-map', {}),
-        fetchJson<DebtPayload>('/api/debt', {}),
-        fetchJson<OmoStatusPayload>('/api/omos/status', {}),
-        fetchJson<L4HealthPayload>('/api/l4/health', {}),
+      const [systemMapResult, debtResult, omoStatusResult, l4HealthResult] = await Promise.all([
+        fetchGovernanceSource<SystemMapGovernanceLite>('/api/cockpit/system-map', '系统地图', {}),
+        fetchGovernanceSource<DebtPayload>('/api/debt', '技术债账本', {}),
+        fetchGovernanceSource<OmoStatusPayload>('/api/omos/status', 'OMO 状态', {}),
+        fetchGovernanceSource<L4HealthPayload>('/api/l4/health', 'L4 健康', {}),
       ]);
 
       if (!active) {
         return;
       }
 
-      setSystemMap(systemMapPayload || {});
-      setDebt(debtPayload || {});
-      setOmoStatus(omoStatusPayload || {});
-      setL4Health(l4HealthPayload || {});
+      setSystemMap(systemMapResult.data || {});
+      setDebt(debtResult.data || {});
+      setOmoStatus(omoStatusResult.data || {});
+      setL4Health(l4HealthResult.data || {});
+      setSourceErrors([systemMapResult.error, debtResult.error, omoStatusResult.error, l4HealthResult.error].filter((error): error is string => Boolean(error)));
     };
 
     void load();
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshToken]);
 
   const summary = useMemo(() => {
     const projectSummary = systemMap.project_portfolio?.summary;
@@ -284,6 +291,17 @@ export default function GovernanceDomainWorkbench({
           </p>
         </div>
       </div>
+
+      {sourceErrors.length > 0 && (
+        <div className="overview-inline-error" role="alert">
+          <ShieldCheck size={16} />
+          <div>
+            <strong>治理数据需要补证</strong>
+            <span>{sourceErrors.join('；')}，当前治理数字可能不完整。</span>
+          </div>
+          <button type="button" className="antd-btn" onClick={() => setRefreshToken((value) => value + 1)}>重试</button>
+        </div>
+      )}
 
       <div className="governance-workbench-summary">
         <div className="governance-workbench-card">
