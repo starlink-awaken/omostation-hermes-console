@@ -3624,7 +3624,7 @@ export default function Dashboard() {
     buildDynamicSearch();
     const interval = setInterval(buildDynamicSearch, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [pageRefreshToken]);
 
   // 面包屑
   const getBreadcrumbItems = () => {

@@ -140,11 +140,14 @@ describe('Dashboard global search', () => {
 
     const pageView = await screen.findByTestId('dashboard-page-view')
     expect(pageView).toHaveAttribute('data-refresh-token', '0')
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    const initialFetchCount = vi.mocked(fetch).mock.calls.length
 
     fireEvent.click(screen.getByRole('button', { name: '刷新当前页面数据' }))
 
     await waitFor(() => {
       expect(screen.getByTestId('dashboard-page-view')).toHaveAttribute('data-refresh-token', '1')
+      expect(vi.mocked(fetch).mock.calls.length).toBeGreaterThan(initialFetchCount)
     })
   })
 
