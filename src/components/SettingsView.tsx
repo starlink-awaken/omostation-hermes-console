@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Activity, ClipboardCheck, GitBranch, Route, ShieldAlert } from 'lucide-react';
+import { Activity, ClipboardCheck, GitBranch, Route, ShieldAlert, XCircle } from 'lucide-react';
 import './Dashboard.css';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -100,6 +100,8 @@ export default function SettingsView({
   const [instanceService, setInstanceService] = useState('');
   const [registerResult, setRegisterResult] = useState<any>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [securityQuery, setSecurityQuery] = useState('');
+  const [securityStatusFilter, setSecurityStatusFilter] = useState('all');
   const healthyServices = typeof metrics?.healthy === 'number' ? metrics.healthy : 0;
   const totalServices = typeof metrics?.services === 'number' ? metrics.services : 0;
   const latencyEntries = metrics?.latency && typeof metrics.latency === 'object'
@@ -175,7 +177,7 @@ export default function SettingsView({
       }
 
       return [];
-    }).slice(0, 4);
+    });
 
     if (routes.length > 0) return routes;
 
@@ -201,6 +203,14 @@ export default function SettingsView({
       authReady: items.filter((app) => Boolean(app.auth?.type)).length,
     };
   }, [domainApps, settingsSecurityRoutes]);
+  const normalizedSecurityQuery = securityQuery.trim().toLowerCase();
+  const filteredSecurityRoutes = settingsSecurityRoutes.filter((route) => {
+    const matchesQuery = !normalizedSecurityQuery || [route.title, route.summary, route.evidence, route.nextAction, route.statusLabel]
+      .some((value) => value.toLowerCase().includes(normalizedSecurityQuery));
+    const matchesStatus = securityStatusFilter === 'all' || route.statusTone === securityStatusFilter;
+    return matchesQuery && matchesStatus;
+  });
+  const hasSecurityFilter = Boolean(normalizedSecurityQuery) || securityStatusFilter !== 'all';
 
   const focusedSettingsCard = (() => {
     const matchedFocus = registrationFocus.find((item) => (
@@ -478,8 +488,51 @@ export default function SettingsView({
             <span className="status-badge online">认证已声明 {domainSecuritySummary.authReady}</span>
           </div>
         </div>
+        <div
+          role="region"
+          aria-label="领域安全门筛选"
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, margin: '14px 0 16px' }}
+        >
+          <input
+            className="antd-input"
+            aria-label="搜索领域安全门"
+            placeholder="应用、检查、证据或下一步"
+            value={securityQuery}
+            onChange={(event) => setSecurityQuery(event.target.value)}
+            style={{ minWidth: 260, flex: '1 1 280px' }}
+          />
+          <select
+            className="antd-input"
+            aria-label="按安全门状态筛选"
+            value={securityStatusFilter}
+            onChange={(event) => setSecurityStatusFilter(event.target.value)}
+            style={{ minWidth: 150, flex: '0 1 180px' }}
+          >
+            <option value="all">全部安全门</option>
+            <option value="offline">失败或缺认证</option>
+            <option value="degraded">警告或高风险</option>
+            <option value="online">通过或待抽查</option>
+          </select>
+          {hasSecurityFilter && (
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label="清除领域安全门筛选"
+              onClick={() => { setSecurityQuery(''); setSecurityStatusFilter('all'); }}
+            >
+              <XCircle size={14} />
+              <span>清除</span>
+            </button>
+          )}
+          <span className="text-muted" style={{ fontSize: 12 }}>匹配 {filteredSecurityRoutes.length}/{settingsSecurityRoutes.length}</span>
+        </div>
         <div style={{ display: 'grid', gap: 12 }}>
-          {settingsSecurityRoutes.map((route) => (
+          {filteredSecurityRoutes.length === 0 ? (
+            <div className="antd-card" style={{ padding: 20, textAlign: 'center' }}>
+              <ShieldAlert size={20} className="text-muted" style={{ marginBottom: 8 }} />
+              <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的领域安全门。</p>
+            </div>
+          ) : filteredSecurityRoutes.map((route) => (
             <article
               key={route.id}
               className="antd-card"

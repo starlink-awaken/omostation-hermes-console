@@ -142,6 +142,38 @@ describe('SettingsView', () => {
     })
   })
 
+  it('filters the full domain security route set by evidence and status', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/metrics/history') {
+        return Promise.resolve(okJson({
+          timestamp: '2026-07-12 09:40:00',
+          services: 8,
+          healthy: 6,
+          latency: { p50: '40ms' },
+        }))
+      }
+      if (url === '/api/domain-apps') return Promise.resolve(okJson(domainAppsPayload))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<SettingsView />)
+
+    const securityRegion = await screen.findByRole('region', { name: '领域接通与安全门' })
+    const search = within(securityRegion).getByRole('textbox', { name: '搜索领域安全门' })
+    fireEvent.change(search, { target: { value: 'CSRF' } })
+    expect(within(securityRegion).getByText('匹配 1/1')).toBeInTheDocument()
+    expect(within(securityRegion).getByText('家庭驾驶舱 · CSRF token 不应静态硬编码')).toBeInTheDocument()
+
+    fireEvent.change(within(securityRegion).getByRole('combobox', { name: '按安全门状态筛选' }), { target: { value: 'offline' } })
+    expect(within(securityRegion).getByText('匹配 0/1')).toBeInTheDocument()
+    expect(within(securityRegion).getByText('当前筛选下没有匹配的领域安全门。')).toBeInTheDocument()
+
+    fireEvent.click(within(securityRegion).getByRole('button', { name: '清除领域安全门筛选' }))
+    fireEvent.change(within(securityRegion).getByRole('combobox', { name: '按安全门状态筛选' }), { target: { value: 'degraded' } })
+    expect(within(securityRegion).getByText('匹配 1/1')).toBeInTheDocument()
+  })
+
   it('rejects invalid instance registration before making a request', async () => {
     vi.mocked(fetch).mockResolvedValue(okJson({}))
 
