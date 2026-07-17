@@ -48,6 +48,23 @@ function matchesMeshQuery(value?: string | null, query?: string) {
   return haystack.includes(needle) || needle.includes(haystack);
 }
 
+async function readMeshResponse<T>(
+  result: PromiseSettledResult<Response>,
+  label: string,
+): Promise<{ ok: boolean; data: T | null; error?: string }> {
+  if (result.status === 'rejected') {
+    return { ok: false, data: null, error: `${label}：${result.reason instanceof Error ? result.reason.message : '请求失败'}` };
+  }
+  if (!result.value.ok) {
+    return { ok: false, data: null, error: `${label} HTTP ${result.value.status}` };
+  }
+  try {
+    return { ok: true, data: await result.value.json() as T };
+  } catch {
+    return { ok: false, data: null, error: `${label}：响应格式无效` };
+  }
+}
+
 export default function McpMeshView({
   onNavigate,
   onOpenTarget,
@@ -80,25 +97,18 @@ export default function McpMeshView({
 
   const fetchData = async () => {
     try {
-      const [servicesRes, healthRes] = await Promise.all([
+      const [servicesResult, healthResult] = await Promise.allSettled([
         fetch('/api/bos/services'),
         fetch('/api/bos/health')
       ]);
 
-      const failures: string[] = [];
-      if (servicesRes.ok) {
-        const data = await servicesRes.json();
-        setServices(data.services || []);
-      } else {
-        failures.push(`BOS 服务列表 HTTP ${servicesRes.status}`);
-      }
-      if (healthRes.ok) {
-        const data = await healthRes.json();
-        setHealth(data);
-      } else {
-        failures.push(`BOS 健康探针 HTTP ${healthRes.status}`);
-      }
-      setDataError(failures.length ? failures.join('；') : null);
+      const [{ ok: servicesOk, data: servicesData, error: servicesError }, { ok: healthOk, data: healthData, error: healthError }] = await Promise.all([
+        readMeshResponse<{ services?: BosService[] }>(servicesResult, 'BOS 服务列表'),
+        readMeshResponse<BosHealth>(healthResult, 'BOS 健康探针'),
+      ]);
+      if (servicesOk && servicesData) setServices(servicesData.services || []);
+      if (healthOk && healthData) setHealth(healthData);
+      setDataError([servicesError, healthError].filter(Boolean).join('；') || null);
     } catch (e) {
       console.error('Failed to fetch McpMesh data:', e);
       setDataError(e instanceof Error ? e.message : '网格数据暂不可用');

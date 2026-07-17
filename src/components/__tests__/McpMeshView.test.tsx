@@ -138,6 +138,25 @@ describe('McpMeshView', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/bos/health'))
   })
 
+  it('keeps mesh routes available when the health probe request fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/bos/services') {
+        return Promise.resolve(okJson({
+          services: [{ uri: 'bos://memory/kos/search', domain: 'memory', action: 'search', transport: 'http' }],
+        }))
+      }
+      if (String(input) === '/api/bos/health') return Promise.reject(new Error('health probe offline'))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<McpMeshView />)
+
+    await waitFor(() => {
+      expect(screen.getByText('bos://memory/kos/search')).toBeInTheDocument()
+      expect(screen.getByRole('alert')).toHaveTextContent('BOS 健康探针：health probe offline')
+    })
+  })
+
   it('filters mesh routes by URI and transport while keeping domain controls aligned', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
