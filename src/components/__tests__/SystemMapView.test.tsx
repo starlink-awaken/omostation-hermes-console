@@ -1065,6 +1065,25 @@ describe('SystemMapView', () => {
     })
   })
 
+  it('falls back to TaskCenter tab navigation for an already queued triage task', async () => {
+    const onNavigate = vi.fn()
+    const queuedPayload = JSON.parse(JSON.stringify(systemMapPayload))
+    queuedPayload.project_triage.queues[1].commands[0].task = {
+      task_id: 'cockpit-triage-kairon-verification-rerun',
+      status: 'pending',
+    }
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      if (String(input) === '/api/cockpit/system-map') return okJson(queuedPayload)
+      return okJson({})
+    })
+
+    render(<SystemMapView onNavigate={onNavigate} />)
+    const button = await screen.findByRole('button', { name: '打开排查任务 kairon 复跑验证' })
+    fireEvent.click(button)
+
+    expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+  })
+
   it('batches verification triage into OMO tasks without executing commands', async () => {
     const onOpenTarget = vi.fn()
     render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} />)

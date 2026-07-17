@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import './Dashboard.css';
 import SummaryTileGrid from './common/SummaryTileGrid';
-import { type CockpitNavigationTarget } from './cockpitNavigation';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 import {
   findTaskDraftForTarget,
   persistTaskCenterDraft,
@@ -1124,11 +1124,13 @@ function ProjectActionList({
 function ProjectTriageQueues({
   queues,
   onQueueCommand,
+  onNavigate,
   onOpenTarget,
   pendingActionKey,
 }: {
   queues: ProjectTriageQueue[];
   onQueueCommand?: (command: ProjectAction) => void;
+  onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: { tab: string; taskQuery?: string }) => void;
   pendingActionKey?: string | null;
 }) {
@@ -1185,15 +1187,15 @@ function ProjectTriageQueues({
                 (() => {
                   const existingTaskId = command.task?.task_id;
                   const hasTask = Boolean(command.task?.status && command.task.status !== 'not_queued');
-                  const canOpenTask = hasTask && Boolean(existingTaskId) && Boolean(onOpenTarget);
+                  const canOpenTask = hasTask && Boolean(existingTaskId) && Boolean(onOpenTarget || onNavigate);
                   return (
                   <button
                     className={`system-map-triage-queue ${statusClass(command.risk)}`}
                     disabled={!command.enabled || (hasTask && !canOpenTask) || pendingActionKey === `triage:${command.project_id}:${command.id}`}
                     aria-label={hasTask ? `打开排查任务 ${command.project_id} ${command.label}` : `承接排查命令 ${command.project_id} ${command.label}`}
                     title={hasTask ? '打开已承接任务，继续审批、执行或查看证据' : '登记为 OMO 计划任务，不会直接执行命令'}
-                    onClick={() => canOpenTask && onOpenTarget
-                      ? onOpenTarget({ tab: 'TaskCenter', taskQuery: existingTaskId })
+                    onClick={() => canOpenTask
+                      ? openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: existingTaskId }, onNavigate, onOpenTarget)
                       : onQueueCommand(command)}
                   >
                     {hasTask ? <Eye size={12} /> : <ClipboardCheck size={12} />}
@@ -1377,7 +1379,7 @@ function ProjectDetailPanel({
             {project.triage_commands.length > 0 ? (
               project.triage_commands.slice(0, 6).map((command) => {
                 const existingTaskId = command.task?.task_id;
-                const canOpenTask = Boolean(existingTaskId && onOpenTarget);
+                const canOpenTask = Boolean(existingTaskId && (onOpenTarget || onNavigate));
                 return (
                   <div className="system-map-project-triage-detail" key={`${project.id}-${command.id}`}>
                     <button
@@ -1399,7 +1401,7 @@ function ProjectDetailPanel({
                       aria-label={canOpenTask ? `打开项目排查任务 ${command.label}` : `承接项目排查命令 ${command.label}`}
                       title={canOpenTask ? '打开已承接任务，继续审批、执行或查看证据' : '登记为计划任务，不会直接执行命令'}
                       onClick={() => canOpenTask
-                        ? onOpenTarget?.({ tab: 'TaskCenter', taskQuery: existingTaskId })
+                        ? openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: existingTaskId }, onNavigate, onOpenTarget)
                         : onQueueTriageCommand(command)}
                     >
                       {canOpenTask ? <Eye size={12} /> : <ClipboardCheck size={12} />}
@@ -4588,6 +4590,7 @@ export default function SystemMapView({
         <ProjectTriageQueues
           queues={filteredTriageQueues}
           onQueueCommand={(command) => void queueProjectTriageCommand(command)}
+          onNavigate={onNavigate}
           onOpenTarget={onOpenTarget}
           pendingActionKey={pendingActionKey}
         />
