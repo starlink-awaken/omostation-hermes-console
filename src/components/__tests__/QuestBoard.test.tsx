@@ -102,6 +102,42 @@ describe('QuestBoard', () => {
     expect(onNavigate).not.toHaveBeenCalled()
   })
 
+  it('filters family quests by text and completion state', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/omos/quests') {
+        return Promise.resolve(okJson({
+          status: 'ok',
+          quests: [
+            { id: 1, title: '整理客厅', type: 'responsibility', reward: 15, completed: 0, assignee: 'child' },
+            { id: 2, title: '阅读半小时', type: 'wisdom', reward: 20, completed: 1, assignee: 'child' },
+          ],
+          profiles: [{ role: 'child', name: '孩子', level: 3, wisdomPoints: 12, responsibilityPoints: 24 }],
+          logs: [],
+        }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<QuestBoard />)
+    await screen.findByRole('region', { name: '家庭任务筛选' })
+
+    fireEvent.change(screen.getByRole('searchbox', { name: '搜索家庭任务' }), { target: { value: '阅读' } })
+    await waitFor(() => {
+      expect(screen.getByText('显示 1/2')).toBeInTheDocument()
+      expect(screen.getByText('阅读半小时')).toBeInTheDocument()
+      expect(screen.queryByText('整理客厅')).not.toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByRole('combobox', { name: '按状态筛选家庭任务' }), { target: { value: 'active' } })
+    await waitFor(() => {
+      expect(screen.getByText('显示 0/2')).toBeInTheDocument()
+      expect(screen.getByText('当前没有活跃家庭任务。')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '清除家庭任务筛选' }))
+    expect(screen.getByText('显示 2/2')).toBeInTheDocument()
+  })
+
   it('surfaces family closure routing when focus hits settings handoff', async () => {
     const onOpenTarget = vi.fn()
 

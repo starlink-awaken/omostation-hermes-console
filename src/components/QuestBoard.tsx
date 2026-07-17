@@ -67,6 +67,8 @@ export default function QuestBoard({
   const [logs, setLogs] = useState<PointLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [questQuery, setQuestQuery] = useState('');
+  const [questStatusFilter, setQuestStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -169,8 +171,19 @@ export default function QuestBoard({
     }
   };
 
-  const activeQuests = quests.filter(q => q.completed === 0);
-  const completedQuests = quests.filter(q => q.completed === 1);
+  const filteredQuests = quests.filter((quest) => {
+    if (questStatusFilter === 'active' && quest.completed !== 0) return false;
+    if (questStatusFilter === 'completed' && quest.completed !== 1) return false;
+    const query = questQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [quest.id, quest.title, quest.type, quest.assignee, quest.reward]
+      .map((value) => String(value))
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  });
+  const activeQuests = filteredQuests.filter(q => q.completed === 0);
+  const completedQuests = filteredQuests.filter(q => q.completed === 1);
   const focusProfiles = [...profiles]
     .sort((left, right) => (right.responsibilityPoints + right.wisdomPoints) - (left.responsibilityPoints + left.wisdomPoints))
     .slice(0, 3);
@@ -392,8 +405,39 @@ export default function QuestBoard({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <span className="status-badge degraded">活跃 {activeQuests.length}</span>
             <span className="status-badge online">完成 {completedQuests.length}</span>
+            <span className="status-badge degraded">显示 {filteredQuests.length}/{quests.length}</span>
             <span className="status-badge degraded">成员 {profiles.length}</span>
           </div>
+        </div>
+
+        <div role="region" aria-label="家庭任务筛选" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+          <input
+            type="search"
+            aria-label="搜索家庭任务"
+            placeholder="标题、类型、成员或奖励"
+            value={questQuery}
+            onChange={(event) => setQuestQuery(event.target.value)}
+            style={{ flex: '1 1 260px', minWidth: 220 }}
+          />
+          <select
+            aria-label="按状态筛选家庭任务"
+            value={questStatusFilter}
+            onChange={(event) => setQuestStatusFilter(event.target.value as typeof questStatusFilter)}
+          >
+            <option value="all">全部状态</option>
+            <option value="active">活跃</option>
+            <option value="completed">已完成</option>
+          </select>
+          {(questQuery || questStatusFilter !== 'all') && (
+            <button
+              type="button"
+              className="antd-btn small"
+              aria-label="清除家庭任务筛选"
+              onClick={() => { setQuestQuery(''); setQuestStatusFilter('all'); }}
+            >
+              清除筛选
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
@@ -416,6 +460,9 @@ export default function QuestBoard({
                   </div>
                 ))}
               </div>
+            )}
+            {activeQuests.length > 4 && (
+              <small className="text-muted">还有 {activeQuests.length - 4} 条活跃任务，请继续使用筛选定位。</small>
             )}
           </article>
 
