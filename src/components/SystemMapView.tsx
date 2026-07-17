@@ -1074,12 +1074,14 @@ function ProjectActionList({
   onOpenTarget,
   projectId,
   onQueueAction,
+  pendingActionKey,
 }: {
   actions?: ProjectAction[];
   onNavigate: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
   projectId?: string;
   onQueueAction?: (action: ProjectAction) => void;
+  pendingActionKey?: string | null;
 }) {
   if (!actions || actions.length === 0) return <span className="text-muted">待登记</span>;
   return (
@@ -1088,7 +1090,7 @@ function ProjectActionList({
         <div key={action.id} className="system-map-project-action-group">
           <button
             className={`system-map-project-action ${statusClass(action.risk)}`}
-            disabled={!action.enabled}
+            disabled={!action.enabled || pendingActionKey === `project:${projectId}:${action.id}`}
             onClick={() => {
               if (action.kind === 'navigate') {
                 openSystemMapTarget({ tab: action.value, projectId }, onNavigate, onOpenTarget);
@@ -1104,12 +1106,13 @@ function ProjectActionList({
           {action.kind === 'copy_command' && onQueueAction && (
             <button
               className={`system-map-project-action queue ${statusClass(action.risk)}`}
-              disabled={!action.enabled}
+              disabled={!action.enabled || pendingActionKey === `project:${projectId}:${action.id}`}
               aria-label={`承接项目动作 ${action.label}`}
               title="登记为 OMO 计划任务，不会直接执行命令"
               onClick={() => onQueueAction(action)}
             >
               <ClipboardCheck size={12} />
+              {pendingActionKey === `project:${projectId}:${action.id}` && <span>承接中</span>}
             </button>
           )}
         </div>
@@ -1122,10 +1125,12 @@ function ProjectTriageQueues({
   queues,
   onQueueCommand,
   onOpenTarget,
+  pendingActionKey,
 }: {
   queues: ProjectTriageQueue[];
   onQueueCommand?: (command: ProjectAction) => void;
   onOpenTarget?: (target: { tab: string; taskQuery?: string }) => void;
+  pendingActionKey?: string | null;
 }) {
   const taskStatusLabel = (status?: string) => {
     switch (status) {
@@ -1184,7 +1189,7 @@ function ProjectTriageQueues({
                   return (
                   <button
                     className={`system-map-triage-queue ${statusClass(command.risk)}`}
-                    disabled={!command.enabled || (hasTask && !canOpenTask)}
+                    disabled={!command.enabled || (hasTask && !canOpenTask) || pendingActionKey === `triage:${command.project_id}:${command.id}`}
                     aria-label={hasTask ? `打开排查任务 ${command.project_id} ${command.label}` : `承接排查命令 ${command.project_id} ${command.label}`}
                     title={hasTask ? '打开已承接任务，继续审批、执行或查看证据' : '登记为 OMO 计划任务，不会直接执行命令'}
                     onClick={() => canOpenTask && onOpenTarget
@@ -1192,6 +1197,7 @@ function ProjectTriageQueues({
                       : onQueueCommand(command)}
                   >
                     {hasTask ? <Eye size={12} /> : <ClipboardCheck size={12} />}
+                    {!hasTask && pendingActionKey === `triage:${command.project_id}:${command.id}` && <span>承接中</span>}
                   </button>
                   );
                 })()
@@ -1223,6 +1229,7 @@ function ProjectDetailPanel({
   onInspect,
   onQueueAction,
   onQueueTriageCommand,
+  pendingActionKey,
   activeTarget,
 }: {
   project: ProjectItem;
@@ -1239,6 +1246,7 @@ function ProjectDetailPanel({
   onInspect: (ref: SourceRef) => void;
   onQueueAction: (action: ProjectAction) => void;
   onQueueTriageCommand: (command: ProjectAction) => void;
+  pendingActionKey?: string | null;
   activeTarget: string;
 }) {
   const verification = project.runtime.latest_verification;
@@ -1387,7 +1395,7 @@ function ProjectDetailPanel({
                     </button>
                     <button
                       className={`system-map-triage-queue ${statusClass(command.risk)}`}
-                      disabled={!command.enabled || (Boolean(command.task?.status) && !canOpenTask)}
+                      disabled={!command.enabled || (Boolean(command.task?.status) && !canOpenTask) || pendingActionKey === `triage:${project.id}:${command.id}`}
                       aria-label={canOpenTask ? `打开项目排查任务 ${command.label}` : `承接项目排查命令 ${command.label}`}
                       title={canOpenTask ? '打开已承接任务，继续审批、执行或查看证据' : '登记为计划任务，不会直接执行命令'}
                       onClick={() => canOpenTask
@@ -1395,6 +1403,7 @@ function ProjectDetailPanel({
                         : onQueueTriageCommand(command)}
                     >
                       {canOpenTask ? <Eye size={12} /> : <ClipboardCheck size={12} />}
+                      {!canOpenTask && pendingActionKey === `triage:${project.id}:${command.id}` && <span>承接中</span>}
                     </button>
                   </div>
                 );
@@ -1413,6 +1422,7 @@ function ProjectDetailPanel({
             onOpenTarget={onOpenTarget}
             projectId={project.id}
             onQueueAction={onQueueAction}
+            pendingActionKey={pendingActionKey}
           />
         </article>
 
@@ -1527,6 +1537,7 @@ export default function SystemMapView({
   const [actionNotice, setActionNotice] = useState('');
   const [actionError, setActionError] = useState('');
   const [bulkTriagePending, setBulkTriagePending] = useState(false);
+  const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -1575,6 +1586,9 @@ export default function SystemMapView({
   };
 
   const queueProjectAction = async (projectId: string, action: ProjectAction) => {
+    const pendingKey = `project:${projectId}:${action.id}`;
+    if (pendingActionKey || bulkTriagePending) return;
+    setPendingActionKey(pendingKey);
     setActionNotice('');
     setActionError('');
     try {
@@ -1590,12 +1604,17 @@ export default function SystemMapView({
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '项目动作承接失败');
+    } finally {
+      setPendingActionKey(null);
     }
   };
 
   const queueProjectTriageCommand = async (command: ProjectAction) => {
     const projectId = command.project_id;
     if (!projectId) return;
+    const pendingKey = `triage:${projectId}:${command.id}`;
+    if (pendingActionKey || bulkTriagePending) return;
+    setPendingActionKey(pendingKey);
     setActionNotice('');
     setActionError('');
     try {
@@ -1611,6 +1630,8 @@ export default function SystemMapView({
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '排查命令承接失败');
+    } finally {
+      setPendingActionKey(null);
     }
   };
 
@@ -3015,6 +3036,7 @@ export default function SystemMapView({
           onInspect={inspectSourceRef}
           onQueueAction={(action) => void queueProjectAction(selectedProject.id, action)}
           onQueueTriageCommand={(command) => void queueProjectTriageCommand(command)}
+          pendingActionKey={pendingActionKey}
           activeTarget={activeSourceTarget}
         />
       )}
@@ -4567,6 +4589,7 @@ export default function SystemMapView({
           queues={filteredTriageQueues}
           onQueueCommand={(command) => void queueProjectTriageCommand(command)}
           onOpenTarget={onOpenTarget}
+          pendingActionKey={pendingActionKey}
         />
       </section>
 
@@ -4897,11 +4920,12 @@ export default function SystemMapView({
                         onOpenTarget={onOpenTarget}
                         projectId={project.id}
                         onQueueAction={(action) => void queueProjectAction(project.id, action)}
+                        pendingActionKey={pendingActionKey}
                       />
                       {project.triage_commands.length > 0 && (
                         <div className="system-map-triage-inline">
                           <small>排查</small>
-                          <ProjectActionList actions={project.triage_commands} onNavigate={onNavigate} onOpenTarget={onOpenTarget} projectId={project.id} />
+                          <ProjectActionList actions={project.triage_commands} onNavigate={onNavigate} onOpenTarget={onOpenTarget} projectId={project.id} pendingActionKey={pendingActionKey} />
                         </div>
                       )}
                     </td>

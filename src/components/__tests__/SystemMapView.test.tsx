@@ -901,6 +901,40 @@ describe('SystemMapView', () => {
     })
   })
 
+  it('prevents duplicate project triage queue requests', async () => {
+    const onOpenTarget = vi.fn()
+    let resolveQueue: ((response: Response) => void) | undefined
+    let queueCalls = 0
+    const queueResponse = new Promise<Response>((resolve) => {
+      resolveQueue = resolve
+    })
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+      if (url === '/api/cockpit/projects/kairon/triage/verification-rerun/queue' && init?.method === 'POST') {
+        queueCalls += 1
+        return queueResponse
+      }
+      if (url === '/api/cockpit/system-map') return okJson(systemMapPayload)
+      if (url === SYSTEM_MAP_DRAFT_TASKS_URL) return okJson(draftTasksPayload)
+      return okJson({})
+    })
+
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} focusProjectId="kairon" />)
+    const button = await screen.findByRole('button', { name: '承接项目排查命令 复跑验证' })
+    fireEvent.click(button)
+    fireEvent.click(button)
+
+    expect(button).toBeDisabled()
+    expect(button).toHaveTextContent('承接中')
+    expect(queueCalls).toBe(1)
+    resolveQueue?.(okJson({ id: 'cockpit-triage-kairon-verification-rerun' }))
+
+    await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({
+      tab: 'TaskCenter',
+      taskQuery: 'cockpit-triage-kairon-verification-rerun',
+    }))
+  })
+
   it('renders the project by dimension coverage matrix and opens cell details', async () => {
     render(<SystemMapView onNavigate={vi.fn()} />)
 
