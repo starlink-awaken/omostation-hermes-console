@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Database, Loader2, Network, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardList, Database, Loader2, Network, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -42,7 +43,12 @@ function fetchJson(url: string, init?: RequestInit) {
   return Promise.resolve(window.fetch(url, init)).then(readJson);
 }
 
-export default function KOSWorkbench() {
+interface KOSWorkbenchProps {
+  onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+}
+
+export default function KOSWorkbench({ onNavigate, onOpenTarget }: KOSWorkbenchProps) {
   const [state, setState] = useState<KOSState>({ health: null, stats: null, healthError: null, statsError: null });
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -53,6 +59,40 @@ export default function KOSWorkbench() {
   const [verifyResult, setVerifyResult] = useState<JsonRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
+  const [taskPending, setTaskPending] = useState(false);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+
+  const hasEvidence = results.length > 0 || Boolean(context || clusters || verifyResult);
+
+  const createEvidenceTask = async () => {
+    if (!hasEvidence || taskPending) return;
+    const subject = claim.trim() || query.trim() || 'KOS 知识证据';
+    setTaskPending(true);
+    setTaskNotice(null);
+    setError(null);
+    try {
+      const evidence = JSON.stringify({ query: query.trim(), claim: claim.trim(), results, context, clusters, verifyResult }, null, 2).slice(0, 6000);
+      const response = await fetchJson('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `KOS 证据治理：${subject}`,
+          description: `基于 KOS 检索或声明校验结果，核对知识证据、关联对象和后续执行动作。\n\n原始摘要：\n${evidence}`,
+          priority: verifyResult ? 'high' : 'medium',
+          risk_level: 'L1',
+          evidence_required: ['KOS 原始响应', '关联知识对象确认', '后续执行结果', 'task closeout'],
+        }),
+      }) as JsonRecord;
+      const taskId = typeof response.id === 'string' ? response.id : '';
+      if (!taskId) throw new Error('任务服务没有返回任务 ID');
+      setTaskNotice(`KOS 证据已登记为任务：${taskId}`);
+      openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: taskId }, onNavigate, onOpenTarget);
+    } catch (reason) {
+      setError(`KOS 证据任务登记失败：${reason instanceof Error ? reason.message : '未知错误'}`);
+    } finally {
+      setTaskPending(false);
+    }
+  };
 
   const loadStatus = async () => {
     setLoading('status');
@@ -148,6 +188,15 @@ export default function KOSWorkbench() {
         {context && <pre style={{ margin: 0, maxHeight: 240, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{JSON.stringify(context, null, 2)}</pre>}
         {clusters && <pre style={{ margin: 0, maxHeight: 240, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{JSON.stringify(clusters, null, 2)}</pre>}
         {!results.length && !context && !clusters && <div className="text-muted">输入关键词后选择检索、构建上下文或查看聚类。</div>}
+        {hasEvidence && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <button type="button" className="antd-btn" onClick={() => void createEvidenceTask()} disabled={taskPending} aria-label="登记KOS证据任务">
+              {taskPending ? <Loader2 size={14} className="spinner" /> : <ClipboardList size={14} />}
+              {taskPending ? '登记中...' : '登记证据任务'}
+            </button>
+            {taskNotice && <span className="text-muted" role="status">{taskNotice}</span>}
+          </div>
+        )}
       </div>
 
       <form onSubmit={verifyClaim} className="antd-card" style={{ padding: 16, display: 'grid', gap: 10 }}>
