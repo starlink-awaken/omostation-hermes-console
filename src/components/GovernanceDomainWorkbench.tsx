@@ -436,23 +436,23 @@ export default function GovernanceDomainWorkbench({
       </div>
 
       <div className="governance-workbench-actions">
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('SystemMap')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: summary.topProject?.id || summary.topGap?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <Layers size={14} />
           <span>去系统地图</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('C2G')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'C2G', taskQuery: summary.topRoadmap?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <Compass size={14} />
           <span>去 C2G</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('Debt')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Debt', taskQuery: summary.topDebt?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <ClipboardCheck size={14} />
           <span>去债务页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('DomainApps')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps', taskQuery: summary.topAttentionApp?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <AppWindow size={14} />
           <span>去领域应用</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('L4Health')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'L4Health', taskQuery: summary.topUnhealthyDomain?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <ShieldCheck size={14} />
           <span>去 L4 健康</span>
         </button>

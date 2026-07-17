@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, ClipboardCheck, ExternalLink, Layers, RefreshCw, ShieldCheck } from 'lucide-react';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type LayerStatus = {
   layer?: string;
@@ -62,6 +63,7 @@ type ServiceHealthPayload = {
 
 type SystemAssuranceWorkbenchProps = {
   onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
 };
 
 type AssuranceState = {
@@ -132,7 +134,7 @@ function layerStatusLabel(layer: LayerStatus) {
   return layer.status || '未知';
 }
 
-export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssuranceWorkbenchProps) {
+export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: SystemAssuranceWorkbenchProps) {
   const [state, setState] = useState<AssuranceState>(EMPTY_STATE);
   const [loading, setLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -192,6 +194,12 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
   const convergenceTone = state.convergence.error || state.convergence.status === 'unavailable' ? 'offline' : (state.convergence.convergence_pct || 0) >= 80 ? 'online' : 'degraded';
   const ecosTone = state.ecosStatus.error || state.ecosStatus.status === 'unavailable' ? 'offline' : statusTone(state.ecosStatus.status || 'ok');
   const omoHealthTone = state.omoHealth.error || state.omoHealth.status === 'unavailable' ? 'offline' : statusTone(state.omoHealth.status || 'ok');
+  const layerContextQuery = state.layers.layers?.[0]?.name || 'layers';
+  const protocolContextQuery = Object.keys(state.m0.protocols || {})[0] || 'protocol';
+  const verificationContextQuery = state.e2e.result || 'verification';
+  const governanceContextQuery = state.omo.open ? 'open' : 'governance';
+  const convergenceContextQuery = state.convergence.remaining?.[0] || 'convergence';
+  const openAssuranceTarget = (target: CockpitNavigationTarget) => openCockpitNavigationTarget(target, onNavigate, onOpenTarget);
 
   return (
     <section className="services-section overview-ops-panel" role="region" aria-label="系统保证工作台">
@@ -225,7 +233,7 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
             <span className={`status-badge ${layerTone}`}>{layerUnavailable ? '不可用' : `${layerSummary.healthy || 0}/${layerSummary.total_layers || 0}`}</span>
           </div>
           <p>{layerUnavailable ? state.layers.error || '层健康证据尚未返回。' : layerSummary.down ? `${layerSummary.down} 层离线` : layerSummary.degraded ? `${layerSummary.degraded} 层需要观察` : '所有已探测层均正常'}</p>
-          <button type="button" className="antd-btn small" onClick={() => onNavigate?.('Observability')}>
+          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Observability', taskQuery: layerContextQuery })}>
             <ExternalLink size={13} />
             <span>看层详情</span>
           </button>
@@ -237,7 +245,7 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
             <span className={`status-badge ${statusTone(state.m0.error ? 'unavailable' : state.m0.daemon?.healthy ? 'ready' : 'watch')}`}>{state.m0.error ? '不可用' : state.m0.version || '未读到快照'}</span>
           </div>
           <p>Daemon {state.m0.daemon?.healthy ? '健康' : state.m0.error ? '证据缺失' : '待确认'} · M1 节点 {state.m0.m1_node_count ?? '-'}</p>
-          <button type="button" className="antd-btn small" onClick={() => onNavigate?.('Protocol')}>
+          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Protocol', taskQuery: protocolContextQuery })}>
             <ExternalLink size={13} />
             <span>看协议工作台</span>
           </button>
@@ -249,7 +257,7 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
             <span className={`status-badge ${e2eTone}`}>{statusLabel(e2eTone === 'online' ? 'passed' : e2eTone)}</span>
           </div>
           <p>{state.e2e.result || state.e2e.error || '尚未取得验证结果'}</p>
-          <button type="button" className="antd-btn small" onClick={() => onNavigate?.('TaskCenter')}>
+          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'TaskCenter', taskQuery: verificationContextQuery })}>
             <ClipboardCheck size={13} />
             <span>承接验证任务</span>
           </button>
@@ -261,7 +269,7 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
             <span className={`status-badge ${omoTone}`}>{state.omo.error ? '不可用' : `${state.omo.open || 0} 开放`}</span>
           </div>
           <p>{state.omo.summary || '尚未取得 OMO 报告'}</p>
-          <button type="button" className="antd-btn small" onClick={() => onNavigate?.('Debt')}>
+          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Debt', taskQuery: governanceContextQuery })}>
             <ExternalLink size={13} />
             <span>看治理债务</span>
           </button>
@@ -273,7 +281,7 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
             <span className={`status-badge ${convergenceTone}`}>{state.convergence.convergence_pct ?? '-'}%</span>
           </div>
           <p>已收敛 {state.convergence.converged_to_cockpit ?? '-'} / {state.convergence.total_entry_points ?? '-'} · 剩余 {(state.convergence.remaining || []).length}</p>
-          <button type="button" className="antd-btn small" onClick={() => onNavigate?.('SystemMap')}>
+          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'SystemMap', taskQuery: convergenceContextQuery })}>
             <ExternalLink size={13} />
             <span>看系统收敛</span>
           </button>
@@ -319,14 +327,14 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
         <article className="overview-ops-column">
           <div className="overview-ops-head">
             <strong>层探针明细</strong>
-            <button type="button" className="antd-btn small" onClick={() => onNavigate?.('Observability')}>
+            <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Observability', taskQuery: layerContextQuery })}>
               <ExternalLink size={13} />
               <span>观测</span>
             </button>
           </div>
           <div className="overview-ops-list">
             {(state.layers.layers || []).map((layer) => (
-              <button key={`${layer.layer}-${layer.name}`} type="button" className="overview-ops-item" onClick={() => onNavigate?.('Observability')}>
+              <button key={`${layer.layer}-${layer.name}`} type="button" className="overview-ops-item" onClick={() => openAssuranceTarget({ tab: 'Observability', taskQuery: layer.name || layer.layer || layerContextQuery })}>
                 <strong>{layer.layer} · {layer.name}</strong>
                 <span className={`status-badge ${statusTone(layer.status)}`}>{layerStatusLabel(layer)}</span>
                 <small>{layer.error || layer.data?.source || '已返回探针数据'}</small>
@@ -339,14 +347,14 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
         <article className="overview-ops-column">
           <div className="overview-ops-head">
             <strong>M0 协议新鲜度</strong>
-            <button type="button" className="antd-btn small" onClick={() => onNavigate?.('Protocol')}>
+            <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Protocol', taskQuery: protocolContextQuery })}>
               <ExternalLink size={13} />
               <span>协议</span>
             </button>
           </div>
           <div className="overview-ops-list">
             {Object.entries(state.m0.protocols || {}).map(([name, protocol]) => (
-              <button key={name} type="button" className="overview-ops-item" onClick={() => onNavigate?.('Protocol')}>
+              <button key={name} type="button" className="overview-ops-item" onClick={() => openAssuranceTarget({ tab: 'Protocol', taskQuery: name })}>
                 <strong>{name}</strong>
                 <span>{protocol.status || 'unknown'} · 剩余 {protocol.remaining_pct ?? '-'}%</span>
                 <small>来自 M0 runtime snapshot</small>
@@ -359,7 +367,7 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
         <article className="overview-ops-column">
           <div className="overview-ops-head">
             <strong>验证承接</strong>
-            <button type="button" className="antd-btn small" onClick={() => onNavigate?.('TaskCenter')}>
+            <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'TaskCenter', taskQuery: verificationContextQuery })}>
               <ClipboardCheck size={13} />
               <span>任务</span>
             </button>
@@ -434,11 +442,11 @@ export default function SystemAssuranceWorkbench({ onNavigate }: SystemAssurance
               <small>{state.context.next_guidance || state.context.error || '进入 C2G 或任务中心查看目标承接。'}</small>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" className="antd-btn small" onClick={() => onNavigate?.('C2G')}>
+              <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'C2G', taskQuery: state.context.active_goals?.[0]?.id || 'C2G' })}>
                 <ExternalLink size={13} />
                 <span>看 C2G</span>
               </button>
-              <button type="button" className="antd-btn small" onClick={() => onNavigate?.('TaskCenter')}>
+              <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'TaskCenter', taskQuery: state.context.active_goals?.[0]?.id || verificationContextQuery })}>
                 <ClipboardCheck size={13} />
                 <span>看目标任务</span>
               </button>
