@@ -88,6 +88,12 @@ describe('SettingsView', () => {
           history_tail: [{ ts: '2026-07-17T09:00:00Z', path_acl_status: 'warn', warn: 1, fail: 1 }],
         }))
       }
+      if (url === '/api/version') {
+        return Promise.resolve(okJson({ current_version: 'v2', supported_versions: ['v1', 'v2'], deprecated_versions: ['v1'], endpoints: 12, updated_at: '2026-07-17T09:00:00Z' }))
+      }
+      if (url === '/api/version/history') {
+        return Promise.resolve(okJson([{ version: 'v1', deprecated: true, endpoints: 8, endpoint_list: [{ path: '/api/projects', version: 'v1' }] }, { version: 'v2', deprecated: false, endpoints: 12, endpoint_list: [{ path: '/api/projects', version: 'v2' }] }]))
+      }
       if (url === '/api/instance' && init?.method === 'POST') {
         return Promise.resolve(okJson({ ok: true, registered: 'gbrain-local' }))
       }
@@ -106,6 +112,10 @@ describe('SettingsView', () => {
       expect(screen.getByRole('region', { name: 'OMO doctor治理诊断' })).toBeInTheDocument()
       expect(screen.getByText('ACL 警告 streak')).toBeInTheDocument()
       expect(screen.getByText(/最近写入：2026-07-17T09:00:00Z/)).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '运行版本与变更历史' })).toBeInTheDocument()
+      expect(screen.getByText('当前版本')).toBeInTheDocument()
+      expect(screen.getByText('v2 · 支持中')).toBeInTheDocument()
+      expect(screen.getByText(/版本目录更新时间：2026-07-17T09:00:00Z/)).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: '打开控制面承接到系统地图' }))

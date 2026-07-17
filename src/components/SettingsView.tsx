@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Activity, ClipboardCheck, GitBranch, RefreshCw, Route, ShieldAlert, XCircle } from 'lucide-react';
+import { Activity, ClipboardCheck, GitBranch, History, RefreshCw, Route, ShieldAlert, XCircle } from 'lucide-react';
 import './Dashboard.css';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -92,6 +92,21 @@ type DoctorStatus = {
   hint?: string;
 };
 
+type VersionInfo = {
+  current_version?: string;
+  supported_versions?: string[];
+  deprecated_versions?: string[];
+  endpoints?: number;
+  updated_at?: string;
+};
+
+type VersionHistoryItem = {
+  version?: string;
+  deprecated?: boolean;
+  endpoints?: number;
+  endpoint_list?: Array<{ path?: string; version?: string }>;
+};
+
 function matchesSettingsFocusQuery(values: Array<string | null | undefined>, query?: string | null) {
   if (!query) return false;
   const normalizedQuery = query.trim().toLowerCase();
@@ -123,6 +138,9 @@ export default function SettingsView({
   const [domainApps, setDomainApps] = useState<SettingsDomainAppsPayload | null>(null);
   const [doctor, setDoctor] = useState<DoctorStatus | null>(null);
   const [doctorError, setDoctorError] = useState<string | null>(null);
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
+  const [versionHistory, setVersionHistory] = useState<VersionHistoryItem[]>([]);
+  const [versionError, setVersionError] = useState<string | null>(null);
   const [instanceUrl, setInstanceUrl] = useState('');
   const [instanceService, setInstanceService] = useState('');
   const [registerResult, setRegisterResult] = useState<any>(null);
@@ -323,20 +341,41 @@ export default function SettingsView({
     }
   };
 
+  const fetchVersion = async () => {
+    try {
+      const [versionRes, historyRes] = await Promise.all([
+        fetch('/api/version'),
+        fetch('/api/version/history'),
+      ]);
+      const versionPayload = await versionRes.json().catch(() => ({}));
+      const historyPayload = await historyRes.json().catch(() => ([]));
+      if (!versionRes.ok) throw new Error(versionPayload.detail || versionPayload.error || `版本信息返回 HTTP ${versionRes.status}`);
+      if (!historyRes.ok) throw new Error(`版本历史返回 HTTP ${historyRes.status}`);
+      setVersionInfo(versionPayload as VersionInfo);
+      setVersionHistory(Array.isArray(historyPayload) ? historyPayload as VersionHistoryItem[] : []);
+      setVersionError(null);
+    } catch (e) {
+      setVersionError(e instanceof Error ? e.message : '版本治理数据暂不可用');
+    }
+  };
+
   const refreshSettingsData = async () => {
     setLoadError(null);
-    await Promise.all([fetchMetrics(), fetchDomainApps(), fetchDoctor()]);
+    await Promise.all([fetchMetrics(), fetchDomainApps(), fetchDoctor(), fetchVersion()]);
   };
 
   useEffect(() => {
     void fetchMetrics();
     void fetchDomainApps();
     void fetchDoctor();
+    void fetchVersion();
     const interval = setInterval(fetchMetrics, 10000);
     const doctorInterval = setInterval(fetchDoctor, 30000);
+    const versionInterval = setInterval(fetchVersion, 60000);
     return () => {
       clearInterval(interval);
       clearInterval(doctorInterval);
+      clearInterval(versionInterval);
     };
   }, []);
 
@@ -520,6 +559,77 @@ export default function SettingsView({
                 onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: 'OMO doctor' }, onNavigate, onOpenTarget)}
               >
                 <Route size={14} /> 查看治理定位
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="services-section" role="region" aria-label="运行版本与变更历史">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>运行版本与变更历史</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              把当前 API 版本、支持范围和端点演进放进控制面，方便确认运行态是否跟上最近提交。
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <span className={`status-badge ${versionInfo ? 'online' : 'offline'}`}>
+              {versionInfo ? `当前 ${versionInfo.current_version || '未知'}` : '读取中'}
+            </span>
+            <button type="button" className="antd-btn" onClick={() => void fetchVersion()} aria-label="刷新运行版本与变更历史">
+              <RefreshCw size={14} /> 刷新版本
+            </button>
+          </div>
+        </div>
+        {versionError ? (
+          <div className="error-banner" role="status" aria-live="polite">
+            <ShieldAlert size={16} />
+            <span>{versionError}</span>
+            <button type="button" className="antd-btn" onClick={() => void fetchVersion()}>重试版本</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+              {[
+                ['当前版本', versionInfo?.current_version || '等待数据'],
+                ['支持版本', versionInfo?.supported_versions?.join('、') || '等待数据'],
+                ['API 端点', versionInfo?.endpoints ?? 0],
+                ['弃用版本', versionInfo?.deprecated_versions?.length ?? 0],
+              ].map(([label, value]) => (
+                <div className="stat-card" key={label}>
+                  <div className="text-muted">{label}</div>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+              {versionHistory.length === 0 ? (
+                <div className="action-surface-item">
+                  <span className="text-muted">暂无版本历史端点记录。</span>
+                </div>
+              ) : versionHistory.map((item) => (
+                <article key={item.version || 'unknown'} className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+                  <History size={16} className="text-accent" aria-hidden="true" />
+                  <div style={{ flex: 1 }}>
+                    <strong>{item.version || '未知版本'} {item.deprecated ? '· 已弃用' : '· 支持中'}</strong>
+                    <p>{item.endpoints ?? item.endpoint_list?.length ?? 0} 个端点 · {item.endpoint_list?.slice(0, 3).map((endpoint) => endpoint.path).filter(Boolean).join('、') || '暂无端点路径'}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="action-surface-item" style={{ alignItems: 'flex-start', marginTop: 12 }}>
+              <div>
+                <strong>{versionInfo?.updated_at ? `版本目录更新时间：${versionInfo.updated_at}` : '版本目录已接入'}</strong>
+                <p>如果提交已经发生但运行版本未变化，先回系统地图核对部署和运行态承接。</p>
+              </div>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label="打开版本治理系统地图定位"
+                onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: '运行版本' }, onNavigate, onOpenTarget)}
+              >
+                <GitBranch size={14} /> 查看定位
               </button>
             </div>
           </>
