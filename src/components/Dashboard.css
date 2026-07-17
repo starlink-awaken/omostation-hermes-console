@@ -5545,6 +5545,120 @@
   color: var(--antd-text-primary);
 }
 
+.system-map-coverage-matrix-wrap {
+  margin-top: 14px;
+  overflow-x: auto;
+  border: 1px solid var(--antd-border-color);
+  border-radius: var(--antd-radius-md);
+}
+
+.system-map-coverage-matrix {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  background: rgba(6, 9, 19, 0.24);
+}
+
+.system-map-coverage-matrix th,
+.system-map-coverage-matrix td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.system-map-coverage-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(15, 23, 42, 0.96);
+  color: var(--antd-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.system-map-coverage-matrix tbody tr:last-child th,
+.system-map-coverage-matrix tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.system-map-coverage-matrix-project,
+.system-map-coverage-matrix-cell {
+  display: flex;
+  min-width: 92px;
+  min-height: 42px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--antd-radius-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.system-map-coverage-matrix-project:hover,
+.system-map-coverage-matrix-cell:hover {
+  border-color: var(--antd-border-color-hover);
+  background: rgba(0, 242, 254, 0.07);
+}
+
+.system-map-coverage-matrix-project strong {
+  color: var(--antd-text-primary);
+  font-size: 12px;
+}
+
+.system-map-coverage-matrix-project small,
+.system-map-coverage-matrix-total small {
+  color: var(--antd-text-secondary);
+  font-size: 10px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.system-map-coverage-matrix-cell {
+  align-items: center;
+  min-width: 76px;
+  text-align: center;
+}
+
+.system-map-coverage-matrix-cell strong {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.system-map-coverage-matrix-cell span {
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.system-map-coverage-matrix-cell.online {
+  color: #7dd3a8;
+}
+
+.system-map-coverage-matrix-cell.degraded {
+  color: #facc15;
+}
+
+.system-map-coverage-matrix-cell.offline {
+  color: #fca5a5;
+}
+
+.system-map-coverage-matrix-total {
+  display: flex;
+  min-width: 82px;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.system-map-coverage-matrix-total strong {
+  color: var(--antd-text-primary);
+  font-size: 13px;
+}
+
 .system-map-project-tools {
   display: flex;
   flex-wrap: wrap;

@@ -870,6 +870,21 @@ describe('SystemMapView', () => {
     })
   })
 
+  it('renders the project by dimension coverage matrix and opens cell details', async () => {
+    render(<SystemMapView onNavigate={vi.fn()} />)
+
+    const matrix = await screen.findByRole('region', { name: '项目能力维度交叉矩阵' })
+    expect(within(matrix).getByRole('columnheader', { name: 'Cockpit 入口' })).toBeInTheDocument()
+    expect(within(matrix).getByRole('columnheader', { name: '验证证据' })).toBeInTheDocument()
+    expect(within(matrix).getByRole('button', { name: 'kairon 验证证据：缺口' })).toBeInTheDocument()
+
+    fireEvent.click(within(matrix).getByRole('button', { name: 'kairon 验证证据：缺口' }))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('kairon 项目详情')).toBeInTheDocument()
+    })
+  })
+
   it('queues an enabled project command without executing it', async () => {
     const onOpenTarget = vi.fn()
     render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} focusProjectId="cockpit" />)

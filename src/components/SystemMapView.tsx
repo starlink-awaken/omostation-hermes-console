@@ -755,6 +755,13 @@ function runtimeStatusText(value: string): string {
   return value;
 }
 
+function coverageStatusText(value?: string): string {
+  if (value === 'ready') return '就绪';
+  if (value === 'warning') return '提醒';
+  if (value === 'failed') return '缺口';
+  return '暂无';
+}
+
 function runtimeProfileText(value: string): string {
   if (value === 'service') return '常驻服务';
   if (value === 'static') return '静态前端';
@@ -1788,6 +1795,16 @@ export default function SystemMapView({
     ];
   }, [systemMap]);
 
+  const coverageDimensions = useMemo(() => {
+    const dimensions = systemMap?.project_capability_coverage?.dimensions || [];
+    if (dimensions.length > 0) return dimensions;
+    return (systemMap?.project_capability_coverage?.dimension_summary || []).map((dimension) => ({
+      id: dimension.id,
+      title: dimension.title,
+      description: dimension.description,
+    }));
+  }, [systemMap]);
+
   const activeCoverage = coverageFilterOptions.find((item) => item.id === coverageFilter);
   const activePortfolioBucket = useMemo(
     () => systemMap?.project_portfolio.buckets.find((bucket) => bucket.id === portfolioFilter) || null,
@@ -1891,6 +1908,22 @@ export default function SystemMapView({
         .includes(query);
     });
   }, [activePortfolioBucket, coverageFilter, projectFilter, projectFocusOptions, projectQuery, systemMap]);
+
+  const coverageMatrixRows = useMemo(() => {
+    const matrixByProject = new Map(
+      (systemMap?.project_capability_coverage?.matrix || []).map((row) => [row.project_id, row]),
+    );
+    return filteredProjects.map((project) => {
+      const matrixRow = matrixByProject.get(project.id);
+      return {
+        project,
+        checks: matrixRow?.checks?.length ? matrixRow.checks : project.coverage_checks,
+        ready: matrixRow?.ready ?? project.coverage_checks.filter((check) => check.status === 'ready').length,
+        warning: matrixRow?.warning ?? project.coverage_checks.filter((check) => check.status === 'warning').length,
+        failed: matrixRow?.failed ?? project.coverage_checks.filter((check) => check.status === 'failed').length,
+      };
+    });
+  }, [filteredProjects, systemMap]);
 
   const filteredProjectIds = useMemo(() => new Set(filteredProjects.map((project) => project.id)), [filteredProjects]);
 
@@ -4541,6 +4574,80 @@ export default function SystemMapView({
             ))}
           </div>
         )}
+      </section>
+
+      <section className="services-section system-map-section" aria-label="项目能力维度交叉矩阵">
+        <div className="section-header">
+          <div>
+            <h2>项目 × 能力维度</h2>
+            <p className="text-muted">横向看每个项目的完整覆盖，点击单元格进入项目详情；当前筛选会同步收窄矩阵。</p>
+          </div>
+          <span className="status-badge online">
+            {coverageMatrixRows.length} 项目 · {coverageDimensions.length} 维度
+          </span>
+        </div>
+        <div className="system-map-coverage-matrix-wrap">
+          <table className="system-map-coverage-matrix">
+            <thead>
+              <tr>
+                <th scope="col">项目</th>
+                {coverageDimensions.map((dimension) => (
+                  <th scope="col" key={dimension.id} title={dimension.description}>
+                    {dimension.title}
+                  </th>
+                ))}
+                <th scope="col">汇总</th>
+              </tr>
+            </thead>
+            <tbody>
+              {coverageMatrixRows.map((row) => (
+                <tr key={row.project.id}>
+                  <th scope="row">
+                    <button
+                      type="button"
+                      className="system-map-coverage-matrix-project"
+                      aria-label={`从覆盖矩阵查看 ${row.project.id} 项目详情`}
+                      onClick={() => setSelectedProjectId(row.project.id)}
+                    >
+                      <strong>{row.project.id}</strong>
+                      <small>{row.project.layer} · {row.project.cockpit_page}</small>
+                    </button>
+                  </th>
+                  {coverageDimensions.map((dimension) => {
+                    const check = row.checks.find((item) => item.id === dimension.id);
+                    const status = check?.status;
+                    return (
+                      <td key={`${row.project.id}-${dimension.id}`}>
+                        <button
+                          type="button"
+                          className={`system-map-coverage-matrix-cell ${statusClass(status || 'unknown')}`}
+                          aria-label={`${row.project.id} ${dimension.title}：${coverageStatusText(status)}`}
+                          title={check ? `${check.detail} 下一步：${check.next_action}` : '该维度暂无检查结果'}
+                          onClick={() => setSelectedProjectId(row.project.id)}
+                        >
+                          <strong aria-hidden="true">{status === 'ready' ? '✓' : status === 'warning' ? '!' : status === 'failed' ? '×' : '—'}</strong>
+                          <span>{coverageStatusText(status)}</span>
+                        </button>
+                      </td>
+                    );
+                  })}
+                  <td>
+                    <div className="system-map-coverage-matrix-total">
+                      <strong>{row.ready}/{coverageDimensions.length}</strong>
+                      <small>{row.failed ? `${row.failed} 个缺口` : row.warning ? `${row.warning} 个提醒` : '全部就绪'}</small>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {coverageMatrixRows.length === 0 && (
+            <div className="system-map-project-empty">
+              <Search size={15} />
+              <span>当前筛选没有项目可展示</span>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="services-section system-map-section">
