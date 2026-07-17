@@ -104,6 +104,8 @@ export default function AlertCenterPage({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionAlertId, setActionAlertId] = useState<string | null>(null);
   const [queueingAlertId, setQueueingAlertId] = useState<string | null>(null);
+  const [ruleSaving, setRuleSaving] = useState(false);
+  const [ruleActionId, setRuleActionId] = useState<string | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
@@ -228,6 +230,8 @@ export default function AlertCenterPage({
   };
 
   const createRule = async () => {
+    if (ruleSaving) return;
+    setRuleSaving(true);
     setActionError(null);
     try {
       const response = await fetch('/api/alerts/rules', {
@@ -249,13 +253,18 @@ export default function AlertCenterPage({
       setRules((current) => [...current, payload]);
       setRuleForm({ name: '', condition: '', level: 'warning', channels: 'slack', enabled: true });
       setRuleFormOpen(false);
+      setRefreshToken((value) => value + 1);
       setActionNotice('告警规则已创建。');
     } catch (error) {
       setActionError(`创建规则失败：${error instanceof Error ? error.message : '请稍后重试'}`);
+    } finally {
+      setRuleSaving(false);
     }
   };
 
   const toggleRule = async (rule: AlertRule) => {
+    if (ruleActionId) return;
+    setRuleActionId(rule.id);
     setActionError(null);
     try {
       const response = await fetch(`/api/alerts/rules/${rule.id}`, {
@@ -266,9 +275,12 @@ export default function AlertCenterPage({
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || response.statusText);
       setRules((current) => current.map((item) => item.id === rule.id ? payload : item));
+      setRefreshToken((value) => value + 1);
       setActionNotice(`规则已${payload.enabled ? '启用' : '停用'}。`);
     } catch (error) {
       setActionError(`更新规则失败：${error instanceof Error ? error.message : '内置规则不可编辑'}`);
+    } finally {
+      setRuleActionId(null);
     }
   };
 
@@ -913,7 +925,9 @@ export default function AlertCenterPage({
                 </select>
                 <input aria-label="通知渠道" placeholder="通知渠道，逗号分隔" value={ruleForm.channels} onChange={(event) => setRuleForm((current) => ({ ...current, channels: event.target.value }))} />
                 <label><input type="checkbox" checked={ruleForm.enabled} onChange={(event) => setRuleForm((current) => ({ ...current, enabled: event.target.checked }))} /> 启用</label>
-                <button type="submit" className="btn btn-primary">保存规则</button>
+                <button type="submit" className="btn btn-primary" disabled={ruleSaving}>
+                  {ruleSaving ? '保存中...' : '保存规则'}
+                </button>
               </div>
             </form>
           )}
@@ -945,7 +959,7 @@ export default function AlertCenterPage({
                     </span>
                   </td>
                   <td>
-                    <button className="btn btn-sm btn-outline" aria-label={`${rule.enabled ? '停用' : '启用'}规则 ${rule.name}`} onClick={() => { void toggleRule(rule); }}>
+                    <button className="btn btn-sm btn-outline" aria-label={`${rule.enabled ? '停用' : '启用'}规则 ${rule.name}`} disabled={ruleActionId === rule.id} onClick={() => { void toggleRule(rule); }}>
                       <Settings size={14} />
                     </button>
                   </td>
