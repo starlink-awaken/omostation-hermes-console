@@ -284,6 +284,34 @@ describe('CockpitGuideView', () => {
     }, { timeout: 8000 })
   }, 20000)
 
+  it('keeps the guide available when task draft data fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/cockpit/system-map') {
+        return Promise.resolve(okJson({
+          usage_paths: [],
+          playbooks: [],
+          feature_domains: [],
+          page_maturity: { items: [] },
+          project_portfolio: { summary: {}, priority_projects: [], weakest_dimensions: [] },
+          project_capability_coverage: { dimension_summary: [] },
+          domain_apps: { summary: {}, attention_items: [] },
+          gaps: [],
+          roadmap: { items: [] },
+          items: [],
+        }))
+      }
+      return Promise.reject(new Error('task draft service offline'))
+    })
+
+    render(<CockpitGuideView />)
+
+    await waitFor(() => {
+      expect(screen.getByText('全站导览')).toBeInTheDocument()
+      expect(screen.getByRole('alert')).toHaveTextContent('任务草稿数据：task draft service offline')
+      expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
+    })
+  })
+
   it('opens recommended paths and page actions through navigation callbacks', async () => {
     const payload = {
       usage_paths: [

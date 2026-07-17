@@ -494,6 +494,23 @@ function matchesGuideFocusQuery(value?: string | null, query?: string) {
   return haystack.includes(needle) || needle.includes(haystack);
 }
 
+async function readGuideResponse<T>(
+  result: PromiseSettledResult<Response>,
+  label: string,
+): Promise<{ ok: boolean; data: T | null; error?: string }> {
+  if (result.status === 'rejected') {
+    return { ok: false, data: null, error: `${label}：${result.reason instanceof Error ? result.reason.message : '请求失败'}` };
+  }
+  if (!result.value.ok) {
+    return { ok: false, data: null, error: `${label} HTTP ${result.value.status}` };
+  }
+  try {
+    return { ok: true, data: await result.value.json() as T };
+  } catch {
+    return { ok: false, data: null, error: `${label}：响应格式无效` };
+  }
+}
+
 export default function CockpitGuideView({
   onNavigate,
   onOpenTarget,
@@ -502,23 +519,31 @@ export default function CockpitGuideView({
   focusTaskQuery,
 }: CockpitGuideViewProps) {
   const [metrics, setMetrics] = useState<GuideMetrics>(DEFAULT_METRICS);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [guideRetryToken, setGuideRetryToken] = useState(0);
 
   useEffect(() => {
     let alive = true;
 
     const loadGuideMetrics = async () => {
       try {
-        const [systemMapResponse, tasksResponse] = await Promise.all([
+        const [systemMapResult, tasksResult] = await Promise.allSettled([
           fetch('/api/cockpit/system-map'),
           fetch('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=40'),
         ]);
-        if (!systemMapResponse.ok) return;
-        const payload = await systemMapResponse.json();
-        const tasksPayload = tasksResponse.ok ? await tasksResponse.json() : { items: [] };
+        const [{ ok: systemMapOk, data: payload, error: systemMapError }, { ok: tasksOk, data: tasksPayload, error: tasksError }] = await Promise.all([
+          readGuideResponse<any>(systemMapResult, '系统地图数据'),
+          readGuideResponse<{ items?: unknown[] }>(tasksResult, '任务草稿数据'),
+        ]);
+        if (!systemMapOk || !payload) {
+          if (alive) setMetricsError(systemMapError || '系统地图数据暂不可用');
+          return;
+        }
+        if (alive) setMetricsError(tasksOk ? null : tasksError || '任务草稿数据暂不可用');
         if (!alive) return;
         const attentionItems = (payload.page_maturity?.attention_items || payload.page_maturity?.items || [])
           .filter((item: { status?: string }) => item.status !== 'ready');
-        const draftItems = ((tasksPayload.items || []) as Array<{
+        const draftItems = ((tasksPayload?.items || []) as Array<{
           id: string;
           title: string;
           description?: string;
@@ -931,7 +956,7 @@ export default function CockpitGuideView({
         });
       } catch (error) {
         if (alive) {
-          setMetrics(DEFAULT_METRICS);
+          setMetricsError(error instanceof Error ? error.message : '导览数据暂不可用');
         }
       }
     };
@@ -940,7 +965,7 @@ export default function CockpitGuideView({
     return () => {
       alive = false;
     };
-  }, []);
+  }, [guideRetryToken]);
 
   const summaryCards = useMemo(() => [
     { id: 'pages', label: '页面覆盖', value: `${staticPageCount()} 页`, detail: '当前导览已把 cockpit 的核心页面按工作带重新分组。' },
@@ -1596,6 +1621,15 @@ export default function CockpitGuideView({
           ))}
         </div>
       </section>
+
+      {metricsError && (
+        <div className="shell-data-banner" role="alert">
+          <span>{metricsError}，当前导览覆盖数据可能不完整。</span>
+          <button type="button" onClick={() => setGuideRetryToken((token) => token + 1)}>
+            重试
+          </button>
+        </div>
+      )}
 
       <section className="cockpit-guide-section">
         <div className="section-header">
