@@ -79,6 +79,15 @@ describe('SettingsView', () => {
       if (url === '/api/domain-apps') {
         return Promise.resolve(okJson(domainAppsPayload))
       }
+      if (url === '/api/omo/doctor') {
+        return Promise.resolve(okJson({
+          status: 'warn',
+          available: true,
+          written_at: '2026-07-17T09:00:00Z',
+          highlights: { total: 5, ok: 3, warn: 1, fail: 1, error: 0, path_acl_warn_streak: 2, path_acl_alert: false },
+          history_tail: [{ ts: '2026-07-17T09:00:00Z', path_acl_status: 'warn', warn: 1, fail: 1 }],
+        }))
+      }
       if (url === '/api/instance' && init?.method === 'POST') {
         return Promise.resolve(okJson({ ok: true, registered: 'gbrain-local' }))
       }
@@ -94,6 +103,9 @@ describe('SettingsView', () => {
       expect(screen.getByText('健康路由')).toBeInTheDocument()
       expect(screen.getByText('6/8')).toBeInTheDocument()
       expect(screen.getByText('家庭驾驶舱 · CSRF token 不应静态硬编码')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'OMO doctor治理诊断' })).toBeInTheDocument()
+      expect(screen.getByText('ACL 警告 streak')).toBeInTheDocument()
+      expect(screen.getByText(/最近写入：2026-07-17T09:00:00Z/)).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: '打开控制面承接到系统地图' }))

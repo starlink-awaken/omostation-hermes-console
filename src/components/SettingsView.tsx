@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Activity, ClipboardCheck, GitBranch, Route, ShieldAlert, XCircle } from 'lucide-react';
+import { Activity, ClipboardCheck, GitBranch, RefreshCw, Route, ShieldAlert, XCircle } from 'lucide-react';
 import './Dashboard.css';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -67,6 +67,31 @@ type SettingsSecurityRouteRow = {
   taskTarget: CockpitNavigationTarget;
 };
 
+type DoctorStatus = {
+  status?: string;
+  available?: boolean;
+  written_at?: string | null;
+  highlights?: {
+    path_acl_status?: string;
+    path_acl_warn_streak?: number;
+    path_acl_alert?: boolean;
+    ok?: number;
+    warn?: number;
+    fail?: number;
+    error?: number;
+    total?: number;
+  };
+  history_tail?: Array<{
+    ts?: string;
+    path_acl_status?: string;
+    path_acl_warn_streak?: number;
+    warn?: number;
+    fail?: number;
+    trigger?: string;
+  }>;
+  hint?: string;
+};
+
 function matchesSettingsFocusQuery(values: Array<string | null | undefined>, query?: string | null) {
   if (!query) return false;
   const normalizedQuery = query.trim().toLowerCase();
@@ -96,6 +121,8 @@ export default function SettingsView({
 }: SettingsViewProps) {
   const [metrics, setMetrics] = useState<any>(null);
   const [domainApps, setDomainApps] = useState<SettingsDomainAppsPayload | null>(null);
+  const [doctor, setDoctor] = useState<DoctorStatus | null>(null);
+  const [doctorError, setDoctorError] = useState<string | null>(null);
   const [instanceUrl, setInstanceUrl] = useState('');
   const [instanceService, setInstanceService] = useState('');
   const [registerResult, setRegisterResult] = useState<any>(null);
@@ -284,16 +311,33 @@ export default function SettingsView({
     }
   };
 
+  const fetchDoctor = async () => {
+    try {
+      const res = await fetch('/api/omo/doctor');
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.detail || payload.error || `OMO doctor 返回 HTTP ${res.status}`);
+      setDoctor(payload as DoctorStatus);
+      setDoctorError(null);
+    } catch (e) {
+      setDoctorError(e instanceof Error ? e.message : 'OMO doctor 数据暂不可用');
+    }
+  };
+
   const refreshSettingsData = async () => {
     setLoadError(null);
-    await Promise.all([fetchMetrics(), fetchDomainApps()]);
+    await Promise.all([fetchMetrics(), fetchDomainApps(), fetchDoctor()]);
   };
 
   useEffect(() => {
     void fetchMetrics();
     void fetchDomainApps();
+    void fetchDoctor();
     const interval = setInterval(fetchMetrics, 10000);
-    return () => clearInterval(interval);
+    const doctorInterval = setInterval(fetchDoctor, 30000);
+    return () => {
+      clearInterval(interval);
+      clearInterval(doctorInterval);
+    };
   }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -421,6 +465,66 @@ export default function SettingsView({
           </article>
         </section>
       )}
+
+      <section className="services-section" role="region" aria-label="OMO doctor治理诊断">
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>OMO Doctor 治理诊断</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              读取最近一次治理巡检和历史告警 streak，把 ACL、失败项和运行证据直接放进 cockpit 控制面。
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <span className={`status-badge ${doctor?.status === 'ok' ? 'online' : doctor?.status ? 'degraded' : 'offline'}`}>
+              {doctor?.status === 'ok' ? '巡检正常' : doctor?.status === 'missing' ? '暂无快照' : doctor?.status ? `巡检${doctor.status}` : '读取中'}
+            </span>
+            <button type="button" className="antd-btn" onClick={() => void fetchDoctor()} disabled={!doctor && !doctorError} aria-label="刷新OMO doctor诊断">
+              <RefreshCw size={14} /> 刷新诊断
+            </button>
+          </div>
+        </div>
+        {doctorError ? (
+          <div className="error-banner" role="status" aria-live="polite">
+            <ShieldAlert size={16} />
+            <span>{doctorError}</span>
+            <button type="button" className="antd-btn" onClick={() => void fetchDoctor()}>重试 doctor</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+              {[
+                ['总检查', doctor?.highlights?.total ?? 0],
+                ['通过', doctor?.highlights?.ok ?? 0],
+                ['警告', doctor?.highlights?.warn ?? 0],
+                ['失败', (doctor?.highlights?.fail ?? 0) + (doctor?.highlights?.error ?? 0)],
+                ['ACL 警告 streak', doctor?.highlights?.path_acl_warn_streak ?? 0],
+              ].map(([label, value]) => (
+                <div className="stat-card" key={label}>
+                  <div className="text-muted">{label}</div>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="action-surface-item" style={{ alignItems: 'flex-start', marginTop: 12 }}>
+              <div>
+                <strong>{doctor?.highlights?.path_acl_alert ? 'ACL 连续告警，需要处理' : '治理快照可继续追踪'}</strong>
+                <p>{doctor?.written_at ? `最近写入：${doctor.written_at}` : doctor?.hint || '尚未取得治理巡检快照。'}</p>
+                {doctor?.history_tail && doctor.history_tail.length > 0 && (
+                  <small className="text-muted">最近 {doctor.history_tail.length} 次巡检已保留，可回看告警 streak 与触发来源。</small>
+                )}
+              </div>
+              <button
+                type="button"
+                className="antd-btn"
+                aria-label="打开OMO doctor系统地图定位"
+                onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: 'OMO doctor' }, onNavigate, onOpenTarget)}
+              >
+                <Route size={14} /> 查看治理定位
+              </button>
+            </div>
+          </>
+        )}
+      </section>
 
       <section className="services-section">
         <div className="section-header">
