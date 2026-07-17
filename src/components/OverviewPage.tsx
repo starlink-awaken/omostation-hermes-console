@@ -613,6 +613,8 @@ export default function OverviewPage({
 }: OverviewPageProps) {
   const [overviewSprintDraftId, setOverviewSprintDraftId] = useState('');
   const [overviewSprintNotice, setOverviewSprintNotice] = useState<string | null>(null);
+  const [registryQuery, setRegistryQuery] = useState('');
+  const [registryStatusFilter, setRegistryStatusFilter] = useState<'all' | 'online' | 'degraded' | 'offline'>('all');
   const [state, setState] = useState<OverviewState>({
     loading: true,
     registry: [],
@@ -695,6 +697,20 @@ export default function OverviewPage({
     () => state.runtime.filter((service) => service.status !== 'online'),
     [state.runtime],
   );
+
+  const filteredRegistry = useMemo(() => {
+    const query = registryQuery.trim().toLowerCase();
+    return state.registry.filter((service) => {
+      const status = normalizeStatus(service.health || service.status);
+      if (registryStatusFilter !== 'all' && status !== registryStatusFilter) return false;
+      if (!query) return true;
+      return [service.name, service.type, service.layer, service.status, service.health, String(service.port || '')]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [registryQuery, registryStatusFilter, state.registry]);
 
   const summary = state.systemMap?.project_portfolio?.summary;
   const priorityProjects = state.systemMap?.project_portfolio?.priority_projects || [];
@@ -1910,9 +1926,32 @@ export default function OverviewPage({
             </p>
           </div>
           <span className={`status-badge ${servicesNeedingAttention.length > 0 ? 'degraded' : 'online'}`}>
-            待关注 {servicesNeedingAttention.length}
+            显示 {filteredRegistry.length}/{state.registry.length} · 待关注 {servicesNeedingAttention.length}
           </span>
         </div>
+
+        <section role="region" aria-label="登记服务筛选" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 180px auto', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+          <input
+            type="search"
+            className="antd-input"
+            aria-label="搜索登记服务"
+            placeholder="服务名、类型、层级或端口"
+            value={registryQuery}
+            onChange={(event) => setRegistryQuery(event.target.value)}
+          />
+          <select className="antd-input" aria-label="按健康状态筛选登记服务" value={registryStatusFilter} onChange={(event) => setRegistryStatusFilter(event.target.value as typeof registryStatusFilter)}>
+            <option value="all">全部健康状态</option>
+            <option value="online">健康</option>
+            <option value="degraded">观察</option>
+            <option value="offline">离线</option>
+          </select>
+          {(registryQuery || registryStatusFilter !== 'all') && (
+            <button type="button" className="antd-btn" aria-label="清除登记服务筛选" onClick={() => { setRegistryQuery(''); setRegistryStatusFilter('all'); }}>
+              清除筛选
+            </button>
+          )}
+          <span className="text-muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>当前显示 {filteredRegistry.length} 条登记服务，可直接进入性能页查看对象详情。</span>
+        </section>
 
         <div style={{ overflowX: 'auto' }}>
           <table className="services-table">
@@ -1925,10 +1964,13 @@ export default function OverviewPage({
                 <th>状态</th>
                 <th>健康</th>
                 <th>监听</th>
-              </tr>
+                <th>操作</th>
+            </tr>
             </thead>
             <tbody>
-              {state.registry.slice(0, 12).map((service) => (
+              {filteredRegistry.length === 0 ? (
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24 }}>当前筛选下没有登记服务</td></tr>
+              ) : filteredRegistry.map((service) => (
                 <tr key={`${service.name}-${service.port || 'none'}`}>
                   <td>{service.name}</td>
                   <td>{service.layer || '—'}</td>
@@ -1941,6 +1983,17 @@ export default function OverviewPage({
                     <span className={`status-badge ${badgeClass(service.health || service.status)}`}>{statusText(service.health || service.status)}</span>
                   </td>
                   <td>{service.port_listening === undefined ? '—' : service.port_listening ? '是' : '否'}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="antd-btn small"
+                      aria-label={`查看登记服务 ${service.name}`}
+                      onClick={() => openOverviewTarget({ tab: 'Performance', taskQuery: service.name }, onNavigate, onOpenTarget)}
+                    >
+                      <ExternalLink size={13} />
+                      <span>查看</span>
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

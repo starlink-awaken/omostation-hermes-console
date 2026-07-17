@@ -320,6 +320,17 @@ describe('OverviewPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /查看弱项维度 运行探针/ }))
     expect(onNavigate).toHaveBeenCalledWith('SystemMap')
+
+    fireEvent.change(screen.getByLabelText('搜索登记服务'), { target: { value: 'ollama' } })
+    expect(screen.getByText('显示 1/2 · 待关注 1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '查看登记服务 ollama' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '查看登记服务 hermes-gateway' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '查看登记服务 ollama' }))
+    expect(onNavigate).toHaveBeenCalledWith('Performance')
+
+    fireEvent.click(screen.getByRole('button', { name: '清除登记服务筛选' }))
+    expect(screen.getByText('显示 2/2 · 待关注 1')).toBeInTheDocument()
   }, 30000)
 
   it('emits exact deep-link targets when overview actions have open target support', async () => {
