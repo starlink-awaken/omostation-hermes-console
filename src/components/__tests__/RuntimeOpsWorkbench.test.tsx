@@ -26,6 +26,7 @@ describe('RuntimeOpsWorkbench', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('活跃告警数据：alert source offline')
       expect(screen.getByRole('button', { name: '查看服务 cockpit-api' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '进入运行步骤 告警中心' })).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: '查看服务 cockpit-api' }))

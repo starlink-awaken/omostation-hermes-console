@@ -50,6 +50,7 @@ type RuntimeWorkbenchState = {
 
 const DEFAULT_RUNTIME_PAGES: RuntimePathPage[] = [
   { id: 'Overview', title: '概览中心', group: '运行大盘', purpose: '先判断是不是系统级异常。' },
+  { id: 'AlertCenter', title: '告警中心', group: '系统治理', purpose: '确认严重告警、处置状态和后续任务。' },
   { id: 'Topology', title: '全局拓扑', group: '运行大盘', purpose: '看异常是不是集中在某条调用链。' },
   { id: 'Performance', title: '性能监控', group: '开发工具', purpose: '确认 CPU、内存、磁盘、网络是否失衡。' },
   { id: 'LogViewer', title: '日志查看器', group: '开发工具', purpose: '把异常缩到具体模块和时间窗。' },
