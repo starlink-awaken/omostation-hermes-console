@@ -432,4 +432,25 @@ describe('OverviewPage', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '每日 5 分钟体检' })
     expect(onNavigate).not.toHaveBeenCalled()
   }, 30000)
+
+  it('keeps the overview available when one runtime source fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/services') return Promise.resolve({ ok: true, json: async () => registryPayload } as Response)
+      if (url === '/api/services/status') return Promise.reject(new Error('runtime source offline'))
+      if (url === '/api/alerts?status=active&limit=10') return Promise.resolve({ ok: true, json: async () => alertPayload } as Response)
+      if (url === '/api/cockpit/system-map') return Promise.resolve({ ok: true, json: async () => systemMapPayload } as Response)
+      if (url === '/api/tasks?include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=40') return Promise.resolve({ ok: true, json: async () => draftPayload } as Response)
+      if (url === '/api/domain-apps') return Promise.resolve({ ok: true, json: async () => domainAppsPayload } as Response)
+      return Promise.resolve({ ok: true, json: async () => ({ items: [] }) } as Response)
+    })
+
+    render(<OverviewPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('运行总面')).toBeInTheDocument()
+      expect(screen.getByText('服务登记')).toBeInTheDocument()
+      expect(screen.getByRole('alert')).toHaveTextContent('概览部分数据暂不可用：运行状态')
+    })
+  }, 30000)
 })

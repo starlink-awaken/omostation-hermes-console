@@ -325,6 +325,15 @@ async function copyText(value: string) {
 
 const OVERVIEW_DRAFT_TASKS_URL = '/api/tasks?include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=40';
 
+async function readOverviewResponse<T>(result: PromiseSettledResult<Response>, fallback: T): Promise<{ ok: boolean; data: T }> {
+  if (result.status !== 'fulfilled' || !result.value.ok) return { ok: false, data: fallback };
+  try {
+    return { ok: true, data: await result.value.json() as T };
+  } catch {
+    return { ok: false, data: fallback };
+  }
+}
+
 const DRAFT_SOURCE_LABELS: Record<string, string> = {
   system_map_verification_ready: '验证',
   system_map_domain_app: '领域',
@@ -629,7 +638,7 @@ export default function OverviewPage({
   const load = async () => {
     setState((previous) => ({ ...previous, loading: true, error: '' }));
     try {
-      const [registryRes, runtimeRes, alertsRes, systemMapRes, draftsRes, domainAppsRes] = await Promise.all([
+      const [registryResult, runtimeResult, alertsResult, systemMapResult, draftsResult, domainAppsResult] = await Promise.allSettled([
         fetch('/api/services'),
         fetch('/api/services/status'),
         fetch('/api/alerts?status=active&limit=10'),
@@ -649,24 +658,42 @@ export default function OverviewPage({
         error: '',
       };
 
-      if (registryRes.ok) nextState.registry = await registryRes.json();
+      const [registryRes, runtimeRes, alertsRes, systemMapRes, draftsRes, domainAppsRes] = await Promise.all([
+        readOverviewResponse<RegistryService[]>(registryResult, []),
+        readOverviewResponse<{ items?: RuntimeService[] }>(runtimeResult, { items: [] }),
+        readOverviewResponse<AlertPayload>(alertsResult, { items: [] }),
+        readOverviewResponse<SystemMapPayload>(systemMapResult, {}),
+        readOverviewResponse<{ items?: DraftTask[] }>(draftsResult, { items: [] }),
+        readOverviewResponse<{ items?: DomainAppRegistryItem[] }>(domainAppsResult, { items: [] }),
+      ]);
+      const failures = [
+        ['服务登记', registryRes.ok],
+        ['运行状态', runtimeRes.ok],
+        ['活动告警', alertsRes.ok],
+        ['系统地图', systemMapRes.ok],
+        ['任务草稿', draftsRes.ok],
+        ['领域应用', domainAppsRes.ok],
+      ].filter(([, ok]) => !ok).map(([label]) => label);
+      nextState.error = failures.length > 0 ? `概览部分数据暂不可用：${failures.join('、')}` : '';
+
+      if (registryRes.ok) nextState.registry = registryRes.data;
       if (runtimeRes.ok) {
-        const runtime = await runtimeRes.json();
+        const runtime = runtimeRes.data;
         nextState.runtime = runtime.items || [];
       }
       if (alertsRes.ok) {
-        const alerts = await alertsRes.json();
+        const alerts = alertsRes.data;
         nextState.alerts = alerts.items || [];
       }
       if (systemMapRes.ok) {
-        nextState.systemMap = await systemMapRes.json();
+        nextState.systemMap = systemMapRes.data;
       }
       if (draftsRes.ok) {
-        const drafts = await draftsRes.json();
+        const drafts = draftsRes.data;
         nextState.drafts = drafts.items || [];
       }
       if (domainAppsRes.ok) {
-        const domainApps = await domainAppsRes.json();
+        const domainApps = domainAppsRes.data;
         nextState.domainApps = domainApps.items || [];
       }
 
@@ -1310,7 +1337,7 @@ export default function OverviewPage({
       </section>
 
       {state.error && (
-        <div className="overview-inline-error">
+        <div className="overview-inline-error" role="alert">
           <AlertTriangle size={16} />
           <span>{state.error}</span>
         </div>
