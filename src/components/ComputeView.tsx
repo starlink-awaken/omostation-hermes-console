@@ -55,6 +55,7 @@ export default function ComputeView({
   const [controlMessage, setControlMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [circuitBroken, setCircuitBroken] = useState<boolean>(false);
   const [dailyBudget, setDailyBudget] = useState<number | null>(null);
+  const [controlPending, setControlPending] = useState<'circuit' | 'budget' | null>(null);
   const [wakeupNodeId, setWakeupNodeId] = useState<string | null>(null);
   const [nodeQuery, setNodeQuery] = useState('');
   const [nodeStatusFilter, setNodeStatusFilter] = useState<'all' | 'online' | 'degraded' | 'offline'>('all');
@@ -142,7 +143,9 @@ export default function ComputeView({
   }, [refreshToken]);
 
   const toggleCircuitBreaker = async () => {
+    if (controlPending) return;
     const nextVal = !circuitBroken;
+    setControlPending('circuit');
     setControlMessage(null);
     try {
       const res = await fetch('/api/cockpit/compute/control/queue', {
@@ -156,10 +159,14 @@ export default function ComputeView({
       openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: result.id }, onNavigate, onOpenTarget);
     } catch (err: any) {
       setControlMessage({ tone: 'error', text: '修改熔断状态发生异常：' + err.message });
+    } finally {
+      setControlPending(null);
     }
   };
 
   const updateBudget = async (val: number) => {
+    if (controlPending) return;
+    setControlPending('budget');
     setControlMessage(null);
     try {
       const res = await fetch('/api/cockpit/compute/control/queue', {
@@ -173,6 +180,8 @@ export default function ComputeView({
       openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: result.id }, onNavigate, onOpenTarget);
     } catch (err: any) {
       setControlMessage({ tone: 'error', text: '修改预算异常：' + err.message });
+    } finally {
+      setControlPending(null);
     }
   };
 
@@ -798,7 +807,7 @@ export default function ComputeView({
               max="1000" 
               step="50"
               value={dailyBudget ?? 100}
-              disabled={Boolean(error || !data)}
+              disabled={Boolean(error || !data || controlPending)}
               onChange={(e) => setDailyBudget(Number(e.target.value))}
               onMouseUp={(e) => updateBudget(Number((e.target as HTMLInputElement).value))}
               onTouchEnd={(e) => updateBudget(Number((e.target as HTMLInputElement).value))}
@@ -815,7 +824,7 @@ export default function ComputeView({
 
           <button 
             onClick={toggleCircuitBreaker}
-            disabled={Boolean(error || !data)}
+            disabled={Boolean(error || !data || controlPending)}
             style={{
               padding: '8px 16px',
               borderRadius: '6px',
@@ -829,7 +838,7 @@ export default function ComputeView({
               boxShadow: circuitBroken ? '0 0 10px rgba(255, 69, 58, 0.1)' : 'none'
             }}
           >
-            {error ? '状态未知' : circuitBroken ? '🔐 闭合闸路 (恢复云端)' : '⚡️ 紧急拉闸 (强制熔断)'}
+            {controlPending ? '登记中...' : error ? '状态未知' : circuitBroken ? '🔐 闭合闸路 (恢复云端)' : '⚡️ 紧急拉闸 (强制熔断)'}
           </button>
         </div>
       </div>

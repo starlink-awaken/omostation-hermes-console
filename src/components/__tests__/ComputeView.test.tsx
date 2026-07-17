@@ -85,6 +85,7 @@ describe('ComputeView', () => {
   it('keeps compute control changes focused on their created task', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
+    let resolveControl!: (response: Response) => void
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === '/api/governance/compute/status') {
         return Promise.resolve(okJson({
@@ -99,7 +100,7 @@ describe('ComputeView', () => {
       }
       if (String(input) === '/api/cockpit/compute/control/queue') {
         expect(init?.method).toBe('POST')
-        return Promise.resolve(okJson({ id: 'cockpit-compute-control-circuit_break-42', executes: false }))
+        return new Promise<Response>((resolve) => { resolveControl = resolve })
       }
       return Promise.resolve(okJson({}))
     })
@@ -107,6 +108,8 @@ describe('ComputeView', () => {
     render(<ComputeView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />)
     await waitFor(() => expect(screen.getByRole('button', { name: /紧急拉闸/ })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /紧急拉闸/ }))
+    expect(screen.getByRole('button', { name: '登记中...' })).toBeDisabled()
+    resolveControl(okJson({ id: 'cockpit-compute-control-circuit_break-42', executes: false }))
 
     await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({
       tab: 'TaskCenter',
