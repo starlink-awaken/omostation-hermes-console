@@ -51,6 +51,18 @@ function matchesPerformanceFocusQuery(values: Array<string | number | null | und
   return values.some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
 }
 
+async function readPerformanceResponse<T>(
+  result: PromiseSettledResult<Response>,
+  fallback: T,
+): Promise<{ ok: boolean; data: T }> {
+  if (result.status !== 'fulfilled' || !result.value.ok) return { ok: false, data: fallback };
+  try {
+    return { ok: true, data: await result.value.json() as T };
+  } catch {
+    return { ok: false, data: fallback };
+  }
+}
+
 export default function PerformanceMonitorPage({
   onNavigate,
   onOpenTarget,
@@ -75,15 +87,22 @@ export default function PerformanceMonitorPage({
       setRefreshing(true);
       setError(null);
       try {
-        const [metricsRes, servicesRes] = await Promise.all([
+        const [metricsResult, servicesResult] = await Promise.allSettled([
           fetch(`/api/metrics/system?range=${timeRange}`),
           fetch('/api/services/status'),
         ]);
 
-        if (!metricsRes.ok || !servicesRes.ok) throw new Error('性能监控数据暂不可用');
-        const [metricsData, servicesData] = await Promise.all([metricsRes.json(), servicesRes.json()]);
+        const [{ ok: metricsOk, data: metricsData }, { ok: servicesOk, data: servicesData }] = await Promise.all([
+          readPerformanceResponse<SystemMetrics | null>(metricsResult, null),
+          readPerformanceResponse<{ items?: ServiceStatus[] }> (servicesResult, { items: [] }),
+        ]);
         setMetrics(metricsData);
         setServices(servicesData.items || []);
+        const failures = [
+          !metricsOk ? '系统指标' : null,
+          !servicesOk ? '服务状态' : null,
+        ].filter(Boolean);
+        setError(failures.length > 0 ? `性能监控数据暂不可用：${failures.join('、')}` : null);
       } catch (error) {
         console.error('Failed to fetch performance data:', error);
         setError(error instanceof Error ? error.message : '性能监控数据暂不可用');

@@ -81,6 +81,28 @@ describe('PerformanceMonitorPage', () => {
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
   })
 
+  it('keeps performance metrics available when the service status API fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).startsWith('/api/metrics/system')) {
+        return Promise.resolve(okJson({
+          cpu: [{ timestamp: '10:00', value: 81 }],
+          memory: [{ timestamp: '10:00', value: 62 }],
+          disk: [{ timestamp: '10:00', value: 74 }],
+          network: [{ timestamp: '10:00', value: 33 }],
+        }))
+      }
+      return Promise.reject(new Error('service status offline'))
+    })
+
+    render(<PerformanceMonitorPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('性能监控数据暂不可用：服务状态')).toBeInTheDocument()
+      expect(screen.getByText('CPU 使用率')).toBeInTheDocument()
+      expect(screen.getByText('显示服务 0/0')).toBeInTheDocument()
+    })
+  })
+
   it('filters performance services before choosing hotspot follow-up actions', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
