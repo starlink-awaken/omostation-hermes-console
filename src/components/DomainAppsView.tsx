@@ -858,6 +858,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
             actionLabel: '去任务中心',
             actionType: 'navigate',
             actionValue: 'TaskCenter',
+            actionTarget: { tab: 'TaskCenter', taskQuery: taskQuery || filteredApps[0]?.id || 'DomainApps' },
           },
           {
             id: 'l4',
@@ -866,6 +867,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
             actionLabel: '去 L4 健康',
             actionType: 'navigate',
             actionValue: 'L4Health',
+            actionTarget: { tab: 'L4Health', taskQuery: taskQuery || filteredApps[0]?.domain.id || filteredApps[0]?.id || 'DomainApps' },
           },
           {
             id: 'knowledge',
@@ -874,6 +876,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
             actionLabel: '去知识页',
             actionType: 'navigate',
             actionValue: 'Knowledge',
+            actionTarget: { tab: 'Knowledge', taskQuery: taskQuery || filteredApps[0]?.id || 'DomainApps' },
           },
           {
             id: 'copy-opc',

@@ -268,6 +268,7 @@ export default function DebtView({
             actionLabel: '去 C2G',
             actionType: 'navigate',
             actionValue: 'C2G',
+            actionTarget: { tab: 'C2G', taskQuery: focusTaskQuery || firstDebtItem?.id || 'Debt' },
           },
           {
             id: 'system-map',
@@ -276,6 +277,7 @@ export default function DebtView({
             actionLabel: '去系统地图',
             actionType: 'navigate',
             actionValue: 'SystemMap',
+            actionTarget: { tab: 'SystemMap', taskQuery: focusTaskQuery || firstDebtItem?.id || 'Debt' },
           },
           {
             id: 'domain-apps',
@@ -284,6 +286,7 @@ export default function DebtView({
             actionLabel: '去应用中心',
             actionType: 'navigate',
             actionValue: 'DomainApps',
+            actionTarget: { tab: 'DomainApps', taskQuery: focusTaskQuery || firstDebtItem?.dimension || firstDebtItem?.id || 'Debt' },
           },
           {
             id: 'copy-filter',

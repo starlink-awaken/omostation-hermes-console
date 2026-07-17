@@ -294,6 +294,7 @@ export default function TopologyView({
       actionLabel: '进入算力页',
       actionType: 'navigate' as const,
       actionValue: 'Compute',
+      actionTarget: { tab: 'Compute', taskQuery: focusTaskQuery || firstAttentionService?.id || 'Topology' },
     },
     {
       id: 'topology-mesh',
@@ -302,6 +303,7 @@ export default function TopologyView({
       actionLabel: '进入网格页',
       actionType: 'navigate' as const,
       actionValue: 'McpMesh',
+      actionTarget: { tab: 'McpMesh', taskQuery: focusTaskQuery || firstAttentionService?.id || 'Topology' },
     },
     {
       id: 'topology-logs',
@@ -310,6 +312,7 @@ export default function TopologyView({
       actionLabel: '进入日志页',
       actionType: 'navigate' as const,
       actionValue: 'LogViewer',
+      actionTarget: { tab: 'LogViewer', taskQuery: focusTaskQuery || firstAttentionService?.id || 'Topology' },
     },
   ];
   const topologyClosureRows: TopologyClosureRow[] = [

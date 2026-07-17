@@ -342,6 +342,7 @@ export default function SettingsView({
             actionLabel: '去观测页',
             actionType: 'navigate',
             actionValue: 'Observability',
+            actionTarget: { tab: 'Observability', taskQuery: focusTaskQuery || filteredSecurityRoutes[0]?.label || instanceService || 'Settings' },
           },
           {
             id: 'mesh',
@@ -350,6 +351,7 @@ export default function SettingsView({
             actionLabel: '去网格页',
             actionType: 'navigate',
             actionValue: 'McpMesh',
+            actionTarget: { tab: 'McpMesh', taskQuery: focusTaskQuery || instanceService || filteredSecurityRoutes[0]?.label || 'Settings' },
           },
           {
             id: 'domain-apps',
@@ -358,6 +360,7 @@ export default function SettingsView({
             actionLabel: '去应用中心',
             actionType: 'navigate',
             actionValue: 'DomainApps',
+            actionTarget: { tab: 'DomainApps', taskQuery: focusTaskQuery || instanceService || 'Settings' },
           },
           {
             id: 'sample-endpoint',
