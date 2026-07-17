@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import Dashboard from '../Dashboard'
+import { COCKPIT_PAGE_REGISTRY } from '../cockpitPageRegistry'
 
 vi.mock('../HomePage', () => ({ default: () => <div>Home Mock</div> }))
 vi.mock('../CockpitGuideView', () => ({ default: () => <div>Guide Mock</div> }))
@@ -108,6 +109,20 @@ describe('Dashboard global search', () => {
     expect(within(nav).queryByText('亲子冒险')).not.toBeInTheDocument()
     expect(within(nav).getByRole('menuitem', { name: '积分冒险' })).toBeInTheDocument()
     expect(within(nav).getByRole('menuitem', { name: '应用中心' })).toBeInTheDocument()
+  })
+
+  it('exposes every registered page through the command palette', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({}))
+
+    render(<Dashboard />)
+    fireEvent.click(await screen.findByTitle('命令面板 (Ctrl+K)'))
+
+    const paletteInput = await screen.findByPlaceholderText('输入命令...')
+    const palette = paletteInput.closest('.command-palette')
+    expect(palette).not.toBeNull()
+    for (const page of COCKPIT_PAGE_REGISTRY) {
+      expect(within(palette as HTMLElement).getByRole('button', { name: new RegExp(page.title) })).toBeInTheDocument()
+    }
   })
 
   it('searches dynamic projects and task drafts from SystemMap and TaskCenter', async () => {

@@ -2706,6 +2706,13 @@ export default function Dashboard() {
     writeNavigationHash({ tab });
   };
 
+  const commandPaletteCommands = COCKPIT_PAGE_REGISTRY.map((page) => ({
+    id: page.id.toLowerCase(),
+    label: page.title,
+    description: `${page.purpose} ${page.whenToUse}`,
+    action: () => setActiveTab(page.id),
+  }));
+
   const openContextTarget = (target: CockpitNavigationTarget) => {
     const matchedDraft = findTaskDraftForTarget(target, shellTaskDrafts);
     const incomingDraft = matchedDraft ? taskDraftToIncomingDraft(matchedDraft) : null;
@@ -2828,33 +2835,7 @@ export default function Dashboard() {
   };
 
   // 命令面板
-  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette([
-    { id: 'home', label: '首页', description: '返回首页', action: () => setActiveTab('Home') },
-    { id: 'guide', label: '站内导览', description: '查看 cockpit 整站功能架构和使用路径', action: () => setActiveTab('Guide') },
-    { id: 'system-map', label: '系统地图', description: '查看 Cockpit 功能架构与项目覆盖', action: () => setActiveTab('SystemMap') },
-    { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => setActiveTab('Overview') },
-    { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => setActiveTab('McpMesh') },
-    { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => setActiveTab('Topology') },
-    { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => setActiveTab('Compute') },
-    { id: 'research', label: '研究中枢', description: '查看研究对象与发布闭环', action: () => setActiveTab('Research') },
-    { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => setActiveTab('Knowledge') },
-    { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => setActiveTab('Engines') },
-    { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => setActiveTab('Assets') },
-    { id: 'protocol', label: '协议工作台', description: '查看协议层与元模型桥接', action: () => setActiveTab('Protocol') },
-    { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
-    { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
-    { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
-    { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => setActiveTab('C2G') },
-    { id: 'domain-apps', label: '领域应用中心', description: '查看领域应用', action: () => setActiveTab('DomainApps') },
-    { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
-    { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
-    { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
-    { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => setActiveTab('Sandbox') },
-    { id: 'debt', label: '债务治理', description: '查看债务', action: () => setActiveTab('Debt') },
-    { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => setActiveTab('Observability') },
-    { id: 'quest', label: '积分冒险', description: '查看积分', action: () => setActiveTab('QuestBoard') },
-    { id: 'settings', label: '系统设置', description: '系统设置', action: () => setActiveTab('Settings') },
-  ]);
+  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette(commandPaletteCommands);
 
   // 快捷操作面板
   const { isOpen: isQuickActionsOpen, open: openQuickActions, close: closeQuickActions } = useQuickActions();
@@ -5131,33 +5112,7 @@ export default function Dashboard() {
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onClose={closeCommandPalette}
-        commands={[
-          { id: 'home', label: '首页', description: '返回首页', action: () => setActiveTab('Home') },
-          { id: 'guide', label: '站内导览', description: '查看 cockpit 整站功能架构和使用路径', action: () => setActiveTab('Guide') },
-          { id: 'system-map', label: '系统地图', description: '查看 Cockpit 功能架构与项目覆盖', action: () => setActiveTab('SystemMap') },
-          { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => setActiveTab('Overview') },
-          { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => setActiveTab('Topology') },
-          { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => setActiveTab('Compute') },
-          { id: 'research', label: '研究中枢', description: '查看研究对象与发布闭环', action: () => setActiveTab('Research') },
-          { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => setActiveTab('Knowledge') },
-          { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => setActiveTab('Engines') },
-          { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
-          { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
-          { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
-          { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => setActiveTab('C2G') },
-          { id: 'domain-apps', label: '领域应用中心', description: '查看领域应用', action: () => setActiveTab('DomainApps') },
-          { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => setActiveTab('McpMesh') },
-          { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => setActiveTab('Assets') },
-          { id: 'protocol', label: '协议工作台', description: '查看协议层与元模型桥接', action: () => setActiveTab('Protocol') },
-          { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
-          { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
-          { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
-          { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => setActiveTab('Sandbox') },
-          { id: 'debt', label: '债务治理', description: '查看债务', action: () => setActiveTab('Debt') },
-          { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => setActiveTab('Observability') },
-          { id: 'quest', label: '积分冒险', description: '查看积分', action: () => setActiveTab('QuestBoard') },
-          { id: 'settings', label: '系统设置', description: '系统设置', action: () => setActiveTab('Settings') },
-        ]}
+        commands={commandPaletteCommands}
       />
 
       {/* 快捷操作面板 */}
