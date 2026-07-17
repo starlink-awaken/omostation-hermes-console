@@ -91,6 +91,21 @@ interface SearchTarget {
   };
 }
 
+type SearchFetchResult = {
+  ok: boolean;
+  data: unknown;
+};
+
+async function fetchSearchData(url: string): Promise<SearchFetchResult> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return { ok: false, data: null };
+    return { ok: true, data: await response.json() };
+  } catch {
+    return { ok: false, data: null };
+  }
+}
+
 interface SearchDomainApp {
   id: string;
   name?: string;
@@ -2903,23 +2918,23 @@ export default function Dashboard() {
     const buildDynamicSearch = async () => {
       try {
         const [systemMapRes, tasksRes, domainAppsRes, alertsRes, meshServicesRes, computeStatusRes, logsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes] = await Promise.all([
-          fetch('/api/cockpit/system-map'),
-          fetch('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80'),
-          fetch('/api/domain-apps'),
-          fetch('/api/alerts?limit=80'),
-          fetch('/api/bos/services'),
-          fetch('/api/governance/compute/status'),
-          fetch('/api/logs?limit=100'),
-          fetch('/api/cockpit/research-hub'),
-          fetch('/api/metaos/workflows'),
-          fetch('/api/ecos/skills'),
-          fetch('/api/pipelines'),
-          fetch('/api/ecos/workflows'),
+          fetchSearchData('/api/cockpit/system-map'),
+          fetchSearchData('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80'),
+          fetchSearchData('/api/domain-apps'),
+          fetchSearchData('/api/alerts?limit=80'),
+          fetchSearchData('/api/bos/services'),
+          fetchSearchData('/api/governance/compute/status'),
+          fetchSearchData('/api/logs?limit=100'),
+          fetchSearchData('/api/cockpit/research-hub'),
+          fetchSearchData('/api/metaos/workflows'),
+          fetchSearchData('/api/ecos/skills'),
+          fetchSearchData('/api/pipelines'),
+          fetchSearchData('/api/ecos/workflows'),
         ]);
         const targets: SearchTarget[] = [];
 
         if (systemMapRes.ok) {
-          const systemMap = await systemMapRes.json();
+          const systemMap = (systemMapRes.data || {}) as Record<string, any>;
           const cockpitPages: SearchCockpitPage[] = systemMap.cockpit_pages || [];
           setCockpitPages(cockpitPages);
           const pageMaturity = systemMap.page_maturity;
@@ -3263,7 +3278,7 @@ export default function Dashboard() {
         }
 
         if (tasksRes.ok) {
-          const tasks = await tasksRes.json();
+          const tasks = (tasksRes.data || {}) as { items?: SearchTaskDraft[] };
           const drafts: SearchTaskDraft[] = tasks.items || [];
           setShellTaskDrafts(drafts);
           drafts.forEach((task) => {
@@ -3312,7 +3327,7 @@ export default function Dashboard() {
         }
 
         if (domainAppsRes.ok) {
-          const domainApps: SearchDomainAppsPayload = await domainAppsRes.json();
+          const domainApps = (domainAppsRes.data || {}) as SearchDomainAppsPayload;
           setShellDomainApps(domainApps);
           const apps = domainApps.items || [];
 
@@ -3377,7 +3392,7 @@ export default function Dashboard() {
         }
 
         if (alertsRes.ok) {
-          const alertsPayload = await alertsRes.json();
+          const alertsPayload = (alertsRes.data || {}) as { items?: SearchAlert[] };
           const alerts: SearchAlert[] = alertsPayload.items || [];
           alerts.forEach((alert) => {
             const status = alert.status || 'active';
@@ -3403,7 +3418,7 @@ export default function Dashboard() {
         }
 
         if (meshServicesRes.ok) {
-          const meshPayload = await meshServicesRes.json();
+          const meshPayload = (meshServicesRes.data || {}) as { services?: Array<{ uri?: string; domain?: string; action?: string; transport?: string }> };
           const services = meshPayload.services || [];
           services.forEach((service: { uri?: string; domain?: string; action?: string; transport?: string }) => {
             if (!service.uri) return;
@@ -3428,7 +3443,7 @@ export default function Dashboard() {
         }
 
         if (computeStatusRes.ok) {
-          const computePayload = await computeStatusRes.json();
+          const computePayload = (computeStatusRes.data || {}) as { nodes?: Array<{ id?: string; name?: string; model?: string; type?: string; status?: string }>; quota?: { quota?: { provider?: string; available?: boolean; error?: unknown }[] } };
           (computePayload.nodes || []).forEach((node: { id?: string; name?: string; model?: string; type?: string; status?: string }) => {
             if (!node.id) return;
             targets.push({
@@ -3454,7 +3469,7 @@ export default function Dashboard() {
         }
 
         if (logsRes.ok) {
-          const logsPayload = await logsRes.json();
+          const logsPayload = (logsRes.data || {}) as { items?: Array<{ source?: string; level?: string; message?: string }> };
           const logs = logsPayload.items || [];
           const sources = new globalThis.Map<string, { level?: string; message?: string }>();
           logs.forEach((log: { source?: string; level?: string; message?: string }) => {
@@ -3473,7 +3488,7 @@ export default function Dashboard() {
         }
 
         if (researchRes.ok) {
-          const researchPayload = await researchRes.json();
+          const researchPayload = (researchRes.data || {}) as { recent?: SearchResearchItem[] };
           const researchItems: SearchResearchItem[] = researchPayload.recent || [];
           researchItems.forEach((item) => {
             const id = String(item.id);
@@ -3500,7 +3515,7 @@ export default function Dashboard() {
         }
 
         if (metaosWorkflowsRes.ok) {
-          const workflowsPayload = await metaosWorkflowsRes.json();
+          const workflowsPayload = (metaosWorkflowsRes.data || {}) as { workflows?: SearchMetaosWorkflow[] };
           const workflows: SearchMetaosWorkflow[] = workflowsPayload.workflows || [];
           workflows.forEach((workflow) => {
             const id = workflow.workflow_id || workflow.id;
@@ -3526,7 +3541,7 @@ export default function Dashboard() {
         }
 
         if (skillsRes.ok) {
-          const skillsPayload = await skillsRes.json();
+          const skillsPayload = (skillsRes.data || {}) as { skills?: SearchAssetSkill[] };
           const skills: SearchAssetSkill[] = skillsPayload.skills || [];
           skills.forEach((skill) => {
             targets.push({
@@ -3551,7 +3566,7 @@ export default function Dashboard() {
         }
 
         if (pipelinesRes.ok) {
-          const pipelinesPayload = await pipelinesRes.json();
+          const pipelinesPayload = (pipelinesRes.data || {}) as { pipelines?: string[] };
           const pipelines: string[] = pipelinesPayload.pipelines || [];
           pipelines.forEach((pipeline) => {
             targets.push({
@@ -3566,7 +3581,7 @@ export default function Dashboard() {
         }
 
         if (ecosWorkflowsRes.ok) {
-          const workflowsPayload = await ecosWorkflowsRes.json();
+          const workflowsPayload = (ecosWorkflowsRes.data || {}) as { workflows?: SearchAssetWorkflow[] };
           const workflows: SearchAssetWorkflow[] = workflowsPayload.workflows || [];
           workflows.forEach((workflow) => {
             targets.push({

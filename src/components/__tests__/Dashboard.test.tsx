@@ -1021,3 +1021,28 @@ describe('Dashboard global search', () => {
     fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: 'gateway' } })
     await waitFor(() => expect(screen.getByText('日志来源：gateway')).toBeInTheDocument())
   })
+
+  it('keeps healthy search dimensions when one optional source fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/cockpit/system-map') {
+        return Promise.resolve(okJson({
+          cockpit_pages: [],
+          projects: [{ id: 'resilient-project', layer: 'L2', stack: 'Python', role: 'search fixture' }],
+          usage_paths: [],
+          playbooks: [],
+          feature_domains: [],
+          roadmap: { lanes: [], items: [] },
+          gaps: [],
+        }))
+      }
+      if (url === '/api/bos/services') return Promise.reject(new Error('mesh unavailable'))
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<Dashboard />)
+    const search = await screen.findByLabelText('全局搜索输入框')
+
+    fireEvent.change(search, { target: { value: 'resilient-project' } })
+    await waitFor(() => expect(screen.getByText('项目：resilient-project')).toBeInTheDocument())
+  })
