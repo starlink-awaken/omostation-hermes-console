@@ -63,6 +63,8 @@ export default function WorkflowsView({
   const [queueingId, setQueueingId] = useState<string | null>(null);
   const [approvalMessage, setApprovalMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const fetchWorkflows = async () => {
     try {
@@ -101,16 +103,19 @@ export default function WorkflowsView({
   }, [focusTaskQuery, workflows]);
 
   const loadDetail = async (id: string) => {
+    setDetailId(id);
+    setDetailError(null);
     try {
       const res = await fetch(`/api/metaos/workflows/${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'ok') {
-          setSelectedWf(data.workflow);
-        }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.status !== 'ok' || !data.workflow) {
+        throw new Error(data.error || '工作流详情不可用');
       }
-    } catch (e) {
-      console.error(e);
+      setSelectedWf(data.workflow);
+      setDetailError(null);
+    } catch (error) {
+      console.error('Failed to load workflow detail:', error);
+      setDetailError(error instanceof Error ? error.message : '工作流详情不可用');
     }
   };
 
@@ -647,6 +652,12 @@ export default function WorkflowsView({
         </div>
 
         <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
+          {detailError && (
+            <div className="shell-data-banner" role="alert">
+              <span>{detailError}{selectedWf ? '，当前仍显示上一次成功加载的详情。' : ''}</span>
+              <button type="button" onClick={() => detailId && void loadDetail(detailId)}>重试详情</button>
+            </div>
+          )}
           {selectedWf ? (
             <>
               <div className="section-header" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -730,6 +741,11 @@ export default function WorkflowsView({
                 ))}
               </div>
             </>
+          ) : detailError ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, height: '100%', color: 'var(--antd-text-secondary)' }}>
+              <XCircle size={48} style={{ opacity: 0.45, color: 'var(--antd-error)' }} />
+              <p style={{ margin: 0 }}>{detailError}</p>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--antd-text-secondary)' }}>
               <Activity size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />

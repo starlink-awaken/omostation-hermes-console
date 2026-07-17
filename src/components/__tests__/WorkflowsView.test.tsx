@@ -142,4 +142,47 @@ describe('WorkflowsView', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('MetaOS 工作流服务不可用')
     expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
   })
+
+  it('shows a retryable state when a workflow detail is unavailable', async () => {
+    let detailAttempts = 0
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/metaos/workflows') {
+        return Promise.resolve(okJson({
+          status: 'ok',
+          workflows: [{
+            id: 'wf-detail-404',
+            task: '查看失败详情',
+            status: 'running',
+            created: '2026-07-10T10:00:00Z',
+            updated: '2026-07-10T10:00:00Z',
+          }],
+        }))
+      }
+      if (url === '/api/metaos/workflows/wf-detail-404') {
+        detailAttempts += 1
+        return Promise.resolve(detailAttempts === 1
+          ? ({ ok: false, json: async () => ({ error: '工作流详情服务不可用' }) } as Response)
+          : okJson({ status: 'ok', workflow: {
+            workflow_id: 'wf-detail-404',
+            task_description: '查看失败详情',
+            status: 'running',
+            nodes: [],
+          } }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<WorkflowsView />)
+    fireEvent.click(await screen.findByRole('button', { name: '查看运行工作流 wf-detail-404' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('工作流详情服务不可用')
+    fireEvent.click(screen.getByRole('button', { name: '重试详情' }))
+
+    await waitFor(() => {
+      expect(detailAttempts).toBe(2)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByText('工作流详情 & 人机协作 (HITL)')).toBeInTheDocument()
+    })
+  })
 })
