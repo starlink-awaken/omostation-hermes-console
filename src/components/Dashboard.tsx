@@ -31,6 +31,7 @@ import {
   Sparkles,
   Menu,
   X,
+  RefreshCw,
 } from 'lucide-react';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
@@ -1170,6 +1171,7 @@ function SidebarGroupEntryPanel({
 export default function Dashboard() {
   const initialNavigationTarget = typeof window === 'undefined' ? null : parseNavigationHash(window.location.hash);
   const [activeTab, setActiveTabState] = useState(initialNavigationTarget?.tab || 'Home');
+  const [pageRefreshToken, setPageRefreshToken] = useState(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dynamicSearchTargets, setDynamicSearchTargets] = useState<SearchTarget[]>([]);
@@ -3876,6 +3878,15 @@ export default function Dashboard() {
           </div>
           <div className="topbar-actions">
             <button
+              type="button"
+              className="topbar-btn"
+              aria-label="刷新当前页面数据"
+              title="刷新当前页面数据"
+              onClick={() => setPageRefreshToken((value) => value + 1)}
+            >
+              <RefreshCw size={16} aria-hidden="true" />
+            </button>
+            <button
               className="topbar-btn"
               onClick={openCommandPalette}
               title="命令面板 (Ctrl+K)"
@@ -5058,6 +5069,7 @@ export default function Dashboard() {
             </section>
           )}
 
+          <div className="dashboard-page-view" data-testid="dashboard-page-view" data-refresh-token={pageRefreshToken} key={`${activeTab}-${pageRefreshToken}`}>
           {activeTab === 'Home' && (
             renderLazyView(
               '首页',
@@ -5360,6 +5372,7 @@ export default function Dashboard() {
               />,
             )
           )}
+          </div>
         </div>
       </main>
 

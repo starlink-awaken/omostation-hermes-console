@@ -133,6 +133,21 @@ describe('Dashboard global search', () => {
     }
   })
 
+  it('refreshes only the active page workbench from the global header', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({}))
+
+    render(<Dashboard />)
+
+    const pageView = await screen.findByTestId('dashboard-page-view')
+    expect(pageView).toHaveAttribute('data-refresh-token', '0')
+
+    fireEvent.click(screen.getByRole('button', { name: '刷新当前页面数据' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-page-view')).toHaveAttribute('data-refresh-token', '1')
+    })
+  })
+
   it('searches dynamic projects and task drafts from SystemMap and TaskCenter', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
