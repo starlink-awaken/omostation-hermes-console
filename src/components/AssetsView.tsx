@@ -230,6 +230,7 @@ export default function AssetsView({
   }, [filteredPipelines, selectedPipeline]);
 
   const actionItems = useMemo(() => {
+    const assetContextQuery = selectedPipeline || focusTaskQuery || filteredSkills[0]?.name || filteredWorkflows[0]?.name || 'Assets';
     const items = [
       {
         id: 'protocol-governance',
@@ -238,6 +239,7 @@ export default function AssetsView({
         actionLabel: '进入协议面',
         actionType: 'navigate' as const,
         actionValue: 'Protocol',
+        actionTarget: { tab: 'Protocol', taskQuery: assetContextQuery },
       },
       {
         id: 'workflow-runtime',
@@ -246,6 +248,7 @@ export default function AssetsView({
         actionLabel: '进入工作流',
         actionType: 'navigate' as const,
         actionValue: 'Workflows',
+        actionTarget: { tab: 'Workflows', taskQuery: assetContextQuery },
       },
       {
         id: 'task-handoff',
@@ -254,10 +257,11 @@ export default function AssetsView({
         actionLabel: '进入任务中心',
         actionType: 'navigate' as const,
         actionValue: 'TaskCenter',
+        actionTarget: { tab: 'TaskCenter', taskQuery: assetContextQuery },
       },
     ];
     return items;
-  }, [localSkills.length, workflows.length]);
+  }, [filteredSkills, filteredWorkflows, focusTaskQuery, localSkills.length, selectedPipeline, workflows.length]);
 
   const assetBacklog = useMemo(() => ({
     skillItems: (filteredSkills.length ? filteredSkills : []).slice(0, 3),
@@ -460,6 +464,7 @@ export default function AssetsView({
         statusText={workflows.length ? `${workflows.length} 条资产级工作流` : '等待资产数据'}
         items={actionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       {focusedAssetCard && (

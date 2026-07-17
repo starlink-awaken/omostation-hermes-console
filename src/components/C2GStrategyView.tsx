@@ -369,7 +369,7 @@ export default function C2GStrategyView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <GovernanceDomainWorkbench currentPage="C2G" onNavigate={onNavigate} />
+      <GovernanceDomainWorkbench currentPage="C2G" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       <ActionSurfacePanel
         title="治理执行区"

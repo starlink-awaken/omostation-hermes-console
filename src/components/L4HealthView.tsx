@@ -281,7 +281,7 @@ export default function L4HealthView({
 
   return (
     <div className="l4-health-view">
-      <GovernanceDomainWorkbench currentPage="L4Health" onNavigate={onNavigate} />
+      <GovernanceDomainWorkbench currentPage="L4Health" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       <ActionSurfacePanel
         title="域健康处理区"

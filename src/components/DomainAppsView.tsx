@@ -842,7 +842,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
 
   return (
     <div className="animate-fade-in">
-      <GovernanceDomainWorkbench currentPage="DomainApps" onNavigate={onNavigate} />
+      <GovernanceDomainWorkbench currentPage="DomainApps" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       <ActionSurfacePanel
         title="领域挂载执行区"

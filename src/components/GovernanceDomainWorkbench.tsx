@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AppWindow, ClipboardCheck, Compass, Layers, ShieldCheck } from 'lucide-react';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface RoadmapItem {
   id: string;
@@ -107,6 +108,7 @@ interface L4HealthPayload {
 interface GovernanceDomainWorkbenchProps {
   currentPage: string;
   onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
 }
 
 const GOVERNANCE_STEPS = [
@@ -170,6 +172,7 @@ function severityLabel(value?: string) {
 export default function GovernanceDomainWorkbench({
   currentPage,
   onNavigate,
+  onOpenTarget,
 }: GovernanceDomainWorkbenchProps) {
   const [systemMap, setSystemMap] = useState<SystemMapGovernanceLite>({});
   const [debt, setDebt] = useState<DebtPayload>({});
@@ -245,6 +248,21 @@ export default function GovernanceDomainWorkbench({
     };
   }, [debt, l4Health, systemMap]);
 
+  const governanceContextQuery = summary.topProject?.id
+    || summary.topDebt?.id
+    || summary.topAttentionApp?.id
+    || summary.topUnhealthyDomain?.id
+    || 'governance';
+  const nextTarget = summary.nextTab === 'C2G'
+    ? { tab: 'C2G', taskQuery: summary.topProject?.id || summary.topGap?.id || governanceContextQuery }
+    : summary.nextTab === 'Debt'
+      ? { tab: 'Debt', taskQuery: summary.topDebt?.id || 'Debt' }
+      : summary.nextTab === 'DomainApps'
+        ? { tab: 'DomainApps', taskQuery: summary.topAttentionApp?.id || 'DomainApps' }
+        : summary.nextTab === 'L4Health'
+          ? { tab: 'L4Health', taskQuery: summary.topUnhealthyDomain?.id || 'L4Health' }
+          : { tab: 'SystemMap', taskQuery: governanceContextQuery };
+
   const title =
     currentPage === 'C2G'
       ? '治理决策工作台'
@@ -291,7 +309,7 @@ export default function GovernanceDomainWorkbench({
         <button
           type="button"
           className="governance-workbench-card governance-workbench-card-wide"
-          onClick={() => onNavigate?.(summary.nextTab)}
+          onClick={() => openCockpitNavigationTarget(nextTarget, onNavigate, onOpenTarget)}
         >
           <span>建议下一步</span>
           <strong>{summary.nextAction}</strong>
@@ -305,7 +323,7 @@ export default function GovernanceDomainWorkbench({
             key={step.id}
             type="button"
             className={`governance-workbench-step ${currentPage === step.id ? 'active' : ''}`}
-            onClick={() => onNavigate?.(step.id)}
+            onClick={() => openCockpitNavigationTarget({ tab: step.id, taskQuery: governanceContextQuery }, onNavigate, onOpenTarget)}
           >
             <span>{index + 1}</span>
             <div>
@@ -328,7 +346,7 @@ export default function GovernanceDomainWorkbench({
           </div>
           <div className="governance-workbench-list">
             {summary.topProject ? (
-              <button type="button" className="governance-workbench-item" onClick={() => onNavigate?.('SystemMap')}>
+              <button type="button" className="governance-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: summary.topProject.id }, onNavigate, onOpenTarget)}>
                 <strong>{summary.topProject.id}</strong>
                 <span>{summary.topProject.primary_gap || '优先项目仍需处理。'}</span>
                 <small>{summary.topProject.status || '未知'} · {summary.topProject.score ?? 0}%</small>
@@ -340,14 +358,14 @@ export default function GovernanceDomainWorkbench({
               </div>
             )}
             {summary.topRoadmap && (
-              <button type="button" className="governance-workbench-item" onClick={() => onNavigate?.('C2G')}>
+              <button type="button" className="governance-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'C2G', taskQuery: summary.topRoadmap.id }, onNavigate, onOpenTarget)}>
                 <strong>{summary.topRoadmap.title || '路线图项'}</strong>
                 <span>{summary.topRoadmap.problem || '去 C2G 看当前治理策略。'}</span>
                 <small>{summary.topRoadmap.priority || '未标优先级'}</small>
               </button>
             )}
             {summary.topGap && (
-              <button type="button" className="governance-workbench-item" onClick={() => onNavigate?.('SystemMap')}>
+              <button type="button" className="governance-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: summary.topGap.id }, onNavigate, onOpenTarget)}>
                 <strong>{summary.topGap.title || '能力缺口'}</strong>
                 <span>{summary.topGap.next || '回系统地图确认下一步。'}</span>
                 <small>{severityLabel(summary.topGap.severity)}</small>
@@ -366,7 +384,7 @@ export default function GovernanceDomainWorkbench({
           </div>
           <div className="governance-workbench-list">
             {summary.topDebt ? (
-              <button type="button" className="governance-workbench-item" onClick={() => onNavigate?.('Debt')}>
+              <button type="button" className="governance-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'Debt', taskQuery: summary.topDebt.id }, onNavigate, onOpenTarget)}>
                 <strong>{summary.topDebt.title}</strong>
                 <span>{summary.topDebt.owner} · {summary.topDebt.dimension}</span>
                 <small>{summary.topDebt.severity.toUpperCase()} · {summary.topDebt.lifecycle_state}</small>
@@ -395,7 +413,7 @@ export default function GovernanceDomainWorkbench({
           </div>
           <div className="governance-workbench-list">
             {summary.topAttentionApp ? (
-              <button type="button" className="governance-workbench-item" onClick={() => onNavigate?.('DomainApps')}>
+              <button type="button" className="governance-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps', taskQuery: summary.topAttentionApp.id }, onNavigate, onOpenTarget)}>
                 <strong>{summary.topAttentionApp.name || summary.topAttentionApp.id}</strong>
                 <span>{summary.topAttentionApp.next_action || '进入领域应用页继续处理。'}</span>
                 <small>{summary.topAttentionApp.runtime_status || '未知'} · {summary.topAttentionApp.security_posture || '未登记'}</small>
@@ -407,7 +425,7 @@ export default function GovernanceDomainWorkbench({
               </div>
             )}
             {summary.topUnhealthyDomain && (
-              <button type="button" className="governance-workbench-item" onClick={() => onNavigate?.('L4Health')}>
+              <button type="button" className="governance-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'L4Health', taskQuery: summary.topUnhealthyDomain.id }, onNavigate, onOpenTarget)}>
                 <strong>{summary.topUnhealthyDomain.name}</strong>
                 <span>{summary.topUnhealthyDomain.fresh ? '当前信号新鲜。' : '当前域状态不新鲜，需核对。'}</span>
                 <small>问题 {summary.topUnhealthyDomain.issue_count} · 信号 {summary.topUnhealthyDomain.signal_count}</small>

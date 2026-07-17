@@ -246,7 +246,7 @@ export default function DebtView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <GovernanceDomainWorkbench currentPage="Debt" onNavigate={onNavigate} />
+      <GovernanceDomainWorkbench currentPage="Debt" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       <ActionSurfacePanel
         title="债务处理区"
