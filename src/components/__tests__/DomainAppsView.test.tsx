@@ -301,6 +301,7 @@ describe('DomainAppsView', () => {
 
   it('executes the explicit low-risk verification action through the controlled path', async () => {
     const onOpenTarget = vi.fn()
+    let domainAppsCalls = 0
     const verificationPayload = {
       ...domainAppsPayload,
       items: [{
@@ -325,7 +326,10 @@ describe('DomainAppsView', () => {
       if (url.endsWith('/verify') && init?.method === 'POST') {
         return Promise.resolve(okJson({ id: 'cockpit-domain-app-family-dashboard-app-copy-verify', exit_code: 0 }))
       }
-      if (url === '/api/domain-apps') return Promise.resolve(okJson(verificationPayload))
+      if (url === '/api/domain-apps') {
+        domainAppsCalls += 1
+        return Promise.resolve(okJson(verificationPayload))
+      }
       if (url === '/api/opc/workspace') return Promise.resolve(okJson(opcPayload))
       if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
       return Promise.resolve(okJson({}))
@@ -347,6 +351,7 @@ describe('DomainAppsView', () => {
       })
       expect(screen.getByRole('status')).toHaveTextContent('验证完成')
     })
+    await waitFor(() => expect(domainAppsCalls).toBeGreaterThanOrEqual(2))
   }, 20000)
 
   it('falls back to legacy navigation when a task target callback is unavailable', async () => {
