@@ -194,6 +194,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
   );
 
   const recommended = nextInfraAction(currentPage, degradedServices, unhealthyNodes, unhealthyModels, state.bosHealth);
+  const infrastructureContextQuery = unhealthyNodes[0]?.id || unhealthyModels[0]?.model_name || topDomains[0]?.[0] || currentPage;
 
   return (
     <section className="services-section infra-workbench" aria-label="基础设施工作台">
@@ -233,7 +234,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
             key={step.id}
             className={`infra-workbench-step ${step.id === currentPage ? 'active' : ''}`}
             aria-label={`进入基础设施步骤 ${step.title}`}
-            onClick={() => onNavigate?.(step.id)}
+            onClick={() => openCockpitNavigationTarget({ tab: step.id, taskQuery: infrastructureContextQuery }, onNavigate, onOpenTarget)}
           >
             <span>{index + 1}</span>
             <div>
@@ -249,7 +250,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
         <article className="infra-workbench-panel">
           <div className="infra-workbench-panel-head">
             <strong>网格热点</strong>
-            <button className="antd-btn small" onClick={() => onNavigate?.('McpMesh')}>
+            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'McpMesh', taskQuery: topDomains[0]?.[0] || infrastructureContextQuery }, onNavigate, onOpenTarget)}>
               <Route size={13} />
               <span>去网格页</span>
             </button>
@@ -276,7 +277,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
         <article className="infra-workbench-panel">
           <div className="infra-workbench-panel-head">
             <strong>节点与模型</strong>
-            <button className="antd-btn small" onClick={() => onNavigate?.('Compute')}>
+            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Compute', taskQuery: unhealthyNodes[0]?.id || unhealthyModels[0]?.model_name || infrastructureContextQuery }, onNavigate, onOpenTarget)}>
               <Cpu size={13} />
               <span>去算力页</span>
             </button>
@@ -315,7 +316,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
         <article className="infra-workbench-panel">
           <div className="infra-workbench-panel-head">
             <strong>链路落点</strong>
-            <button className="antd-btn small" onClick={() => onNavigate?.('Topology')}>
+            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Topology', taskQuery: infrastructureContextQuery }, onNavigate, onOpenTarget)}>
               <Network size={13} />
               <span>去拓扑页</span>
             </button>

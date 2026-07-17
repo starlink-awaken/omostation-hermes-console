@@ -310,7 +310,7 @@ export default function PlatformControlWorkbench({
             key={step.id}
             type="button"
             className={`platform-workbench-step ${currentPage === step.id ? 'active' : ''}`}
-            onClick={() => onNavigate?.(step.id)}
+            onClick={() => openCockpitNavigationTarget({ tab: step.id, taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}
           >
             <span>{index + 1}</span>
             <div>
@@ -392,7 +392,7 @@ export default function PlatformControlWorkbench({
             <small>quest {(quests.quests || []).length}</small>
           </div>
           <div className="platform-workbench-list">
-            <button type="button" className="platform-workbench-item" onClick={() => onNavigate?.('Sandbox')}>
+            <button type="button" className="platform-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'Sandbox', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
               <strong>隔离验证</strong>
               <span>需要快速复现实验或片段验证时，先去 Sandbox 跑隔离代码。</span>
               <small>AST + 进程级沙箱保护</small>
@@ -414,23 +414,23 @@ export default function PlatformControlWorkbench({
       </div>
 
       <div className="platform-workbench-actions">
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('Observability')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
           <Activity size={14} />
           <span>去观测页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('Engines')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Engines', taskQuery: pipelines[0] || platformContextQuery }, onNavigate, onOpenTarget)}>
           <Cpu size={14} />
           <span>去引擎页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('Settings')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Settings', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
           <Settings2 size={14} />
           <span>去设置页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('Sandbox')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Sandbox', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
           <TerminalSquare size={14} />
           <span>去沙箱</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('QuestBoard')}>
+        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'QuestBoard', taskQuery: summary.topQuest ? String(summary.topQuest.id) : platformContextQuery }, onNavigate, onOpenTarget)}>
           <Gift size={14} />
           <span>去冒险板</span>
         </button>

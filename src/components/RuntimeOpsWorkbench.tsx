@@ -204,7 +204,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
             key={page.id}
             className={`runtime-workbench-step ${page.id === currentPage ? 'active' : ''}`}
             aria-label={`进入运行步骤 ${page.title}`}
-            onClick={() => onNavigate?.(page.id)}
+            onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: runtimeContextQuery }, onNavigate, onOpenTarget)}
           >
             <span>{index + 1}</span>
             <div>
@@ -220,7 +220,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
         <article className="runtime-workbench-panel">
           <div className="runtime-workbench-panel-head">
             <strong>告警热点</strong>
-            <button className="antd-btn small" onClick={() => onNavigate?.('AlertCenter')}>
+            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'AlertCenter', taskQuery: activeAlerts[0]?.id || runtimeContextQuery, alertTab: 'active' }, onNavigate, onOpenTarget)}>
               <ShieldAlert size={13} />
               <span>去告警中心</span>
             </button>
@@ -248,7 +248,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
         <article className="runtime-workbench-panel">
           <div className="runtime-workbench-panel-head">
             <strong>服务热点</strong>
-            <button className="antd-btn small" onClick={() => onNavigate?.('Performance')}>
+            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Performance', taskQuery: degradedServices[0]?.name || runtimeContextQuery }, onNavigate, onOpenTarget)}>
               <Search size={13} />
               <span>看性能</span>
             </button>
@@ -276,7 +276,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
         <article className="runtime-workbench-panel">
           <div className="runtime-workbench-panel-head">
             <strong>排查落点</strong>
-            <button className="antd-btn small" onClick={() => onNavigate?.('LogViewer')}>
+            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'LogViewer', taskQuery: runtimeContextQuery }, onNavigate, onOpenTarget)}>
               <FileText size={13} />
               <span>看日志</span>
             </button>
