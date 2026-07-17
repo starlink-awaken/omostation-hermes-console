@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
+import { openCockpitNavigationTarget } from './cockpitNavigation';
 
 interface DomainAppSnapshot {
   id: string;
@@ -1561,7 +1562,7 @@ export default function TaskCenterPage({
                 type="button"
                 className="action-surface-item"
                 aria-label={page.aria}
-                onClick={() => onNavigate?.(page.id)}
+                onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: focusTask?.source?.id || focusTask?.id || searchQuery.trim() || 'TaskCenter' }, onNavigate, onOpenTarget)}
                 style={{ textAlign: 'left', width: '100%' }}
               >
                 <div>
