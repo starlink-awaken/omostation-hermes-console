@@ -18,6 +18,20 @@ function matchesObservabilityFocusQuery(values: Array<string | null | undefined>
   return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
 }
 
+async function readObservabilityResponse<T>(
+  result: PromiseSettledResult<Response>,
+  label: string,
+): Promise<{ ok: boolean; data: T | null; error?: string }> {
+  if (result.status === 'rejected') {
+    return { ok: false, data: null, error: `${label}：${result.reason instanceof Error ? result.reason.message : '请求失败'}` };
+  }
+  const payload = await result.value.json().catch(() => ({}));
+  if (!result.value.ok) {
+    return { ok: false, data: null, error: payload.error || `${label} HTTP ${result.value.status}` };
+  }
+  return { ok: true, data: payload as T };
+}
+
 type ObservabilityClosureRow = {
   id: string;
   title: string;
@@ -47,20 +61,19 @@ export default function ObservabilityView({
     const load = async () => {
       setLoading(true);
       try {
-        const [archResponse, bosResponse] = await Promise.all([
+        const [archResult, bosResult] = await Promise.allSettled([
           fetch('/api/v1/arch-health'),
           fetch('/api/bos/metrics'),
         ]);
-        const [arch, bos] = await Promise.all([
-          archResponse.json().catch(() => ({})),
-          bosResponse.json().catch(() => ({})),
+        const [{ ok: archOk, data: arch, error: archError }, { ok: bosResponseOk, data: bos, error: bosError }] = await Promise.all([
+          readObservabilityResponse<any>(archResult, '架构健康数据'),
+          readObservabilityResponse<any>(bosResult, 'BOS 指标数据'),
         ]);
-        if (!archResponse.ok || !bosResponse.ok || bos?.data_quality === 'unavailable' || bos?.status === 'unavailable') {
-          throw new Error(arch?.error || bos?.error || '可观测数据不可用');
-        }
-        setArchData(arch);
-        setBosData(bos);
-        setError(null);
+        const bosUnavailable = bosResponseOk && (bos?.data_quality === 'unavailable' || bos?.status === 'unavailable');
+        if (archOk && arch) setArchData(arch);
+        if (bosResponseOk && bos && !bosUnavailable) setBosData(bos);
+        const failures = [archError, bosError, bosUnavailable ? 'BOS 指标数据：当前不可用' : null].filter(Boolean);
+        setError(failures.length ? failures.join('；') : null);
       } catch (loadError) {
         console.error('Failed to load observability data:', loadError);
         setError(loadError instanceof Error ? loadError.message : '可观测数据不可用');

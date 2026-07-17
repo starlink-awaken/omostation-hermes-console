@@ -168,4 +168,24 @@ describe('ObservabilityView', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('BOS 指标服务不可用')
     expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
   })
+
+  it('keeps BOS metrics visible when architecture health temporarily fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/v1/arch-health') return Promise.reject(new Error('architecture health offline'))
+      if (String(input) === '/api/bos/metrics') {
+        return Promise.resolve(okJson({
+          summary: { total_calls: 12, avg_latency: 120, success_count: 12 },
+          domains: [{ domain: 'memory', total: 12, success: 12, error: 0, avg_latency: 120 }],
+        }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<ObservabilityView />)
+
+    await waitFor(() => {
+      expect(screen.getByText('BOS 12 calls')).toBeInTheDocument()
+      expect(screen.getByText('架构健康数据：architecture health offline，当前观测数字不代表系统为 0。')).toBeInTheDocument()
+    })
+  })
 })
