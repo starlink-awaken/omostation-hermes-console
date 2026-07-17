@@ -684,6 +684,7 @@ export default function TaskCenterPage({
       actionLabel: '进入系统地图',
       actionType: 'navigate' as const,
       actionValue: 'SystemMap',
+      actionTarget: { tab: 'SystemMap', taskQuery: focusTask?.source?.id || focusTask?.id || searchQuery.trim() || 'TaskCenter' },
     },
     {
       id: 'task-domain-apps',
@@ -692,6 +693,7 @@ export default function TaskCenterPage({
       actionLabel: '进入应用中心',
       actionType: 'navigate' as const,
       actionValue: 'DomainApps',
+      actionTarget: { tab: 'DomainApps', taskQuery: focusTaskRelatedApp?.id || focusTask?.source?.id || searchQuery.trim() || 'DomainApps' },
     },
     {
       id: 'task-protocol',
@@ -700,6 +702,7 @@ export default function TaskCenterPage({
       actionLabel: '进入协议面',
       actionType: 'navigate' as const,
       actionValue: 'Protocol',
+      actionTarget: { tab: 'Protocol', taskQuery: focusTask?.source?.id || focusTask?.id || searchQuery.trim() || 'Protocol' },
     },
   ];
 
@@ -1091,6 +1094,7 @@ export default function TaskCenterPage({
         statusText={`${filteredTasks.length} 条任务 / ${draftCount} 条草稿 / ${stats.in_progress} 条进行中`}
         items={taskActionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       {incomingDraft && (

@@ -254,6 +254,7 @@ export default function ResearchHubView({
   };
 
   const actionItems = useMemo(() => {
+    const researchContextQuery = selectedResearchId ? String(selectedResearchId) : focusTaskQuery || 'Research';
     const commandItems = payload.commands.slice(0, 2).map((command) => ({
       id: command.id,
       title: command.label,
@@ -269,9 +270,10 @@ export default function ResearchHubView({
       actionLabel: '进入页面',
       actionType: 'navigate' as const,
       actionValue: page.id,
+      actionTarget: { tab: page.id, taskQuery: researchContextQuery },
     }));
     return [...commandItems, ...pageItems];
-  }, [payload.commands, payload.related_pages]);
+  }, [focusTaskQuery, payload.commands, payload.related_pages, selectedResearchId]);
 
   const knowledgeTarget = useMemo(() => (
     payload.pipeline.find((step) => /knowledge|知识/i.test(`${step.id} ${step.title}`))?.id
@@ -549,6 +551,7 @@ export default function ResearchHubView({
         statusText={payload.summary.active ? `${payload.summary.active} 条活跃研究` : '等待研究对象'}
         items={actionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       {focusedResearchCard && (

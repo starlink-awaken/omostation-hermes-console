@@ -215,7 +215,9 @@ export default function WorkflowsView({
     };
   }, [filteredWorkflows]);
 
-  const actionItems = useMemo(() => ([
+  const actionItems = useMemo(() => {
+    const workflowContextQuery = selectedWf?.workflow_id || focusTaskQuery || filteredWorkflows[0]?.id || 'Workflows';
+    return ([
     {
       id: 'workflow-assets',
       title: '回技术资产库补定义',
@@ -223,6 +225,7 @@ export default function WorkflowsView({
       actionLabel: '进入资产库',
       actionType: 'navigate' as const,
       actionValue: 'Assets',
+      actionTarget: { tab: 'Assets', taskQuery: workflowContextQuery },
     },
     {
       id: 'workflow-protocol',
@@ -231,6 +234,7 @@ export default function WorkflowsView({
       actionLabel: '进入协议面',
       actionType: 'navigate' as const,
       actionValue: 'Protocol',
+      actionTarget: { tab: 'Protocol', taskQuery: workflowContextQuery },
     },
     {
       id: 'workflow-tasks',
@@ -239,8 +243,10 @@ export default function WorkflowsView({
       actionLabel: '进入任务中心',
       actionType: 'navigate' as const,
       actionValue: 'TaskCenter',
+      actionTarget: { tab: 'TaskCenter', taskQuery: workflowContextQuery },
     },
-  ]), []);
+    ]);
+  }, [filteredWorkflows, focusTaskQuery, selectedWf?.workflow_id]);
 
   const workflowClosureRows = useMemo<WorkflowClosureRow[]>(() => {
     const firstAwaiting = workflowSummary.awaitingApproval[0];
@@ -409,6 +415,7 @@ export default function WorkflowsView({
         statusText={filteredWorkflows.length ? `${filteredWorkflows.length}/${workflows.length} 条工作流记录` : workflows.length ? '当前筛选无工作流记录' : '等待工作流记录'}
         items={actionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       {focusedWorkflowCard && (
