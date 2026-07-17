@@ -145,6 +145,80 @@ describe('ResearchHubView', () => {
     })
   })
 
+  it('filters research workbenches and clears detail when the active status excludes it', async () => {
+    const recent = [
+      {
+        id: 21,
+        topic: '活跃研究对象',
+        summary: '研究当前执行边界',
+        created_at: '2026-07-08T06:00:00Z',
+        source_count: 2,
+        tags: ['runtime'],
+        agent: 'Researcher',
+        status: 'active',
+        follow_up_count: 1,
+        last_event: { label: '已创建', created_at: '2026-07-08T07:00:00Z' },
+        next_action: '继续验证。',
+      },
+      {
+        id: 22,
+        topic: '归档研究对象',
+        summary: '历史研究结果',
+        created_at: '2026-07-07T06:00:00Z',
+        source_count: 4,
+        tags: ['history'],
+        agent: 'Archivist',
+        status: 'archived',
+        follow_up_count: 0,
+        last_event: { label: '已归档', created_at: '2026-07-07T07:00:00Z' },
+        next_action: '保留复盘记录。',
+      },
+    ]
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/cockpit/research-hub') {
+        return Promise.resolve(okJson({
+          summary: { total: 2, active: 1, archived: 1, quarantined: 0, published: 1, follow_ups: 1, agents: 2 },
+          recent,
+          commands: [],
+          pipeline: [],
+          related_pages: [],
+        }))
+      }
+      if (url === '/api/cockpit/research-hub/21') {
+        return Promise.resolve(okJson({
+          status: 'ok',
+          item: { ...recent[0], full_text: '活跃研究正文', follow_ups: [] },
+          timeline: [],
+          dossier: { parents: [], children: [], publications: [] },
+        }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<ResearchHubView />)
+    const filterRegion = await screen.findByRole('region', { name: '研究筛选' })
+    expect(within(filterRegion).getByText('显示 2/2')).toBeInTheDocument()
+
+    fireEvent.change(within(filterRegion).getByRole('searchbox', { name: '搜索研究对象' }), { target: { value: 'runtime' } })
+    await waitFor(() => {
+      expect(within(filterRegion).getByText('显示 1/2')).toBeInTheDocument()
+      expect(screen.getAllByText('活跃研究对象').length).toBeGreaterThan(0)
+      expect(screen.queryByText('归档研究对象')).not.toBeInTheDocument()
+    })
+
+    fireEvent.change(within(filterRegion).getByRole('searchbox', { name: '搜索研究对象' }), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: '查看研究详情 活跃研究对象' }))
+    await waitFor(() => expect(screen.getByRole('region', { name: '研究对象详情' })).toBeInTheDocument())
+
+    fireEvent.change(within(filterRegion).getByRole('combobox', { name: '按状态筛选研究对象' }), { target: { value: 'archived' } })
+    await waitFor(() => {
+      expect(within(filterRegion).getByText('显示 1/2')).toBeInTheDocument()
+      expect(screen.getAllByText('归档研究对象').length).toBeGreaterThan(0)
+      expect(screen.queryByRole('region', { name: '研究对象详情' })).not.toBeInTheDocument()
+    })
+  })
+
   it('surfaces focus handoff for a matched research object', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()

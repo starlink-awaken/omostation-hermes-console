@@ -158,6 +158,8 @@ export default function ResearchHubView({
   const [payload, setPayload] = useState<ResearchHubPayload>(EMPTY_PAYLOAD);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [researchQuery, setResearchQuery] = useState('');
+  const [researchStatusFilter, setResearchStatusFilter] = useState('all');
   const [selectedResearchId, setSelectedResearchId] = useState<number | null>(null);
   const [researchDetail, setResearchDetail] = useState<ResearchDetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -189,9 +191,21 @@ export default function ResearchHubView({
     void load();
   }, []);
 
+  const filteredResearch = useMemo(() => {
+    const query = researchQuery.trim().toLowerCase();
+    return payload.recent.filter((item) => {
+      if (researchStatusFilter !== 'all' && item.status !== researchStatusFilter) return false;
+      if (!query) return true;
+      return [item.id, item.topic, item.summary, item.status, item.agent, item.next_action, ...item.tags]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [payload.recent, researchQuery, researchStatusFilter]);
+
   useEffect(() => {
     if (!focusTaskQuery) return;
-    const matchedResearch = payload.recent.find((item) => (
+    const matchedResearch = filteredResearch.find((item) => (
       matchesResearchFocusQuery([
         item.id,
         item.topic,
@@ -206,7 +220,15 @@ export default function ResearchHubView({
     if (matchedResearch && matchedResearch.id !== selectedResearchId) {
       void openDetail(matchedResearch.id);
     }
-  }, [focusTaskQuery, payload.recent, selectedResearchId]);
+  }, [filteredResearch, focusTaskQuery, selectedResearchId]);
+
+  useEffect(() => {
+    if (selectedResearchId !== null && !filteredResearch.some((item) => item.id === selectedResearchId)) {
+      setSelectedResearchId(null);
+      setResearchDetail(null);
+      setDetailError(null);
+    }
+  }, [filteredResearch, selectedResearchId]);
 
   const openDetail = async (researchId: number) => {
     setSelectedResearchId(researchId);
@@ -268,22 +290,22 @@ export default function ResearchHubView({
   ), [payload.related_pages]);
 
   const researchWorkbench = useMemo(() => {
-    const contextCandidates = payload.recent.filter((item) => item.source_count < 3 || item.tags.length === 0 || !item.agent);
-    const taskCandidates = payload.recent.filter((item) => item.follow_up_count > 0 || /任务|跟进|执行|落地/i.test(item.next_action));
-    const publishCandidates = payload.recent.filter((item) => item.status !== 'archived');
+    const contextCandidates = filteredResearch.filter((item) => item.source_count < 3 || item.tags.length === 0 || !item.agent);
+    const taskCandidates = filteredResearch.filter((item) => item.follow_up_count > 0 || /任务|跟进|执行|落地/i.test(item.next_action));
+    const publishCandidates = filteredResearch.filter((item) => item.status !== 'archived');
 
     return {
       contextCount: contextCandidates.length,
       taskCount: taskCandidates.length,
       publishCount: publishCandidates.length,
-      contextItems: (contextCandidates.length ? contextCandidates : payload.recent).slice(0, 3),
-      taskItems: (taskCandidates.length ? taskCandidates : payload.recent).slice(0, 3),
-      publishItems: (publishCandidates.length ? publishCandidates : payload.recent).slice(0, 3),
+      contextItems: (contextCandidates.length ? contextCandidates : filteredResearch).slice(0, 3),
+      taskItems: (taskCandidates.length ? taskCandidates : filteredResearch).slice(0, 3),
+      publishItems: (publishCandidates.length ? publishCandidates : filteredResearch).slice(0, 3),
     };
-  }, [payload.recent]);
+  }, [filteredResearch]);
 
   const researchClosureRows = useMemo<ResearchClosureRow[]>(() => {
-    const firstRecent = payload.recent[0];
+    const firstRecent = filteredResearch[0];
     const firstContext = researchWorkbench.contextItems[0];
     const firstTask = researchWorkbench.taskItems[0];
     const firstPublish = researchWorkbench.publishItems[0];
@@ -332,7 +354,7 @@ export default function ResearchHubView({
     ];
   }, [
     knowledgeTarget,
-    payload.recent,
+    filteredResearch,
     payload.summary.active,
     payload.summary.follow_ups,
     payload.summary.published,
@@ -347,7 +369,7 @@ export default function ResearchHubView({
   ]);
 
   const focusedResearchCard = useMemo(() => {
-    const matchedResearch = payload.recent.find((item) => (
+    const matchedResearch = filteredResearch.find((item) => (
       matchesResearchFocusQuery([
         item.id,
         item.topic,
@@ -419,7 +441,7 @@ export default function ResearchHubView({
     }
 
     return null;
-  }, [focusPageId, focusTaskQuery, payload.commands, payload.recent, payload.related_pages, researchClosureRows]);
+  }, [filteredResearch, focusPageId, focusTaskQuery, payload.commands, payload.related_pages, researchClosureRows]);
 
   if (loading) {
     return (
@@ -620,6 +642,67 @@ export default function ResearchHubView({
         </div>
       </section>
 
+      <section className="services-section" role="region" aria-label="研究筛选">
+        <div className="section-header" style={{ marginBottom: 0 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>研究对象检索</h2>
+            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
+              同一组条件作用于研究闭环、承接工作台、对象列表和详情焦点，先切片再继续补上下文、落任务或发布回流。
+            </p>
+          </div>
+          <span className="status-badge online">显示 {filteredResearch.length}/{payload.recent.length}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="search"
+            aria-label="搜索研究对象"
+            placeholder="主题、摘要、标签、Agent 或下一步"
+            value={researchQuery}
+            onChange={(event) => setResearchQuery(event.target.value)}
+            style={{
+              flex: '1 1 280px',
+              minWidth: 220,
+              padding: '9px 12px',
+              borderRadius: 6,
+              backgroundColor: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#fff',
+              fontSize: 13,
+              outline: 'none',
+            }}
+          />
+          <select
+            aria-label="按状态筛选研究对象"
+            value={researchStatusFilter}
+            onChange={(event) => setResearchStatusFilter(event.target.value)}
+            style={{
+              minWidth: 140,
+              padding: '9px 12px',
+              borderRadius: 6,
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#fff',
+              fontSize: 13,
+              outline: 'none',
+            }}
+          >
+            <option value="all">全部状态</option>
+            <option value="active">活跃</option>
+            <option value="archived">归档</option>
+            <option value="quarantined">隔离</option>
+          </select>
+          <button
+            type="button"
+            className="antd-btn"
+            aria-label="清除研究筛选"
+            onClick={() => { setResearchQuery(''); setResearchStatusFilter('all'); }}
+            disabled={!researchQuery && researchStatusFilter === 'all'}
+          >
+            清除
+          </button>
+        </div>
+      </section>
+
       <section className="services-section">
         <div className="section-header">
           <div>
@@ -628,11 +711,11 @@ export default function ResearchHubView({
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {payload.recent.length === 0 ? (
+          {filteredResearch.length === 0 ? (
             <div className="antd-card" style={{ padding: 20 }}>
-              <p className="text-muted" style={{ margin: 0 }}>还没有研究对象，先从“发起研究”那条命令开始。</p>
+              <p className="text-muted" style={{ margin: 0 }}>{payload.recent.length === 0 ? '还没有研究对象，先从“发起研究”那条命令开始。' : '当前筛选下没有匹配的研究对象。'}</p>
             </div>
-          ) : payload.recent.map((item) => (
+          ) : filteredResearch.map((item) => (
             <article key={item.id} className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                 <div>
