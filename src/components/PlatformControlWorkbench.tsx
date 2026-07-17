@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, Cpu, Gift, RefreshCw, Settings2, TerminalSquare } from 'lucide-react';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface ArchHealthPayload {
   system?: {
@@ -68,6 +69,7 @@ interface QuestPayload {
 interface PlatformControlWorkbenchProps {
   currentPage: string;
   onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
 }
 
 const PLATFORM_STEPS = [
@@ -135,6 +137,7 @@ function shortStamp(value?: string) {
 export default function PlatformControlWorkbench({
   currentPage,
   onNavigate,
+  onOpenTarget,
 }: PlatformControlWorkbenchProps) {
   const [archHealth, setArchHealth] = useState<ArchHealthPayload>({});
   const [bosMetrics, setBosMetrics] = useState<BosMetricsPayload>({});
@@ -223,6 +226,15 @@ export default function PlatformControlWorkbench({
     };
   }, [archHealth, bosMetrics, metrics, pipelines, quests]);
 
+  const platformContextQuery = summary.topDomain?.domain || (summary.topQuest ? String(summary.topQuest.id) : 'platform');
+  const nextTarget = summary.nextTab === 'Observability'
+    ? { tab: 'Observability', taskQuery: summary.topDomain?.domain || platformContextQuery }
+    : summary.nextTab === 'Engines'
+      ? { tab: 'Engines', taskQuery: pipelines[0] || 'Engines' }
+      : summary.nextTab === 'QuestBoard'
+        ? { tab: 'QuestBoard', taskQuery: summary.topQuest ? String(summary.topQuest.id) : 'QuestBoard' }
+        : { tab: summary.nextTab, taskQuery: platformContextQuery };
+
   const title =
     currentPage === 'Observability'
       ? '观测控制工作台'
@@ -284,7 +296,7 @@ export default function PlatformControlWorkbench({
         <button
           type="button"
           className="platform-workbench-card platform-workbench-card-wide"
-          onClick={() => onNavigate?.(summary.nextTab)}
+          onClick={() => openCockpitNavigationTarget(nextTarget, onNavigate, onOpenTarget)}
         >
           <span>建议下一步</span>
           <strong>{summary.nextAction}</strong>
@@ -321,7 +333,7 @@ export default function PlatformControlWorkbench({
           </div>
           <div className="platform-workbench-list">
             {summary.topDomain ? (
-              <button type="button" className="platform-workbench-item" onClick={() => onNavigate?.('Observability')}>
+              <button type="button" className="platform-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: summary.topDomain?.domain }, onNavigate, onOpenTarget)}>
                 <strong>{summary.topDomain.domain}</strong>
                 <span>调用 {summary.topDomain.total} · 失败 {summary.topDomain.error} · 延迟 {summary.topDomain.avg_latency}ms</span>
                 <small>先去 Observability 看域级流量细节。</small>
@@ -351,13 +363,13 @@ export default function PlatformControlWorkbench({
           </div>
           <div className="platform-workbench-list">
             {pipelines.slice(0, 2).map((pipeline) => (
-              <button key={pipeline} type="button" className="platform-workbench-item" onClick={() => onNavigate?.('Engines')}>
+              <button key={pipeline} type="button" className="platform-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'Engines', taskQuery: pipeline }, onNavigate, onOpenTarget)}>
                 <strong>{pipeline}</strong>
                 <span>进入调度页计划任务或直接发起执行。</span>
                 <small>Engine pipeline</small>
               </button>
             ))}
-            <button type="button" className="platform-workbench-item" onClick={() => onNavigate?.('Settings')}>
+            <button type="button" className="platform-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'Settings', taskQuery: 'settings' }, onNavigate, onOpenTarget)}>
               <strong>系统控制快照</strong>
               <span>服务 {summary.healthyServices}/{summary.services} healthy · 最近 {shortStamp(metrics.timestamp)}</span>
               <small>去 Settings 看实例注册和指标历史。</small>
@@ -386,7 +398,7 @@ export default function PlatformControlWorkbench({
               <small>AST + 进程级沙箱保护</small>
             </button>
             {summary.topQuest ? (
-              <button type="button" className="platform-workbench-item" onClick={() => onNavigate?.('QuestBoard')}>
+              <button type="button" className="platform-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'QuestBoard', taskQuery: String(summary.topQuest.id) }, onNavigate, onOpenTarget)}>
                 <strong>{summary.topQuest.title}</strong>
                 <span>{summary.topQuest.assignee} · 奖励 {summary.topQuest.reward} 点</span>
                 <small>去 QuestBoard 看家庭侧真实落地。</small>

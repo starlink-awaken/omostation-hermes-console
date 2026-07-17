@@ -315,7 +315,7 @@ export default function SettingsView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PlatformControlWorkbench currentPage="Settings" onNavigate={onNavigate} />
+      <PlatformControlWorkbench currentPage="Settings" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {loadError && (
         <div

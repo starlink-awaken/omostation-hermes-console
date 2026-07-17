@@ -217,7 +217,7 @@ export default function ObservabilityView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PlatformControlWorkbench currentPage="Observability" onNavigate={onNavigate} />
+      <PlatformControlWorkbench currentPage="Observability" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {error && (
         <div className="shell-data-banner" role="alert">

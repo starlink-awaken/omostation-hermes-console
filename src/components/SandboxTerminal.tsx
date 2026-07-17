@@ -152,7 +152,7 @@ export default function SandboxTerminal({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <PlatformControlWorkbench currentPage="Sandbox" onNavigate={onNavigate} />
+      <PlatformControlWorkbench currentPage="Sandbox" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       <ActionSurfacePanel
         title="沙箱动作区"

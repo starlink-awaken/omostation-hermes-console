@@ -249,7 +249,7 @@ export default function EnginesView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <PlatformControlWorkbench currentPage="Engines" onNavigate={onNavigate} />
+      <PlatformControlWorkbench currentPage="Engines" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {dataError && (
         <div className="shell-data-banner" role="alert">

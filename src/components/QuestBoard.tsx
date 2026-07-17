@@ -311,7 +311,7 @@ export default function QuestBoard({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PlatformControlWorkbench currentPage="QuestBoard" onNavigate={onNavigate} />
+      <PlatformControlWorkbench currentPage="QuestBoard" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       <ActionSurfacePanel
         title="家庭执行联动"
