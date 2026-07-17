@@ -90,6 +90,58 @@ describe('L4HealthView', () => {
     })
   })
 
+  it('filters the domain table and signal evidence from one health query', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/health')) {
+        return Promise.resolve(okJson({
+          total_domains: 2,
+          healthy_count: 1,
+          unhealthy_count: 1,
+          health_rate: '50%',
+          domains: [
+            { id: 'family', name: '家庭生活', exists: true, fresh: false, issue_count: 3, issues: [], has_state: true, has_status: true, signal_count: 4, capabilities: ['dashboard'] },
+            { id: 'opc', name: 'OPC', exists: true, fresh: true, issue_count: 0, issues: [], has_state: true, has_status: true, signal_count: 1, capabilities: ['strategy'] },
+          ],
+          data_quality: 'live',
+          degraded_reasons: [],
+        }))
+      }
+      if (url.endsWith('/trend')) return Promise.resolve(okJson({
+        total_records: 2,
+        trends: {},
+        anomalies: [{ domain: 'family', type: 'freshness', severity: 'warning', message: 'family freshness 失效' }],
+        degraded_reasons: [],
+      }))
+      return Promise.resolve(okJson({
+        total_signals: 5,
+        by_domain: { family: 4, opc: 1 },
+        by_type: { alert: 2 },
+        patterns: [{ pattern: 'family-pattern', level: 'warning', message: 'family 域模式异常' }],
+        risks: [{ risk: 'family-risk', severity: 'warning', message: 'family 域风险' }],
+        degraded_reasons: [],
+      }))
+    })
+
+    render(<L4HealthView />)
+
+    expect((await screen.findAllByText('家庭生活')).length).toBeGreaterThan(0)
+    expect(screen.getByText('异常域 1/1')).toBeInTheDocument()
+    expect(screen.getByText('风险 1/1')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByRole('textbox', { name: '搜索域健康对象' }), { target: { value: 'family' } })
+    const table = screen.getByRole('table')
+    expect(within(table).getByText('family')).toBeInTheDocument()
+    expect(within(table).queryByText('opc')).not.toBeInTheDocument()
+    expect(screen.getByText(/family freshness 失效/)).toBeInTheDocument()
+    expect(screen.getAllByText('family 域风险').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: '清除域健康筛选' }))
+    fireEvent.change(screen.getByRole('combobox', { name: '按域健康状态筛选' }), { target: { value: 'healthy' } })
+    expect(within(table).getByText('opc')).toBeInTheDocument()
+    expect(within(table).queryByText('family')).not.toBeInTheDocument()
+  })
+
   it('surfaces focus handoff for a matched domain', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()

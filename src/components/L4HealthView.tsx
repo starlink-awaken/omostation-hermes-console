@@ -95,16 +95,38 @@ export default function L4HealthView({
   const [taskPending, setTaskPending] = useState(false);
   const [taskNotice, setTaskNotice] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [healthQuery, setHealthQuery] = useState('');
+  const [healthStatusFilter, setHealthStatusFilter] = useState('all');
 
   const degradedReasons = Array.from(new Set([
     ...(healthData?.degraded_reasons || []),
     ...(trendData?.degraded_reasons || []),
     ...(signalData?.degraded_reasons || []),
   ]));
-  const unhealthyDomains = (healthData?.domains || [])
-    .filter((domain) => !domain.fresh || domain.issue_count > 0 || !domain.has_state || !domain.has_status)
-    .slice(0, 4);
-  const focusRisks = (signalData?.risks || []).slice(0, 3);
+  const normalizedHealthQuery = healthQuery.trim().toLowerCase();
+  const allDomains = healthData?.domains || [];
+  const isHealthyDomain = (domain: DomainHealth) => domain.fresh && domain.issue_count === 0 && domain.has_state && domain.has_status;
+  const filteredDomains = allDomains.filter((domain) => {
+    const matchesQuery = !normalizedHealthQuery || [domain.id, domain.name, domain.capabilities.join(' '), String(domain.issue_count), String(domain.signal_count)]
+      .some((value) => value.toLowerCase().includes(normalizedHealthQuery));
+    const matchesStatus = healthStatusFilter === 'all'
+      || (healthStatusFilter === 'healthy' && isHealthyDomain(domain))
+      || (healthStatusFilter === 'unhealthy' && !isHealthyDomain(domain));
+    return matchesQuery && matchesStatus;
+  });
+  const allUnhealthyDomains = allDomains.filter((domain) => !isHealthyDomain(domain));
+  const unhealthyDomains = filteredDomains.filter((domain) => !isHealthyDomain(domain)).slice(0, 4);
+  const focusRisks = (signalData?.risks || [])
+    .filter((risk) => !normalizedHealthQuery || [risk.risk, risk.severity, risk.message]
+      .some((value) => value.toLowerCase().includes(normalizedHealthQuery)))
+    .slice(0, 3);
+  const filteredAnomalies = (trendData?.anomalies || []).filter((anomaly) => !normalizedHealthQuery || [anomaly.domain, anomaly.type, anomaly.severity, anomaly.message]
+    .some((value) => value.toLowerCase().includes(normalizedHealthQuery)));
+  const filteredPatterns = (signalData?.patterns || []).filter((pattern) => !normalizedHealthQuery || [pattern.pattern, pattern.level, pattern.message]
+    .some((value) => value.toLowerCase().includes(normalizedHealthQuery)));
+  const filteredSignalDomains = Object.entries(signalData?.by_domain || {})
+    .filter(([domain]) => !normalizedHealthQuery || domain.toLowerCase().includes(normalizedHealthQuery));
+  const hasHealthFilter = Boolean(normalizedHealthQuery) || healthStatusFilter !== 'all';
   const createDomainHealthTask = async () => {
     const domain = unhealthyDomains[0];
     const risk = focusRisks[0];
@@ -376,10 +398,47 @@ export default function L4HealthView({
             </p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span className="status-badge degraded">异常域 {unhealthyDomains.length}</span>
-            <span className="status-badge degraded">风险 {focusRisks.length}</span>
+            <span className="status-badge degraded">异常域 {unhealthyDomains.length}/{allUnhealthyDomains.length}</span>
+            <span className="status-badge degraded">风险 {focusRisks.length}/{signalData?.risks.length || 0}</span>
             <span className="status-badge online">健康率 {healthData?.health_rate || 'N/A'}</span>
           </div>
+        </div>
+
+        <div
+          role="region"
+          aria-label="域健康筛选"
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, margin: '14px 0 16px' }}
+        >
+          <input
+            className="antd-input"
+            aria-label="搜索域健康对象"
+            placeholder="域、能力、异常、模式或风险"
+            value={healthQuery}
+            onChange={(event) => setHealthQuery(event.target.value)}
+            style={{ minWidth: 260, flex: '1 1 280px' }}
+          />
+          <select
+            className="antd-input"
+            aria-label="按域健康状态筛选"
+            value={healthStatusFilter}
+            onChange={(event) => setHealthStatusFilter(event.target.value)}
+            style={{ minWidth: 150, flex: '0 1 180px' }}
+          >
+            <option value="all">全部域状态</option>
+            <option value="healthy">健康域</option>
+            <option value="unhealthy">异常域</option>
+          </select>
+          {hasHealthFilter && (
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label="清除域健康筛选"
+              onClick={() => { setHealthQuery(''); setHealthStatusFilter('all'); }}
+            >
+              <XCircle size={14} />
+              <span>清除</span>
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
@@ -543,7 +602,13 @@ export default function L4HealthView({
               </tr>
             </thead>
             <tbody>
-              {healthData?.domains.map((domain) => (
+              {filteredDomains.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'rgba(255,255,255,0.45)' }}>
+                    {hasHealthFilter ? '当前筛选下没有匹配的域健康对象。' : '暂无域健康数据。'}
+                  </td>
+                </tr>
+              ) : filteredDomains.map((domain) => (
                 <tr key={domain.id} className="service-row">
                   <td className="font-medium" style={{ fontWeight: 500 }}>
                     {domain.id}
@@ -585,13 +650,13 @@ export default function L4HealthView({
             </span>
           </div>
 
-          {trendData.anomalies.length > 0 ? (
+          {filteredAnomalies.length > 0 ? (
             <div style={{ padding: '12px', background: '#fff3cd', borderRadius: '4px', border: '1px solid #ffc107' }}>
               <h4 style={{ marginBottom: '8px', color: '#856404' }}>
                 <AlertTriangle size={16} style={{ marginRight: '8px' }} />
                 检测到异常
               </h4>
-              {trendData.anomalies.map((anomaly, index) => (
+              {filteredAnomalies.map((anomaly, index) => (
                 <div key={index} style={{ marginBottom: '4px', fontSize: '14px', color: '#856404' }}>
                   • {anomaly.message}
                 </div>
@@ -625,7 +690,7 @@ export default function L4HealthView({
           <div style={{ marginBottom: '16px' }}>
             <h4 style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}>按域分布</h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
-              {Object.entries(signalData.by_domain).map(([domain, count]) => (
+              {filteredSignalDomains.map(([domain, count]) => (
                 <div
                   key={domain}
                   style={{
@@ -647,10 +712,10 @@ export default function L4HealthView({
           </div>
 
           {/* 检测到的模式 */}
-          {signalData.patterns.length > 0 && (
+          {filteredPatterns.length > 0 && (
             <div style={{ marginBottom: '16px' }}>
               <h4 style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}>检测到的模式</h4>
-              {signalData.patterns.map((pattern, index) => (
+              {filteredPatterns.map((pattern, index) => (
                 <div
                   key={index}
                   style={{
@@ -673,10 +738,10 @@ export default function L4HealthView({
           )}
 
           {/* 风险评估 */}
-          {signalData.risks.length > 0 && (
+          {focusRisks.length > 0 && (
             <div>
               <h4 style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}>风险评估</h4>
-              {signalData.risks.map((risk, index) => (
+              {focusRisks.map((risk, index) => (
                 <div
                   key={index}
                   style={{
@@ -697,7 +762,7 @@ export default function L4HealthView({
             </div>
           )}
 
-          {signalData.risks.length === 0 && (
+          {focusRisks.length === 0 && (
             <div style={{ padding: '12px', background: '#d4edda', borderRadius: '4px', border: '1px solid #28a745' }}>
               <span style={{ color: '#155724' }}>
                 <CheckCircle size={16} style={{ marginRight: '8px' }} />
