@@ -287,10 +287,14 @@ function DomainActionButtons({
   actions,
   onQueueAction,
   onExecuteVerification,
+  isActionPending,
+  verificationPending = false,
 }: {
   actions: DomainApp['actions'];
   onQueueAction?: (action: DomainApp['actions'][number]) => void;
   onExecuteVerification?: (action: DomainApp['actions'][number]) => void;
+  isActionPending?: (action: DomainApp['actions'][number]) => boolean;
+  verificationPending?: boolean;
 }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
@@ -306,10 +310,11 @@ function DomainActionButtons({
                 className="antd-btn"
                 aria-label={`登记领域应用动作 ${action.label}`}
                 onClick={() => onQueueAction(action)}
+                disabled={isActionPending?.(action)}
                 title="登记为 OMO 计划任务，不会直接执行命令"
               >
                 <ClipboardCheck size={14} />
-                <span>登记任务</span>
+                <span>{isActionPending?.(action) ? '登记中...' : '登记任务'}</span>
               </button>
             )}
             {onExecuteVerification && action.id === 'copy-verify' && action.enabled && (
@@ -317,10 +322,11 @@ function DomainActionButtons({
                 className="antd-btn antd-btn-primary"
                 aria-label={`执行领域应用验证 ${action.label}`}
                 onClick={() => onExecuteVerification(action)}
+                disabled={verificationPending}
                 title="仅执行登记的低风险验证命令，并写入 OMO 证据"
               >
                 <Play size={14} />
-                <span>执行验证</span>
+                <span>{verificationPending ? '验证中...' : '执行验证'}</span>
               </button>
             )}
           </React.Fragment>
@@ -372,11 +378,15 @@ function DomainAppCard({
   focused = false,
   onQueueAction,
   onExecuteVerification,
+  isActionPending,
+  verificationPending = false,
 }: {
   app: DomainApp;
   focused?: boolean;
   onQueueAction?: (action: DomainApp['actions'][number]) => void;
   onExecuteVerification?: (action: DomainApp['actions'][number]) => void;
+  isActionPending?: (action: DomainApp['actions'][number]) => boolean;
+  verificationPending?: boolean;
 }) {
   return (
     <article
@@ -415,7 +425,13 @@ function DomainAppCard({
         </div>
       </div>
 
-      <DomainActionButtons actions={app.actions} onQueueAction={onQueueAction} onExecuteVerification={onExecuteVerification} />
+      <DomainActionButtons
+        actions={app.actions}
+        onQueueAction={onQueueAction}
+        onExecuteVerification={onExecuteVerification}
+        isActionPending={isActionPending}
+        verificationPending={verificationPending}
+      />
 
       <div className="domain-security-panel">
         <div className="domain-security-head">
@@ -514,6 +530,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
   const [focusedAppId, setFocusedAppId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionPendingKey, setActionPendingKey] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -702,6 +719,9 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
   };
 
   const queueDomainAction = async (app: DomainApp, action: DomainApp['actions'][number]) => {
+    const pendingKey = `queue:${app.id}:${action.id}`;
+    if (actionPendingKey) return;
+    setActionPendingKey(pendingKey);
     setActionNotice(null);
     setActionError(null);
     try {
@@ -714,11 +734,15 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       else setActionError('领域应用动作已返回成功，但没有任务 ID，无法定位后续审批。');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '领域应用动作登记失败');
+    } finally {
+      setActionPendingKey(null);
     }
   };
 
   const executeDomainVerification = async (app: DomainApp) => {
     if (!window.confirm(`将执行 ${app.name} 登记的低风险验证命令，并写入 OMO 执行证据。继续吗？`)) return;
+    if (actionPendingKey) return;
+    setActionPendingKey(`verify:${app.id}`);
     setActionNotice(null);
     setActionError(null);
     try {
@@ -731,8 +755,16 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       else setActionError('验证已返回结果，但没有任务 ID，无法定位执行证据。');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '领域应用验证执行失败');
+    } finally {
+      setActionPendingKey(null);
     }
   };
+
+  const actionPendingFor = (app: DomainApp, action: DomainApp['actions'][number]) => (
+    actionPendingKey === `queue:${app.id}:${action.id}`
+  );
+
+  const verificationPendingFor = (app: DomainApp) => actionPendingKey === `verify:${app.id}`;
 
   const focusSignals = useMemo(() => {
     if (!focusedApp) return [];
@@ -1404,6 +1436,8 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                 actions={app.actions.slice(0, 3)}
                 onQueueAction={(action) => void queueDomainAction(app, action)}
                 onExecuteVerification={() => void executeDomainVerification(app)}
+                isActionPending={(action) => actionPendingFor(app, action)}
+                verificationPending={verificationPendingFor(app)}
               />
             </article>
           ))}
@@ -1640,6 +1674,8 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               focused={app.id === focusedAppId}
               onQueueAction={(action) => void queueDomainAction(app, action)}
               onExecuteVerification={() => void executeDomainVerification(app)}
+              isActionPending={(action) => actionPendingFor(app, action)}
+              verificationPending={verificationPendingFor(app)}
             />
             <div className="home-focus-actions" style={{ marginTop: 0 }}>
               <button className="antd-btn small" onClick={() => setFocusedAppId(app.id)}>

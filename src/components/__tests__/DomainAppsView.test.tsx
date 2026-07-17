@@ -271,10 +271,14 @@ describe('DomainAppsView', () => {
 
   it('queues a domain app command without executing it', async () => {
     const onOpenTarget = vi.fn()
+    let resolveQueue: ((response: Response) => void) | undefined
+    const queueResponse = new Promise<Response>((resolve) => {
+      resolveQueue = resolve
+    })
 
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (init?.method === 'POST') return Promise.resolve(okJson({ id: 'cockpit-domain-app-family-dashboard-app-copy-start' }))
+      if (init?.method === 'POST') return queueResponse
       if (url === '/api/domain-apps') return Promise.resolve(okJson(domainAppsPayload))
       if (url === '/api/opc/workspace') return Promise.resolve(okJson(opcPayload))
       if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
@@ -285,6 +289,14 @@ describe('DomainAppsView', () => {
 
     const queueButtons = await screen.findAllByRole('button', { name: '登记领域应用动作 复制启动命令' }, { timeout: 5000 })
     fireEvent.click(queueButtons[0])
+    fireEvent.click(queueButtons[0])
+
+    expect(queueButtons[0]).toBeDisabled()
+    expect(queueButtons[0]).toHaveTextContent('登记中...')
+    expect(vi.mocked(fetch).mock.calls.filter(([input, init]) => (
+      String(input).endsWith('/actions/copy-start/queue') && init?.method === 'POST'
+    ))).toHaveLength(1)
+    resolveQueue?.(okJson({ id: 'cockpit-domain-app-family-dashboard-app-copy-start' }))
 
     await waitFor(() => {
       expect(onOpenTarget).toHaveBeenCalledWith({
@@ -321,10 +333,14 @@ describe('DomainAppsView', () => {
       }],
     }
     vi.spyOn(window, 'confirm').mockReturnValue(true)
+    let resolveVerification: ((response: Response) => void) | undefined
+    const verificationResponse = new Promise<Response>((resolve) => {
+      resolveVerification = resolve
+    })
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url.endsWith('/verify') && init?.method === 'POST') {
-        return Promise.resolve(okJson({ id: 'cockpit-domain-app-family-dashboard-app-copy-verify', exit_code: 0 }))
+        return verificationResponse
       }
       if (url === '/api/domain-apps') {
         domainAppsCalls += 1
@@ -339,6 +355,14 @@ describe('DomainAppsView', () => {
 
     const verifyButtons = await screen.findAllByRole('button', { name: '执行领域应用验证 复制验证命令' }, { timeout: 5000 })
     fireEvent.click(verifyButtons[0])
+    fireEvent.click(verifyButtons[0])
+
+    expect(verifyButtons[0]).toBeDisabled()
+    expect(verifyButtons[0]).toHaveTextContent('验证中...')
+    expect(vi.mocked(fetch).mock.calls.filter(([input, init]) => (
+      String(input).endsWith('/verify') && init?.method === 'POST'
+    ))).toHaveLength(1)
+    resolveVerification?.(okJson({ id: 'cockpit-domain-app-family-dashboard-app-copy-verify', exit_code: 0 }))
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
