@@ -394,6 +394,26 @@ describe('DomainAppsView', () => {
     expect(attempts).toBe(2)
   }, 20000)
 
+  it('keeps the domain app surface available when OPC is unavailable', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/domain-apps') return Promise.resolve(okJson(domainAppsPayload))
+      if (url === '/api/opc/workspace') {
+        return Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'OPC 工作区暂时不可用' }) } as Response)
+      }
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<DomainAppsView />)
+
+    await waitFor(() => {
+      expect(screen.getByText('领域挂载执行区')).toBeInTheDocument()
+      expect(screen.getAllByText('家庭驾驶舱').length).toBeGreaterThan(0)
+      expect(screen.getByRole('alert')).toHaveTextContent('OPC 工作区暂时不可用')
+    })
+  }, 20000)
+
   it('renders security posture summary and checks', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

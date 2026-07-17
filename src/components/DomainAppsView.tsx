@@ -151,6 +151,16 @@ type OpcWorkspace = {
   source_paths?: Record<string, string>;
 };
 
+const EMPTY_OPC_WORKSPACE: OpcWorkspace = {
+  exists: false,
+  ssot_root: '@OPC',
+  positioning: { title: 'OPC', summary: 'OPC 工作区当前不可用，领域应用清单仍可独立查看。' },
+  weekly_priorities: [],
+  content_calendar: { week: [], ideas: [] },
+  metrics: [],
+  product_portfolio: { matrix: [], pipeline: [], revenue: [] },
+};
+
 type DomainAttentionFilter = 'all' | 'runtime' | 'security' | 'high_risk';
 
 type DomainAttentionItem = {
@@ -509,16 +519,31 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
     setLoading(true);
     setError('');
     try {
-      const [appsRes, opcRes, systemMapRes] = await Promise.all([
+      const [appsResult, opcResult, systemMapResult] = await Promise.allSettled([
         fetch('/api/domain-apps'),
         fetch('/api/opc/workspace'),
         fetch('/api/cockpit/system-map'),
       ]);
-      const appsPayload = await appsRes.json().catch(() => ({}));
-      const opcPayload = await opcRes.json().catch(() => ({}));
-      if (!appsRes.ok) throw new Error(appsPayload.detail || appsPayload.error || '领域应用清单读取失败');
-      if (!opcRes.ok) throw new Error(opcPayload.detail || opcPayload.error || 'OPC 工作区读取失败');
-      const systemMapPayload = systemMapRes.ok ? await systemMapRes.json() : {};
+      const readPayload = async (result: PromiseSettledResult<Response>) => (
+        result.status === 'fulfilled' ? result.value.json().catch(() => ({})) : {}
+      );
+      const appsPayload = await readPayload(appsResult);
+      const opcPayload = await readPayload(opcResult);
+      const systemMapPayload = await readPayload(systemMapResult);
+      const failures: string[] = [];
+      if (appsResult.status !== 'fulfilled' || !appsResult.value.ok) {
+        failures.push((appsPayload as { detail?: string; error?: string }).detail || (appsPayload as { error?: string }).error || '领域应用清单读取失败');
+      }
+      if (opcResult.status !== 'fulfilled' || !opcResult.value.ok) {
+        failures.push((opcPayload as { detail?: string; error?: string }).detail || (opcPayload as { error?: string }).error || 'OPC 工作区读取失败');
+      }
+      if (systemMapResult.status !== 'fulfilled' || !systemMapResult.value.ok) {
+        failures.push('系统地图补充数据读取失败');
+      }
+      if (failures.length > 0) setError(failures.join('；'));
+      if (appsResult.status !== 'fulfilled' || !appsResult.value.ok) {
+        throw new Error(failures[0] || '领域应用清单读取失败');
+      }
       const pagesById = new globalThis.Map<string, { id: string; title?: string }>(
         ((systemMapPayload.cockpit_pages || []) as Array<{ id?: string; title?: string }>)
           .filter((page): page is { id: string; title?: string } => Boolean(page.id))
@@ -560,8 +585,8 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
             taskTarget: { tab: 'TaskCenter', taskQuery: item.id || item.title || 'roadmap' },
           };
         });
-      setApps(appsPayload);
-      setOpc(opcPayload);
+      setApps(appsPayload as DomainAppsPayload);
+      setOpc(opcResult.status === 'fulfilled' && opcResult.value.ok ? opcPayload as OpcWorkspace : EMPTY_OPC_WORKSPACE);
       setDomainBuildRows([...projectRows, ...roadmapRows]);
     } catch (err) {
       setError(err instanceof Error ? err.message : '领域应用数据读取失败');
@@ -815,7 +840,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
     );
   }
 
-  if (error || !apps || !opc) {
+  if (!apps || !opc) {
     return (
       <div
         role="alert"
@@ -843,6 +868,17 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
   return (
     <div className="animate-fade-in">
       <GovernanceDomainWorkbench currentPage="DomainApps" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
+
+      {error && (
+        <div className="system-map-action-feedback error" role="alert">
+          <ShieldAlert size={14} />
+          <span>{error}</span>
+          <button type="button" className="antd-btn small" onClick={() => void load()}>
+            <RefreshCw size={13} aria-hidden="true" />
+            <span>重试补充数据</span>
+          </button>
+        </div>
+      )}
 
       <ActionSurfacePanel
         title="领域挂载执行区"
