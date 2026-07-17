@@ -1066,7 +1066,7 @@ export default function TaskCenterPage({
 
   return (
     <div className="task-center-page">
-      <KnowledgeExecutionWorkbench currentPage="TaskCenter" onNavigate={onNavigate} />
+      <KnowledgeExecutionWorkbench currentPage="TaskCenter" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {dataError && (
         <div

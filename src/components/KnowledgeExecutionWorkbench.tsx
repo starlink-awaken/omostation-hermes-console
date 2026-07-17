@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Bot, ClipboardList, GitBranch, PlayCircle } from 'lucide-react';
+import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface TaskItem {
   id: string;
@@ -67,6 +68,7 @@ interface SystemMapLite {
 interface KnowledgeExecutionWorkbenchProps {
   currentPage: string;
   onNavigate?: (tab: string) => void;
+  onOpenTarget?: (target: CockpitNavigationTarget) => void;
 }
 
 type ExecutionRouteCard = {
@@ -152,7 +154,14 @@ function formatTaskStatus(status?: string) {
 export default function KnowledgeExecutionWorkbench({
   currentPage,
   onNavigate,
+  onOpenTarget,
 }: KnowledgeExecutionWorkbenchProps) {
+  const openWorkbenchTarget = (tab: string, taskQuery?: string) => {
+    openCockpitNavigationTarget({
+      tab: tab as CockpitNavigationTarget['tab'],
+      taskQuery: taskQuery || currentPage,
+    }, onNavigate, onOpenTarget);
+  };
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
   const [skills, setSkills] = useState<SkillItem[]>([]);
@@ -360,7 +369,7 @@ export default function KnowledgeExecutionWorkbench({
         <button
           type="button"
           className="knowledge-execution-card knowledge-execution-card-wide"
-          onClick={() => onNavigate?.(summary.nextTab)}
+          onClick={() => openWorkbenchTarget(summary.nextTab, summary.latestTask?.id || summary.latestWorkflow?.id)}
         >
           <span>建议下一步</span>
           <strong>{summary.nextAction}</strong>
@@ -374,7 +383,7 @@ export default function KnowledgeExecutionWorkbench({
             key={step.id}
             type="button"
             className={`knowledge-execution-step ${currentPage === step.id ? 'active' : ''}`}
-            onClick={() => onNavigate?.(step.id)}
+            onClick={() => openWorkbenchTarget(step.id)}
           >
             <span>{index + 1}</span>
             <div>
@@ -430,7 +439,7 @@ export default function KnowledgeExecutionWorkbench({
                   type="button"
                   className="antd-btn small"
                   aria-label={`打开闭环对象 ${route.title}`}
-                  onClick={() => onNavigate?.(route.objectTab)}
+                  onClick={() => openWorkbenchTarget(route.objectTab, route.id)}
                 >
                   <BookOpen size={13} />
                   <span>看对象</span>
@@ -439,7 +448,7 @@ export default function KnowledgeExecutionWorkbench({
                   type="button"
                   className="antd-btn small"
                   aria-label={`打开闭环任务 ${route.title}`}
-                  onClick={() => onNavigate?.(route.taskTab)}
+                  onClick={() => openWorkbenchTarget(route.taskTab, route.id)}
                 >
                   <ClipboardList size={13} />
                   <span>看任务</span>
@@ -464,7 +473,7 @@ export default function KnowledgeExecutionWorkbench({
               <button
                 type="button"
                 className="knowledge-execution-item"
-                onClick={() => onNavigate?.('Knowledge')}
+                onClick={() => openWorkbenchTarget('Knowledge', summary.usagePath?.id || summary.usagePath?.title)}
               >
                 <strong>{summary.usagePath.title || '未命名路径'}</strong>
                 <span>{summary.usagePath.intent || '先回到知识中枢确认这条路径的目标。'}</span>
@@ -480,7 +489,7 @@ export default function KnowledgeExecutionWorkbench({
               <button
                 type="button"
                 className="knowledge-execution-item"
-                onClick={() => onNavigate?.('TaskCenter')}
+                onClick={() => openWorkbenchTarget('TaskCenter', summary.playbook?.id || summary.playbook?.title)}
               >
                 <strong>{summary.playbook.title || '操作清单'}</strong>
                 <span>{summary.playbook.goal || '把知识页里的清单转成任务草稿。'}</span>
@@ -491,7 +500,7 @@ export default function KnowledgeExecutionWorkbench({
               <button
                 type="button"
                 className="knowledge-execution-item"
-                onClick={() => onNavigate?.('Knowledge')}
+                onClick={() => openWorkbenchTarget('Knowledge', summary.gap?.id || summary.gap?.title)}
               >
                 <strong>{summary.gap.title || '能力缺口'}</strong>
                 <span>{summary.gap.next || '回知识中枢梳理缺口。'}</span>
@@ -515,7 +524,7 @@ export default function KnowledgeExecutionWorkbench({
                 key={skill.id}
                 type="button"
                 className="knowledge-execution-item"
-                onClick={() => onNavigate?.('Assets')}
+                onClick={() => openWorkbenchTarget('Assets', skill.id)}
               >
                 <strong>{skill.name || skill.id}</strong>
                 <span>去资产页看这个能力适合挂在哪条执行路径上。</span>
@@ -527,7 +536,7 @@ export default function KnowledgeExecutionWorkbench({
                 key={workflow.name}
                 type="button"
                 className="knowledge-execution-item"
-                onClick={() => onNavigate?.('Workflows')}
+                onClick={() => openWorkbenchTarget('Workflows', workflow.name)}
               >
                 <strong>{workflow.name || '自动化工作流'}</strong>
                 <span>{workflow.description || '查看这个工作流的节点编排与回放结果。'}</span>
@@ -556,7 +565,7 @@ export default function KnowledgeExecutionWorkbench({
               <button
                 type="button"
                 className="knowledge-execution-item"
-                onClick={() => onNavigate?.('Workflows')}
+                onClick={() => openWorkbenchTarget('Workflows', summary.latestWorkflow?.id)}
               >
                 <strong>{summary.latestWorkflow.task || summary.latestWorkflow.id}</strong>
                 <span>最新工作流状态：{summary.latestWorkflow.status || '未知'}。</span>
@@ -567,7 +576,7 @@ export default function KnowledgeExecutionWorkbench({
               <button
                 type="button"
                 className="knowledge-execution-item"
-                onClick={() => onNavigate?.('TaskCenter')}
+                onClick={() => openWorkbenchTarget('TaskCenter', summary.latestTask?.id)}
               >
                 <strong>{summary.latestTask.title || summary.latestTask.id}</strong>
                 <span>
@@ -581,7 +590,7 @@ export default function KnowledgeExecutionWorkbench({
               <button
                 type="button"
                 className="knowledge-execution-item"
-                onClick={() => onNavigate?.('SystemMap')}
+                onClick={() => openWorkbenchTarget('SystemMap', summary.roadmapItem?.id || summary.roadmapItem?.title)}
               >
                 <strong>{summary.roadmapItem.title || '路线图项'}</strong>
                 <span>{summary.roadmapItem.problem || '回系统地图看这条能力补齐路线。'}</span>
@@ -599,19 +608,19 @@ export default function KnowledgeExecutionWorkbench({
       </div>
 
       <div className="knowledge-execution-actions">
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('Knowledge')}>
+        <button type="button" className="antd-btn" onClick={() => openWorkbenchTarget('Knowledge')}>
           <BookOpen size={14} />
           <span>去知识中枢</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('Assets')}>
+        <button type="button" className="antd-btn" onClick={() => openWorkbenchTarget('Assets')}>
           <PlayCircle size={14} />
           <span>去资产页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('Workflows')}>
+        <button type="button" className="antd-btn" onClick={() => openWorkbenchTarget('Workflows')}>
           <GitBranch size={14} />
           <span>去工作流</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => onNavigate?.('TaskCenter')}>
+        <button type="button" className="antd-btn" onClick={() => openWorkbenchTarget('TaskCenter')}>
           <ClipboardList size={14} />
           <span>去任务中心</span>
         </button>

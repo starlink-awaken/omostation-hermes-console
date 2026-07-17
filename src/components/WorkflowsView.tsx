@@ -361,7 +361,7 @@ export default function WorkflowsView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <KnowledgeExecutionWorkbench currentPage="Workflows" onNavigate={onNavigate} />
+      <KnowledgeExecutionWorkbench currentPage="Workflows" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {dataError && (
         <div className="shell-data-banner" role="alert">

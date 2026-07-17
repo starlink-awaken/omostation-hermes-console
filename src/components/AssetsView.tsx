@@ -412,7 +412,7 @@ export default function AssetsView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <KnowledgeExecutionWorkbench currentPage="Assets" onNavigate={onNavigate} />
+      <KnowledgeExecutionWorkbench currentPage="Assets" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {dataError && (
         <div className="shell-data-banner" role="alert">

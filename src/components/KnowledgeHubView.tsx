@@ -313,7 +313,7 @@ export default function KnowledgeHubView({
 
   return (
     <div className="gbrain-wrapper animate-fade-in">
-      <KnowledgeExecutionWorkbench currentPage="Knowledge" onNavigate={onNavigate} />
+      <KnowledgeExecutionWorkbench currentPage="Knowledge" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {focusedKnowledgeCard && (
         <section className="services-section overview-ops-panel" aria-label="当前知识承接焦点">
