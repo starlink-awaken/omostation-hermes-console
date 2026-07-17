@@ -96,15 +96,16 @@ interface SearchTarget {
 type SearchFetchResult = {
   ok: boolean;
   data: unknown;
+  error?: string;
 };
 
 async function fetchSearchData(url: string): Promise<SearchFetchResult> {
   try {
     const response = await fetch(url);
-    if (!response.ok) return { ok: false, data: null };
+    if (!response.ok) return { ok: false, data: null, error: `HTTP ${response.status}` };
     return { ok: true, data: await response.json() };
-  } catch {
-    return { ok: false, data: null };
+  } catch (error) {
+    return { ok: false, data: null, error: error instanceof Error ? error.message : '网络异常' };
   }
 }
 
@@ -1173,6 +1174,7 @@ export default function Dashboard() {
   const initialNavigationTarget = typeof window === 'undefined' ? null : parseNavigationHash(window.location.hash);
   const [activeTab, setActiveTabState] = useState(initialNavigationTarget?.tab || 'Home');
   const [pageRefreshToken, setPageRefreshToken] = useState(0);
+  const [shellDataWarnings, setShellDataWarnings] = useState<string[]>([]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dynamicSearchTargets, setDynamicSearchTargets] = useState<SearchTarget[]>([]);
@@ -2988,6 +2990,25 @@ export default function Dashboard() {
           fetchSearchData('/api/ecos/workflows'),
         ]);
         const targets: SearchTarget[] = [];
+        const sourceFailures = [
+          ['系统地图', systemMapRes],
+          ['任务中心', tasksRes],
+          ['领域应用', domainAppsRes],
+          ['告警中心', alertsRes],
+          ['网格服务', meshServicesRes],
+          ['算力状态', computeStatusRes],
+          ['日志', logsRes],
+          ['研究中枢', researchRes],
+          ['MetaOS 工作流', metaosWorkflowsRes],
+          ['技能资产', skillsRes],
+          ['工具管线', pipelinesRes],
+          ['资产工作流', ecosWorkflowsRes],
+        ] as const;
+        setShellDataWarnings(
+          sourceFailures
+            .filter(([, result]) => !result.ok)
+            .map(([label, result]) => `${label}（${result.error || '暂不可用'}）`),
+        );
 
         if (systemMapRes.ok) {
           const systemMap = (systemMapRes.data || {}) as Record<string, any>;
@@ -3662,6 +3683,7 @@ export default function Dashboard() {
         setDynamicSearchTargets(targets);
       } catch (error) {
         console.error('Failed to build dynamic search targets:', error);
+        setShellDataWarnings(['全站搜索数据（壳层请求异常）']);
         setDynamicSearchTargets([]);
         setSidebarUsagePaths([]);
         setShellTaskDrafts([]);
@@ -3980,6 +4002,25 @@ export default function Dashboard() {
           {/* 面包屑导航 */}
           {activeTab !== 'Home' && (
             <Breadcrumb items={getBreadcrumbItems()} />
+          )}
+
+          {shellDataWarnings.length > 0 && (
+            <div className="overview-inline-error" role="alert" aria-label="全站数据源状态">
+              <AlertTriangle size={16} aria-hidden="true" />
+              <div>
+                <strong>全站数据源有 {shellDataWarnings.length} 项不可用</strong>
+                <span>{shellDataWarnings.slice(0, 4).join('、')}{shellDataWarnings.length > 4 ? `，另有 ${shellDataWarnings.length - 4} 项` : ''}。空状态不代表没有能力，先重试数据源。</span>
+              </div>
+              <button
+                type="button"
+                className="antd-btn small"
+                aria-label="重试全站数据源"
+                onClick={() => setPageRefreshToken((value) => value + 1)}
+              >
+                <RefreshCw size={13} aria-hidden="true" />
+                <span>重试</span>
+              </button>
+            </div>
           )}
 
           {/* Keyed hero section triggers smooth fade transition upon menu selection */}

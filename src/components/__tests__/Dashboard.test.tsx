@@ -1129,4 +1129,7 @@ describe('Dashboard global search', () => {
 
     fireEvent.change(search, { target: { value: 'resilient-project' } })
     await waitFor(() => expect(screen.getByText('项目：resilient-project')).toBeInTheDocument())
+    expect(screen.getByRole('alert', { name: '全站数据源状态' })).toHaveTextContent('网格服务')
+    fireEvent.click(screen.getByRole('button', { name: '重试全站数据源' }))
+    await waitFor(() => expect(screen.getByTestId('dashboard-page-view')).toHaveAttribute('data-refresh-token', '1'))
   })
