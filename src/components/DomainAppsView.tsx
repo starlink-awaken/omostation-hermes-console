@@ -498,6 +498,9 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [attentionFilter, setAttentionFilter] = useState<DomainAttentionFilter>('all');
+  const [appQuery, setAppQuery] = useState('');
+  const [appDomainFilter, setAppDomainFilter] = useState('all');
+  const [appRuntimeFilter, setAppRuntimeFilter] = useState('all');
   const [focusedAppId, setFocusedAppId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -591,6 +594,16 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
   const attentionItems = useMemo<DomainAttentionItem[]>(() => {
     if (!apps) return [];
     return apps.items
+      .filter((app) => {
+        const query = appQuery.trim().toLowerCase();
+        if (appDomainFilter !== 'all' && app.domain.id !== appDomainFilter) return false;
+        if (appRuntimeFilter !== 'all' && app.runtime.status !== appRuntimeFilter) return false;
+        if (!query) return true;
+        return [app.id, app.name, app.domain.id, app.domain.name, app.integration_mode]
+          .join(' ')
+          .toLowerCase()
+          .includes(query);
+      })
       .map((app) => {
         const reasons = attentionReasons(app);
         if (reasons.length === 0) return null;
@@ -606,7 +619,29 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
         };
       })
       .filter((item): item is DomainAttentionItem => Boolean(item));
-  }, [apps]);
+  }, [appDomainFilter, appQuery, appRuntimeFilter, apps]);
+
+  const filteredApps = useMemo(() => {
+    if (!apps) return [];
+    const query = appQuery.trim().toLowerCase();
+    return apps.items.filter((app) => {
+      if (appDomainFilter !== 'all' && app.domain.id !== appDomainFilter) return false;
+      if (appRuntimeFilter !== 'all' && app.runtime.status !== appRuntimeFilter) return false;
+      if (!query) return true;
+      return [app.id, app.name, app.domain.id, app.domain.name, app.integration_mode]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [appDomainFilter, appQuery, appRuntimeFilter, apps]);
+
+  const appDomainOptions = useMemo(
+    () => Object.entries((apps?.items || []).reduce<Record<string, string>>((domains, app) => {
+      domains[app.domain.id] = app.domain.name;
+      return domains;
+    }, {})).sort((left, right) => left[1].localeCompare(right[1])),
+    [apps],
+  );
 
   const attentionCounts = useMemo(() => ({
     all: attentionItems.length,
@@ -621,8 +656,8 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
   }, [attentionFilter, attentionItems]);
 
   const focusedApp = useMemo(
-    () => apps?.items.find((app) => app.id === focusedAppId) || null,
-    [apps, focusedAppId],
+    () => filteredApps.find((app) => app.id === focusedAppId) || null,
+    [filteredApps, focusedAppId],
   );
 
   const openTaskCenter = (query: string) => {
@@ -734,7 +769,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
     attention: domainBuildRows.filter((row) => row.statusClass !== 'online').length,
   }), [domainBuildRows]);
 
-  const domainRouteCards: DomainRouteCard[] = (apps?.items || []).map((app) => {
+  const domainRouteCards: DomainRouteCard[] = filteredApps.map((app) => {
     const launchUrl = app.links.launch_url || app.runtime.launch.url || app.links.api_url || app.runtime.api.url || null;
     return {
       id: `route-${app.id}`,
@@ -1211,6 +1246,58 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
         </button>
       </div>
 
+      <section className="services-section" aria-label="领域应用筛选" style={{ marginBottom: 20 }}>
+        <div className="section-header" style={{ marginBottom: 12 }}>
+          <div>
+            <h2 style={{ fontSize: 16, margin: 0 }}>应用筛选</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              同一组筛选同时作用于关注工作台、合同矩阵、应用剖面和领域承接路径。
+            </p>
+          </div>
+          <span className="status-badge online">显示 {filteredApps.length} / {apps.items.length}</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'end' }}>
+          <label style={{ display: 'grid', gap: 4, minWidth: 220 }}>
+            <span className="text-muted" style={{ fontSize: 12 }}>关键词</span>
+            <input
+              aria-label="搜索领域应用"
+              value={appQuery}
+              onChange={(event) => setAppQuery(event.target.value)}
+              placeholder="应用、领域或挂载方式"
+            />
+          </label>
+          <label style={{ display: 'grid', gap: 4, minWidth: 180 }}>
+            <span className="text-muted" style={{ fontSize: 12 }}>领域</span>
+            <select aria-label="按领域筛选应用" value={appDomainFilter} onChange={(event) => setAppDomainFilter(event.target.value)}>
+              <option value="all">全部领域</option>
+              {appDomainOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
+          </label>
+          <label style={{ display: 'grid', gap: 4, minWidth: 160 }}>
+            <span className="text-muted" style={{ fontSize: 12 }}>运行态</span>
+            <select aria-label="按运行态筛选应用" value={appRuntimeFilter} onChange={(event) => setAppRuntimeFilter(event.target.value)}>
+              <option value="all">全部运行态</option>
+              <option value="running">运行中</option>
+              <option value="stopped">未运行</option>
+              <option value="not_applicable">无需运行</option>
+            </select>
+          </label>
+          {(appQuery || appDomainFilter !== 'all' || appRuntimeFilter !== 'all') && (
+            <button
+              className="antd-btn small"
+              aria-label="清除领域应用筛选"
+              onClick={() => {
+                setAppQuery('');
+                setAppDomainFilter('all');
+                setAppRuntimeFilter('all');
+              }}
+            >
+              清除筛选
+            </button>
+          )}
+        </div>
+      </section>
+
       <section className="services-section" aria-label="领域关注工作台" style={{ marginBottom: 20 }}>
         <div className="section-header" style={{ marginBottom: 12 }}>
           <div>
@@ -1354,7 +1441,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               </tr>
             </thead>
             <tbody>
-              {apps.items.map((app) => {
+              {filteredApps.map((app) => {
                 const hasSsot = Boolean(app.paths.ssot_root?.exists);
                 const hasEntry = Boolean(app.links.launch_url || app.runtime.launch.url || app.links.api_url || app.runtime.api.url);
                 const hasStart = Boolean(app.commands.start);
@@ -1504,7 +1591,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       </section>
 
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-        {apps.items.map((app) => (
+        {filteredApps.map((app) => (
           <div key={app.id} style={{ display: 'grid', gap: 8 }}>
             <DomainAppCard
               app={app}

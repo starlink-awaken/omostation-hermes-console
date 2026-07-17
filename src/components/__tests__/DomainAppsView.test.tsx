@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import DomainAppsView from '../DomainAppsView'
 
 const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Response
@@ -220,6 +220,53 @@ describe('DomainAppsView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开领域建设任务 家庭激励闭环' }))
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'family-quest-loop' })
+  }, 20000)
+
+  it('filters all application surfaces by domain, runtime, and keyword', async () => {
+    const secondApp = {
+      ...domainAppsPayload.items[0],
+      id: 'opc-console',
+      name: 'OPC 作战台',
+      domain: { id: 'opc', name: '@OPC' },
+      runtime: {
+        ...domainAppsPayload.items[0].runtime,
+        status: 'stopped',
+      },
+    }
+    const payload = {
+      ...domainAppsPayload,
+      summary: { ...domainAppsPayload.summary, total: 2 },
+      items: [domainAppsPayload.items[0], secondApp],
+    }
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/domain-apps') return Promise.resolve(okJson(payload))
+      if (url === '/api/opc/workspace') return Promise.resolve(okJson(opcPayload))
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<DomainAppsView />)
+
+    await waitFor(() => {
+      const filterRegion = screen.getByRole('region', { name: '领域应用筛选' })
+      expect(filterRegion).toBeInTheDocument()
+      expect(within(filterRegion).getByText('显示 2 / 2')).toBeInTheDocument()
+      expect(screen.getAllByText('OPC 作战台').length).toBeGreaterThan(0)
+    }, { timeout: 5000 })
+
+    fireEvent.change(screen.getByRole('combobox', { name: '按领域筛选应用' }), { target: { value: 'opc' } })
+    await waitFor(() => {
+      expect(within(screen.getByRole('region', { name: '领域应用筛选' })).getByText('显示 1 / 2')).toBeInTheDocument()
+      expect(screen.getAllByText('OPC 作战台').length).toBeGreaterThan(0)
+      expect(screen.queryByText('家庭驾驶舱')).not.toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByRole('combobox', { name: '按运行态筛选应用' }), { target: { value: 'running' } })
+    await waitFor(() => {
+      expect(screen.getByText('当前筛选下暂无需要处理的领域应用')).toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: '领域应用筛选' })).getByText('显示 0 / 2')).toBeInTheDocument()
+    })
   }, 20000)
 
   it('queues a domain app command without executing it', async () => {
