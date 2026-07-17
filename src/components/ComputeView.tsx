@@ -282,6 +282,7 @@ export default function ComputeView({
       actionLabel: '进入观测页',
       actionType: 'navigate' as const,
       actionValue: 'Observability',
+      actionTarget: { tab: 'Observability', taskQuery: focusTaskQuery || nodes[0]?.id || 'Compute' },
     },
     {
       id: 'compute-mesh',
@@ -290,6 +291,7 @@ export default function ComputeView({
       actionLabel: '进入网格页',
       actionType: 'navigate' as const,
       actionValue: 'McpMesh',
+      actionTarget: { tab: 'McpMesh', taskQuery: focusTaskQuery || nodes[0]?.id || 'Compute' },
     },
     {
       id: 'compute-tasks',
@@ -298,6 +300,7 @@ export default function ComputeView({
       actionLabel: '进入任务中心',
       actionType: 'navigate' as const,
       actionValue: 'TaskCenter',
+      actionTarget: { tab: 'TaskCenter', taskQuery: focusTaskQuery || nodes[0]?.id || 'Compute' },
     },
   ];
 

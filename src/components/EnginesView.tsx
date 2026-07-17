@@ -266,6 +266,7 @@ export default function EnginesView({
         subtitle="调度前后直接跳去相关页面，不用自己在导航里来回翻。"
         statusText={pipelines.length > 0 ? `${pipelines.length} 条管线` : '未发现管线'}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
         items={[
           {
             id: 'assets',
@@ -274,6 +275,7 @@ export default function EnginesView({
             actionLabel: '去资产页',
             actionType: 'navigate',
             actionValue: 'Assets',
+            actionTarget: { tab: 'Assets', taskQuery: focusTaskQuery || selectedPipeline || pipelines[0] || 'Engines' },
           },
           {
             id: 'workflows',
@@ -282,6 +284,7 @@ export default function EnginesView({
             actionLabel: '去工作流',
             actionType: 'navigate',
             actionValue: 'Workflows',
+            actionTarget: { tab: 'Workflows', taskQuery: focusTaskQuery || selectedPipeline || pipelines[0] || 'Engines' },
           },
           {
             id: 'sandbox',
@@ -290,6 +293,7 @@ export default function EnginesView({
             actionLabel: '去沙箱',
             actionType: 'navigate',
             actionValue: 'Sandbox',
+            actionTarget: { tab: 'Sandbox', taskQuery: focusTaskQuery || selectedPipeline || pipelines[0] || 'Engines' },
           },
           {
             id: 'suggestion',

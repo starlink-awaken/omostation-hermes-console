@@ -242,6 +242,7 @@ export default function McpMeshView({
       actionLabel: '进入观测页',
       actionType: 'navigate' as const,
       actionValue: 'Observability',
+      actionTarget: { tab: 'Observability', taskQuery: focusTaskQuery || services[0]?.domain || 'McpMesh' },
     },
     {
       id: 'mesh-compute',
@@ -250,6 +251,7 @@ export default function McpMeshView({
       actionLabel: '进入算力页',
       actionType: 'navigate' as const,
       actionValue: 'Compute',
+      actionTarget: { tab: 'Compute', taskQuery: focusTaskQuery || services[0]?.domain || 'McpMesh' },
     },
     {
       id: 'mesh-domain-apps',
@@ -258,6 +260,7 @@ export default function McpMeshView({
       actionLabel: '进入应用中心',
       actionType: 'navigate' as const,
       actionValue: 'DomainApps',
+      actionTarget: { tab: 'DomainApps', taskQuery: focusTaskQuery || services[0]?.domain || 'McpMesh' },
     },
   ];
 

@@ -183,9 +183,10 @@ export default function ProtocolWorkbenchView({
       actionLabel: '进入页面',
       actionType: 'navigate' as const,
       actionValue: page.id,
+      actionTarget: { tab: page.id, taskQuery: focusTaskQuery || 'Protocol' },
     }));
     return [...commandItems, ...pageItems];
-  }, [payload.commands, payload.related_pages]);
+  }, [focusTaskQuery, payload.commands, payload.related_pages]);
 
   const assetsTarget = useMemo(() => (
     payload.related_pages.find((page) => /assets|资产/i.test(`${page.id} ${page.title} ${page.reason}`))?.id
