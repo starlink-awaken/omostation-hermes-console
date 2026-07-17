@@ -79,6 +79,7 @@ type InfrastructureState = {
   bosHealth: BosHealth | null;
   bosServices: BosService[];
   runtime: RuntimeService[];
+  error: string | null;
 };
 
 const INFRA_STEPS: InfraStep[] = [
@@ -117,6 +118,23 @@ function nextInfraAction(currentPage: InfraPage, degradedServices: RuntimeServic
   return '当前基础设施层没有明显红灯，抽样检查日志和慢链路即可。';
 }
 
+async function readInfrastructureResponse<T>(
+  result: PromiseSettledResult<Response>,
+  label: string,
+): Promise<{ ok: boolean; data: T | null; error?: string }> {
+  if (result.status === 'rejected') {
+    return { ok: false, data: null, error: `${label}：${result.reason instanceof Error ? result.reason.message : '请求失败'}` };
+  }
+  if (!result.value.ok) {
+    return { ok: false, data: null, error: `${label} HTTP ${result.value.status}` };
+  }
+  try {
+    return { ok: true, data: await result.value.json() as T };
+  } catch {
+    return { ok: false, data: null, error: `${label}：响应格式无效` };
+  }
+}
+
 export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, onOpenTarget }: InfrastructureOpsWorkbenchProps) {
   const [state, setState] = useState<InfrastructureState>({
     loading: true,
@@ -124,14 +142,16 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
     bosHealth: null,
     bosServices: [],
     runtime: [],
+    error: null,
   });
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       try {
-        const [computeRes, bosHealthRes, bosServicesRes, runtimeRes] = await Promise.all([
+        const [computeResult, bosHealthResult, bosServicesResult, runtimeResult] = await Promise.allSettled([
           fetch('/api/governance/compute/status'),
           fetch('/api/bos/health'),
           fetch('/api/bos/services'),
@@ -144,23 +164,30 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
           bosHealth: null,
           bosServices: [],
           runtime: [],
+          error: null,
         };
 
-        if (computeRes.ok) nextState.compute = await computeRes.json();
-        if (bosHealthRes.ok) nextState.bosHealth = await bosHealthRes.json();
-        if (bosServicesRes.ok) {
-          const bosServices = await bosServicesRes.json();
+        const [{ ok: computeOk, data: compute, error: computeError }, { ok: bosHealthOk, data: bosHealth, error: bosHealthError }, { ok: bosServicesOk, data: bosServices, error: bosServicesError }, { ok: runtimeOk, data: runtime, error: runtimeError }] = await Promise.all([
+          readInfrastructureResponse<ComputePayload>(computeResult, '计算状态数据'),
+          readInfrastructureResponse<BosHealth>(bosHealthResult, 'BOS 健康数据'),
+          readInfrastructureResponse<{ services?: BosService[] }>(bosServicesResult, 'BOS 服务目录'),
+          readInfrastructureResponse<{ items?: RuntimeService[] }>(runtimeResult, '运行服务状态'),
+        ]);
+
+        if (computeOk) nextState.compute = compute;
+        if (bosHealthOk) nextState.bosHealth = bosHealth;
+        if (bosServicesOk && bosServices) {
           nextState.bosServices = bosServices.services || [];
         }
-        if (runtimeRes.ok) {
-          const runtime = await runtimeRes.json();
+        if (runtimeOk && runtime) {
           nextState.runtime = runtime.items || [];
         }
+        nextState.error = [computeError, bosHealthError, bosServicesError, runtimeError].filter(Boolean).join('；') || null;
 
         if (!cancelled) setState(nextState);
       } catch (error) {
         if (!cancelled) {
-          setState((previous) => ({ ...previous, loading: false }));
+          setState((previous) => ({ ...previous, loading: false, error: error instanceof Error ? error.message : '基础设施数据暂不可用' }));
         }
       }
     };
@@ -169,7 +196,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
     return () => {
       cancelled = true;
     };
-  }, [currentPage]);
+  }, [currentPage, retryToken]);
 
   const degradedServices = useMemo(
     () => state.runtime.filter((service) => service.status !== 'online'),
@@ -209,6 +236,13 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
           {state.loading ? '同步中' : degradedServices.length > 0 || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? '需要排查' : '基础设施平稳'}
         </span>
       </div>
+
+      {state.error && (
+        <div className="shell-data-banner" role="alert">
+          <span>{state.error}，当前基础设施诊断可能不完整。</span>
+          <button type="button" onClick={() => setRetryToken((token) => token + 1)}>重试</button>
+        </div>
+      )}
 
       <div className="infra-workbench-summary">
         <div className="infra-workbench-card">
@@ -309,6 +343,33 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
             ))}
             {unhealthyNodes.length === 0 && unhealthyModels.length === 0 && (
               <div className="home-focus-empty infra-workbench-empty">当前没有异常节点或模型</div>
+            )}
+          </div>
+        </article>
+
+        <article className="infra-workbench-panel">
+          <div className="infra-workbench-panel-head">
+            <strong>运行服务</strong>
+            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Performance', taskQuery: degradedServices[0]?.name || infrastructureContextQuery }, onNavigate, onOpenTarget)}>
+              <Activity size={13} />
+              <span>去性能页</span>
+            </button>
+          </div>
+          <div className="infra-workbench-list">
+            {state.runtime.slice(0, 4).map((service) => (
+              <button
+                key={service.name}
+                className="infra-workbench-item"
+                aria-label={`查看运行服务 ${service.name}`}
+                onClick={() => openCockpitNavigationTarget({ tab: 'Performance', taskQuery: service.name }, onNavigate, onOpenTarget)}
+              >
+                <strong>{service.name}</strong>
+                <span>{service.status} · CPU {service.cpu ?? 0}% · 内存 {service.memory ?? 0}%</span>
+                <small>{service.uptime ? `运行 ${service.uptime}` : '进入性能页看运行趋势。'}</small>
+              </button>
+            ))}
+            {state.runtime.length === 0 && (
+              <div className="home-focus-empty infra-workbench-empty">当前没有可用运行服务</div>
             )}
           </div>
         </article>

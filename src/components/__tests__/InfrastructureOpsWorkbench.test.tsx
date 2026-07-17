@@ -87,4 +87,22 @@ describe('InfrastructureOpsWorkbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /进入基础设施落点 先看全局拓扑/ }))
     expect(onNavigate).toHaveBeenCalledWith('Topology')
   })
+
+  it('keeps runtime services visible when compute data fails', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/governance/compute/status') return Promise.reject(new Error('compute source offline'))
+      if (url === '/api/bos/health') return Promise.resolve({ ok: true, json: async () => bosHealthPayload } as Response)
+      if (url === '/api/bos/services') return Promise.resolve({ ok: true, json: async () => bosServicesPayload } as Response)
+      if (url === '/api/services/status') return Promise.resolve({ ok: true, json: async () => runtimePayload } as Response)
+      return Promise.resolve({ ok: true, json: async () => ({}) } as Response)
+    })
+
+    render(<InfrastructureOpsWorkbench currentPage="Overview" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('计算状态数据：compute source offline')
+      expect(screen.getByRole('button', { name: '查看运行服务 LLM Gateway' })).toBeInTheDocument()
+    })
+  })
 })
