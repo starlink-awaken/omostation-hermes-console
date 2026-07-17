@@ -1497,6 +1497,8 @@ export default function SystemMapView({
   const [projectFilter, setProjectFilter] = useState('all');
   const [coverageFilter, setCoverageFilter] = useState('all');
   const [portfolioFilter, setPortfolioFilter] = useState('all');
+  const [projectLayerFilter, setProjectLayerFilter] = useState('all');
+  const [projectPageFilter, setProjectPageFilter] = useState('all');
   const [projectQuery, setProjectQuery] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedUsagePathId, setSelectedUsagePathId] = useState<string | null>(null);
@@ -1767,6 +1769,18 @@ export default function SystemMapView({
     return index;
   }, [systemMap]);
 
+  const projectLayerOptions = useMemo(
+    () => Array.from(new Set((systemMap?.projects || []).map((project) => project.layer).filter(Boolean))).sort(),
+    [systemMap],
+  );
+
+  const projectPageOptions = useMemo(() => {
+    const pageIds = Array.from(new Set((systemMap?.projects || []).map((project) => project.cockpit_page).filter(Boolean)));
+    return pageIds
+      .map((id) => ({ id, title: pagesById.get(id)?.title || id }))
+      .sort((left, right) => left.title.localeCompare(right.title));
+  }, [pagesById, systemMap]);
+
   const pageGroups = useMemo(() => {
     const groups = new Map<string, CockpitPage[]>();
     systemMap?.cockpit_pages?.forEach((page) => {
@@ -1907,6 +1921,8 @@ export default function SystemMapView({
     return projects.filter((project) => {
       if (allowed && !allowed.has(project.id)) return false;
       if (portfolioAllowed && !portfolioAllowed.has(project.id)) return false;
+      if (projectLayerFilter !== 'all' && project.layer !== projectLayerFilter) return false;
+      if (projectPageFilter !== 'all' && project.cockpit_page !== projectPageFilter) return false;
       if (coverageFilter !== 'all') {
         const check = project.coverage_checks.find((item) => item.id === coverageFilter);
         if (!check || check.status === 'ready') return false;
@@ -1925,7 +1941,7 @@ export default function SystemMapView({
         .toLowerCase()
         .includes(query);
     });
-  }, [activePortfolioBucket, coverageFilter, projectFilter, projectFocusOptions, projectQuery, systemMap]);
+  }, [activePortfolioBucket, coverageFilter, projectFilter, projectFocusOptions, projectLayerFilter, projectPageFilter, projectQuery, systemMap]);
 
   const coverageMatrixRows = useMemo(() => {
     const matrixByProject = new Map(
@@ -4685,6 +4701,28 @@ export default function SystemMapView({
               onChange={(event) => setProjectQuery(event.target.value)}
               placeholder="搜索项目、层级、职责或下一步"
             />
+          </label>
+          <label className="system-map-project-filter">
+            <span>层级</span>
+            <select
+              aria-label="按架构层级筛选项目"
+              value={projectLayerFilter}
+              onChange={(event) => setProjectLayerFilter(event.target.value)}
+            >
+              <option value="all">全部层级</option>
+              {projectLayerOptions.map((layer) => <option key={layer} value={layer}>{layer}</option>)}
+            </select>
+          </label>
+          <label className="system-map-project-filter">
+            <span>入口页</span>
+            <select
+              aria-label="按 Cockpit 入口页筛选项目"
+              value={projectPageFilter}
+              onChange={(event) => setProjectPageFilter(event.target.value)}
+            >
+              <option value="all">全部入口页</option>
+              {projectPageOptions.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}
+            </select>
           </label>
           <div className="system-map-project-filter-state">
             {activeCoverage && coverageFilter !== 'all' && (

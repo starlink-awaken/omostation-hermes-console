@@ -1328,6 +1328,50 @@ describe('SystemMapView', () => {
     })
   })
 
+  it('filters projects by architecture layer and cockpit entry page', async () => {
+    const defaultFetch = vi.mocked(fetch).getMockImplementation()
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+      if (url === '/api/cockpit/system-map') {
+        const domainProject = { ...kaironProject, layer: 'L4', cockpit_page: 'DomainApps' }
+        return okJson({
+          ...systemMapPayload,
+          cockpit_pages: [...systemMapPayload.cockpit_pages, { id: 'DomainApps', title: '应用中心', group: '领域应用', purpose: '领域应用入口', dimensions: ['domain'] }],
+          projects: [cockpitProject, domainProject],
+          project_capability_coverage: {
+            ...systemMapPayload.project_capability_coverage,
+            matrix: [
+              systemMapPayload.project_capability_coverage.matrix[0],
+              { ...systemMapPayload.project_capability_coverage.matrix[1], layer: 'L4', cockpit_page: 'DomainApps' },
+            ],
+          },
+        })
+      }
+      return defaultFetch ? defaultFetch(input) : okJson({})
+    })
+
+    render(<SystemMapView onNavigate={vi.fn()} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '按架构层级筛选项目' })).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: '按 Cockpit 入口页筛选项目' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '查看 cockpit 项目详情' })).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByRole('combobox', { name: '按架构层级筛选项目' }), { target: { value: 'L4' } })
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '查看 cockpit 项目详情' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '查看 kairon 项目详情' })).toBeInTheDocument()
+      expect(screen.getByText(/显示 1 \/ 2/)).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByRole('combobox', { name: '按 Cockpit 入口页筛选项目' }), { target: { value: 'DomainApps' } })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '查看 kairon 项目详情' })).toBeInTheDocument()
+      expect(screen.getByText(/显示 1 \/ 2/)).toBeInTheDocument()
+    })
+  })
+
   it('builds a project entry mapping board with cockpit, coverage, and task handoff routes', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
