@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, Cpu, RefreshCw, Server, Shield, TrendingUp, Zap } from 'lucide-react';
 import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -56,6 +56,8 @@ export default function ComputeView({
   const [circuitBroken, setCircuitBroken] = useState<boolean>(false);
   const [dailyBudget, setDailyBudget] = useState<number | null>(null);
   const [wakeupNodeId, setWakeupNodeId] = useState<string | null>(null);
+  const [nodeQuery, setNodeQuery] = useState('');
+  const [nodeStatusFilter, setNodeStatusFilter] = useState<'all' | 'online' | 'degraded' | 'offline'>('all');
   // 本地生成 (经 /api/governance/compute/generate → BOS → omlx)
   const [genPrompt, setGenPrompt] = useState<string>('');
   const [genModel, setGenModel] = useState<string>('coder');
@@ -206,6 +208,29 @@ export default function ComputeView({
   const summary = data?.summary || {};
   const costBoard = data?.cost_board || {};
   const availableModels = data?.available_models || [];
+  const filteredNodes = useMemo(() => {
+    const query = nodeQuery.trim().toLowerCase();
+    return nodes.filter((node: any) => {
+      if (nodeStatusFilter !== 'all' && node.status !== nodeStatusFilter) return false;
+      if (!query) return true;
+      return [node.id, node.name, node.model, node.type, node.status]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [nodeQuery, nodeStatusFilter, nodes]);
+  const filteredNodeIds = useMemo(() => new Set(filteredNodes.map((node: any) => node.id)), [filteredNodes]);
+  const filteredTrafficByNode = useMemo(() => trafficByNode.filter((traffic) => {
+    if (filteredNodeIds.has(traffic.node_id)) return true;
+    if (!nodeQuery.trim()) return false;
+    return [traffic.node_id, traffic.node_label, traffic.route_type].join(' ').toLowerCase().includes(nodeQuery.trim().toLowerCase());
+  }), [filteredNodeIds, nodeQuery, trafficByNode]);
+  const filteredScheduledTasks = useMemo(() => (data?.scheduled_tasks || []).filter((task: any) => {
+    if (filteredNodeIds.has(task.node_id)) return true;
+    if (!nodeQuery.trim()) return false;
+    return [task.task_id, task.task_name, task.node_id, task.engine, task.status].filter(Boolean).join(' ').toLowerCase().includes(nodeQuery.trim().toLowerCase());
+  }), [data?.scheduled_tasks, filteredNodeIds, nodeQuery]);
 
   if (loading) {
     return (
@@ -866,8 +891,31 @@ export default function ComputeView({
           <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>分布式物理节点负载拓扑</h3>
         </div>
 
+        <section role="region" aria-label="算力对象筛选" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 180px auto', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+          <input
+            className="antd-input"
+            type="search"
+            aria-label="搜索算力节点"
+            placeholder="节点名、模型、任务或路由"
+            value={nodeQuery}
+            onChange={(event) => setNodeQuery(event.target.value)}
+          />
+          <select className="antd-input" aria-label="按状态筛选算力节点" value={nodeStatusFilter} onChange={(event) => setNodeStatusFilter(event.target.value as typeof nodeStatusFilter)}>
+            <option value="all">全部节点状态</option>
+            <option value="online">在线</option>
+            <option value="degraded">降级</option>
+            <option value="offline">离线</option>
+          </select>
+          {(nodeQuery || nodeStatusFilter !== 'all') && (
+            <button type="button" className="antd-btn" aria-label="清除算力对象筛选" onClick={() => { setNodeQuery(''); setNodeStatusFilter('all'); }}>
+              清除筛选
+            </button>
+          )}
+          <span className="text-muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>显示 {filteredNodes.length}/{nodes.length} 个节点 · 流量 {filteredTrafficByNode.length}/{trafficByNode.length} · 调度 {filteredScheduledTasks.length}/{(data?.scheduled_tasks || []).length}</span>
+        </section>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
-          {nodes.map((node: any) => {
+          {filteredNodes.map((node: any) => {
             const cpuLoad = node.cpu_usage;
             const gpuLoad = node.gpu_usage;
             const isOnline = node.status === 'online';
@@ -983,14 +1031,14 @@ export default function ComputeView({
                 </tr>
               </thead>
               <tbody>
-                {trafficByNode.length === 0 ? (
+                {filteredTrafficByNode.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'rgba(255,255,255,0.45)' }}>
                       暂无活跃的大模型任务分流记录
                     </td>
                   </tr>
                 ) : (
-                  trafficByNode.map((tn) => (
+                  filteredTrafficByNode.map((tn) => (
                     <tr key={tn.node_id} className="service-row">
                       <td style={{ fontWeight: 600 }}>{tn.node_label}</td>
                       <td>
@@ -1038,14 +1086,14 @@ export default function ComputeView({
                   </tr>
                 </thead>
                 <tbody>
-                  {!data?.scheduled_tasks || data.scheduled_tasks.length === 0 ? (
+                  {filteredScheduledTasks.length === 0 ? (
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'rgba(255,255,255,0.45)' }}>
                         暂无处于激活调度态的任务
                       </td>
                     </tr>
                   ) : (
-                    data.scheduled_tasks.map((task: any) => (
+                    filteredScheduledTasks.map((task: any) => (
                       <tr key={task.task_id} className="service-row">
                         <td style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '11.5px' }}>{task.task_id}</td>
                         <td style={{ fontSize: '11.5px' }}>{task.task_name}</td>

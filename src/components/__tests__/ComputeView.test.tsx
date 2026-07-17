@@ -210,4 +210,41 @@ describe('ComputeView', () => {
     expect(fetch).toHaveBeenLastCalledWith('/api/cockpit/compute/generation/queue', expect.objectContaining({ method: 'POST' }))
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
   })
+
+  it('keeps node, traffic and scheduled-task views aligned under compute filters', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({
+      summary: {},
+      cost_board: {},
+      nodes: [
+        { id: 'local-mac', name: '本地主机', model: 'coder', type: 'local', status: 'online', cpu_usage: 17, gpu_usage: 0 },
+        { id: 'cloud-a', name: '云端节点 A', model: 'general', type: 'cloud', status: 'offline', cpu_usage: 0, gpu_usage: 0 },
+      ],
+      quota: { quota: [] },
+      traffic_by_node: [
+        { node_id: 'local-mac', node_label: '本地主机', route_type: 'local', calls: 4, tokens: 400, latency_ms_avg: 10, tokens_per_second_avg: 40 },
+        { node_id: 'cloud-a', node_label: '云端节点 A', route_type: 'cloud', calls: 8, tokens: 800, latency_ms_avg: 20, tokens_per_second_avg: 30 },
+      ],
+      scheduled_tasks: [
+        { task_id: 'task-local', task_name: '本地分析', node_id: 'local-mac', engine: 'coder', status: 'running', progress: 40 },
+        { task_id: 'task-cloud', task_name: '云端分析', node_id: 'cloud-a', engine: 'general', status: 'running', progress: 20 },
+      ],
+      circuit_broken: false,
+      daily_budget: 100,
+    }))
+
+    render(<ComputeView />)
+    await waitFor(() => expect(screen.getAllByText('云端节点 A').length).toBeGreaterThan(0))
+
+    fireEvent.change(screen.getByLabelText('搜索算力节点'), { target: { value: 'local' } })
+    expect(screen.getByText('显示 1/2 个节点 · 流量 1/2 · 调度 1/2')).toBeInTheDocument()
+    const nodeSection = screen.getByRole('region', { name: '算力对象筛选' }).parentElement
+    expect(nodeSection).not.toBeNull()
+    expect(within(nodeSection as HTMLElement).getByText('本地主机')).toBeInTheDocument()
+    expect(within(nodeSection as HTMLElement).queryByText('云端节点 A')).not.toBeInTheDocument()
+    expect(screen.getByText('task-local')).toBeInTheDocument()
+    expect(screen.queryByText('task-cloud')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '清除算力对象筛选' }))
+    expect(screen.getByText('显示 2/2 个节点 · 流量 2/2 · 调度 2/2')).toBeInTheDocument()
+  })
 })
