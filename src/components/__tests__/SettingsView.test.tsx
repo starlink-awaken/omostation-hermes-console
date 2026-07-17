@@ -113,6 +113,8 @@ describe('SettingsView', () => {
       expect(screen.getByText('ACL 警告 streak')).toBeInTheDocument()
       expect(screen.getByText(/最近写入：2026-07-17T09:00:00Z/)).toBeInTheDocument()
       expect(screen.getByRole('region', { name: '运行版本与变更历史' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: '当前 API 端点目录' })).toBeInTheDocument()
+      expect(screen.getByText('/api/projects')).toBeInTheDocument()
       expect(screen.getByText('当前版本')).toBeInTheDocument()
       expect(screen.getByText('v2 · 支持中')).toBeInTheDocument()
       expect(screen.getByText(/版本目录更新时间：2026-07-17T09:00:00Z/)).toBeInTheDocument()
@@ -120,6 +122,33 @@ describe('SettingsView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '打开控制面承接到系统地图' }))
     expect(onNavigate).toHaveBeenCalledWith('SystemMap')
+  })
+
+  it('filters the current API endpoint catalog by path', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/version') return Promise.resolve(okJson({ current_version: 'v2', endpoints: 2 }))
+      if (url === '/api/version/history') return Promise.resolve(okJson([{
+        version: 'v2',
+        endpoint_list: [
+          { path: '/api/tasks', version: 'v2' },
+          { path: '/api/version', version: 'v2' },
+        ],
+      }]))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<SettingsView />)
+
+    const catalog = await screen.findByRole('region', { name: '当前 API 端点目录' })
+    expect(within(catalog).getByText('/api/tasks')).toBeInTheDocument()
+    expect(within(catalog).getByText('/api/version')).toBeInTheDocument()
+
+    fireEvent.change(within(catalog).getByRole('searchbox', { name: '筛选当前 API 端点' }), { target: { value: 'tasks' } })
+
+    expect(within(catalog).getByText('匹配 1/2')).toBeInTheDocument()
+    expect(within(catalog).getByText('/api/tasks')).toBeInTheDocument()
+    expect(within(catalog).queryByText('/api/version')).not.toBeInTheDocument()
   })
 
   it('submits instance registration and shows returned status', async () => {

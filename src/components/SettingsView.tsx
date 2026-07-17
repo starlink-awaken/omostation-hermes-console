@@ -148,11 +148,19 @@ export default function SettingsView({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [securityQuery, setSecurityQuery] = useState('');
   const [securityStatusFilter, setSecurityStatusFilter] = useState('all');
+  const [endpointQuery, setEndpointQuery] = useState('');
   const healthyServices = typeof metrics?.healthy === 'number' ? metrics.healthy : 0;
   const totalServices = typeof metrics?.services === 'number' ? metrics.services : 0;
   const latencyEntries = metrics?.latency && typeof metrics.latency === 'object'
     ? Object.entries(metrics.latency).slice(0, 3)
     : [];
+  const currentVersionRecord = versionHistory.find((item) => item.version === versionInfo?.current_version);
+  const currentEndpoints = useMemo(() => {
+    const query = endpointQuery.trim().toLowerCase();
+    const endpoints = currentVersionRecord?.endpoint_list || [];
+    if (!query) return endpoints;
+    return endpoints.filter((endpoint) => `${endpoint.path || ''} ${endpoint.version || ''}`.toLowerCase().includes(query));
+  }, [currentVersionRecord, endpointQuery]);
   const registerStatus = registerResult?.error ? '失败' : registerResult ? '已返回' : '待提交';
   const registrationFocus = [
     {
@@ -617,6 +625,38 @@ export default function SettingsView({
                   </div>
                 </article>
               ))}
+            </div>
+            <div role="region" aria-label="当前 API 端点目录" style={{ marginTop: 12 }}>
+              <div className="section-header" style={{ marginBottom: 8 }}>
+                <div>
+                  <strong>当前 API 端点目录</strong>
+                  <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
+                    直接核对当前运行版本暴露的端点，避免只看到数量却不知道具体能力面。
+                  </p>
+                </div>
+                <span className="status-badge online">匹配 {currentEndpoints.length}/{currentVersionRecord?.endpoint_list?.length || 0}</span>
+              </div>
+              <input
+                type="search"
+                aria-label="筛选当前 API 端点"
+                placeholder="筛选路径，例如 /api/tasks"
+                value={endpointQuery}
+                onChange={(event) => setEndpointQuery(event.target.value)}
+                style={{ width: '100%', maxWidth: 420, marginBottom: 8 }}
+              />
+              <div style={{ display: 'grid', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
+                {currentEndpoints.length === 0 ? (
+                  <div className="action-surface-item">
+                    <span className="text-muted">当前版本没有可显示的端点目录。</span>
+                  </div>
+                ) : currentEndpoints.map((endpoint) => (
+                  <div key={`${endpoint.version || versionInfo?.current_version || 'current'}:${endpoint.path}`} className="action-surface-item" style={{ alignItems: 'center' }}>
+                    <Route size={14} className="text-accent" aria-hidden="true" />
+                    <code style={{ flex: 1 }}>{endpoint.path || '未知路径'}</code>
+                    <span className="status-badge online">{endpoint.version || versionInfo?.current_version || '未知版本'}</span>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="action-surface-item" style={{ alignItems: 'flex-start', marginTop: 12 }}>
               <div>
