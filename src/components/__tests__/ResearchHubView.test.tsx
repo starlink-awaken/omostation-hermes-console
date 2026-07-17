@@ -74,6 +74,7 @@ describe('ResearchHubView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /2\. 知识中枢/ }))
     expect(onNavigate).toHaveBeenCalledWith('Knowledge')
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Knowledge', taskQuery: '7' })
 
     fireEvent.click(screen.getByRole('button', { name: /任务中心/ }))
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')

@@ -306,6 +306,8 @@ export default function ResearchHubView({
     };
   }, [filteredResearch]);
 
+  const researchObjectQuery = focusTaskQuery || (filteredResearch[0] ? String(filteredResearch[0].id) : undefined);
+
   const researchClosureRows = useMemo<ResearchClosureRow[]>(() => {
     const firstRecent = filteredResearch[0];
     const firstContext = researchWorkbench.contextItems[0];
@@ -504,7 +506,7 @@ export default function ResearchHubView({
                   key={step.id}
                   type="button"
                   className="action-surface-item"
-                  onClick={() => onNavigate?.(step.id)}
+                  onClick={() => openCockpitNavigationTarget({ tab: step.id, taskQuery: researchObjectQuery }, onNavigate, onOpenTarget)}
                   style={{ textAlign: 'left', width: '100%' }}
                 >
                   <div>
@@ -874,7 +876,7 @@ export default function ResearchHubView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`补上下文 ${item.topic}`}
-                    onClick={() => onNavigate?.(knowledgeTarget)}
+                    onClick={() => openCockpitNavigationTarget({ tab: knowledgeTarget, taskQuery: String(item.id) }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -930,7 +932,11 @@ export default function ResearchHubView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>待发布与回流</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先看对象详情，再进入发布/总览面做回流和复盘。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.(publicationTarget)}>
+              <button
+                type="button"
+                className="antd-btn"
+                onClick={() => openCockpitNavigationTarget({ tab: publicationTarget, taskQuery: researchObjectQuery }, onNavigate, onOpenTarget)}
+              >
                 <BookOpen size={14} />
                 <span>进入发布面</span>
               </button>
@@ -970,7 +976,7 @@ export default function ResearchHubView({
                 key={page.id}
                 type="button"
                 className="action-surface-item"
-                onClick={() => onNavigate?.(page.id)}
+                onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: researchObjectQuery }, onNavigate, onOpenTarget)}
                 style={{ textAlign: 'left' }}
               >
                 <div>
