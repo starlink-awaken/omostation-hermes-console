@@ -102,6 +102,7 @@ describe('SettingsView', () => {
 
   it('submits instance registration and shows returned status', async () => {
     const onOpenTarget = vi.fn()
+    let domainAppsCalls = 0
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/metrics/history') {
@@ -113,6 +114,7 @@ describe('SettingsView', () => {
         }))
       }
       if (url === '/api/domain-apps') {
+        domainAppsCalls += 1
         return Promise.resolve(okJson(domainAppsPayload))
       }
       if (url === '/api/instance' && init?.method === 'POST') {
@@ -135,6 +137,7 @@ describe('SettingsView', () => {
       expect(screen.getByText(/"registered": "gbrain-local"/)).toBeInTheDocument()
       expect(screen.getByText('已返回')).toBeInTheDocument()
     })
+    await waitFor(() => expect(domainAppsCalls).toBeGreaterThanOrEqual(2))
     fireEvent.click(screen.getByRole('button', { name: '打开实例验收任务' }))
     expect(onOpenTarget).toHaveBeenCalledWith({
       tab: 'TaskCenter',

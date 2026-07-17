@@ -283,14 +283,14 @@ export default function SettingsView({
     }
   };
 
-  const refreshSettingsData = () => {
+  const refreshSettingsData = async () => {
     setLoadError(null);
-    void Promise.all([fetchMetrics(), fetchDomainApps()]);
+    await Promise.all([fetchMetrics(), fetchDomainApps()]);
   };
 
   useEffect(() => {
-    fetchMetrics();
-    fetchDomainApps();
+    void fetchMetrics();
+    void fetchDomainApps();
     const interval = setInterval(fetchMetrics, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -307,7 +307,11 @@ export default function SettingsView({
       fd.append('service', instanceService);
       fd.append('mcp_endpoint', instanceUrl);
       const res = await fetch('/api/instance', { method: 'POST', body: fd });
-      setRegisterResult(await res.json());
+      const result = await res.json();
+      setRegisterResult(result);
+      if (res.ok) {
+        await refreshSettingsData();
+      }
     } catch (e: any) {
       setRegisterResult({ error: e.message });
     }
