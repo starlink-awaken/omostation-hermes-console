@@ -611,7 +611,7 @@ export default function AlertCenterPage({
                     type="button"
                     className="action-surface-item"
                     aria-label={`处理告警 ${alert.message}`}
-                    onClick={() => onNavigate?.(alert.source.includes('mesh') ? 'LogViewer' : 'Performance')}
+                    onClick={() => openCockpitNavigationTarget({ tab: alert.source.includes('mesh') ? 'LogViewer' : 'Performance', taskQuery: alert.id || alert.source }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -642,7 +642,7 @@ export default function AlertCenterPage({
                 type="button"
                 className="action-surface-item"
                 aria-label={page.aria}
-                onClick={() => onNavigate?.(page.id)}
+                onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: alertContextQuery }, onNavigate, onOpenTarget)}
                 style={{ textAlign: 'left', width: '100%' }}
               >
                 <div>

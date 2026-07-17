@@ -593,7 +593,7 @@ export default function ComputeView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>节点扩容与排障</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>CPU/GPU 压力大或节点离线时，先回观测面，再去网格核对分流。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Observability')}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: focusTaskQuery || nodes[0]?.id || 'Compute' }, onNavigate, onOpenTarget)}>
                 <Activity size={14} />
                 <span>看观测页</span>
               </button>
@@ -608,7 +608,7 @@ export default function ComputeView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`处理算力节点 ${node.name}`}
-                    onClick={() => onNavigate?.('McpMesh')}
+                    onClick={() => openCockpitNavigationTarget({ tab: 'McpMesh', taskQuery: node.id || node.name }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -643,7 +643,7 @@ export default function ComputeView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`处理供应商风险 ${provider.provider || index}`}
-                    onClick={() => onNavigate?.('TaskCenter')}
+                    onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: provider.provider || focusTaskQuery || 'Compute' }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -664,7 +664,7 @@ export default function ComputeView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>调度与分流热点</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>高频任务和高调用节点要回工作流页、系统地图和网格继续验收。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Workflows')}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Workflows', taskQuery: focusTaskQuery || nodes[0]?.id || 'Compute' }, onNavigate, onOpenTarget)}>
                 <Zap size={14} />
                 <span>看工作流页</span>
               </button>
@@ -678,7 +678,7 @@ export default function ComputeView({
                   type="button"
                   className="action-surface-item"
                   aria-label={`查看算力热点 ${route.node_label}`}
-                  onClick={() => onNavigate?.('SystemMap')}
+                  onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: route.node_label || focusTaskQuery || 'Compute' }, onNavigate, onOpenTarget)}
                   style={{ textAlign: 'left', width: '100%' }}
                 >
                   <div>

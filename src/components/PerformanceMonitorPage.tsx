@@ -488,7 +488,7 @@ export default function PerformanceMonitorPage({
                     type="button"
                     className="action-surface-item"
                     aria-label={`查看性能服务 ${service.name}`}
-                    onClick={() => onNavigate?.(service.status === 'online' ? 'LogViewer' : 'AlertCenter')}
+                    onClick={() => openCockpitNavigationTarget({ tab: service.status === 'online' ? 'LogViewer' : 'AlertCenter', taskQuery: service.name }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -518,7 +518,7 @@ export default function PerformanceMonitorPage({
                 type="button"
                 className="action-surface-item"
                 aria-label={page.aria}
-                onClick={() => onNavigate?.(page.id)}
+                onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: leadPerformanceService?.name || focusTaskQuery || 'Performance' }, onNavigate, onOpenTarget)}
                 style={{ textAlign: 'left', width: '100%' }}
               >
                 <div>

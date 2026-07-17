@@ -427,7 +427,7 @@ export default function ObservabilityView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>异常域追踪</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>优先处理报错或高延迟的 BOS 域，先看网格再看日志。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.('McpMesh')}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'McpMesh', taskQuery: observabilityContextQuery }, onNavigate, onOpenTarget)}>
                 <Activity size={14} />
                 <span>去网格页</span>
               </button>
@@ -442,7 +442,7 @@ export default function ObservabilityView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`查看异常域 ${domain.domain}`}
-                    onClick={() => onNavigate?.('LogViewer')}
+                    onClick={() => openCockpitNavigationTarget({ tab: 'LogViewer', taskQuery: domain.domain }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -467,7 +467,7 @@ export default function ObservabilityView({
                 <strong>系统健康度 {observabilityBacklog.healthScore ?? 'N/A'}</strong>
                 <p>治理 {observabilityBacklog.governanceHealth} · Git {observabilityBacklog.gitDirty ? 'dirty' : 'clean'}</p>
               </div>
-              <button type="button" className="antd-btn small" aria-label="打开观测承接到告警中心" onClick={() => onNavigate?.('AlertCenter')}>
+              <button type="button" className="antd-btn small" aria-label="打开观测承接到告警中心" onClick={() => openCockpitNavigationTarget({ tab: 'AlertCenter', taskQuery: observabilityContextQuery }, onNavigate, onOpenTarget)}>
                 告警中心
               </button>
             </div>
@@ -475,7 +475,7 @@ export default function ObservabilityView({
               type="button"
               className="action-surface-item"
               aria-label="打开观测承接到系统地图"
-              onClick={() => onNavigate?.('SystemMap')}
+              onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: observabilityContextQuery }, onNavigate, onOpenTarget)}
               style={{ textAlign: 'left', width: '100%' }}
             >
               <div>
@@ -501,7 +501,7 @@ export default function ObservabilityView({
                 type="button"
                 className="action-surface-item"
                 aria-label={page.aria}
-                onClick={() => onNavigate?.(page.id)}
+                onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: observabilityContextQuery }, onNavigate, onOpenTarget)}
                 style={{ textAlign: 'left', width: '100%' }}
               >
                 <div>

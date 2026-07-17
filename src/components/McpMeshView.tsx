@@ -480,7 +480,7 @@ export default function McpMeshView({
               type="button"
               className="antd-btn small"
               aria-label="回系统地图继续定位"
-              onClick={() => onNavigate?.('SystemMap')}
+              onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: focusTaskQuery || firstService?.domain || 'McpMesh' }, onNavigate, onOpenTarget)}
             >
               <Network size={13} />
               <span>回系统地图</span>
@@ -599,7 +599,7 @@ export default function McpMeshView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>热点路由域</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先筛到热点域，再回观测面或日志页看真实异常证据。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.('Observability')}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: focusTaskQuery || firstService?.domain || 'McpMesh' }, onNavigate, onOpenTarget)}>
                 <Activity size={14} />
                 <span>看观测页</span>
               </button>
@@ -631,7 +631,7 @@ export default function McpMeshView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>待补域与注册</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>缺失域不应该一直空着，直接转去应用中心和注册表单补位。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.('DomainApps')}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps', taskQuery: focusTaskQuery || firstMissingDomain?.domain || firstService?.domain || 'McpMesh' }, onNavigate, onOpenTarget)}>
                 <PlusCircle size={14} />
                 <span>看应用中心</span>
               </button>
@@ -675,7 +675,7 @@ export default function McpMeshView({
                 type="button"
                 className="action-surface-item"
                 aria-label={page.aria}
-                onClick={() => onNavigate?.(page.id)}
+                onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: focusTaskQuery || firstService?.domain || 'McpMesh' }, onNavigate, onOpenTarget)}
                 style={{ textAlign: 'left', width: '100%' }}
               >
                 <div>

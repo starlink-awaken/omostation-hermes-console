@@ -946,7 +946,7 @@ export default function ProtocolWorkbenchView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>待排查协议层</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先抓观察层，没有观察层时也给出当前最关键的一层入口。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.(workflowTarget)}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: workflowTarget, taskQuery: focusTaskQuery || 'Protocol' }, onNavigate, onOpenTarget)}>
                 <Route size={14} />
                 <span>看工作流页</span>
               </button>
@@ -961,7 +961,7 @@ export default function ProtocolWorkbenchView({
                     type="button"
                     className="action-surface-item"
                     aria-label={`排查协议层 ${layer.title}`}
-                    onClick={() => onNavigate?.(layer.status === 'ready' ? workflowTarget : assetsTarget)}
+                    onClick={() => openCockpitNavigationTarget({ tab: layer.status === 'ready' ? workflowTarget : assetsTarget, taskQuery: layer.id || layer.title || focusTaskQuery || 'Protocol' }, onNavigate, onOpenTarget)}
                     style={{ textAlign: 'left', width: '100%' }}
                   >
                     <div>
@@ -1024,7 +1024,7 @@ export default function ProtocolWorkbenchView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>承接页面与路线</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>协议层问题最后都要落到页面、路线图和治理面上。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => onNavigate?.(governanceTarget)}>
+              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: governanceTarget, taskQuery: focusTaskQuery || 'Protocol' }, onNavigate, onOpenTarget)}>
                 <ClipboardCheck size={14} />
                 <span>看治理面</span>
               </button>
@@ -1062,7 +1062,7 @@ export default function ProtocolWorkbenchView({
                   type="button"
                   className="action-surface-item"
                   aria-label={`查看承接页面 ${page.title}`}
-                  onClick={() => onNavigate?.(page.id)}
+                  onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: page.id || focusTaskQuery || 'Protocol' }, onNavigate, onOpenTarget)}
                   style={{ textAlign: 'left', width: '100%' }}
                 >
                   <div>
