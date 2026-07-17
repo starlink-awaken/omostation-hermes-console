@@ -1205,6 +1205,7 @@ function ProjectDetailPanel({
   relatedDrafts,
   onInspect,
   onQueueAction,
+  onQueueTriageCommand,
   activeTarget,
 }: {
   project: ProjectItem;
@@ -1220,6 +1221,7 @@ function ProjectDetailPanel({
   relatedDrafts: DraftTask[];
   onInspect: (ref: SourceRef) => void;
   onQueueAction: (action: ProjectAction) => void;
+  onQueueTriageCommand: (command: ProjectAction) => void;
   activeTarget: string;
 }) {
   const verification = project.runtime.latest_verification;
@@ -1348,22 +1350,38 @@ function ProjectDetailPanel({
           <h3>排查命令</h3>
           <div className="system-map-triage-command-list">
             {project.triage_commands.length > 0 ? (
-              project.triage_commands.slice(0, 6).map((command) => (
-                <button
-                  className={`system-map-triage-command ${statusClass(command.risk)}`}
-                  disabled={!command.enabled}
-                  key={`${project.id}-${command.id}`}
-                  onClick={() => void copyText(command.value)}
-                  title={command.guard}
-                >
-                  <Copy size={12} />
-                  <span>
-                    <strong>{command.label}</strong>
-                    <small>{command.reason}</small>
-                    <code>{command.value}</code>
-                  </span>
-                </button>
-              ))
+              project.triage_commands.slice(0, 6).map((command) => {
+                const existingTaskId = command.task?.task_id;
+                const canOpenTask = Boolean(existingTaskId && onOpenTarget);
+                return (
+                  <div className="system-map-project-triage-detail" key={`${project.id}-${command.id}`}>
+                    <button
+                      className={`system-map-triage-command ${statusClass(command.risk)}`}
+                      disabled={!command.enabled}
+                      onClick={() => void copyText(command.value)}
+                      title={command.guard}
+                    >
+                      <Copy size={12} />
+                      <span>
+                        <strong>{command.label}</strong>
+                        <small>{command.reason}</small>
+                        <code>{command.value}</code>
+                      </span>
+                    </button>
+                    <button
+                      className={`system-map-triage-queue ${statusClass(command.risk)}`}
+                      disabled={!command.enabled || (Boolean(command.task?.status) && !canOpenTask)}
+                      aria-label={canOpenTask ? `打开项目排查任务 ${command.label}` : `承接项目排查命令 ${command.label}`}
+                      title={canOpenTask ? '打开已承接任务，继续审批、执行或查看证据' : '登记为计划任务，不会直接执行命令'}
+                      onClick={() => canOpenTask
+                        ? onOpenTarget?.({ tab: 'TaskCenter', taskQuery: existingTaskId })
+                        : onQueueTriageCommand(command)}
+                    >
+                      {canOpenTask ? <Eye size={12} /> : <ClipboardCheck size={12} />}
+                    </button>
+                  </div>
+                );
+              })
             ) : (
               <span className="text-muted">暂无需要排查的命令</span>
             )}
@@ -2961,6 +2979,7 @@ export default function SystemMapView({
           relatedDrafts={selectedProjectDrafts}
           onInspect={inspectSourceRef}
           onQueueAction={(action) => void queueProjectAction(selectedProject.id, action)}
+          onQueueTriageCommand={(command) => void queueProjectTriageCommand(command)}
           activeTarget={activeSourceTarget}
         />
       )}

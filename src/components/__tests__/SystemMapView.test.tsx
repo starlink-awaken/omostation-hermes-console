@@ -870,6 +870,27 @@ describe('SystemMapView', () => {
     })
   })
 
+  it('queues a triage command directly from project detail', async () => {
+    const onOpenTarget = vi.fn()
+    render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} focusProjectId="kairon" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '承接项目排查命令 复跑验证' })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: '承接项目排查命令 复跑验证' }))
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/cockpit/projects/kairon/triage/verification-rerun/queue',
+        { method: 'POST' },
+      )
+      expect(onOpenTarget).toHaveBeenCalledWith({
+        tab: 'TaskCenter',
+        taskQuery: 'cockpit-triage-kairon-verification-rerun',
+      })
+    })
+  })
+
   it('renders the project by dimension coverage matrix and opens cell details', async () => {
     render(<SystemMapView onNavigate={vi.fn()} />)
 

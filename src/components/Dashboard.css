@@ -5127,6 +5127,13 @@
   align-items: stretch;
 }
 
+.system-map-project-triage-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: stretch;
+}
+
 .system-map-triage-command {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
