@@ -4671,7 +4671,10 @@ export default function SystemMapView({
                           className={`system-map-coverage-matrix-cell ${statusClass(status || 'unknown')}`}
                           aria-label={`${row.project.id} ${dimension.title}：${coverageStatusText(status)}`}
                           title={check ? `${check.detail} 下一步：${check.next_action}` : '该维度暂无检查结果'}
-                          onClick={() => setSelectedProjectId(row.project.id)}
+                          onClick={() => {
+                            setCoverageFilter(dimension.id);
+                            setSelectedProjectId(row.project.id);
+                          }}
                         >
                           <strong aria-hidden="true">{status === 'ready' ? '✓' : status === 'warning' ? '!' : status === 'failed' ? '×' : '—'}</strong>
                           <span>{coverageStatusText(status)}</span>

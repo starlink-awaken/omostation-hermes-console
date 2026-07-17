@@ -1547,6 +1547,13 @@ describe('SystemMapView', () => {
       expect(screen.getByText(/显示 1 \/ 2 · 命令 1/)).toBeInTheDocument()
       expect(screen.getAllByText(/kairon · 复跑验证/).length).toBeGreaterThan(0)
     })
+
+    fireEvent.click(screen.getByRole('button', { name: /kairon 验证证据：/ }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/覆盖维度：验证证据/)).toBeInTheDocument()
+      expect(screen.getByLabelText('kairon 项目详情')).toBeInTheDocument()
+    })
   })
 
   it('opens a project detail panel with workflow evidence and commands', async () => {
