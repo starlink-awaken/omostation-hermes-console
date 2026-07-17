@@ -429,6 +429,7 @@ export default function TopologyView({
         statusText={`显示 ${filteredServices.length}/${services.length} 节点 / ${edges.length} 关系 / ${attentionServices.length} 待确认`}
         items={topologyActionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       <section className="services-section" aria-label="拓扑正式任务">

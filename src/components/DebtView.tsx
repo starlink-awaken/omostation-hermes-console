@@ -259,6 +259,7 @@ export default function DebtView({
         subtitle="先筛债务，再快速回治理、系统地图和领域页，不用自己在导航里来回找。"
         statusText={`open ${data.open} / total ${data.total}`}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
         items={[
           {
             id: 'c2g',

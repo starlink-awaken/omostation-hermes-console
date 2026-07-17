@@ -318,6 +318,7 @@ export default function QuestBoard({
         subtitle="冒险板不再只是积分展示，直接把家庭任务和领域应用、任务中心连起来。"
         statusText={activeQuests.length > 0 ? `活跃冒险 ${activeQuests.length}` : '当前无活跃冒险'}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
         items={[
           {
             id: 'domain-apps',

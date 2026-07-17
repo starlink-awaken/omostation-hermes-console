@@ -333,6 +333,7 @@ export default function SettingsView({
         subtitle="控制面看完指标后，直接跳去实例、观测和领域挂载的下一步。"
         statusText={metrics?.services ? `${metrics.healthy}/${metrics.services} healthy` : '等待指标'}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
         items={[
           {
             id: 'obs',

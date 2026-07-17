@@ -288,6 +288,7 @@ export default function L4HealthView({
         subtitle="发现域异常后，直接跳到领域应用、系统地图或观测页继续收敛。"
         statusText={healthData?.data_quality === 'unavailable' ? '域健康读数不可用' : healthData ? `healthy ${healthData.healthy_count} / ${healthData.total_domains}` : '等待域健康数据'}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
         items={[
           {
             id: 'domain-apps',

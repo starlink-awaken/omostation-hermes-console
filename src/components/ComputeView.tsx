@@ -476,6 +476,7 @@ export default function ComputeView({
         statusText={nodes.length ? `${nodes.length} 个算力节点` : '等待算力节点'}
         items={computeActionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       {focusedComputeCard && (

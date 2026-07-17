@@ -1043,6 +1043,7 @@ export default function OverviewPage({
         statusText={`${activeAlerts.length} 告警 / ${readOnlyDrafts.length} 草稿 / ${servicesNeedingAttention.length} 待关注服务`}
         items={overviewActionItems}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
       />
 
       <FocusedOverviewClosureSection

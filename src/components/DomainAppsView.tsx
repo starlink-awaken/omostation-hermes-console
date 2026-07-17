@@ -849,6 +849,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
         subtitle="领域应用不只看运行态，直接联动家庭任务、治理和 OPC 作战台。"
         statusText={`ready ${apps.summary.ready} · attention ${apps.summary.security_warn + apps.summary.security_failed}`}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
         items={[
           {
             id: 'tasks',

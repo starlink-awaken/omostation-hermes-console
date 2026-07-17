@@ -376,6 +376,7 @@ export default function C2GStrategyView({
         subtitle="看完治理状态后，直接跳去系统地图、债务页或任务中心推进下一步。"
         statusText={`卡片 ${filteredCards.length}/${cards.length} · 提案 ${filteredProposals.length}/${proposals.length} · 违规 ${filteredViolations.length}/${violations.length}`}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
         items={[
           {
             id: 'system-map',

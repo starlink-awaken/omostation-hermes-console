@@ -159,6 +159,7 @@ export default function SandboxTerminal({
         subtitle="先做小实验，再把结果带回调度、日志或任务中心，不用离开这个上下文自己找路。"
         statusText={isRunning ? '执行中' : '可立即验证'}
         onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
         items={[
           {
             id: 'copy-code',
