@@ -102,6 +102,7 @@ export default function KnowledgeHubView({
   ]), [focusTaskQuery]);
   const inferredSubTab = useMemo(() => inferKnowledgeSubTab(focusTaskQuery), [focusTaskQuery]);
   const [knowledgeSubTab, setKnowledgeSubTab] = useState<KnowledgeSubTab>(inferredSubTab);
+  const [knowledgeQuery, setKnowledgeQuery] = useState('');
   const [knowledgeDraftNotice, setKnowledgeDraftNotice] = useState<string | null>(null);
   const [knowledgeTaskPending, setKnowledgeTaskPending] = useState(false);
   const [knowledgeTaskError, setKnowledgeTaskError] = useState<string | null>(null);
@@ -168,6 +169,31 @@ export default function KnowledgeHubView({
       },
     ];
   }, [focusTaskQuery, knowledgeSubTab, knowledgeSurfaces]);
+
+  const filteredKnowledgeSurfaces = useMemo(() => {
+    const query = knowledgeQuery.trim().toLowerCase();
+    if (!query) return knowledgeSurfaces;
+    return knowledgeSurfaces.filter((surface) => (
+      [surface.id, surface.title, surface.summary, surface.detail]
+        .some((value) => value.toLowerCase().includes(query))
+    ));
+  }, [knowledgeQuery, knowledgeSurfaces]);
+
+  const filteredKnowledgeClosureRows = useMemo(() => {
+    const query = knowledgeQuery.trim().toLowerCase();
+    if (!query) return knowledgeClosureRows;
+    return knowledgeClosureRows.filter((row) => (
+      [row.id, row.title, row.summary, row.signal, row.nextAction]
+        .some((value) => value.toLowerCase().includes(query))
+    ));
+  }, [knowledgeClosureRows, knowledgeQuery]);
+
+  useEffect(() => {
+    if (!knowledgeQuery.trim() || filteredKnowledgeSurfaces.length === 0) return;
+    if (!filteredKnowledgeSurfaces.some((surface) => surface.id === knowledgeSubTab)) {
+      setKnowledgeSubTab(filteredKnowledgeSurfaces[0].id);
+    }
+  }, [filteredKnowledgeSurfaces, knowledgeQuery, knowledgeSubTab]);
 
   const focusedKnowledgeCard = useMemo(() => {
     if (matchesKnowledgeFocusQuery(['research', 'study', 'publication', 'insight', '家庭系统研究'], focusTaskQuery)) {
@@ -337,10 +363,25 @@ export default function KnowledgeHubView({
               把知识面的运行、记忆、智能体、校准和日志五个子面板直接摆出来，减少只看到旧看板却不知道怎么用的断层。
             </p>
           </div>
-          <span className="status-badge online">5 个子面板</span>
+          <span className="status-badge online">显示 {filteredKnowledgeSurfaces.length}/{knowledgeSurfaces.length}</span>
+        </div>
+        <div role="region" aria-label="知识中枢筛选" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+          <input
+            type="search"
+            aria-label="搜索知识子面板和闭环"
+            placeholder="运行、记忆、智能体、日志或闭环"
+            value={knowledgeQuery}
+            onChange={(event) => setKnowledgeQuery(event.target.value)}
+            style={{ flex: '1 1 260px', minWidth: 220 }}
+          />
+          {knowledgeQuery && (
+            <button type="button" className="antd-btn small" aria-label="清除知识中枢筛选" onClick={() => setKnowledgeQuery('')}>
+              清除筛选
+            </button>
+          )}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-          {knowledgeSurfaces.map((surface) => (
+          {filteredKnowledgeSurfaces.map((surface) => (
             <article key={surface.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <small className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>{surface.id}</small>
@@ -363,6 +404,9 @@ export default function KnowledgeHubView({
             </article>
           ))}
         </div>
+        {filteredKnowledgeSurfaces.length === 0 && (
+          <p className="text-muted" style={{ margin: '14px 0 0', fontSize: 13 }}>没有匹配的知识子面板，试试运行、记忆、智能体或日志。</p>
+        )}
       </section>
 
       <section className="services-section" role="region" aria-label="当前知识子面板">
@@ -490,10 +534,10 @@ export default function KnowledgeHubView({
               把研究回流、知识供给、智能体协议联动和日志收口并排摆出来，知识页才能真正承接站内上下文主轴。
             </p>
           </div>
-          <span className="status-badge online">{knowledgeClosureRows.length} 条闭环</span>
+          <span className="status-badge online">显示 {filteredKnowledgeClosureRows.length}/{knowledgeClosureRows.length} 条闭环</span>
         </div>
         <div style={{ display: 'grid', gap: 12 }}>
-          {knowledgeClosureRows.map((row) => (
+          {filteredKnowledgeClosureRows.map((row) => (
             <article
               key={`knowledge-closure-${row.id}`}
               className="antd-card"
@@ -533,6 +577,9 @@ export default function KnowledgeHubView({
             </article>
           ))}
         </div>
+        {filteredKnowledgeClosureRows.length === 0 && (
+          <p className="text-muted" style={{ margin: '14px 0 0', fontSize: 13 }}>没有匹配的知识闭环，换个关键词再试。</p>
+        )}
       </section>
 
       <div className="services-section" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>

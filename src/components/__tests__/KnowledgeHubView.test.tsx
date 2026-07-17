@@ -114,4 +114,23 @@ describe('KnowledgeHubView', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: '智能体与协议联动' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('filters knowledge surfaces and closure rows from one search entry', async () => {
+    render(<KnowledgeHubView focusPageId="Knowledge" />)
+
+    const search = screen.getByRole('searchbox', { name: '搜索知识子面板和闭环' })
+    fireEvent.change(search, { target: { value: 'agents' } })
+
+    const dimensionRegion = screen.getByRole('region', { name: '知识维度地图' })
+    await waitFor(() => {
+      expect(within(dimensionRegion).getByText(/显示 \d+\/5/)).toBeInTheDocument()
+      expect(screen.getByText('GBrain Mock agents')).toBeInTheDocument()
+      expect(screen.getAllByText('智能体管理').length).toBeGreaterThan(0)
+      expect(screen.queryByText('运行看板')).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '清除知识中枢筛选' }))
+    expect(screen.getByText('显示 5/5')).toBeInTheDocument()
+    expect(screen.getByText('运行看板')).toBeInTheDocument()
+  })
 })
