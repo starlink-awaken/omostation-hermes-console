@@ -157,6 +157,16 @@ describe('WorkflowsView', () => {
     expect(screen.getByRole('status')).toHaveTextContent('已承接为任务')
   })
 
+  it('falls back to tab navigation after queueing when no target router is provided', async () => {
+    const onNavigate = vi.fn()
+    render(<WorkflowsView onNavigate={onNavigate} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '处理授权 wf-approval-42' }))
+    fireEvent.click(await screen.findByRole('button', { name: '承接跟进任务' }))
+
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('TaskCenter'))
+  })
+
   it('surfaces workflow closure routing when focus hits system map handoff', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()

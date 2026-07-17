@@ -181,7 +181,7 @@ export default function WorkflowsView({
         tone: 'success',
         text: data.created === false ? `任务已存在：${data.id}` : `已承接为任务：${data.id}`,
       });
-      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+      if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
     } catch (error: any) {
       setApprovalMessage({ tone: 'error', text: `工作流任务承接失败：${error.message || '网络异常'}` });
     } finally {

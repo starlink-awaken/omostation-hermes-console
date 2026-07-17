@@ -68,6 +68,17 @@ describe('C2GStrategyView', () => {
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Debt', taskQuery: 'card-42' })
   })
 
+  it('falls back to tab navigation when the host does not provide a target router', async () => {
+    const onNavigate = vi.fn()
+
+    render(<C2GStrategyView onNavigate={onNavigate} />)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '查看相关任务' })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '查看相关任务' }))
+
+    expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+  })
+
   it('filters cards, proposals, and direct-io violations from one governance query', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

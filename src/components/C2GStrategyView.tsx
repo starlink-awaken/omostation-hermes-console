@@ -124,7 +124,7 @@ export default function C2GStrategyView({
       const data = await res.json();
       if (res.ok && data.executes === false) {
         setFixResult(`已承接治理修复任务 ${data.id || ''}，请到任务中心审批后执行。`);
-        if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+        if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
       } else {
         setFixResult('治理修复承接失败: ' + (data.detail || data.error || '原因未知'));
       }
@@ -185,7 +185,7 @@ export default function C2GStrategyView({
       if (!res.ok) throw new Error(data.detail || data.error || '提案任务承接失败');
       setProposalSuccess(data.created === false ? `任务已存在：${data.id}` : `提案已承接为任务：${data.id}`);
       await fetchData();
-      if (data.id) onOpenTarget?.({ tab: 'TaskCenter', taskQuery: data.id });
+      if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
     } catch (err: any) {
       setProposalError(`承接失败: ${err.message || '网络异常'}`);
     } finally {
@@ -271,11 +271,7 @@ export default function C2GStrategyView({
   };
 
   const openCardTask = (cardId?: string) => {
-    if (onOpenTarget) {
-      onOpenTarget({ tab: 'TaskCenter', taskQuery: cardId });
-      return;
-    }
-    onNavigate?.('TaskCenter');
+    openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: cardId }, onNavigate, onOpenTarget);
   };
 
   if (loading) {
