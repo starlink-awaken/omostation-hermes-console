@@ -12,11 +12,13 @@ describe('ResearchHubView', () => {
 
   it('renders research summary, pipeline and follow-up actions', async () => {
     const onNavigate = vi.fn()
+    let hubCalls = 0
     const onOpenTarget = vi.fn((target: { tab: string; taskQuery?: string }) => {
       if (target.tab !== 'TaskCenter' || target.taskQuery !== 'cockpit-research-7') onNavigate(target.tab)
     })
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       if (String(input) === '/api/cockpit/research-hub') {
+        hubCalls += 1
         return Promise.resolve(okJson({
           summary: {
             total: 5,
@@ -81,6 +83,7 @@ describe('ResearchHubView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /落任务 家庭系统研究/ }))
     await waitFor(() => expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'cockpit-research-7' }))
+    await waitFor(() => expect(hubCalls).toBeGreaterThanOrEqual(2))
 
     fireEvent.click(screen.getByRole('button', { name: '打开研究闭环对象 发布回流与复盘' }))
     expect(onNavigate).toHaveBeenCalledWith('Overview')

@@ -183,7 +183,12 @@ export default function ResearchHubView({
       const response = await fetch(`/api/cockpit/research/${researchId}/queue`, { method: 'POST' });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || payload.error || '研究任务承接失败');
-      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+      if (payload.id) {
+        await load();
+        openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+      } else {
+        setDetailError('研究任务承接接口已返回成功，但没有任务 ID，无法定位后续任务。');
+      }
     } catch (error) {
       setDetailError(error instanceof Error ? error.message : '研究任务承接失败');
     } finally {
