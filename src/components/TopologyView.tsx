@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import ReactFlow, { 
   Background, 
   Controls, 
@@ -189,6 +189,8 @@ export default function TopologyView({
   const [taskPending, setTaskPending] = useState(false);
   const [taskNotice, setTaskNotice] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [topologyQuery, setTopologyQuery] = useState('');
+  const [topologyStatusFilter, setTopologyStatusFilter] = useState<'all' | 'online' | 'degraded' | 'offline'>('all');
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -226,7 +228,25 @@ export default function TopologyView({
     return () => clearInterval(interval);
   }, [retryToken, setNodes, setEdges]);
 
-  const attentionServices = services
+  const filteredServices = useMemo(() => services.filter((service) => {
+    const status = serviceStatus(service);
+    if (topologyStatusFilter !== 'all' && status !== topologyStatusFilter) return false;
+    const query = topologyQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [service.id, service.name, service.status, service.health, status]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  }), [services, topologyQuery, topologyStatusFilter]);
+
+  useEffect(() => {
+    const topology = buildTopology(filteredServices);
+    setNodes(topology.nodes);
+    setEdges(topology.edges);
+  }, [filteredServices, setNodes, setEdges]);
+
+  const attentionServices = filteredServices
     .map((service) => ({
       id: String(service.id || service.name || 'unknown'),
       name: service.name || String(service.id || 'unknown'),
@@ -406,7 +426,7 @@ export default function TopologyView({
       <ActionSurfacePanel
         title="拓扑动作区"
         subtitle="先确认异常节点和孤立依赖，再回算力、网格和日志页缩小真实根因。"
-        statusText={`${services.length} 节点 / ${edges.length} 关系 / ${attentionServices.length} 待确认`}
+        statusText={`显示 ${filteredServices.length}/${services.length} 节点 / ${edges.length} 关系 / ${attentionServices.length} 待确认`}
         items={topologyActionItems}
         onNavigate={onNavigate}
       />
@@ -535,10 +555,41 @@ export default function TopologyView({
             </p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span className="status-badge online">节点 {services.length}</span>
+            <span className="status-badge online">显示节点 {filteredServices.length}/{services.length}</span>
             <span className="status-badge degraded">关系 {edges.length}</span>
             <span className="status-badge degraded">异常 {attentionServices.length}</span>
           </div>
+        </div>
+
+        <div role="region" aria-label="拓扑节点筛选" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+          <input
+            type="search"
+            aria-label="搜索拓扑节点"
+            placeholder="服务名、状态或健康信号"
+            value={topologyQuery}
+            onChange={(event) => setTopologyQuery(event.target.value)}
+            style={{ flex: '1 1 260px', minWidth: 220 }}
+          />
+          <select
+            aria-label="按状态筛选拓扑节点"
+            value={topologyStatusFilter}
+            onChange={(event) => setTopologyStatusFilter(event.target.value as typeof topologyStatusFilter)}
+          >
+            <option value="all">全部状态</option>
+            <option value="online">在线</option>
+            <option value="degraded">降级</option>
+            <option value="offline">离线</option>
+          </select>
+          {(topologyQuery || topologyStatusFilter !== 'all') && (
+            <button
+              type="button"
+              className="antd-btn small"
+              aria-label="清除拓扑节点筛选"
+              onClick={() => { setTopologyQuery(''); setTopologyStatusFilter('all'); }}
+            >
+              清除筛选
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
@@ -548,7 +599,7 @@ export default function TopologyView({
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>离线、降级或没有依赖关系证据的节点优先处理。</p>
             </div>
             {attentionServices.length === 0 ? (
-              <p className="text-muted" style={{ margin: 0 }}>当前没有需要额外确认的节点。</p>
+              <p className="text-muted" style={{ margin: 0 }}>{services.length ? '没有匹配的拓扑节点。' : '当前没有需要额外确认的节点。'}</p>
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
                 {attentionServices.map((service) => (

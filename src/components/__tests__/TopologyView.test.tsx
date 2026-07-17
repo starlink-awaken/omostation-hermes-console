@@ -111,6 +111,35 @@ describe('TopologyView', () => {
     expect(onNavigate).not.toHaveBeenCalled()
   })
 
+  it('filters topology nodes and keeps abnormal follow-up targets in the filtered set', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({
+      items: [
+        { name: 'gateway', status: 'degraded', dependencies: ['worker'] },
+        { name: 'worker', status: 'offline', dependencies: [] },
+        { name: 'scheduler', status: 'offline', dependencies: [] },
+      ],
+    }))
+
+    render(<TopologyView />)
+    await screen.findByRole('region', { name: '拓扑节点筛选' })
+
+    fireEvent.change(screen.getByRole('searchbox', { name: '搜索拓扑节点' }), { target: { value: 'scheduler' } })
+    await waitFor(() => {
+      expect(screen.getByText('显示节点 1/3')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '查看拓扑服务 scheduler' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '查看拓扑服务 worker' })).not.toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByRole('combobox', { name: '按状态筛选拓扑节点' }), { target: { value: 'online' } })
+    await waitFor(() => {
+      expect(screen.getByText('显示节点 0/3')).toBeInTheDocument()
+      expect(screen.getByText('没有匹配的拓扑节点。')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '清除拓扑节点筛选' }))
+    expect(screen.getByText('显示节点 3/3')).toBeInTheDocument()
+  })
+
   it('surfaces topology closure routing when focus hits system map handoff', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
