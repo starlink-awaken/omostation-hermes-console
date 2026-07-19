@@ -26,6 +26,9 @@ export default function HealthSummarySection({
   dataQuality = 'complete',
   degradedReasons = [],
 }: HealthSummaryProps) {
+  const summaryUnavailable = dataQuality === 'unavailable';
+  const tasksUnavailable = summaryUnavailable || activeTasksSource === 'unavailable';
+
   const getTrendIcon = (change: number) => {
     if (change > 0) return <TrendingUp size={16} className="text-success" />;
     if (change < 0) return <TrendingDown size={16} className="text-danger" />;
@@ -54,12 +57,16 @@ export default function HealthSummarySection({
           </div>
           <div className="stat-info">
             <h3>健康分数</h3>
-            <p className="stat-value">{healthScore}</p>
+            <p className="stat-value">{summaryUnavailable ? 'N/A' : healthScore}</p>
             <div className="stat-trend">
-              {getTrendIcon(healthScoreChange)}
-              <span className={getTrendColor(healthScoreChange)}>
-                {healthScoreChange > 0 ? '+' : ''}{healthScoreChange}%
-              </span>
+              {summaryUnavailable ? <span className="text-muted">健康数据不可用</span> : (
+                <>
+                  {getTrendIcon(healthScoreChange)}
+                  <span className={getTrendColor(healthScoreChange)}>
+                    {healthScoreChange > 0 ? '+' : ''}{healthScoreChange}%
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -70,10 +77,10 @@ export default function HealthSummarySection({
           </div>
           <div className="stat-info">
             <h3>活跃服务</h3>
-            <p className="stat-value">{activeServices}/{totalServices}</p>
+            <p className="stat-value">{summaryUnavailable ? 'N/A' : `${activeServices}/${totalServices}`}</p>
             <div className="stat-trend">
               <span className="text-muted">
-                {activeServices === totalServices ? '全部在线' : `${totalServices - activeServices} 个离线`}
+                {summaryUnavailable ? '服务数据不可用' : activeServices === totalServices ? '全部在线' : `${totalServices - activeServices} 个离线`}
               </span>
             </div>
           </div>
@@ -85,9 +92,9 @@ export default function HealthSummarySection({
           </div>
           <div className="stat-info">
             <h3>活跃任务</h3>
-            <p className="stat-value">{activeTasks}</p>
+            <p className="stat-value">{tasksUnavailable ? 'N/A' : activeTasks}</p>
             <div className="stat-trend">
-              <span className="text-muted">{activeTasksSource === 'omo' ? 'OMO active 队列' : '任务队列不可用'}</span>
+              <span className="text-muted">{tasksUnavailable ? '任务队列不可用' : 'OMO active 队列'}</span>
             </div>
           </div>
         </div>
@@ -98,12 +105,16 @@ export default function HealthSummarySection({
           </div>
           <div className="stat-info">
             <h3>今日请求</h3>
-            <p className="stat-value">{todayRequests.toLocaleString()}</p>
+            <p className="stat-value">{summaryUnavailable ? 'N/A' : todayRequests.toLocaleString()}</p>
             <div className="stat-trend">
-              {getTrendIcon(todayRequestsChange)}
-              <span className={getTrendColor(todayRequestsChange)}>
-                {todayRequestsChange > 0 ? '+' : ''}{todayRequestsChange}%
-              </span>
+              {summaryUnavailable ? <span className="text-muted">请求数据不可用</span> : (
+                <>
+                  {getTrendIcon(todayRequestsChange)}
+                  <span className={getTrendColor(todayRequestsChange)}>
+                    {todayRequestsChange > 0 ? '+' : ''}{todayRequestsChange}%
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
