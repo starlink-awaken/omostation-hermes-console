@@ -3054,7 +3054,7 @@ export default function Dashboard() {
   useEffect(() => {
     const buildDynamicSearch = async () => {
       try {
-        const [systemMapRes, tasksRes, domainAppsRes, alertsRes, meshServicesRes, computeStatusRes, logsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes, debtRes, l4HealthRes, proposalsRes] = await Promise.all([
+        const [systemMapRes, tasksRes, domainAppsRes, alertsRes, meshServicesRes, computeStatusRes, logsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes, debtRes, l4HealthRes, proposalsRes, gbrainAgentsRes] = await Promise.all([
           fetchSearchData('/api/cockpit/system-map'),
           fetchSearchData('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80'),
           fetchSearchData('/api/domain-apps'),
@@ -3070,6 +3070,7 @@ export default function Dashboard() {
           fetchSearchData('/api/debt'),
           fetchSearchData('/api/l4/health'),
           fetchSearchData('/api/v1/proposals'),
+          fetchSearchData('/admin/api/agents'),
         ]);
         setShellSourceAvailability({
           systemMap: systemMapRes.ok,
@@ -3870,6 +3871,27 @@ export default function Dashboard() {
                 '提案',
                 '治理决策',
               ],
+            });
+          });
+        }
+
+        if (gbrainAgentsRes.ok) {
+          const payload = gbrainAgentsRes.data as
+            | Array<Record<string, unknown>>
+            | { agents?: Array<Record<string, unknown>>; items?: Array<Record<string, unknown>> }
+            | null;
+          const agents = Array.isArray(payload) ? payload : payload?.agents || payload?.items || [];
+          agents.forEach((agent) => {
+            const id = String(agent.id || agent.client_id || agent.name || '').trim();
+            const name = String(agent.name || agent.client_name || id).trim();
+            if (!id && !name) return;
+            targets.push({
+              id: `gbrain-agent-${id || name}`,
+              tab: 'GBrainAdmin',
+              label: `GBrain 智能体：${name}`,
+              group: `GBrain 管理 · ${String(agent.status || 'unknown')}`,
+              context: { taskQuery: `agent ${name}` },
+              keywords: [id, name, String(agent.scope || ''), String(agent.auth_type || ''), String(agent.status || ''), 'GBrain', 'agent', '智能体', '凭证'],
             });
           });
         }
@@ -5551,6 +5573,7 @@ export default function Dashboard() {
                             ? 'memory'
                             : 'monitor'
                 }
+                initialQuery={taskSearchSeed}
               />,
             )
           )}

@@ -1138,6 +1138,25 @@ describe('Dashboard global search', () => {
     await waitFor(() => expect(screen.getByText('Mock Page')).toBeInTheDocument())
   })
 
+  it('indexes GBrain agents without exposing credentials', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/admin/api/agents') {
+        return Promise.resolve(okJson({ agents: [{ id: 'agent-family', name: 'family-agent', auth_type: 'oauth', scope: 'read write', status: 'active' }] }))
+      }
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<Dashboard />)
+    const search = await screen.findByLabelText('全局搜索输入框')
+    fireEvent.change(search, { target: { value: 'family-agent' } })
+
+    const target = await screen.findByText('GBrain 智能体：family-agent')
+    expect(screen.queryByText(/secret|token/i)).not.toBeInTheDocument()
+    fireEvent.click(target)
+    await waitFor(() => expect(screen.getByText('Mock Page')).toBeInTheDocument())
+  })
+
   it('searches live mesh, compute and log objects from the global entry', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

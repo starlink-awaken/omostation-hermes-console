@@ -20,9 +20,10 @@ type KnowledgeDashboardSubTab = 'monitor' | 'memory' | 'agents' | 'calibration' 
 
 interface DashboardPageProps {
   initialSubTab?: KnowledgeDashboardSubTab;
+  initialQuery?: string;
 }
 
-export function DashboardPage({ initialSubTab = 'monitor' }: DashboardPageProps) {
+export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: DashboardPageProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [subTab, setSubTab] = useState<KnowledgeDashboardSubTab>(initialSubTab);
   
@@ -305,7 +306,7 @@ export function DashboardPage({ initialSubTab = 'monitor' }: DashboardPageProps)
 
         {subTab === 'agents' && (
           <div className="animate-fade-in antd-card" style={{ padding: 24, border: '1px solid var(--antd-border-color)' }}>
-            <AgentsPage />
+            <AgentsPage focusQuery={initialQuery} />
           </div>
         )}
 

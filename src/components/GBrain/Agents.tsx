@@ -34,7 +34,7 @@ interface ApiKey {
   status: 'active' | 'revoked';
 }
 
-export function AgentsPage() {
+export function AgentsPage({ focusQuery }: { focusQuery?: string }) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [hideRevoked, setHideRevoked] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
@@ -45,6 +45,17 @@ export function AgentsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => { loadAgents(); }, []);
+
+  useEffect(() => {
+    const query = focusQuery?.replace(/^agent\s+/i, '').trim().toLowerCase();
+    if (!query) return;
+    const matched = agents.find((agent) =>
+      [agent.id, agent.name, agent.client_id, agent.client_name]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase() === query),
+    );
+    if (matched) setSelectedAgent(matched);
+  }, [agents, focusQuery]);
 
   const loadAgents = () => {
     setLoadError(null);
