@@ -51,6 +51,7 @@ import {
   type RecentNavigationEntry,
 } from './cockpitNavigation';
 import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
+import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import {
   findTaskDraftForTarget,
   persistTaskCenterDraft,
@@ -1094,6 +1095,25 @@ const searchTargets: SearchTarget[] = COCKPIT_PAGE_REGISTRY.map((page) => ({
   keywords: [...(PAGE_SEARCH_KEYWORDS[page.id] || []), ...page.dimensions],
 }));
 
+const workModeSearchTargets: SearchTarget[] = COCKPIT_WORK_MODES.flatMap((mode) => ([
+  {
+    id: `work-mode-${mode.id}`,
+    tab: mode.entry.tab,
+    label: `工作模式：${mode.title}`,
+    group: '工作模式 · 入口',
+    context: mode.entry,
+    keywords: [mode.id, mode.role, mode.title, mode.summary, ...mode.focus, '工作模式', '使用路径'],
+  },
+  {
+    id: `work-mode-task-${mode.id}`,
+    tab: mode.taskTarget.tab,
+    label: `工作模式任务：${mode.title}`,
+    group: '工作模式 · 任务承接',
+    context: mode.taskTarget,
+    keywords: [mode.id, mode.role, mode.title, mode.summary, ...mode.focus, '工作模式', '任务', '承接'],
+  },
+]));
+
 const GROUP_DESCRIPTIONS: Record<string, string> = {
   入口: '从首页、导览和系统地图进入整站，先确定当前关注面。',
   运行大盘: '围绕概览、拓扑、算力和网格，快速完成运行巡检。',
@@ -1267,7 +1287,7 @@ export default function Dashboard() {
     const query = searchQuery.trim();
     if (!query) return [];
     const queryTerms = expandSearchAliases([query]);
-    return [...knowledgeSearchTargets, ...dynamicSearchTargets, ...searchTargets]
+    return [...knowledgeSearchTargets, ...dynamicSearchTargets, ...searchTargets, ...workModeSearchTargets]
       .map((target) => ({
         target,
         score: scoreSearchTarget(target, query, queryTerms),
@@ -3047,6 +3067,18 @@ export default function Dashboard() {
       label: page.title,
       description: `${page.purpose} ${page.whenToUse}`,
       action: () => setActiveTab(page.id),
+    })),
+    ...COCKPIT_WORK_MODES.map((mode) => ({
+      id: `work-mode-${mode.id}`,
+      label: `工作模式：${mode.title}`,
+      description: `${mode.summary} 入口：${mode.focus.join('、')}`,
+      action: () => openContextTarget(mode.entry),
+    })),
+    ...COCKPIT_WORK_MODES.map((mode) => ({
+      id: `work-mode-task-${mode.id}`,
+      label: `工作模式任务：${mode.title}`,
+      description: `把${mode.title}的下一步承接到任务中心。`,
+      action: () => openContextTarget(mode.taskTarget),
     })),
     ...dynamicSearchTargets
       .filter((target) => !target.id.startsWith('page-'))

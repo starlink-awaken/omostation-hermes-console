@@ -122,6 +122,12 @@ describe('Dashboard global search', () => {
     await waitFor(() => {
       expect(screen.getAllByText('知识中枢').length).toBeGreaterThan(0)
     })
+
+    fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: '治理巡检模式' } })
+    await waitFor(() => {
+      expect(screen.getByText('工作模式：治理巡检模式')).toBeInTheDocument()
+      expect(screen.getByText('工作模式任务：治理巡检模式')).toBeInTheDocument()
+    })
   })
 
   it('exposes every registered page through the command palette', async () => {
@@ -134,8 +140,10 @@ describe('Dashboard global search', () => {
     const palette = paletteInput.closest('.command-palette')
     expect(palette).not.toBeNull()
     for (const page of COCKPIT_PAGE_REGISTRY) {
-      expect(within(palette as HTMLElement).getByRole('option', { name: new RegExp(page.title) })).toBeInTheDocument()
+      expect(within(palette as HTMLElement).getByRole('option', { name: new RegExp(`^${page.title}`) })).toBeInTheDocument()
     }
+    expect(within(palette as HTMLElement).getByRole('option', { name: /工作模式：日常值守模式/ })).toBeInTheDocument()
+    expect(within(palette as HTMLElement).getByRole('option', { name: /工作模式任务：建设补位模式/ })).toBeInTheDocument()
   })
 
   it('supports keyboard selection across global search results', async () => {
