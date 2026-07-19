@@ -3,6 +3,7 @@ import {
   clearRecentNavigation,
   hasNavigationContext,
   navigationHash,
+  normalizeNavigationTarget,
   openCockpitNavigationTarget,
   parseNavigationHash,
   readRecentNavigation,
@@ -75,6 +76,18 @@ describe('cockpitNavigation', () => {
 
     openCockpitNavigationTarget({ tab: 'SystemMap', projectId: 'mesh-router' }, onNavigate, onOpenTarget)
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'mesh-router' })
+  })
+
+  it('falls back dynamic page targets to SystemMap without losing page focus', () => {
+    const target = normalizeNavigationTarget({ tab: 'PageAddedByBackend', taskQuery: 'repair' })
+
+    expect(target).toEqual({
+      tab: 'SystemMap',
+      pageId: 'PageAddedByBackend',
+      taskQuery: 'repair',
+    })
+    expect(navigationHash({ tab: 'PageAddedByBackend', taskQuery: 'repair' }))
+      .toBe('#system-map?page=PageAddedByBackend&task=repair')
   })
 
   it('serializes and parses navigation hashes with context', () => {

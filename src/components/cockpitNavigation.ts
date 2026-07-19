@@ -1,3 +1,5 @@
+import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
+
 export interface CockpitNavigationTarget {
   tab: string;
   projectId?: string | null;
@@ -56,6 +58,18 @@ const TAB_TO_HASH: Record<string, string> = Object.fromEntries(
     .map(([route, tab]) => [tab, route]),
 );
 
+const COCKPIT_TAB_IDS = new Set(COCKPIT_PAGE_REGISTRY.map((page) => page.id));
+
+/** Keep dynamic page links inside the real Cockpit shell while preserving their focus. */
+export function normalizeNavigationTarget(target: CockpitNavigationTarget): CockpitNavigationTarget {
+  if (COCKPIT_TAB_IDS.has(target.tab)) return target;
+  return {
+    ...target,
+    tab: 'SystemMap',
+    pageId: target.pageId || target.tab || null,
+  };
+}
+
 export function hasNavigationContext(target: CockpitNavigationTarget): boolean {
   return !!(
     target.projectId
@@ -75,19 +89,20 @@ export function openCockpitNavigationTarget(
   onNavigate?: (tab: string) => void,
   onOpenTarget?: (target: CockpitNavigationTarget) => void,
 ) {
-  if (hasNavigationContext(target)) {
+  const normalizedTarget = normalizeNavigationTarget(target);
+  if (hasNavigationContext(normalizedTarget)) {
     if (onOpenTarget) {
-      onOpenTarget(target);
+      onOpenTarget(normalizedTarget);
       return;
     }
-    onNavigate?.(target.tab);
+    onNavigate?.(normalizedTarget.tab);
     return;
   }
   if (onOpenTarget) {
-    onOpenTarget(target);
+    onOpenTarget(normalizedTarget);
     return;
   }
-  onNavigate?.(target.tab);
+  onNavigate?.(normalizedTarget.tab);
 }
 
 export function parseNavigationHash(hash: string): CockpitNavigationTarget | null {
@@ -117,20 +132,21 @@ export function parseNavigationHash(hash: string): CockpitNavigationTarget | nul
 }
 
 export function navigationHash(target: CockpitNavigationTarget): string {
-  const route = target.tab === 'AlertCenter' && target.alertTab === 'rules'
+  const normalizedTarget = normalizeNavigationTarget(target);
+  const route = normalizedTarget.tab === 'AlertCenter' && normalizedTarget.alertTab === 'rules'
     ? 'alerts/rules'
-    : target.tab === 'AlertCenter' && target.alertTab === 'history'
+    : normalizedTarget.tab === 'AlertCenter' && normalizedTarget.alertTab === 'history'
       ? 'alerts/history'
-      : TAB_TO_HASH[target.tab] || target.tab.toLowerCase();
+      : TAB_TO_HASH[normalizedTarget.tab] || normalizedTarget.tab.toLowerCase();
   const params = new URLSearchParams();
-  if (target.projectId) params.set('project', target.projectId);
-  if (target.usagePathId) params.set('usage', target.usagePathId);
-  if (target.gapId) params.set('gap', target.gapId);
-  if (target.coverageDimensionId) params.set('coverage', target.coverageDimensionId);
-  if (target.pageId) params.set('page', target.pageId);
-  if (target.featureDomainId) params.set('feature', target.featureDomainId);
-  if (target.taskQuery) params.set('task', target.taskQuery);
-  if (target.draftKey) params.set('draft', target.draftKey);
+  if (normalizedTarget.projectId) params.set('project', normalizedTarget.projectId);
+  if (normalizedTarget.usagePathId) params.set('usage', normalizedTarget.usagePathId);
+  if (normalizedTarget.gapId) params.set('gap', normalizedTarget.gapId);
+  if (normalizedTarget.coverageDimensionId) params.set('coverage', normalizedTarget.coverageDimensionId);
+  if (normalizedTarget.pageId) params.set('page', normalizedTarget.pageId);
+  if (normalizedTarget.featureDomainId) params.set('feature', normalizedTarget.featureDomainId);
+  if (normalizedTarget.taskQuery) params.set('task', normalizedTarget.taskQuery);
+  if (normalizedTarget.draftKey) params.set('draft', normalizedTarget.draftKey);
   const query = params.toString();
   return `#${route}${query ? `?${query}` : ''}`;
 }
