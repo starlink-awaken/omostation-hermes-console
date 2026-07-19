@@ -590,7 +590,7 @@ export default function KnowledgeHubView({
       </div>
 
       <GBrainDashboard initialSubTab={knowledgeSubTab} />
-      <KOSWorkbench onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
+      <KOSWorkbench initialQuery={focusTaskQuery} onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
     </div>
   );
 }

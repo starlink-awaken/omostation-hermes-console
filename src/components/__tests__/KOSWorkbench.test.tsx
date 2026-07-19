@@ -41,4 +41,22 @@ describe('KOSWorkbench', () => {
       expect(screen.getByRole('status')).toHaveTextContent('kos-evidence-task-1')
     })
   })
+
+  it('executes a navigation-provided query when opening a knowledge object', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/kos/health') return Promise.resolve(okJson({ status: 'ok', checks: {} }))
+      if (url === '/api/kos/stats') return Promise.resolve(okJson({ document_count: 12 }))
+      if (url === '/api/kos/search?q=decision-1&limit=8') {
+        return Promise.resolve(okJson({ results: [{ id: 'decision-1', title: '架构决策', chunk_text: '保留来源证据。' }] }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KOSWorkbench initialQuery="decision-1" />)
+
+    expect(await screen.findByDisplayValue('decision-1')).toBeInTheDocument()
+    expect(await screen.findByText('架构决策')).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith('/api/kos/search?q=decision-1&limit=8', undefined)
+  })
 })

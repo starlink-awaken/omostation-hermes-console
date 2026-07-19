@@ -46,9 +46,10 @@ function fetchJson(url: string, init?: RequestInit) {
 interface KOSWorkbenchProps {
   onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  initialQuery?: string;
 }
 
-export default function KOSWorkbench({ onNavigate, onOpenTarget }: KOSWorkbenchProps) {
+export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }: KOSWorkbenchProps) {
   const [state, setState] = useState<KOSState>({ health: null, stats: null, healthError: null, statsError: null });
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -128,17 +129,27 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget }: KOSWorkbenchP
   }, [state.health]);
   const healthDegraded = healthChecks.some(([, value]) => typeof value === 'object' && value !== null && (value as JsonRecord).status !== 'pass');
 
-  const runQuery = async (action: 'search' | 'context' | 'clusters') => {
-    if (!query.trim()) return;
+  const runQuery = async (action: 'search' | 'context' | 'clusters', requestedQuery = query) => {
+    const normalizedQuery = requestedQuery.trim();
+    if (!normalizedQuery) return;
     setLoading(action); setError(null);
     try {
-      const data = await fetchJson(`/api/kos/${action}?q=${encodeURIComponent(query.trim())}&limit=8`);
+      const data = await fetchJson(`/api/kos/${action}?q=${encodeURIComponent(normalizedQuery)}&limit=8`);
       if (action === 'search') setResults(asResults(data));
       if (action === 'context') setContext(data);
       if (action === 'clusters') setClusters(data);
     } catch (reason) { setError(`${action} 失败：${reason instanceof Error ? reason.message : '未知错误'}`); }
     finally { setLoading(null); }
   };
+
+  useEffect(() => {
+    const nextQuery = initialQuery?.trim();
+    if (!nextQuery || nextQuery.length < 2) return;
+    setQuery(nextQuery);
+    void runQuery('search', nextQuery);
+    // 导航带入的对象查询只在焦点改变时自动执行，用户手动改词后不重复抢焦点。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   const verifyClaim = async (event: React.FormEvent) => {
     event.preventDefault();
