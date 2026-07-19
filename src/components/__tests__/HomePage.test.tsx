@@ -572,6 +572,28 @@ describe('HomePage', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Guide' })
   })
 
+  it('reloads the selected metrics time range from the API', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/health/summary') {
+        return Promise.resolve(okJson({ health_score: 90, health_score_change: 1, active_services: 2, total_services: 3, active_tasks: 1, today_requests: 20, today_requests_change: 2 }))
+      }
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      if (url.includes('/api/tasks')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/alerts')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/metrics')) return Promise.resolve(okJson({ health_score: [], requests: [], error_rate: [] }))
+      if (url.startsWith('/api/omos/thoughts')) return Promise.resolve(okJson({ status: 'ok', thoughts: [] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<HomePage />)
+    await screen.findByText('关键指标趋势')
+
+    fireEvent.click(screen.getByRole('button', { name: '7天' }))
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/metrics/trend?range=7d'))
+  })
+
   it('routes dimension coverage matrix rows to exact page and task targets', async () => {
     const onOpenTarget = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {

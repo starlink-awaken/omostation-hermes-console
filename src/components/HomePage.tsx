@@ -45,6 +45,8 @@ interface DataPoint {
   value: number;
 }
 
+type MetricsTimeRange = '1h' | '6h' | '24h' | '7d';
+
 interface PriorityProject {
   id: string;
   layer: string;
@@ -2962,6 +2964,7 @@ export default function HomePage({
   const [healthScoreData, setHealthScoreData] = useState<DataPoint[]>([]);
   const [requestsData, setRequestsData] = useState<DataPoint[]>([]);
   const [errorRateData, setErrorRateData] = useState<DataPoint[]>([]);
+  const [metricsRange, setMetricsRange] = useState<MetricsTimeRange>('24h');
   const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [operatingFocus, setOperatingFocus] = useState<OperatingFocus>(DEFAULT_OPERATING_FOCUS);
   const [siteArchitecture, setSiteArchitecture] = useState<SiteArchitecture>(DEFAULT_SITE_ARCHITECTURE);
@@ -3022,7 +3025,7 @@ export default function HomePage({
           fetchHomeData('/api/health/summary', EMPTY_HEALTH_SUMMARY),
           fetchHomeData('/api/alerts?limit=3&status=active', { items: [] as Alert[] }),
           fetchHomeData('/api/tasks?limit=3&sort=updated', { items: [] as Task[] }),
-          fetchHomeData('/api/metrics/trend?range=24h', { health_score: [], requests: [], error_rate: [] }),
+          fetchHomeData(`/api/metrics/trend?range=${metricsRange}`, { health_score: [], requests: [], error_rate: [] }),
           fetchHomeData('/api/omos/thoughts', { status: 'unavailable', thoughts: [] as Thought[] }),
           fetchHomeData('/api/cockpit/system-map', {} as Record<string, any>),
           fetchHomeData(HOME_DRAFT_TASKS_URL, { items: [] as DraftTaskSummary[] }),
@@ -3162,7 +3165,7 @@ export default function HomePage({
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [refreshToken]);
+  }, [metricsRange, refreshToken]);
 
   return (
     <div className="home-page">
@@ -3327,6 +3330,7 @@ export default function HomePage({
         healthScoreData={healthScoreData}
         requestsData={requestsData}
         errorRateData={errorRateData}
+        onTimeRangeChange={setMetricsRange}
       />
 
       {/* 最近任务 */}
