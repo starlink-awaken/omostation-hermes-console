@@ -256,6 +256,12 @@ export default function ObservabilityView({
           risk_level: 'L1',
           evidence_required: ['BOS 指标时间点', '日志或网格路由证据', '告警关联与处理结果', 'task closeout'],
           tags: ['observability', 'runtime-governance'],
+          source: {
+            type: 'cockpit.observability',
+            id: observabilityBacklog.degradedDomains[0]?.domain || 'observability',
+            title: '运行可观测',
+            target: observabilityTaskDraft.objectTarget,
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

@@ -138,6 +138,12 @@ describe('ObservabilityView', () => {
         const body = JSON.parse(String(init?.body))
         expect(body.title).toBe('处理观测异常：governance')
         expect(body.tags).toEqual(['observability', 'runtime-governance'])
+        expect(body.source).toEqual({
+          type: 'cockpit.observability',
+          id: 'governance',
+          title: '运行可观测',
+          target: { tab: 'LogViewer', taskQuery: 'governance' },
+        })
         return Promise.resolve(okJson({ id: 'observability-task-1', title: '处理观测异常：governance' }))
       }
       return Promise.resolve(okJson({}))
