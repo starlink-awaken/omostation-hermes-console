@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Activity, Globe, Network, PlusCircle, Send, ShieldCheck } from 'lucide-react';
+import { Activity, ClipboardCheck, Globe, Network, PlusCircle, Send, ShieldCheck } from 'lucide-react';
 import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import InfrastructureOpsWorkbench from './InfrastructureOpsWorkbench';
@@ -96,6 +96,9 @@ export default function McpMeshView({
   const [resolveResult, setResolveResult] = useState<any>(null);
   const [resolving, setResolving] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
+  const [resolveTaskPending, setResolveTaskPending] = useState(false);
+  const [resolveTaskNotice, setResolveTaskNotice] = useState<string | null>(null);
+  const [resolveTaskError, setResolveTaskError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -196,6 +199,8 @@ export default function McpMeshView({
     setResolving(true);
     setResolveError(null);
     setResolveResult(null);
+    setResolveTaskNotice(null);
+    setResolveTaskError(null);
 
     try {
       // 校验 JSON
@@ -220,6 +225,36 @@ export default function McpMeshView({
       setResolveError(err.message || '网络或服务端异常');
     } finally {
       setResolving(false);
+    }
+  };
+
+  const createResolveTask = async () => {
+    if (!resolveResult || resolveTaskPending) return;
+    setResolveTaskPending(true);
+    setResolveTaskNotice(null);
+    setResolveTaskError(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `验收 BOS 解析：${resolveUri}`,
+          description: `已完成 ${resolveUri} 的在线解析。请核对路由、实例、协议约束与调用结果，并在任务中心记录后续处理和 closeout。\n\n解析结果：${JSON.stringify(resolveResult)}`,
+          priority: 'medium',
+          risk_level: 'L1',
+          evidence_required: ['BOS URI 与参数', '解析返回结果', '路由或实例验收证据', 'task closeout'],
+          tags: ['mcp-mesh', 'bos-resolution'],
+          source: 'cockpit.mcp-mesh-resolver',
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '解析验收任务登记失败');
+      setResolveTaskNotice(`已登记解析验收任务：${payload.title || resolveUri}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+    } catch (requestError) {
+      setResolveTaskError(requestError instanceof Error ? requestError.message : '解析验收任务登记失败');
+    } finally {
+      setResolveTaskPending(false);
     }
   };
 
@@ -815,6 +850,14 @@ export default function McpMeshView({
                 }}>
                   {JSON.stringify(resolveResult, null, 2)}
                 </pre>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                  <button type="button" className="antd-btn small" onClick={() => void createResolveTask()} disabled={resolveTaskPending} aria-label="登记解析验收任务">
+                    <ClipboardCheck size={13} />
+                    <span>{resolveTaskPending ? '登记中...' : '登记验收任务'}</span>
+                  </button>
+                  {resolveTaskNotice && <span role="status" className="text-muted">{resolveTaskNotice}</span>}
+                  {resolveTaskError && <span role="alert" style={{ color: 'var(--antd-error)' }}>{resolveTaskError}</span>}
+                </div>
               </div>
             )}
           </div>

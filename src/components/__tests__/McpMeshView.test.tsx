@@ -106,6 +106,35 @@ describe('McpMeshView', () => {
     await waitFor(() => expect(serviceCalls).toBeGreaterThanOrEqual(2))
   })
 
+  it('registers a successful URI resolution as an acceptance task', async () => {
+    const onOpenTarget = vi.fn()
+    let taskRequest: RequestInit | undefined
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.startsWith('/api/bos/resolve?')) return Promise.resolve(okJson({ route: 'memory.search', transport: 'http' }))
+      if (url === '/api/tasks' && init?.method === 'POST') {
+        taskRequest = init
+        return Promise.resolve(okJson({ id: 'mesh-resolution-1', title: '验收 BOS 解析：bos://memory/kos/search' }))
+      }
+      if (url === '/api/bos/services') return Promise.resolve(okJson({ services: [] }))
+      if (url === '/api/bos/health') return Promise.resolve(okJson({ status: 'ok', total_routes: 0, domains: {}, metrics: {} }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<McpMeshView onOpenTarget={onOpenTarget} />)
+    fireEvent.click(await screen.findByRole('button', { name: '开始解析' }))
+
+    await screen.findByText('解析成功 - 路由匹配详情:')
+    fireEvent.click(screen.getByRole('button', { name: '登记解析验收任务' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('已登记解析验收任务：验收 BOS 解析：bos://memory/kos/search')
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'mesh-resolution-1' })
+    })
+    expect(taskRequest?.body).toContain('BOS URI 与参数')
+    expect(taskRequest?.body).toContain('cockpit.mcp-mesh-resolver')
+  })
+
   it('locks mesh registration while the request is pending', async () => {
     let resolveRegistration!: (response: Response) => void
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
