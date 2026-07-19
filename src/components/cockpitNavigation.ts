@@ -11,6 +11,14 @@ export interface CockpitNavigationTarget {
   alertTab?: 'active' | 'history' | 'rules' | null;
 }
 
+export interface RecentNavigationEntry {
+  target: CockpitNavigationTarget;
+  label: string;
+}
+
+const RECENT_NAVIGATION_STORAGE_KEY = 'cockpit.recent-navigation.v1';
+const RECENT_NAVIGATION_LIMIT = 5;
+
 export const HASH_TO_TAB: Record<string, string> = {
   home: 'Home',
   guide: 'Guide',
@@ -132,5 +140,44 @@ export function writeNavigationHash(target: CockpitNavigationTarget) {
   const nextHash = navigationHash(target);
   if (window.location.hash !== nextHash) {
     window.location.hash = nextHash;
+  }
+}
+
+function recentNavigationTarget(target: CockpitNavigationTarget): CockpitNavigationTarget {
+  return { ...target, draftKey: undefined };
+}
+
+export function readRecentNavigation(): RecentNavigationEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_NAVIGATION_STORAGE_KEY);
+    if (!raw) return [];
+    const entries = JSON.parse(raw) as RecentNavigationEntry[];
+    if (!Array.isArray(entries)) return [];
+    return entries.filter((entry) => entry?.target?.tab && entry.label).slice(0, RECENT_NAVIGATION_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+export function recordRecentNavigation(target: CockpitNavigationTarget, label: string) {
+  if (typeof window === 'undefined' || !target.tab || !label.trim()) return;
+  const entry = { target: recentNavigationTarget(target), label: label.trim() };
+  const current = readRecentNavigation();
+  const next = [entry, ...current.filter((item) => navigationHash(item.target) !== navigationHash(entry.target))]
+    .slice(0, RECENT_NAVIGATION_LIMIT);
+  try {
+    window.localStorage.setItem(RECENT_NAVIGATION_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage may be unavailable in private browsing or restricted embeds.
+  }
+}
+
+export function clearRecentNavigation() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(RECENT_NAVIGATION_STORAGE_KEY);
+  } catch {
+    // Ignore restricted storage environments; the UI remains usable.
   }
 }

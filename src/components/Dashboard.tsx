@@ -34,13 +34,22 @@ import {
   RefreshCw,
   Download,
   Shield,
+  History,
 } from 'lucide-react';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette } from './common/CommandPalette';
 import QuickActionsPanel from './common/QuickActionsPanel';
 import { useCommandPalette, useKeyboardShortcuts } from './common/useCommandPalette';
 import { useQuickActions } from './common/useQuickActions';
-import { parseNavigationHash, writeNavigationHash, type CockpitNavigationTarget } from './cockpitNavigation';
+import {
+  clearRecentNavigation,
+  parseNavigationHash,
+  readRecentNavigation,
+  recordRecentNavigation,
+  writeNavigationHash,
+  type CockpitNavigationTarget,
+  type RecentNavigationEntry,
+} from './cockpitNavigation';
 import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
 import {
   findTaskDraftForTarget,
@@ -1228,6 +1237,7 @@ export default function Dashboard() {
   const [taskDraftKey, setTaskDraftKey] = useState<string | null>(initialNavigationTarget?.draftKey || null);
   const [pageSprintFocusId, setPageSprintFocusId] = useState('');
   const [alertTab, setAlertTab] = useState<'active' | 'history' | 'rules' | null>(initialNavigationTarget?.alertTab || null);
+  const [recentNavigation, setRecentNavigation] = useState<RecentNavigationEntry[]>(() => readRecentNavigation());
   const [sidebarCoverage, setSidebarCoverage] = useState<SidebarCoverage | null>(null);
   const [sidebarProjectPortfolio, setSidebarProjectPortfolio] = useState<SidebarProjectPortfolio | null>(null);
   const [sidebarUsagePaths, setSidebarUsagePaths] = useState<SearchUsagePath[]>([]);
@@ -2846,6 +2856,8 @@ export default function Dashboard() {
     setAlertTab(null);
     setMobileNavOpen(false);
     setActiveTabState(tab);
+    recordRecentNavigation({ tab }, PAGE_REGISTRY_BY_ID.get(tab)?.title || tab);
+    setRecentNavigation(readRecentNavigation());
     writeNavigationHash({ tab });
   };
 
@@ -2864,10 +2876,17 @@ export default function Dashboard() {
     setAlertTab(target.alertTab || null);
     setMobileNavOpen(false);
     setActiveTabState(target.tab);
+    recordRecentNavigation(target, PAGE_REGISTRY_BY_ID.get(target.tab)?.title || target.tab);
+    setRecentNavigation(readRecentNavigation());
     writeNavigationHash({
       ...target,
       draftKey: resolvedDraftKey || undefined,
     });
+  };
+
+  const clearRecent = () => {
+    clearRecentNavigation();
+    setRecentNavigation([]);
   };
 
   useEffect(() => {
@@ -4203,6 +4222,29 @@ export default function Dashboard() {
                     <small>{item.detail}</small>
                   </div>
                   <em>{item.badge}</em>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {recentNavigation.length > 0 && (
+          <section className="sidebar-recent-navigation" aria-label="最近访问">
+            <div className="sidebar-recent-navigation-header">
+              <strong><History size={14} aria-hidden="true" />最近访问</strong>
+              <button type="button" onClick={clearRecent} aria-label="清空最近访问" title="清空最近访问">清空</button>
+            </div>
+            <div className="sidebar-recent-navigation-list">
+              {recentNavigation.map((entry, index) => (
+                <button
+                  key={`${entry.target.tab}-${entry.label}-${index}`}
+                  type="button"
+                  className="sidebar-recent-navigation-item"
+                  aria-label={`重新打开最近访问 ${entry.label}`}
+                  onClick={() => openContextTarget(entry.target)}
+                >
+                  <span>{entry.label}</span>
+                  <small>{PAGE_REGISTRY_BY_ID.get(entry.target.tab)?.title || entry.target.tab}</small>
                 </button>
               ))}
             </div>

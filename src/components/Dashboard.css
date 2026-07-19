@@ -601,6 +601,76 @@
   gap: 4px;
 }
 
+.sidebar-recent-navigation {
+  margin: 10px 12px 14px;
+  padding: 10px;
+  border: 1px solid var(--antd-border-color);
+  border-radius: var(--antd-radius-md);
+  background: rgba(6, 9, 19, 0.28);
+}
+
+.sidebar-recent-navigation-header,
+.sidebar-recent-navigation-header strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-recent-navigation-header {
+  justify-content: space-between;
+  margin-bottom: 7px;
+  color: var(--antd-text-secondary);
+  font-size: 11px;
+}
+
+.sidebar-recent-navigation-header button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--antd-text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.sidebar-recent-navigation-header button:hover {
+  color: var(--antd-primary);
+}
+
+.sidebar-recent-navigation-list {
+  display: grid;
+  gap: 4px;
+}
+
+.sidebar-recent-navigation-item {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 7px;
+  border: 1px solid transparent;
+  border-radius: var(--antd-radius-sm);
+  background: transparent;
+  color: var(--antd-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-recent-navigation-item:hover {
+  border-color: rgba(0, 242, 254, 0.16);
+  background: rgba(0, 242, 254, 0.06);
+}
+
+.sidebar-recent-navigation-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.sidebar-recent-navigation-item small {
+  color: var(--antd-text-secondary);
+  font-size: 10px;
+}
+
 /* Cyber Group Header */
 .nav-group-title {
   font-size: 11px;

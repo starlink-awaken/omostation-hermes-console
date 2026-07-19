@@ -1,13 +1,58 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  clearRecentNavigation,
   hasNavigationContext,
   navigationHash,
   openCockpitNavigationTarget,
   parseNavigationHash,
+  readRecentNavigation,
+  recordRecentNavigation,
   writeNavigationHash,
 } from '../cockpitNavigation'
 
 describe('cockpitNavigation', () => {
+  beforeEach(() => {
+    const values = new Map<string, string>()
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) || null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key),
+      },
+    })
+  })
+
+  it('persists the latest contextual entries without leaking temporary draft keys', () => {
+    clearRecentNavigation()
+    recordRecentNavigation({ tab: 'TaskCenter', taskQuery: 'repair', draftKey: 'session-draft' }, '修复任务')
+    recordRecentNavigation({ tab: 'SystemMap', projectId: 'mesh-router' }, 'mesh-router')
+
+    expect(readRecentNavigation()).toEqual([
+      { target: { tab: 'SystemMap', projectId: 'mesh-router' }, label: 'mesh-router' },
+      { target: { tab: 'TaskCenter', taskQuery: 'repair' }, label: '修复任务' },
+    ])
+
+    clearRecentNavigation()
+    expect(readRecentNavigation()).toEqual([])
+  })
+
+  it('deduplicates entries by their full navigation target and keeps five entries', () => {
+    clearRecentNavigation()
+    for (let index = 0; index < 6; index += 1) {
+      recordRecentNavigation({ tab: 'SystemMap', projectId: `project-${index}` }, `项目 ${index}`)
+    }
+    recordRecentNavigation({ tab: 'SystemMap', projectId: 'project-3' }, '项目 3')
+
+    expect(readRecentNavigation()).toHaveLength(5)
+    expect(readRecentNavigation()[0]).toEqual({
+      target: { tab: 'SystemMap', projectId: 'project-3' },
+      label: '项目 3',
+    })
+    expect(readRecentNavigation().some((entry) => entry.target.projectId === 'project-0')).toBe(false)
+    clearRecentNavigation()
+  })
+
   it('distinguishes plain tab navigation from contextual navigation', () => {
     expect(hasNavigationContext({ tab: 'Home' })).toBe(false)
     expect(hasNavigationContext({ tab: 'SystemMap', pageId: 'Overview' })).toBe(true)
