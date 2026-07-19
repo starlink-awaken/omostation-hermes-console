@@ -437,9 +437,11 @@ export default function TaskCenterPage({
   };
 
   useEffect(() => {
+    // 任务列表刷新后，详情面板跟随最新对象或关闭已消失的任务。
     if (!selectedTask) return;
     const refreshedTask = tasks.find((task) => task.id === selectedTask.id);
     if (!refreshedTask) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedTask(null);
       return;
     }
@@ -447,6 +449,8 @@ export default function TaskCenterPage({
   }, [tasks, selectedTask]);
 
   useEffect(() => {
+    // 外部导航查询变化时，更新任务筛选条件。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchQuery(initialSearchQuery);
     setActiveSourceFilter(isDraftSourceType(initialSearchQuery) ? initialSearchQuery : 'all');
   }, [initialSearchQuery]);
@@ -456,6 +460,7 @@ export default function TaskCenterPage({
     if (query === appliedNavigationQueryRef.current && selectedTask) return;
     appliedNavigationQueryRef.current = query;
     if (!query) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedTask(null);
       return;
     }
@@ -474,7 +479,9 @@ export default function TaskCenterPage({
   }, [initialSearchQuery, selectedTask, tasks]);
 
   useEffect(() => {
+    // 只读任务没有执行详情，切换来源时清空上一条任务的运行态。
     if (!selectedTask || selectedTask.read_only) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTaskHistory([]);
       setTaskHistoryError(null);
       setTaskHistoryLoading(false);
@@ -602,7 +609,9 @@ export default function TaskCenterPage({
   const selectedPendingTasks = selectedTasks.filter((task) => task.status === 'pending');
 
   useEffect(() => {
+    // 过滤器或刷新移除当前任务时，避免详情面板继续展示失效对象。
     if (selectedTask && !filteredTasks.some((task) => task.id === selectedTask.id)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedTask(null);
       setTaskHistory([]);
       setTaskExecution(null);

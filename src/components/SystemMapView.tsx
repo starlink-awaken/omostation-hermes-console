@@ -1804,41 +1804,50 @@ export default function SystemMapView({
   };
 
   useEffect(() => {
+    // 首次挂载时加载系统地图及其运行态数据。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
   useEffect(() => {
+    // 导航目标来自外部路由状态，需要同步到对应详情选择。
     if (focusProjectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedProjectId(focusProjectId);
     }
   }, [focusProjectId]);
 
   useEffect(() => {
     if (focusUsagePathId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedUsagePathId(focusUsagePathId);
     }
   }, [focusUsagePathId]);
 
   useEffect(() => {
     if (focusGapId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedGapId(focusGapId);
     }
   }, [focusGapId]);
 
   useEffect(() => {
     if (focusCoverageDimensionId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCoverageFilter(focusCoverageDimensionId);
     }
   }, [focusCoverageDimensionId]);
 
   useEffect(() => {
     if (focusPageId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPageMaturityId(focusPageId);
     }
   }, [focusPageId]);
 
   useEffect(() => {
     if (focusFeatureDomainId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedFeatureDomainId(focusFeatureDomainId);
     }
   }, [focusFeatureDomainId]);
@@ -1858,6 +1867,7 @@ export default function SystemMapView({
       ...(item.operational?.risks || []),
     ].some((value) => normalizeSearchText(String(value || '')).includes(query)));
     if (project) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedProjectId(project.id);
       return;
     }
@@ -2285,18 +2295,22 @@ export default function SystemMapView({
   }), [pageMaturity]);
 
   useEffect(() => {
+    // 系统地图刷新后，为功能域详情选择一个仍然存在的默认对象。
     const domains = systemMap?.feature_domains || [];
     if (!domains.length) return;
     if (selectedFeatureDomainId && domains.some((domain) => domain.id === selectedFeatureDomainId)) return;
     const usagePreferred = activeUsageDomains[0];
     const fallback = usagePreferred || domains[0];
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedFeatureDomainId(fallback?.id || null);
   }, [activeUsageDomains, selectedFeatureDomainId, systemMap]);
 
   useEffect(() => {
+    // 页面成熟度刷新后，优先定位仍需关注的页面。
     if (!pageMaturity.length) return;
     if (selectedPageMaturityId && pageMaturity.some((item) => item.page.id === selectedPageMaturityId)) return;
     const preferred = pageMaturity.find((item) => item.status !== 'ready') || pageMaturity[0];
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedPageMaturityId(preferred?.page.id || null);
   }, [pageMaturity, selectedPageMaturityId]);
 

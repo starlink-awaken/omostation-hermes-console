@@ -613,11 +613,15 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
   };
 
   useEffect(() => {
+    // 首次挂载时从后端加载领域应用及其运行态。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
   useEffect(() => {
+    // 外部数据或导航查询变化时，保持聚焦对象与当前列表一致。
     if (!apps?.items.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFocusedAppId(null);
       return;
     }

@@ -7,14 +7,12 @@ import {
   Flag,
   CheckCircle2,
   AlertTriangle,
-  Play,
   Check,
   ArrowRight,
   ClipboardList,
   RefreshCw,
   Trophy,
   X,
-  Eye,
   FileCode,
   Sparkles
 } from 'lucide-react';
@@ -177,8 +175,8 @@ export default function C2GStrategyView({
       } else {
         setFixResult('治理修复承接失败: ' + (data.detail || data.error || '原因未知'));
       }
-    } catch (err: any) {
-      setFixResult('网络异常: ' + err.message);
+    } catch (err: unknown) {
+      setFixResult('网络异常: ' + (err instanceof Error ? err.message : '请求失败'));
     } finally {
       setFixing(false);
     }
@@ -197,8 +195,8 @@ export default function C2GStrategyView({
       } else {
         setProposalError(`批准失败: ${data.error || '未知错误'}`);
       }
-    } catch (err: any) {
-      setProposalError(`网络错误: ${err.message}`);
+    } catch (err: unknown) {
+      setProposalError(`网络错误: ${err instanceof Error ? err.message : '请求失败'}`);
     } finally {
       setApprovingIds(prev => ({ ...prev, [id]: false }));
     }
@@ -217,8 +215,8 @@ export default function C2GStrategyView({
       } else {
         setProposalError(`拒绝失败: ${data.error || '未知错误'}`);
       }
-    } catch (err: any) {
-      setProposalError(`网络错误: ${err.message}`);
+    } catch (err: unknown) {
+      setProposalError(`网络错误: ${err instanceof Error ? err.message : '请求失败'}`);
     } finally {
       setRejectingIds(prev => ({ ...prev, [id]: false }));
     }
@@ -235,8 +233,8 @@ export default function C2GStrategyView({
       setProposalSuccess(data.created === false ? `任务已存在：${data.id}` : `提案已承接为任务：${data.id}`);
       await fetchData();
       if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
-    } catch (err: any) {
-      setProposalError(`承接失败: ${err.message || '网络异常'}`);
+    } catch (err: unknown) {
+      setProposalError(`承接失败: ${err instanceof Error ? err.message : '网络异常'}`);
     } finally {
       setQueueingProposalIds(prev => ({ ...prev, [id]: false }));
     }
@@ -250,8 +248,8 @@ export default function C2GStrategyView({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || data.error || `Wave2 规划返回 HTTP ${res.status}`);
       setWave2Plan(data as Wave2ProposalPlan);
-    } catch (err: any) {
-      setWave2Error(err.message || 'Wave2 规划暂不可用');
+    } catch (err: unknown) {
+      setWave2Error(err instanceof Error ? err.message : 'Wave2 规划暂不可用');
     } finally {
       setWave2PlanLoading(false);
     }
@@ -336,9 +334,9 @@ export default function C2GStrategyView({
       setCheck(checkData);
       setProposals(proposalsData);
       setViolations(violationsData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      const message = err.message || '获取 C2G 数据失败';
+      const message = err instanceof Error ? err.message : '获取 C2G 数据失败';
       setError(message);
       setStatusError(message);
     } finally {
@@ -371,7 +369,6 @@ export default function C2GStrategyView({
     );
   }
 
-  const statusSourceUnavailable = Boolean(statusError);
   const sysHealth = status?.system?.health_score;
   const govHealth = status?.governance?.health_score;
   const currentPhase = status?.system?.current_phase;
