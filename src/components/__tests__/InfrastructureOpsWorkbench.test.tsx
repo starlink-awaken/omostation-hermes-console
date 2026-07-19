@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import InfrastructureOpsWorkbench from '../InfrastructureOpsWorkbench'
 
 const computePayload = {
@@ -103,6 +103,9 @@ describe('InfrastructureOpsWorkbench', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('计算状态数据：compute source offline')
       expect(screen.getByRole('button', { name: '查看运行服务 LLM Gateway' })).toBeInTheDocument()
+      const summary = screen.getByText('异常节点').closest('.infra-workbench-card') as HTMLElement
+      expect(within(summary).getByText('N/A')).toBeInTheDocument()
+      expect(summary).toHaveTextContent('模型异常 N/A · 运行异常 2')
     })
   })
 
@@ -113,7 +116,7 @@ describe('InfrastructureOpsWorkbench', () => {
 
     await waitFor(() => {
       expect(screen.getByText('数据不可用')).toBeInTheDocument()
-      expect(screen.getByText('N/A')).toBeInTheDocument()
+      expect(screen.getAllByText('N/A').length).toBeGreaterThan(1)
       expect(screen.queryByText('基础设施平稳')).not.toBeInTheDocument()
       expect(screen.queryByText('成功率 0%')).not.toBeInTheDocument()
     })

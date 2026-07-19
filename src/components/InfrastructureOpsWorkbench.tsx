@@ -76,9 +76,13 @@ type InfrastructureOpsWorkbenchProps = {
 type InfrastructureState = {
   loading: boolean;
   compute: ComputePayload | null;
+  computeAvailable: boolean;
   bosHealth: BosHealth | null;
+  bosHealthAvailable: boolean;
   bosServices: BosService[];
+  bosServicesAvailable: boolean;
   runtime: RuntimeService[];
+  runtimeAvailable: boolean;
   error: string | null;
 };
 
@@ -139,9 +143,13 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
   const [state, setState] = useState<InfrastructureState>({
     loading: true,
     compute: null,
+    computeAvailable: false,
     bosHealth: null,
+    bosHealthAvailable: false,
     bosServices: [],
+    bosServicesAvailable: false,
     runtime: [],
+    runtimeAvailable: false,
     error: null,
   });
   const [retryToken, setRetryToken] = useState(0);
@@ -158,21 +166,25 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
           fetch('/api/services/status'),
         ]);
 
-        const nextState: InfrastructureState = {
-          loading: false,
-          compute: null,
-          bosHealth: null,
-          bosServices: [],
-          runtime: [],
-          error: null,
-        };
-
         const [{ ok: computeOk, data: compute, error: computeError }, { ok: bosHealthOk, data: bosHealth, error: bosHealthError }, { ok: bosServicesOk, data: bosServices, error: bosServicesError }, { ok: runtimeOk, data: runtime, error: runtimeError }] = await Promise.all([
           readInfrastructureResponse<ComputePayload>(computeResult, '计算状态数据'),
           readInfrastructureResponse<BosHealth>(bosHealthResult, 'BOS 健康数据'),
           readInfrastructureResponse<{ services?: BosService[] }>(bosServicesResult, 'BOS 服务目录'),
           readInfrastructureResponse<{ items?: RuntimeService[] }>(runtimeResult, '运行服务状态'),
         ]);
+
+        const nextState: InfrastructureState = {
+          loading: false,
+          compute: null,
+          computeAvailable: computeOk,
+          bosHealth: null,
+          bosHealthAvailable: bosHealthOk,
+          bosServices: [],
+          bosServicesAvailable: bosServicesOk,
+          runtime: [],
+          runtimeAvailable: runtimeOk,
+          error: null,
+        };
 
         if (computeOk) nextState.compute = compute;
         if (bosHealthOk) nextState.bosHealth = bosHealth;
@@ -220,14 +232,17 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
     [state.bosHealth],
   );
 
-  const recommended = nextInfraAction(currentPage, degradedServices, unhealthyNodes, unhealthyModels, state.bosHealth);
+  const recommended = state.error
+    ? '基础设施证据不完整，先恢复失败数据源再判断下一步。'
+    : nextInfraAction(currentPage, degradedServices, unhealthyNodes, unhealthyModels, state.bosHealth);
   const infrastructureContextQuery = unhealthyNodes[0]?.id || unhealthyModels[0]?.model_name || topDomains[0]?.[0] || currentPage;
   const noInfrastructureSources = !state.loading
     && Boolean(state.error)
-    && !state.compute
-    && !state.bosHealth
-    && state.bosServices.length === 0
-    && state.runtime.length === 0;
+    && !state.computeAvailable
+    && !state.bosHealthAvailable
+    && !state.bosServicesAvailable
+    && !state.runtimeAvailable;
+  const gridUnavailable = !state.bosHealthAvailable && !state.bosServicesAvailable;
 
   return (
     <section className="services-section infra-workbench" aria-label="基础设施工作台">
@@ -253,13 +268,13 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
       <div className="infra-workbench-summary">
         <div className="infra-workbench-card">
           <span>网格路由</span>
-          <strong>{state.bosHealth ? state.bosHealth.total_routes || state.bosServices.length : noInfrastructureSources ? 'N/A' : state.bosServices.length}</strong>
-          <small>成功率 {state.bosHealth?.metrics?.success_rate !== undefined ? `${Math.round(state.bosHealth.metrics.success_rate * 100)}%` : noInfrastructureSources ? 'N/A' : '暂无'}</small>
+          <strong>{gridUnavailable ? 'N/A' : state.bosHealth ? state.bosHealth.total_routes || state.bosServices.length : state.bosServices.length}</strong>
+          <small>成功率 {gridUnavailable ? 'N/A' : state.bosHealth?.metrics?.success_rate !== undefined ? `${Math.round(state.bosHealth.metrics.success_rate * 100)}%` : '暂无'}</small>
         </div>
         <div className="infra-workbench-card">
           <span>异常节点</span>
-          <strong>{unhealthyNodes.length}</strong>
-          <small>模型异常 {unhealthyModels.length} · 运行异常 {degradedServices.length}</small>
+          <strong>{state.computeAvailable ? unhealthyNodes.length : 'N/A'}</strong>
+          <small>模型异常 {state.computeAvailable ? unhealthyModels.length : 'N/A'} · 运行异常 {state.runtimeAvailable ? degradedServices.length : 'N/A'}</small>
         </div>
         <div className="infra-workbench-card infra-workbench-card-wide">
           <span>建议下一步</span>
@@ -348,7 +363,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
               </button>
             ))}
             {unhealthyNodes.length === 0 && unhealthyModels.length === 0 && (
-              <div className="home-focus-empty infra-workbench-empty">当前没有异常节点或模型</div>
+              <div className="home-focus-empty infra-workbench-empty">{state.computeAvailable ? '当前没有异常节点或模型' : '算力数据不可用'}</div>
             )}
           </div>
         </article>
@@ -375,7 +390,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
               </button>
             ))}
             {state.runtime.length === 0 && (
-              <div className="home-focus-empty infra-workbench-empty">当前没有可用运行服务</div>
+              <div className="home-focus-empty infra-workbench-empty">{state.runtimeAvailable ? '当前没有可用运行服务' : '运行服务数据不可用'}</div>
             )}
           </div>
         </article>
