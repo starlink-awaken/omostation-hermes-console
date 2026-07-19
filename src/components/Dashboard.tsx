@@ -5672,6 +5672,7 @@ export default function Dashboard() {
                 focusCoverageDimensionId={focusedCoverageDimensionId}
                 focusPageId={focusedPageId}
                 focusFeatureDomainId={focusedFeatureDomainId}
+                focusTaskQuery={taskSearchSeed}
               />,
             )
           )}

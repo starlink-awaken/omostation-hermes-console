@@ -685,6 +685,7 @@ interface SystemMapViewProps {
   focusCoverageDimensionId?: string | null;
   focusPageId?: string | null;
   focusFeatureDomainId?: string | null;
+  focusTaskQuery?: string;
 }
 
 const sourceLabels: Record<string, string> = {
@@ -1533,6 +1534,7 @@ export default function SystemMapView({
   focusCoverageDimensionId,
   focusPageId,
   focusFeatureDomainId,
+  focusTaskQuery,
 }: SystemMapViewProps) {
   const [systemMap, setSystemMap] = useState<SystemMapPayload | null>(null);
   const [draftTasks, setDraftTasks] = useState<DraftTask[]>([]);
@@ -1822,6 +1824,51 @@ export default function SystemMapView({
       setSelectedFeatureDomainId(focusFeatureDomainId);
     }
   }, [focusFeatureDomainId]);
+
+  useEffect(() => {
+    if (!systemMap || !focusTaskQuery?.trim()) return;
+    if (focusProjectId || focusUsagePathId || focusGapId || focusCoverageDimensionId || focusPageId || focusFeatureDomainId) return;
+    const query = normalizeSearchText(focusTaskQuery);
+    if (!query) return;
+
+    const project = systemMap.projects.find((item) => [
+      item.id,
+      item.layer,
+      item.stack,
+      item.role,
+      item.operational?.next_action,
+      ...(item.operational?.risks || []),
+    ].some((value) => normalizeSearchText(String(value || '')).includes(query)));
+    if (project) {
+      setSelectedProjectId(project.id);
+      return;
+    }
+
+    const page = systemMap.cockpit_pages.find((item) => [item.id, item.title, item.purpose, ...(item.dimensions || [])]
+      .some((value) => normalizeSearchText(String(value || '')).includes(query)));
+    if (page) {
+      setSelectedPageMaturityId(page.id);
+      return;
+    }
+
+    const usagePath = (systemMap.usage_paths || []).find((item) => [item.id, item.title, item.intent]
+      .some((value) => normalizeSearchText(String(value || '')).includes(query)));
+    if (usagePath) {
+      setSelectedUsagePathId(usagePath.id);
+      return;
+    }
+
+    const gap = (systemMap.gaps || []).find((item) => [item.id, item.title, item.evidence, item.next]
+      .some((value) => normalizeSearchText(String(value || '')).includes(query)));
+    if (gap) {
+      setSelectedGapId(gap.id);
+      return;
+    }
+
+    const featureDomain = (systemMap.feature_domains || []).find((item) => [item.id, item.title, item.english]
+      .some((value) => normalizeSearchText(String(value || '')).includes(query)));
+    if (featureDomain) setSelectedFeatureDomainId(featureDomain.id);
+  }, [focusCoverageDimensionId, focusFeatureDomainId, focusGapId, focusPageId, focusProjectId, focusTaskQuery, focusUsagePathId, systemMap]);
 
   const pagesById = useMemo(() => {
     const index = new Map<string, CockpitPage>();

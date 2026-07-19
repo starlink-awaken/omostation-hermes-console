@@ -882,6 +882,15 @@ describe('SystemMapView', () => {
     })
   })
 
+  it('resolves a loose task query to a project when no structured focus is present', async () => {
+    render(<SystemMapView onNavigate={vi.fn()} focusTaskQuery="kairon" />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('kairon 项目详情')).toBeInTheDocument()
+      expect(screen.getByText('工作流时间线')).toBeInTheDocument()
+    })
+  })
+
   it('queues a triage command directly from project detail', async () => {
     const onOpenTarget = vi.fn()
     render(<SystemMapView onNavigate={vi.fn()} onOpenTarget={onOpenTarget} focusProjectId="kairon" />)
