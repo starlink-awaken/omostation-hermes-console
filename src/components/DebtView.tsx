@@ -66,9 +66,9 @@ export default function DebtView({
       const d = await r.json();
       if (d.error) throw new Error(d.error);
       setData(d);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setError(e.message);
+      setError(e instanceof Error ? e.message : '债务数据读取失败');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -76,15 +76,21 @@ export default function DebtView({
   };
 
   useEffect(() => {
+    // 页面挂载时读取债务账本。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDebt();
   }, []);
 
   useEffect(() => {
     if (!focusTaskQuery) return;
+    // 外部导航查询命中债务对象时同步搜索条件。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchQuery(focusTaskQuery);
   }, [focusTaskQuery]);
 
   useEffect(() => {
+    // 搜索或筛选变化后从第一页重新展示债务条目。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleDebtLimit(50);
   }, [searchQuery, selectedSeverity, selectedDimension]);
 
@@ -103,8 +109,8 @@ export default function DebtView({
       if (!response.ok) throw new Error(payload.detail || `HTTP ${response.status}`);
       setQueueNotice(payload.created === false ? `任务已存在：${payload.id}` : `已承接为任务：${payload.id}`);
       openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
-    } catch (caught: any) {
-      setQueueError(caught?.message || '债务任务承接失败');
+    } catch (caught: unknown) {
+      setQueueError(caught instanceof Error ? caught.message : '债务任务承接失败');
     } finally {
       setQueueingDebtId(null);
     }

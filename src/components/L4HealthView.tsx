@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Activity,
   CheckCircle,
@@ -105,9 +105,11 @@ export default function L4HealthView({
   ]));
   const healthUnavailable = healthData?.data_quality === 'unavailable';
   const normalizedHealthQuery = healthQuery.trim().toLowerCase();
-  const allDomains = healthData?.domains || [];
+  const allDomains = useMemo(() => healthData?.domains || [], [healthData?.domains]);
   useEffect(() => {
     if (focusTaskQuery && allDomains.some((domain) => matchesL4FocusQuery([domain.id, domain.name, domain.issue_count, domain.signal_count, domain.capabilities.join(',')], focusTaskQuery))) {
+      // 外部导航查询命中健康域时同步筛选条件。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHealthQuery(focusTaskQuery);
     }
   }, [allDomains, focusTaskQuery]);
@@ -248,6 +250,8 @@ export default function L4HealthView({
   };
 
   useEffect(() => {
+    // 页面挂载并定时刷新 L4 健康证据。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);

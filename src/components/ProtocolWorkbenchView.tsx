@@ -180,6 +180,8 @@ export default function ProtocolWorkbenchView({
   };
 
   useEffect(() => {
+    // 页面挂载时读取协议工作台的多源证据。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, []);
 
@@ -257,6 +259,8 @@ export default function ProtocolWorkbenchView({
   const [activeProtocolSurfaceId, setActiveProtocolSurfaceId] = useState<ProtocolSurfaceId>(inferredProtocolSurface);
 
   useEffect(() => {
+    // 外部导航命中协议面时同步当前工作区。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveProtocolSurfaceId(inferredProtocolSurface);
   }, [inferredProtocolSurface]);
 
@@ -439,7 +443,6 @@ export default function ProtocolWorkbenchView({
 
     return null;
   }, [
-    activeProtocolSurfaceId,
     assetsTarget,
     focusPageId,
     focusTaskQuery,
