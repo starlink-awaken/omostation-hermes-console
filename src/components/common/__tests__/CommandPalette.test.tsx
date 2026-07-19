@@ -121,4 +121,27 @@ describe('useKeyboardShortcuts', () => {
 
     expect(action).not.toHaveBeenCalled()
   })
+
+  it('ignores shortcuts when target is a button or select control', () => {
+    const action = vi.fn()
+    function TestComponent() {
+      useKeyboardShortcuts({
+        shortcuts: [{ key: 'k', ctrl: true, description: 'Open', action }],
+      })
+      return (
+        <>
+          <button data-testid="button" type="button">按钮</button>
+          <select data-testid="select" defaultValue="one" aria-label="选择">
+            <option value="one">一</option>
+          </select>
+        </>
+      )
+    }
+
+    render(<TestComponent />)
+    fireEvent.keyDown(screen.getByTestId('button'), { key: 'k', ctrlKey: true })
+    fireEvent.keyDown(screen.getByTestId('select'), { key: 'k', ctrlKey: true })
+
+    expect(action).not.toHaveBeenCalled()
+  })
 })

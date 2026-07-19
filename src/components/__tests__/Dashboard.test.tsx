@@ -144,6 +144,23 @@ describe('Dashboard global search', () => {
     }
     expect(within(palette as HTMLElement).getByRole('option', { name: /工作模式：日常值守模式/ })).toBeInTheDocument()
     expect(within(palette as HTMLElement).getByRole('option', { name: /工作模式任务：建设补位模式/ })).toBeInTheDocument()
+    expect(within(palette as HTMLElement).getByRole('option', { name: /刷新当前页面数据/ })).toBeInTheDocument()
+    expect(within(palette as HTMLElement).getByRole('option', { name: /导出全站运行快照/ })).toBeInTheDocument()
+    expect(within(palette as HTMLElement).getByRole('option', { name: /承接当前页面任务/ })).toBeInTheDocument()
+  })
+
+  it('executes shell actions from the command palette', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({}))
+
+    render(<Dashboard />)
+    fireEvent.click(await screen.findByTitle('命令面板 (Ctrl+K)'))
+    const palette = await screen.findByRole('dialog', { name: '命令面板' })
+    const input = within(palette).getByRole('textbox', { name: '命令面板搜索' })
+    fireEvent.change(input, { target: { value: '刷新当前页面数据' } })
+    fireEvent.click(within(palette).getByRole('option', { name: /刷新当前页面数据/ }))
+
+    await waitFor(() => expect(screen.getByTestId('dashboard-page-view')).toHaveAttribute('data-refresh-token', '1'))
+    expect(screen.queryByRole('dialog', { name: '命令面板' })).not.toBeInTheDocument()
   })
 
   it('supports keyboard selection across global search results', async () => {

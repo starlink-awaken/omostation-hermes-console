@@ -20,7 +20,14 @@ export function useKeyboardShortcuts({ shortcuts, enabled = true }: UseKeyboardS
     if (!enabled) return;
 
     const target = event.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+    if (
+      target.tagName === 'INPUT'
+      || target.tagName === 'TEXTAREA'
+      || target.tagName === 'SELECT'
+      || target.tagName === 'OPTION'
+      || target.tagName === 'BUTTON'
+      || target.isContentEditable
+    ) return;
 
     for (const shortcut of shortcuts) {
       const ctrlMatch = shortcut.ctrl ? (event.ctrlKey || event.metaKey) : true;

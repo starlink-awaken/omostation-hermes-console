@@ -3165,7 +3165,65 @@ export default function Dashboard() {
     }
   };
 
+  // 命令面板和快捷操作共用同一组 shell 状态，先初始化控制器再构造可执行命令。
+  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette, toggle: toggleCommandPalette } = useCommandPalette();
+  const { isOpen: isQuickActionsOpen, open: openQuickActions, close: closeQuickActions } = useQuickActions();
+
   const commandPaletteCommands = [
+    {
+      id: 'action-home',
+      label: '回到首页',
+      description: '返回系统健康总览、告警、任务和指标趋势。',
+      action: () => setActiveTab('Home'),
+    },
+    {
+      id: 'action-focus-search',
+      label: '聚焦全局搜索',
+      description: '搜索页面、项目、能力、任务和运行证据。',
+      action: () => {
+        setSearchQuery('');
+        globalSearchInputRef.current?.focus();
+      },
+    },
+    {
+      id: 'action-refresh-page',
+      label: '刷新当前页面数据',
+      description: '重新加载当前页面及全站承接数据。',
+      action: () => setPageRefreshToken((value) => value + 1),
+    },
+    {
+      id: 'action-export-snapshot',
+      label: '导出全站运行快照',
+      description: '导出页面、任务、治理、运行态和智能能力证据。',
+      action: () => window.dispatchEvent(new Event('cockpit:export-snapshot')),
+    },
+    {
+      id: 'action-copy-link',
+      label: '复制当前页面链接',
+      description: '复制带项目、任务或页面焦点的当前导航地址。',
+      action: () => { void copyCurrentNavigationLink(); },
+    },
+    {
+      id: 'action-current-map',
+      label: '查看当前页面覆盖',
+      description: '打开系统地图，查看当前页面的能力、路径和缺口。',
+      action: () => openContextTarget({ tab: 'SystemMap', pageId: activeTab }),
+    },
+    {
+      id: 'action-current-task',
+      label: '承接当前页面任务',
+      description: '把当前页面的下一步带入任务中心继续执行。',
+      action: () => openContextTarget({
+        tab: 'TaskCenter',
+        taskQuery: currentPageDraft?.source?.id || currentPageDraft?.title || currentCockpitPage?.title || activeTab,
+      }),
+    },
+    {
+      id: 'action-quick-actions',
+      label: '打开快捷操作',
+      description: '打开包含任务、日志、搜索、终端和导出的快捷操作面板。',
+      action: openQuickActions,
+    },
     ...recentNavigation.map((entry, index) => ({
       id: `recent-navigation-${index}-${entry.target.tab}`,
       label: `最近访问：${entry.label}`,
@@ -3204,12 +3262,6 @@ export default function Dashboard() {
   const openSidebarProject = (projectId: string) => {
     openContextTarget({ tab: 'SystemMap', projectId });
   };
-
-  // 命令面板
-  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette, toggle: toggleCommandPalette } = useCommandPalette();
-
-  // 快捷操作面板
-  const { isOpen: isQuickActionsOpen, open: openQuickActions, close: closeQuickActions } = useQuickActions();
 
   // 键盘快捷键
   useKeyboardShortcuts({
