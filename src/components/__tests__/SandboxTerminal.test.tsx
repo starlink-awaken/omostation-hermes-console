@@ -76,4 +76,25 @@ describe('SandboxTerminal', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Hello from eCOS Sandbox' })
     expect(onNavigate).not.toHaveBeenCalled()
   })
+
+  it('registers the sandbox follow-up draft before an experiment has output', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe('/api/tasks')
+      expect(init?.method).toBe('POST')
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ id: 'sandbox-follow-up-1', title: '沙箱补位任务' }),
+      } as Response)
+    })
+
+    render(<SandboxTerminal onOpenTarget={onOpenTarget} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '登记沙箱补位任务 补齐沙箱实验 print(\"Hello from eCOS Sandbox!\") 的收口' }))
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'sandbox-follow-up-1' })
+      expect(screen.getByText('已登记沙箱补位任务：沙箱补位任务')).toBeInTheDocument()
+    })
+  })
 })

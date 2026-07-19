@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, Play, Loader2, ShieldAlert, Copy } from 'lucide-react';
+import { Terminal, Play, Loader2, ShieldAlert, Copy, ClipboardCheck } from 'lucide-react';
 import './Dashboard.css';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -30,6 +30,7 @@ export default function SandboxTerminal({
   const [isRunning, setIsRunning] = useState(false);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [isQueueingResult, setIsQueueingResult] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
 
   const handleExecute = async () => {
     setIsRunning(true);
@@ -89,6 +90,33 @@ export default function SandboxTerminal({
       setDraftNotice(`沙箱结果登记失败：${error.message || '请稍后重试。'}`);
     } finally {
       setIsQueueingResult(false);
+    }
+  };
+
+  const createSandboxTask = async () => {
+    setIsCreatingTask(true);
+    setDraftNotice(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: sandboxTaskDraft.title,
+          description: sandboxTaskDraft.description,
+          priority: output ? 'medium' : 'high',
+          risk_level: 'L1',
+          evidence_required: ['沙箱执行输出或拦截原因', '日志或引擎关联证据', '实验结论与后续动作', 'task closeout'],
+          tags: ['sandbox', 'follow-up'],
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || data.error || '沙箱补位任务登记失败');
+      setDraftNotice(`已登记沙箱补位任务：${data.title || sandboxTaskDraft.title}`);
+      if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
+    } catch (error: any) {
+      setDraftNotice(`沙箱补位任务登记失败：${error.message || '请稍后重试。'}`);
+    } finally {
+      setIsCreatingTask(false);
     }
   };
 
@@ -318,6 +346,16 @@ export default function SandboxTerminal({
             </div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="antd-btn antd-btn-primary"
+              aria-label={`登记沙箱补位任务 ${sandboxTaskDraft.title}`}
+              disabled={isCreatingTask}
+              onClick={() => void createSandboxTask()}
+            >
+              <ClipboardCheck size={14} />
+              <span>{isCreatingTask ? '登记中...' : '登记正式任务'}</span>
+            </button>
             <button
               type="button"
               className="antd-btn"
