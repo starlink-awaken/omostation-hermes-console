@@ -103,6 +103,7 @@ export default function L4HealthView({
     ...(trendData?.degraded_reasons || []),
     ...(signalData?.degraded_reasons || []),
   ]));
+  const healthUnavailable = healthData?.data_quality === 'unavailable';
   const normalizedHealthQuery = healthQuery.trim().toLowerCase();
   const allDomains = healthData?.domains || [];
   const isHealthyDomain = (domain: DomainHealth) => domain.fresh && domain.issue_count === 0 && domain.has_state && domain.has_status;
@@ -402,8 +403,8 @@ export default function L4HealthView({
             </p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span className="status-badge degraded">异常域 {unhealthyDomains.length}/{allUnhealthyDomains.length}</span>
-            <span className="status-badge degraded">风险 {focusRisks.length}/{signalData?.risks.length || 0}</span>
+            <span className="status-badge degraded">异常域 {healthUnavailable ? 'N/A' : `${unhealthyDomains.length}/${allUnhealthyDomains.length}`}</span>
+            <span className="status-badge degraded">风险 {signalData?.data_quality === 'unavailable' ? 'N/A' : `${focusRisks.length}/${signalData?.risks.length || 0}`}</span>
             <span className="status-badge online">健康率 {healthData?.health_rate || 'N/A'}</span>
           </div>
         </div>
@@ -538,7 +539,7 @@ export default function L4HealthView({
           </div>
           <div className="stat-info">
             <h3>总域数</h3>
-            <p className="stat-value">{healthData?.total_domains || 0}</p>
+            <p className="stat-value">{healthUnavailable ? 'N/A' : healthData?.total_domains ?? 0}</p>
           </div>
         </div>
 
@@ -548,7 +549,7 @@ export default function L4HealthView({
           </div>
           <div className="stat-info">
             <h3>健康域数</h3>
-            <p className="stat-value">{healthData?.healthy_count || 0}</p>
+            <p className="stat-value">{healthUnavailable ? 'N/A' : healthData?.healthy_count ?? 0}</p>
           </div>
         </div>
 
@@ -558,7 +559,7 @@ export default function L4HealthView({
           </div>
           <div className="stat-info">
             <h3>不健康域数</h3>
-            <p className="stat-value">{healthData?.unhealthy_count || 0}</p>
+            <p className="stat-value">{healthUnavailable ? 'N/A' : healthData?.unhealthy_count ?? 0}</p>
           </div>
         </div>
 

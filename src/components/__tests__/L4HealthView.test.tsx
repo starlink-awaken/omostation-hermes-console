@@ -36,6 +36,8 @@ describe('L4HealthView', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('L4 健康数据未完成读取')
       expect(screen.getByRole('alert')).toHaveTextContent('补齐路径配置后重试')
       expect(screen.getByRole('button', { name: '重试 L4 健康数据' })).toBeInTheDocument()
+      expect(screen.getAllByText('N/A')).toHaveLength(4)
+      expect(screen.queryByText('异常域 0/0')).not.toBeInTheDocument()
     })
   })
 
