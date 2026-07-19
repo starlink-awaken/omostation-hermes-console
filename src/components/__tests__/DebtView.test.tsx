@@ -18,6 +18,28 @@ describe('DebtView', () => {
     })
   })
 
+  it('does not hide debt items beyond the first table page', async () => {
+    const items = Array.from({ length: 51 }, (_, index) => ({
+      id: `debt-${index}`,
+      title: `债务项 ${index}`,
+      severity: 'p2',
+      lifecycle_state: 'open',
+      opened_at: '2026-07-07T09:00:00Z',
+      owner: 'engineering',
+      dimension: 'runtime',
+    }))
+    vi.mocked(fetch).mockResolvedValue(okJson({ total: 51, open: 51, closed: 0, items }))
+
+    render(<DebtView />)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '加载更多债务' })).toBeInTheDocument())
+    expect(screen.getByText('已显示 50 / 51 条匹配债务')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '加载更多债务' }))
+
+    expect(screen.getByText('债务项 50')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '加载更多债务' })).not.toBeInTheDocument()
+  })
+
   it('renders debt actions and supports navigate/copy follow-ups', async () => {
     const onNavigate = vi.fn()
 

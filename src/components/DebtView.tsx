@@ -57,6 +57,7 @@ export default function DebtView({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
   const [selectedDimension, setSelectedDimension] = useState('all');
+  const [visibleDebtLimit, setVisibleDebtLimit] = useState(50);
 
   const fetchDebt = async () => {
     try {
@@ -82,6 +83,10 @@ export default function DebtView({
     if (!focusTaskQuery) return;
     setSearchQuery(focusTaskQuery);
   }, [focusTaskQuery]);
+
+  useEffect(() => {
+    setVisibleDebtLimit(50);
+  }, [searchQuery, selectedSeverity, selectedDimension]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -142,6 +147,7 @@ export default function DebtView({
     return matchesSearch && matchesSeverity && matchesDimension;
   });
   const hasActiveFilters = Boolean(searchQuery.trim()) || selectedSeverity !== 'all' || selectedDimension !== 'all';
+  const visibleDebtItems = filteredItems.slice(0, visibleDebtLimit);
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedSeverity('all');
@@ -622,7 +628,7 @@ export default function DebtView({
                 </td>
               </tr>
             ) : (
-              filteredItems.slice(0, 50).map(item => (
+              visibleDebtItems.map(item => (
                 <tr key={item.id} className="service-row">
                   <td className="text-muted" style={{ fontFamily: 'monospace' }}>{item.id}</td>
                   <td style={{ fontWeight: 500, color: 'var(--antd-text-primary)' }}>{item.title}</td>
@@ -678,6 +684,20 @@ export default function DebtView({
             )}
           </tbody>
         </table>
+        {visibleDebtItems.length < filteredItems.length && (
+          <div style={{ display: 'grid', justifyItems: 'center', gap: 8, padding: '16px 0' }}>
+            <span className="text-muted" style={{ fontSize: 12 }}>已显示 {visibleDebtItems.length} / {filteredItems.length} 条匹配债务</span>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label="加载更多债务"
+              onClick={() => setVisibleDebtLimit((current) => current + 50)}
+            >
+              <RefreshCw size={14} />
+              <span>加载更多债务</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
