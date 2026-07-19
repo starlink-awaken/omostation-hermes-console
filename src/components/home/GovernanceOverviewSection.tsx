@@ -100,7 +100,7 @@ export default function GovernanceOverviewSection() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+      <div className="governance-overview-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         
         {/* 左侧卡片：当前战役波次与状态 */}
         <div className="antd-card" style={{ 

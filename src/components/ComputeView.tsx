@@ -986,7 +986,7 @@ export default function ComputeView({
           <span className="text-muted" style={{ fontSize: 12, gridColumn: '1 / -1' }}>显示 {filteredNodes.length}/{nodes.length} 个节点 · 流量 {filteredTrafficByNode.length}/{trafficByNode.length} · 调度 {filteredScheduledTasks.length}/{(data?.scheduled_tasks || []).length}</span>
         </section>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
+        <div className="compute-node-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
           {filteredNodes.map((node) => {
             const cpuLoad = node.cpu_usage;
             const gpuLoad = node.gpu_usage;

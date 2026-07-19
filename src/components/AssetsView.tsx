@@ -848,7 +848,7 @@ export default function AssetsView({
       </section>
 
       {activeSubTab === 'skills' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+        <div className="assets-skill-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
           {filteredSkills.length === 0 ? (
             <div style={{ gridColumn: 'span 3', textAlign: 'center', padding: '48px', color: 'rgba(255,255,255,0.4)' }}>
               {skills.length === 0 ? '未扫描到已装载技能' : '当前搜索下没有匹配的技能'}

@@ -189,7 +189,7 @@ export default function MemoryInjector() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }} aria-live="polite">
+          <div className="memory-record-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }} aria-live="polite">
             {searchResults.map((res, i) => (
               <div key={`${res.slug || res.title || 'memory-result'}-${i}`} className="stat-card animate-fade-in" style={{ animationDelay: `${i * 0.1}s`, display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid var(--antd-border-color)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>

@@ -1670,7 +1670,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
         </div>
       </section>
 
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+      <div className="stats-grid domain-app-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
         {filteredApps.map((app) => (
           <div key={app.id} style={{ display: 'grid', gap: 8 }}>
             <DomainAppCard
@@ -1735,7 +1735,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
           <DataTable rows={opc.content_calendar.week} empty="暂无排期" />
         </div>
 
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginTop: 18 }}>
+        <div className="stats-grid domain-app-opc-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginTop: 18 }}>
           <div className="services-section" style={{ margin: 0 }}>
             <div className="section-header" style={{ marginBottom: 12 }}>
               <h3 style={{ fontSize: 15, margin: 0 }}>产品管线</h3>

@@ -6773,6 +6773,17 @@ button.system-map-gap {
   .system-map-roadmap-body {
     grid-template-columns: 1fr;
   }
+
+  .compute-node-grid,
+  .assets-skill-grid,
+  .domain-app-stats-grid,
+  .domain-app-opc-grid,
+  .settings-metrics-grid,
+  .memory-record-grid,
+  .observability-summary-grid,
+  .governance-overview-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 /* Home Page */

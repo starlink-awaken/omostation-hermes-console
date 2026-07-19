@@ -651,7 +651,7 @@ export default function ObservabilityView({
         </div>
       </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+      <div className="observability-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
         <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 600 }}>
             <Activity size={18} aria-hidden="true" className="text-accent" />
