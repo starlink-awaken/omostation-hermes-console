@@ -98,22 +98,28 @@ export default function QuestBoard({
       } else {
         throw new Error(data.error || '获取数据失败');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : '获取数据失败');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // 积分看板挂载和定时刷新都使用同一份真实数据源。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchBoardData();
     const interval = setInterval(fetchBoardData, 5000);
     return () => clearInterval(interval);
+    // fetchBoardData owns this polling lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (focusTaskQuery && quests.some((quest) => matchesQuestFocusQuery([quest.id, quest.title, quest.type, quest.assignee, quest.reward], focusTaskQuery))) {
+      // 外部导航查询命中积分任务时同步搜索条件。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuestQuery(focusTaskQuery);
     }
   }, [focusTaskQuery, quests]);
@@ -147,8 +153,8 @@ export default function QuestBoard({
       } else {
         setActionFeedback({ status: 'error', message: `创建失败：${res.error || '服务端未接受请求。'}` });
       }
-    } catch (err: any) {
-      setActionFeedback({ status: 'error', message: `创建任务发生错误：${err.message || '请稍后重试。'}` });
+    } catch (err: unknown) {
+      setActionFeedback({ status: 'error', message: `创建任务发生错误：${err instanceof Error ? err.message : '请稍后重试。'}` });
     } finally {
       setSubmitting(false);
     }
@@ -171,8 +177,8 @@ export default function QuestBoard({
       } else {
         setActionFeedback({ status: 'error', message: `标记完成失败：${res.error || '服务端未接受请求。'}` });
       }
-    } catch (err: any) {
-      setActionFeedback({ status: 'error', message: `操作错误：${err.message || '请稍后重试。'}` });
+    } catch (err: unknown) {
+      setActionFeedback({ status: 'error', message: `操作错误：${err instanceof Error ? err.message : '请稍后重试。'}` });
     } finally {
       setCompletingId(null);
     }
@@ -209,8 +215,8 @@ export default function QuestBoard({
       if (payload.id) {
         openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
       }
-    } catch (err: any) {
-      setActionFeedback({ status: 'error', message: `家庭任务承接失败：${err.message || '请稍后重试。'}` });
+    } catch (err: unknown) {
+      setActionFeedback({ status: 'error', message: `家庭任务承接失败：${err instanceof Error ? err.message : '请稍后重试。'}` });
     } finally {
       setQueueingTaskId(null);
     }
