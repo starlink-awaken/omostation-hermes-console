@@ -105,4 +105,17 @@ describe('InfrastructureOpsWorkbench', () => {
       expect(screen.getByRole('button', { name: '查看运行服务 LLM Gateway' })).toBeInTheDocument()
     })
   })
+
+  it('does not present an all-source outage as a healthy zero state', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('infrastructure backend offline'))
+
+    render(<InfrastructureOpsWorkbench currentPage="Overview" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('数据不可用')).toBeInTheDocument()
+      expect(screen.getByText('N/A')).toBeInTheDocument()
+      expect(screen.queryByText('基础设施平稳')).not.toBeInTheDocument()
+      expect(screen.queryByText('成功率 0%')).not.toBeInTheDocument()
+    })
+  })
 })

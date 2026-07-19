@@ -222,6 +222,12 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
 
   const recommended = nextInfraAction(currentPage, degradedServices, unhealthyNodes, unhealthyModels, state.bosHealth);
   const infrastructureContextQuery = unhealthyNodes[0]?.id || unhealthyModels[0]?.model_name || topDomains[0]?.[0] || currentPage;
+  const noInfrastructureSources = !state.loading
+    && Boolean(state.error)
+    && !state.compute
+    && !state.bosHealth
+    && state.bosServices.length === 0
+    && state.runtime.length === 0;
 
   return (
     <section className="services-section infra-workbench" aria-label="基础设施工作台">
@@ -232,8 +238,8 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
             把 BOS 网格、服务拓扑、算力节点和运行异常串成一条基础设施诊断链路。
           </p>
         </div>
-        <span className={`status-badge ${state.loading ? 'online' : degradedServices.length > 0 || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? 'degraded' : 'online'}`}>
-          {state.loading ? '同步中' : degradedServices.length > 0 || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? '需要排查' : '基础设施平稳'}
+        <span className={`status-badge ${state.loading ? 'online' : noInfrastructureSources ? 'offline' : state.error || degradedServices.length > 0 || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? 'degraded' : 'online'}`}>
+          {state.loading ? '同步中' : noInfrastructureSources ? '数据不可用' : state.error || degradedServices.length > 0 || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? '需要排查' : '基础设施平稳'}
         </span>
       </div>
 
@@ -247,8 +253,8 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
       <div className="infra-workbench-summary">
         <div className="infra-workbench-card">
           <span>网格路由</span>
-          <strong>{state.bosHealth?.total_routes || state.bosServices.length}</strong>
-          <small>成功率 {Math.round((state.bosHealth?.metrics?.success_rate || 0) * 100)}%</small>
+          <strong>{state.bosHealth ? state.bosHealth.total_routes || state.bosServices.length : noInfrastructureSources ? 'N/A' : state.bosServices.length}</strong>
+          <small>成功率 {state.bosHealth?.metrics?.success_rate !== undefined ? `${Math.round(state.bosHealth.metrics.success_rate * 100)}%` : noInfrastructureSources ? 'N/A' : '暂无'}</small>
         </div>
         <div className="infra-workbench-card">
           <span>异常节点</span>
@@ -258,7 +264,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
         <div className="infra-workbench-card infra-workbench-card-wide">
           <span>建议下一步</span>
           <strong>{recommended}</strong>
-          <small>近期调用 {state.compute?.summary?.recent_calls || 0} · 平均延迟 {Math.round(state.compute?.summary?.avg_latency_ms || 0)} ms</small>
+          <small>{state.compute?.summary ? `近期调用 ${state.compute.summary.recent_calls || 0} · 平均延迟 ${Math.round(state.compute.summary.avg_latency_ms || 0)} ms` : noInfrastructureSources ? '算力摘要不可用' : '算力摘要暂无'}</small>
         </div>
       </div>
 
