@@ -17,7 +17,7 @@ describe('ResearchHubView', () => {
       if (target.tab !== 'TaskCenter' || target.taskQuery !== 'cockpit-research-7') onNavigate(target.tab)
     })
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
-      if (String(input) === '/api/cockpit/research-hub') {
+      if (String(input).startsWith('/api/cockpit/research-hub?')) {
         hubCalls += 1
         return Promise.resolve(okJson({
           summary: {
@@ -44,6 +44,9 @@ describe('ResearchHubView', () => {
               next_action: '继续发布为简报。',
             },
           ],
+          offset: 0,
+          limit: 20,
+          has_more: false,
           commands: [
             { id: 'start', label: '发起研究', value: 'cockpit research "主题"', detail: '创建研究对象。' },
           ],
@@ -89,6 +92,56 @@ describe('ResearchHubView', () => {
     expect(onNavigate).toHaveBeenCalledWith('Overview')
   })
 
+  it('loads another research page without replacing the current objects', async () => {
+    const page = (id: number) => ({
+      id,
+      topic: `研究 ${id}`,
+      summary: '摘要',
+      created_at: '2026-07-07T06:00:00Z',
+      source_count: 1,
+      tags: [],
+      agent: 'Researcher',
+      status: 'active',
+      follow_up_count: 0,
+      last_event: { label: '已创建', created_at: '2026-07-07T07:00:00Z' },
+      next_action: '继续验证。',
+    })
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('offset=1')) {
+        return Promise.resolve(okJson({
+          summary: { total: 21, active: 21, archived: 0, quarantined: 0, published: 0, follow_ups: 0, agents: 1 },
+          recent: [page(21)],
+          offset: 20,
+          limit: 20,
+          has_more: false,
+          commands: [],
+          pipeline: [],
+          related_pages: [],
+        }))
+      }
+      return Promise.resolve(okJson({
+        summary: { total: 21, active: 21, archived: 0, quarantined: 0, published: 0, follow_ups: 0, agents: 1 },
+        recent: [page(1)],
+        offset: 0,
+        limit: 20,
+        has_more: true,
+        commands: [],
+        pipeline: [],
+        related_pages: [],
+      }))
+    })
+
+    render(<ResearchHubView />)
+    await screen.findByRole('button', { name: /加载更多研究对象/ })
+    fireEvent.click(screen.getByRole('button', { name: /加载更多研究对象/ }))
+    await waitFor(() => {
+      expect(screen.getAllByText('研究 1').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('研究 21').length).toBeGreaterThan(0)
+      expect(screen.getByRole('region', { name: '研究筛选' }).textContent).toContain('显示 2/21')
+    })
+  })
+
   it('shows the source failure instead of presenting an empty research hub', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('research source offline'))
 
@@ -103,7 +156,7 @@ describe('ResearchHubView', () => {
   it('shows task queue failures in the research workbench without opening details', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
-      if (url === '/api/cockpit/research-hub') {
+      if (url.startsWith('/api/cockpit/research-hub?')) {
         return Promise.resolve(okJson({
           summary: { total: 1, active: 1, archived: 0, quarantined: 0, published: 0, follow_ups: 1, agents: 1 },
           recent: [{
@@ -141,7 +194,7 @@ describe('ResearchHubView', () => {
 
   it('opens a research object detail with timeline and publications', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
-      if (String(input) === '/api/cockpit/research-hub') {
+      if (String(input).startsWith('/api/cockpit/research-hub?')) {
         return Promise.resolve(okJson({
           summary: { total: 1, active: 1, archived: 0, quarantined: 0, published: 1, follow_ups: 1, agents: 1 },
           recent: [{
@@ -230,10 +283,13 @@ describe('ResearchHubView', () => {
     ]
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
-      if (url === '/api/cockpit/research-hub') {
+      if (url.startsWith('/api/cockpit/research-hub?')) {
         return Promise.resolve(okJson({
           summary: { total: 2, active: 1, archived: 1, quarantined: 0, published: 1, follow_ups: 1, agents: 2 },
           recent,
+          offset: 0,
+          limit: 20,
+          has_more: false,
           commands: [],
           pipeline: [],
           related_pages: [],
@@ -277,7 +333,7 @@ describe('ResearchHubView', () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
-      if (String(input) === '/api/cockpit/research-hub') {
+      if (String(input).startsWith('/api/cockpit/research-hub?')) {
         return Promise.resolve(okJson({
           summary: {
             total: 5,
@@ -352,7 +408,7 @@ describe('ResearchHubView', () => {
   it('surfaces research closure routing when focus hits publish loop', async () => {
     const onOpenTarget = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
-      if (String(input) === '/api/cockpit/research-hub') {
+      if (String(input).startsWith('/api/cockpit/research-hub?')) {
         return Promise.resolve(okJson({
           summary: {
             total: 5,

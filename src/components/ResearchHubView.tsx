@@ -39,6 +39,9 @@ type ResearchHubPayload = {
   status?: string;
   summary: ResearchSummary;
   recent: ResearchItem[];
+  offset?: number;
+  limit?: number;
+  has_more?: boolean;
   commands: Array<{
     id: string;
     label: string;
@@ -169,13 +172,22 @@ export default function ResearchHubView({
   const [queueingResearchId, setQueueingResearchId] = useState<number | null>(null);
   const [queueError, setQueueError] = useState<string | null>(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = async () => {
-    const result = await fetchJson<ResearchHubPayload>('/api/cockpit/research-hub', EMPTY_PAYLOAD, '研究中枢');
-    setPayload(result.data);
+  const load = async (offset = 0, append = false) => {
+    if (append) setLoadingMore(true);
+    const result = await fetchJson<ResearchHubPayload>(
+      `/api/cockpit/research-hub?limit=20&offset=${offset}`,
+      EMPTY_PAYLOAD,
+      '研究中枢',
+    );
+    setPayload((current) => append
+      ? { ...result.data, recent: [...current.recent, ...result.data.recent] }
+      : result.data);
     setSourceError(result.error);
     setLoading(false);
     setRefreshing(false);
+    setLoadingMore(false);
   };
 
   const queueResearchTask = async (researchId: number) => {
@@ -679,7 +691,7 @@ export default function ResearchHubView({
               同一组条件作用于研究闭环、承接工作台、对象列表和详情焦点，先切片再继续补上下文、落任务或发布回流。
             </p>
           </div>
-          <span className="status-badge online">显示 {filteredResearch.length}/{payload.recent.length}</span>
+          <span className="status-badge online">显示 {filteredResearch.length}/{payload.summary.total}</span>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <input
@@ -785,6 +797,19 @@ export default function ResearchHubView({
             </article>
           ))}
         </div>
+        {payload.has_more && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label="加载更多研究对象"
+              onClick={() => void load(payload.recent.length, true)}
+              disabled={loadingMore}
+            >
+              {loadingMore ? '正在加载...' : `加载更多（已显示 ${payload.recent.length}/${payload.summary.total}）`}
+            </button>
+          </div>
+        )}
       </section>
 
       {selectedResearchId !== null && (
