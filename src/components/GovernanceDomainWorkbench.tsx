@@ -183,6 +183,12 @@ export default function GovernanceDomainWorkbench({
   const [omoStatus, setOmoStatus] = useState<OmoStatusPayload>({});
   const [l4Health, setL4Health] = useState<L4HealthPayload>({});
   const [sourceErrors, setSourceErrors] = useState<string[]>([]);
+  const [sourceAvailability, setSourceAvailability] = useState({
+    systemMap: false,
+    debt: false,
+    omoStatus: false,
+    l4Health: false,
+  });
   const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
@@ -204,6 +210,12 @@ export default function GovernanceDomainWorkbench({
       setDebt(debtResult.data || {});
       setOmoStatus(omoStatusResult.data || {});
       setL4Health(l4HealthResult.data || {});
+      setSourceAvailability({
+        systemMap: !systemMapResult.error,
+        debt: !debtResult.error,
+        omoStatus: !omoStatusResult.error,
+        l4Health: !l4HealthResult.error,
+      });
       setSourceErrors([systemMapResult.error, debtResult.error, omoStatusResult.error, l4HealthResult.error].filter((error): error is string => Boolean(error)));
     };
 
@@ -223,15 +235,27 @@ export default function GovernanceDomainWorkbench({
 
     let nextAction = '先回系统地图确定组合阻塞，再决定治理落点。';
     let nextTab = 'SystemMap';
-    if (blockedProjects > 0) {
+    if (!sourceAvailability.systemMap) {
+      nextAction = '系统地图证据暂不可用，先重试后再判断组合阻塞。';
+      nextTab = 'SystemMap';
+    } else if (blockedProjects > 0) {
       nextAction = `项目组合里还有 ${blockedProjects} 个阻塞项，先从系统地图或 C2G 收敛。`;
       nextTab = 'C2G';
+    } else if (!sourceAvailability.debt) {
+      nextAction = '技术债账本证据暂不可用，先重试后再判断清债优先级。';
+      nextTab = 'Debt';
     } else if (openDebt > 0) {
       nextAction = `技术债账本里还有 ${openDebt} 条未关闭事项，先清债。`;
       nextTab = 'Debt';
+    } else if (!sourceAvailability.l4Health && !sourceAvailability.systemMap) {
+      nextAction = '领域与域健康证据暂不可用，先重试治理来源。';
+      nextTab = 'DomainApps';
     } else if (securityAttention > 0) {
       nextAction = `有 ${securityAttention} 个领域应用还在吃安全关注，先看领域挂载。`;
       nextTab = 'DomainApps';
+    } else if (!sourceAvailability.l4Health) {
+      nextAction = 'L4 健康证据暂不可用，先重试后再判断异常域。';
+      nextTab = 'L4Health';
     } else if (unhealthyDomains > 0) {
       nextAction = `L4 还有 ${unhealthyDomains} 个不健康域，先看域健康。`;
       nextTab = 'L4Health';
@@ -240,6 +264,10 @@ export default function GovernanceDomainWorkbench({
     return {
       projectSummary,
       domainSummary,
+      systemMapUnavailable: !sourceAvailability.systemMap,
+      debtUnavailable: !sourceAvailability.debt,
+      omoStatusUnavailable: !sourceAvailability.omoStatus,
+      l4HealthUnavailable: !sourceAvailability.l4Health,
       openDebt,
       blockedProjects,
       securityAttention,
@@ -253,7 +281,7 @@ export default function GovernanceDomainWorkbench({
       topAttentionApp: systemMap.domain_apps?.attention_items?.[0],
       topUnhealthyDomain: l4Health.domains?.find((domain) => !domain.fresh) || l4Health.domains?.[0],
     };
-  }, [debt, l4Health, systemMap]);
+  }, [debt, l4Health, sourceAvailability, systemMap]);
 
   const governanceContextQuery = summary.topProject?.id
     || summary.topDebt?.id
@@ -306,23 +334,23 @@ export default function GovernanceDomainWorkbench({
       <div className="governance-workbench-summary">
         <div className="governance-workbench-card">
           <span>项目组合</span>
-          <strong>{summary.projectSummary?.score ?? 0}%</strong>
-          <small>阻塞 {summary.projectSummary?.blocked ?? 0} · 风险 {summary.projectSummary?.at_risk ?? 0}</small>
+          <strong>{summary.systemMapUnavailable ? 'N/A' : `${summary.projectSummary?.score ?? 0}%`}</strong>
+          <small>{summary.systemMapUnavailable ? '系统地图证据不可用' : `阻塞 ${summary.projectSummary?.blocked ?? 0} · 风险 ${summary.projectSummary?.at_risk ?? 0}`}</small>
         </div>
         <div className="governance-workbench-card">
           <span>技术债账本</span>
-          <strong>{summary.openDebt}</strong>
-          <small>总数 {debt.total ?? 0} · 已关闭 {debt.closed ?? 0}</small>
+          <strong>{summary.debtUnavailable ? 'N/A' : summary.openDebt}</strong>
+          <small>{summary.debtUnavailable ? '技术债证据不可用' : `总数 ${debt.total ?? 0} · 已关闭 ${debt.closed ?? 0}`}</small>
         </div>
         <div className="governance-workbench-card">
           <span>领域挂载</span>
-          <strong>{summary.domainSummary?.score ?? 0}%</strong>
-          <small>运行中 {summary.domainSummary?.running ?? 0} · 安全关注 {summary.securityAttention}</small>
+          <strong>{summary.systemMapUnavailable ? 'N/A' : `${summary.domainSummary?.score ?? 0}%`}</strong>
+          <small>{summary.systemMapUnavailable ? '领域挂载证据不可用' : `运行中 ${summary.domainSummary?.running ?? 0} · 安全关注 ${summary.securityAttention}`}</small>
         </div>
         <div className="governance-workbench-card">
           <span>L4 健康率</span>
-          <strong>{l4Health.health_rate || '0%'}</strong>
-          <small>健康 {l4Health.healthy_count ?? 0} · 异常 {summary.unhealthyDomains}</small>
+          <strong>{summary.l4HealthUnavailable ? 'N/A' : l4Health.health_rate || '0%'}</strong>
+          <small>{summary.l4HealthUnavailable ? 'L4 健康证据不可用' : `健康 ${l4Health.healthy_count ?? 0} · 异常 ${summary.unhealthyDomains}`}</small>
         </div>
         <button
           type="button"
@@ -398,7 +426,7 @@ export default function GovernanceDomainWorkbench({
               <ClipboardCheck size={16} />
               债务与治理
             </strong>
-            <small>active {omoStatus.system?.active_tasks ?? 0} · blocked {omoStatus.system?.blocked_tasks ?? 0}</small>
+            <small>{summary.omoStatusUnavailable ? 'OMO 状态证据不可用' : `active ${omoStatus.system?.active_tasks ?? 0} · blocked ${omoStatus.system?.blocked_tasks ?? 0}`}</small>
           </div>
           <div className="governance-workbench-list">
             {summary.topDebt ? (
@@ -415,8 +443,8 @@ export default function GovernanceDomainWorkbench({
             )}
             <div className="governance-workbench-item">
               <strong>治理健康</strong>
-              <span>system {omoStatus.system?.health_score ?? 0} · governance {omoStatus.governance?.health_score ?? 0}</span>
-              <small>异常 {omoStatus.governance?.anomaly_count ?? 0} · 总任务 {omoStatus.governance?.total_tasks ?? 0}</small>
+              <span>{summary.omoStatusUnavailable ? 'system N/A · governance N/A' : `system ${omoStatus.system?.health_score ?? 0} · governance ${omoStatus.governance?.health_score ?? 0}`}</span>
+              <small>{summary.omoStatusUnavailable ? '治理状态证据不可用' : `异常 ${omoStatus.governance?.anomaly_count ?? 0} · 总任务 ${omoStatus.governance?.total_tasks ?? 0}`}</small>
             </div>
           </div>
         </div>
@@ -427,7 +455,7 @@ export default function GovernanceDomainWorkbench({
               <AppWindow size={16} />
               领域与域健康
             </strong>
-            <small>{l4Health.total_domains ?? 0} 个域</small>
+            <small>{summary.l4HealthUnavailable ? '域数量证据不可用' : `${l4Health.total_domains ?? 0} 个域`}</small>
           </div>
           <div className="governance-workbench-list">
             {summary.topAttentionApp ? (
