@@ -85,7 +85,7 @@ export default function WorkflowsView({
     if (append) setLoadingMore(true);
     try {
       const res = await fetch(`/api/metaos/workflows?limit=20&offset=${offset}`);
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({})) as WorkflowListPayload;
       if (!res.ok || data.status !== 'ok') {
         throw new Error(data.error || '工作流运行数据不可用');
       }
