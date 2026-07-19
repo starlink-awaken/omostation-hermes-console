@@ -46,6 +46,10 @@ export default function LogViewerPage({
   focusTaskQuery,
 }: LogViewerPageProps) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logTotal, setLogTotal] = useState(0);
+  const [logOffset, setLogOffset] = useState(0);
+  const [logHasMore, setLogHasMore] = useState(false);
+  const [logLoadingMore, setLogLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isStreaming, setIsStreaming] = useState(true);
   const [filterLevel, setFilterLevel] = useState<LogLevel>('all');
@@ -64,7 +68,13 @@ export default function LogViewerPage({
       const response = await fetch('/api/logs?limit=100');
       if (!response.ok) throw new Error('真实日志数据不可用');
       const data = await response.json();
-      setLogs(data.items || []);
+      const items = Array.isArray(data.items) ? data.items : [];
+      setLogs(items);
+      setLogTotal(typeof data.total === 'number' ? data.total : items.length);
+      setLogOffset(typeof data.offset === 'number' ? data.offset + items.length : items.length);
+      setLogHasMore(
+        typeof data.has_more === 'boolean' ? data.has_more : items.length >= 100,
+      );
       setError('');
     } catch (error) {
       console.error('Failed to fetch logs:', error);
@@ -73,6 +83,32 @@ export default function LogViewerPage({
       setLoading(false);
     }
   }, []);
+
+  const loadMoreLogs = useCallback(async () => {
+    if (logLoadingMore || !logHasMore) return;
+    setLogLoadingMore(true);
+    try {
+      const response = await fetch(`/api/logs?limit=100&offset=${logOffset}`);
+      if (!response.ok) throw new Error('更多日志数据不可用');
+      const data = await response.json();
+      const items = Array.isArray(data.items) ? data.items : [];
+      setLogs((current) => {
+        const merged = new Map(current.map((log) => [`${log.timestamp}|${log.source}|${log.message}`, log]));
+        items.forEach((log: LogEntry) => {
+          merged.set(`${log.timestamp}|${log.source}|${log.message}`, log);
+        });
+        return [...merged.values()];
+      });
+      setLogTotal(typeof data.total === 'number' ? data.total : logTotal);
+      setLogOffset(logOffset + items.length);
+      setLogHasMore(typeof data.has_more === 'boolean' ? data.has_more : items.length >= 100);
+      setActionError(null);
+    } catch (loadError) {
+      setActionError(loadError instanceof Error ? loadError.message : '更多日志数据不可用');
+    } finally {
+      setLogLoadingMore(false);
+    }
+  }, [logHasMore, logLoadingMore, logOffset, logTotal]);
 
   useEffect(() => {
     void refreshLogs();
@@ -613,6 +649,7 @@ export default function LogViewerPage({
       {/* 日志统计 */}
       <div className="log-stats">
         <span>总计: {filteredLogs.length} 条</span>
+        <span>已加载: {logs.length} / {logTotal} 条</span>
         <span>Debug: {filteredLogs.filter(l => l.level === 'debug').length}</span>
         <span>Info: {filteredLogs.filter(l => l.level === 'info').length}</span>
         <span>Warning: {filteredLogs.filter(l => l.level === 'warning').length}</span>
@@ -659,6 +696,14 @@ export default function LogViewerPage({
         {filteredLogs.length === 0 && (
           <div className="empty-state" style={{ padding: 24 }}>
             <span>暂无真实日志</span>
+          </div>
+        )}
+        {logHasMore && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
+            <button className="btn btn-sm btn-outline" onClick={() => void loadMoreLogs()} disabled={logLoadingMore}>
+              <RefreshCw size={14} className={logLoadingMore ? 'spin' : undefined} />
+              {logLoadingMore ? '加载中...' : '加载更多日志'}
+            </button>
           </div>
         )}
         <div ref={logsEndRef} />

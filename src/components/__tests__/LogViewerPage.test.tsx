@@ -67,6 +67,40 @@ describe('LogViewerPage', () => {
     expect(screen.queryByText('job completed')).not.toBeInTheDocument()
   })
 
+  it('loads additional log pages without losing the total count', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({
+      timestamp: `2026-07-11T10:${String(index).padStart(2, '0')}:00Z`,
+      level: 'info' as const,
+      source: 'runtime',
+      message: `log-${index}`,
+    }))
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('offset=100')) {
+        return okJson({
+          items: [{ timestamp: '2026-07-11T12:00:00Z', level: 'error', source: 'runtime', message: 'log-100' }],
+          total: 101,
+          offset: 100,
+          limit: 100,
+          has_more: false,
+        })
+      }
+      return okJson({ items: firstPage, total: 101, offset: 0, limit: 100, has_more: true })
+    })
+
+    render(<LogViewerPage />)
+
+    await waitFor(() => expect(screen.getByText('已加载: 100 / 101 条')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '加载更多日志' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('已加载: 101 / 101 条')).toBeInTheDocument()
+      expect(screen.getByText('log-100')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: '加载更多日志' })).not.toBeInTheDocument()
+    expect(fetch).toHaveBeenLastCalledWith('/api/logs?limit=100&offset=100')
+  })
+
   it('surfaces focus handoff for a matched log source', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
