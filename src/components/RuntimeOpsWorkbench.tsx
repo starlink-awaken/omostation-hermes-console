@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, BarChart3, FileText, Gauge, Network, Search, ShieldAlert, Terminal } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BarChart3, ClipboardCheck, FileText, Gauge, Network, Search, ShieldAlert, Terminal } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type RuntimeWorkbenchPage = 'Overview' | 'AlertCenter' | 'Performance' | 'LogViewer' | 'Topology' | 'Sandbox' | string;
@@ -120,6 +120,9 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
     error: null,
   });
   const [retryToken, setRetryToken] = useState(0);
+  const [taskPending, setTaskPending] = useState(false);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -211,6 +214,46 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
     : state.error
       ? '运行证据不完整，先恢复失败数据源再判断是否平稳。'
     : nextAction(currentPage, activeAlerts, degradedServices);
+  const runtimeTaskTitle = activeAlerts[0]
+    ? `处理运行告警：${activeAlerts[0].source}`
+    : degradedServices[0]
+      ? `处理异常服务：${degradedServices[0].name}`
+      : '恢复运行诊断数据源';
+  const runtimeTaskDescription = noRuntimeSources
+    ? '运行诊断的系统地图、活跃告警和服务状态数据源均不可用。请恢复数据源，重新采集运行证据，并完成 TaskCenter closeout。'
+    : state.error
+      ? `${recommended} 当前上下文：${runtimeContextQuery}。请先补齐失败数据源，再确认告警、性能和日志证据链。`
+      : `${recommended} 当前运行上下文：${runtimeContextQuery}。请完成告警、性能、日志或拓扑核验，并在 TaskCenter 记录处理结果。`;
+  const canRegisterRuntimeTask = !state.loading && (Boolean(state.error) || activeAlerts.length > 0 || degradedServices.length > 0);
+
+  const createRuntimeTask = async () => {
+    setTaskPending(true);
+    setTaskNotice(null);
+    setTaskError(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: runtimeTaskTitle,
+          description: runtimeTaskDescription,
+          priority: activeAlerts[0]?.level === 'critical' || activeAlerts[0]?.level === 'error' || noRuntimeSources ? 'high' : 'medium',
+          risk_level: noRuntimeSources ? 'L2' : 'L1',
+          evidence_required: ['运行状态快照', '告警、性能或日志证据', '处理结果与复核结论', 'task closeout'],
+          tags: ['runtime', 'observability'],
+          source: 'cockpit.runtime-workbench',
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '运行任务登记失败');
+      setTaskNotice(`已登记运行诊断任务：${payload.title || runtimeTaskTitle}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+    } catch (requestError) {
+      setTaskError(requestError instanceof Error ? requestError.message : '运行任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
 
   return (
     <section className="services-section runtime-workbench" aria-label="运行诊断工作台">
@@ -224,7 +267,20 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
         <span className={`status-badge ${state.loading ? 'online' : noRuntimeSources ? 'offline' : state.error || activeAlerts.length > 0 || degradedServices.length > 0 ? 'degraded' : 'online'}`}>
           {state.loading ? '同步中' : noRuntimeSources ? '数据不可用' : state.error ? '证据不完整' : activeAlerts.length > 0 || degradedServices.length > 0 ? '需要排查' : '运行平稳'}
         </span>
+        {canRegisterRuntimeTask && (
+          <button type="button" className="antd-btn small" onClick={() => void createRuntimeTask()} disabled={taskPending} aria-label={`登记运行诊断任务 ${runtimeTaskTitle}`}>
+            <ClipboardCheck size={13} />
+            <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
+          </button>
+        )}
       </div>
+
+      {(taskNotice || taskError) && (
+        <div className={taskError ? 'overview-inline-error' : 'shell-data-banner'} role={taskError ? 'alert' : 'status'}>
+          {taskError ? <AlertTriangle size={16} /> : <ClipboardCheck size={16} />}
+          <span>{taskError || taskNotice}</span>
+        </div>
+      )}
 
       {state.error && (
         <div className="shell-data-banner" role="alert">

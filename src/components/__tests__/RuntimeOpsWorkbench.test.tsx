@@ -33,6 +33,36 @@ describe('RuntimeOpsWorkbench', () => {
     expect(onNavigate).toHaveBeenCalledWith('Performance')
   })
 
+  it('registers the highest-priority runtime hotspot as a formal task', async () => {
+    const onNavigate = vi.fn()
+    let taskRequest: RequestInit | undefined
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson({ usage_paths: [] }))
+      if (url === '/api/alerts?status=active&limit=20') {
+        return Promise.resolve(okJson({ items: [{ id: 'alert-1', level: 'critical', source: 'cockpit-api', message: 'API 5xx 激增', status: 'active' }] }))
+      }
+      if (url === '/api/services/status') return Promise.resolve(okJson({ items: [] }))
+      if (url === '/api/tasks' && init?.method === 'POST') {
+        taskRequest = init
+        return Promise.resolve(okJson({ id: 42, title: '处理运行告警：cockpit-api' }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RuntimeOpsWorkbench currentPage="AlertCenter" onNavigate={onNavigate} />)
+
+    const button = await screen.findByRole('button', { name: '登记运行诊断任务 处理运行告警：cockpit-api' })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('已登记运行诊断任务：处理运行告警：cockpit-api')
+      expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+    })
+    expect(taskRequest?.body).toContain('运行状态快照')
+    expect(taskRequest?.body).toContain('cockpit.runtime-workbench')
+  })
+
   it('does not present an all-source outage as a stable runtime', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('runtime backend offline'))
 
