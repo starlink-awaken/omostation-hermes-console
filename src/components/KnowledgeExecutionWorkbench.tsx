@@ -389,7 +389,12 @@ export default function KnowledgeExecutionWorkbench({
           risk_level: 'L1',
           evidence_required: ['知识或路线图对象', '能力/工作流执行证据', 'TaskCenter closeout'],
           tags: ['knowledge-execution', executionTaskDraft.sourceType],
-          source: { type: executionTaskDraft.sourceType, id: executionTaskDraft.sourceId },
+          source: {
+            type: `cockpit.knowledge-execution.${executionTaskDraft.sourceType}`,
+            id: executionTaskDraft.sourceId,
+            title: executionTaskDraft.title,
+            target: { tab: currentPage, taskQuery: executionTaskDraft.sourceId },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));
