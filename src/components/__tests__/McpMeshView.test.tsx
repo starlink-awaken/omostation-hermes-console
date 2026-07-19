@@ -165,6 +165,21 @@ describe('McpMeshView', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/bos/health'))
   })
 
+  it('does not turn unavailable mesh sources into zero or degraded health', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/bos/services') return Promise.reject(new Error('services offline'))
+      if (String(input) === '/api/bos/health') return Promise.resolve({ ok: false, status: 503, json: async () => ({}) } as Response)
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<McpMeshView />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('BOS 服务列表：services offline')
+    expect(screen.getAllByText('N/A')).toHaveLength(2)
+    expect(screen.queryByText('Degraded')).not.toBeInTheDocument()
+    expect(screen.getByText('路由明细不可用')).toBeInTheDocument()
+  })
+
   it('keeps mesh routes available when the health probe request fails', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       if (String(input) === '/api/bos/services') {

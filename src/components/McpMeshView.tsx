@@ -75,6 +75,7 @@ export default function McpMeshView({
   const [health, setHealth] = useState<BosHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [meshSources, setMeshSources] = useState({ services: false, health: false });
   const [refreshToken, setRefreshToken] = useState(0);
   const [selectedDomain, setSelectedDomain] = useState('all');
   const [meshQuery, setMeshQuery] = useState('');
@@ -107,11 +108,13 @@ export default function McpMeshView({
         readMeshResponse<{ services?: BosService[] }>(servicesResult, 'BOS 服务列表'),
         readMeshResponse<BosHealth>(healthResult, 'BOS 健康探针'),
       ]);
+      setMeshSources({ services: servicesOk && Boolean(servicesData), health: healthOk && Boolean(healthData) });
       if (servicesOk && servicesData) setServices(servicesData.services || []);
       if (healthOk && healthData) setHealth(healthData);
       setDataError([servicesError, healthError].filter(Boolean).join('；') || null);
     } catch (e) {
       console.error('Failed to fetch McpMesh data:', e);
+      setMeshSources({ services: false, health: false });
       setDataError(e instanceof Error ? e.message : '网格数据暂不可用');
     } finally {
       setLoading(false);
@@ -451,14 +454,16 @@ export default function McpMeshView({
         <div className="stat-card">
           <div className="stat-info">
             <h3>网格已注册 BOS 路由</h3>
-            <p className="stat-value">{health?.total_routes || services.length}</p>
+            <p className="stat-value">
+              {meshSources.health ? (health?.total_routes ?? 'N/A') : meshSources.services ? services.length : 'N/A'}
+            </p>
           </div>
         </div>
         <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-success)' }}>
           <div className="stat-info">
             <h3>网格健康度</h3>
             <p className="stat-value" style={{ color: 'var(--antd-success)' }}>
-              {health?.status === 'ok' ? 'Healthy' : 'Degraded'}
+              {meshSources.health ? (health?.status === 'ok' ? 'Healthy' : 'Degraded') : 'N/A'}
             </p>
           </div>
         </div>
@@ -475,7 +480,7 @@ export default function McpMeshView({
       <ActionSurfacePanel
         title="网格动作区"
         subtitle="先看路由域和实例注册，再决定回观测、算力还是应用中心继续收口。"
-        statusText={services.length ? `${services.length} 条 BOS 路由` : '等待路由数据'}
+        statusText={meshSources.services ? `${services.length} 条 BOS 路由` : 'BOS 路由数据不可用'}
         items={meshActionItems}
         onNavigate={onNavigate}
         onOpenTarget={onOpenTarget}
@@ -600,7 +605,9 @@ export default function McpMeshView({
             <p className="text-muted">把热点域、待补域和实例注册承接成下一步动作，不让网格页只剩一堆路由表。</p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span className="status-badge online">已注册路由 {filteredServices.length}/{services.length}</span>
+            <span className={`status-badge ${meshSources.services ? 'online' : 'degraded'}`}>
+              {meshSources.services ? `已注册路由 ${filteredServices.length}/${services.length}` : '已注册路由 N/A'}
+            </span>
             <span className="status-badge degraded">待补域 {meshBacklog.missingDomains.length}</span>
             <span className="status-badge degraded">HTTP 实例 {meshBacklog.registrationCount}</span>
           </div>
@@ -967,7 +974,9 @@ export default function McpMeshView({
           </div>
         </div>
 
-        <div className="text-muted" style={{ fontSize: 12, marginBottom: 10 }}>显示 {filteredServices.length}/{services.length} 条路由</div>
+        <div className="text-muted" style={{ fontSize: 12, marginBottom: 10 }}>
+          {meshSources.services ? `显示 ${filteredServices.length}/${services.length} 条路由` : '路由明细不可用'}
+        </div>
 
         <div className="services-list">
           <table className="services-table" aria-label="BOS 网格路由清单">
