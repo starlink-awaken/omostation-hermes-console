@@ -316,6 +316,9 @@ export default function SettingsView({
     return null;
   })();
 
+  const doctorHasSnapshot = Boolean(doctor && (doctor.status || doctor.available !== undefined || doctor.highlights || doctor.written_at || doctor.hint));
+  const versionHasSnapshot = Boolean(versionInfo && (versionInfo.current_version || versionInfo.supported_versions?.length || versionInfo.deprecated_versions?.length || versionInfo.endpoints !== undefined || versionInfo.updated_at));
+
   const fetchMetrics = async () => {
     try {
       const res = await fetch('/api/metrics/history');
@@ -523,9 +526,9 @@ export default function SettingsView({
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <span className={`status-badge ${doctor?.status === 'ok' ? 'online' : doctor?.status ? 'degraded' : 'offline'}`}>
-              {doctor?.status === 'ok' ? '巡检正常' : doctor?.status === 'missing' ? '暂无快照' : doctor?.status ? `巡检${doctor.status}` : '读取中'}
+              {doctorError ? '不可用' : doctor?.status === 'ok' ? '巡检正常' : doctor?.status === 'missing' || !doctorHasSnapshot ? '暂无快照' : `巡检${doctor.status}`}
             </span>
-            <button type="button" className="antd-btn" onClick={() => void fetchDoctor()} disabled={!doctor && !doctorError} aria-label="刷新OMO doctor诊断">
+            <button type="button" className="antd-btn" onClick={() => void fetchDoctor()} aria-label="刷新OMO doctor诊断">
               <RefreshCw size={14} /> 刷新诊断
             </button>
           </div>
@@ -540,11 +543,11 @@ export default function SettingsView({
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
               {[
-                ['总检查', doctor?.highlights?.total ?? 0],
-                ['通过', doctor?.highlights?.ok ?? 0],
-                ['警告', doctor?.highlights?.warn ?? 0],
-                ['失败', (doctor?.highlights?.fail ?? 0) + (doctor?.highlights?.error ?? 0)],
-                ['ACL 警告 streak', doctor?.highlights?.path_acl_warn_streak ?? 0],
+                ['总检查', doctorHasSnapshot ? doctor?.highlights?.total ?? 'N/A' : 'N/A'],
+                ['通过', doctorHasSnapshot ? doctor?.highlights?.ok ?? 'N/A' : 'N/A'],
+                ['警告', doctorHasSnapshot ? doctor?.highlights?.warn ?? 'N/A' : 'N/A'],
+                ['失败', doctorHasSnapshot ? (doctor?.highlights?.fail ?? 0) + (doctor?.highlights?.error ?? 0) : 'N/A'],
+                ['ACL 警告 streak', doctorHasSnapshot ? doctor?.highlights?.path_acl_warn_streak ?? 'N/A' : 'N/A'],
               ].map(([label, value]) => (
                 <div className="stat-card" key={label}>
                   <div className="text-muted">{label}</div>
@@ -554,8 +557,8 @@ export default function SettingsView({
             </div>
             <div className="action-surface-item" style={{ alignItems: 'flex-start', marginTop: 12 }}>
               <div>
-                <strong>{doctor?.highlights?.path_acl_alert ? 'ACL 连续告警，需要处理' : '治理快照可继续追踪'}</strong>
-                <p>{doctor?.written_at ? `最近写入：${doctor.written_at}` : doctor?.hint || '尚未取得治理巡检快照。'}</p>
+                <strong>{doctorHasSnapshot && doctor?.highlights?.path_acl_alert ? 'ACL 连续告警，需要处理' : doctorHasSnapshot ? '治理快照可继续追踪' : '尚未取得治理巡检快照'}</strong>
+                <p>{doctor?.written_at ? `最近写入：${doctor.written_at}` : doctor?.hint || '恢复 doctor 数据源后再判断治理状态。'}</p>
                 {doctor?.history_tail && doctor.history_tail.length > 0 && (
                   <small className="text-muted">最近 {doctor.history_tail.length} 次巡检已保留，可回看告警 streak 与触发来源。</small>
                 )}
@@ -582,8 +585,8 @@ export default function SettingsView({
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span className={`status-badge ${versionInfo ? 'online' : 'offline'}`}>
-              {versionInfo ? `当前 ${versionInfo.current_version || '未知'}` : '读取中'}
+            <span className={`status-badge ${versionError ? 'offline' : versionHasSnapshot ? 'online' : 'offline'}`}>
+              {versionError ? '不可用' : versionHasSnapshot ? `当前 ${versionInfo?.current_version || '未知'}` : '暂无版本快照'}
             </span>
             <button type="button" className="antd-btn" onClick={() => void fetchVersion()} aria-label="刷新运行版本与变更历史">
               <RefreshCw size={14} /> 刷新版本
@@ -600,10 +603,10 @@ export default function SettingsView({
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
               {[
-                ['当前版本', versionInfo?.current_version || '等待数据'],
-                ['支持版本', versionInfo?.supported_versions?.join('、') || '等待数据'],
-                ['API 端点', versionInfo?.endpoints ?? 0],
-                ['弃用版本', versionInfo?.deprecated_versions?.length ?? 0],
+                ['当前版本', versionInfo?.current_version || 'N/A'],
+                ['支持版本', versionInfo?.supported_versions?.join('、') || 'N/A'],
+                ['API 端点', versionHasSnapshot ? versionInfo?.endpoints ?? 'N/A' : 'N/A'],
+                ['弃用版本', versionHasSnapshot ? versionInfo?.deprecated_versions?.length ?? 'N/A' : 'N/A'],
               ].map(([label, value]) => (
                 <div className="stat-card" key={label}>
                   <div className="text-muted">{label}</div>

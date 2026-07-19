@@ -158,6 +158,26 @@ describe('SettingsView', () => {
     expect(within(catalog).getAllByText('/api/tasks')).toHaveLength(1)
   })
 
+  it('does not render empty doctor and version responses as zero-valued snapshots', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/omo/doctor') return Promise.resolve(okJson({}))
+      if (url === '/api/version') return Promise.resolve(okJson({}))
+      if (url === '/api/version/history') return Promise.resolve(okJson([]))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<SettingsView />)
+
+    const doctor = await screen.findByRole('region', { name: 'OMO doctor治理诊断' })
+    expect(within(doctor).getByText('暂无快照')).toBeInTheDocument()
+    expect(within(doctor).getAllByText('N/A')).toHaveLength(5)
+
+    const version = screen.getByRole('region', { name: '运行版本与变更历史' })
+    expect(within(version).getByText('暂无版本快照')).toBeInTheDocument()
+    expect(within(version).getAllByText('N/A')).toHaveLength(4)
+  })
+
   it('submits instance registration and shows returned status', async () => {
     const onOpenTarget = vi.fn()
     let domainAppsCalls = 0
