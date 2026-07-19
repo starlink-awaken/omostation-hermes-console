@@ -77,4 +77,25 @@ describe('CommandPalette', () => {
     expect(firstAction).toHaveBeenCalledOnce()
     expect(secondAction).not.toHaveBeenCalled()
   })
+
+  it('keeps Tab focus inside the command dialog', () => {
+    render(
+      <CommandPalette
+        isOpen
+        onClose={vi.fn()}
+        commands={[{ id: 'home', label: '首页', action: vi.fn() }]}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: '命令面板' })
+    const input = within(dialog).getByRole('textbox', { name: '命令面板搜索' })
+    const command = within(dialog).getByRole('option', { name: '首页' })
+
+    command.focus()
+    fireEvent.keyDown(command, { key: 'Tab' })
+    expect(input).toHaveFocus()
+
+    fireEvent.keyDown(input, { key: 'Tab', shiftKey: true })
+    expect(command).toHaveFocus()
+  })
 })

@@ -79,4 +79,25 @@ describe('QuickActionsPanel', () => {
 
     expect(screen.getByRole('textbox', { name: '快捷操作搜索' })).toHaveValue('')
   })
+
+  it('keeps Tab focus inside the action dialog', () => {
+    render(
+      <QuickActionsPanel
+        isOpen
+        onClose={vi.fn()}
+        actions={[{ id: 'first', label: '打开首页', icon: null, action: vi.fn(), category: '入口' }]}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: '快捷操作' })
+    const input = within(dialog).getByRole('textbox', { name: '快捷操作搜索' })
+    const action = within(dialog).getByRole('option', { name: '打开首页' })
+
+    action.focus()
+    fireEvent.keyDown(action, { key: 'Tab' })
+    expect(input).toHaveFocus()
+
+    fireEvent.keyDown(input, { key: 'Tab', shiftKey: true })
+    expect(action).toHaveFocus()
+  })
 })

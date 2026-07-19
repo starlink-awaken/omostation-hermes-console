@@ -16,6 +16,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const filteredCommands = commands.filter(cmd =>
@@ -35,6 +36,31 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
       previousFocusRef.current.focus();
       previousFocusRef.current = null;
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleTabKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !panelRef.current) return;
+      const focusable = Array.from(panelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ));
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleTabKey);
+    return () => document.removeEventListener('keydown', handleTabKey);
   }, [isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -71,6 +97,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
     <div className="command-palette-overlay" onClick={onClose}>
       <div
         className="command-palette"
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="命令面板"
