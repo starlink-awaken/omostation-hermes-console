@@ -116,11 +116,18 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
     setLoading(null);
   };
 
+  // 异步状态探测在 effect 内启动，结果在异步回调中写回。
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadStatus(); }, []);
 
   useEffect(() => {
     const prefix = query.trim();
-    if (!prefix) { setSuggestions([]); return undefined; }
+    if (!prefix) {
+      // 清空上一次异步建议，避免旧查询继续显示。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSuggestions([]);
+      return undefined;
+    }
     const timer = window.setTimeout(() => {
       fetchJson(`/api/kos/suggest?prefix=${encodeURIComponent(prefix)}&limit=6`)
         .then((data) => setSuggestions(asResults(data).map((item) => displayValue(item.text ?? item.title ?? item.value, '')).filter(Boolean)))
@@ -151,6 +158,8 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
   useEffect(() => {
     const nextQuery = initialQuery?.trim();
     if (!nextQuery || nextQuery.length < 2) return;
+    // 导航焦点是外部输入，写入本地查询状态后再触发检索。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuery(nextQuery);
     void runQuery('search', nextQuery);
     // 导航带入的对象查询只在焦点改变时自动执行，用户手动改词后不重复抢焦点。
