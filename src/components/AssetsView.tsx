@@ -19,6 +19,11 @@ interface WorkflowItem {
   steps: number;
 }
 
+type AssetActionResult = {
+  error?: string;
+  [key: string]: unknown;
+};
+
 interface AssetsViewProps {
   onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
@@ -65,9 +70,9 @@ export default function AssetsView({
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const [wfTesting, setWfTesting] = useState<Record<string, boolean>>({});
-  const [wfTestResults, setWfTestResults] = useState<Record<string, any>>({});
+  const [wfTestResults, setWfTestResults] = useState<Record<string, AssetActionResult>>({});
   const [wfQueueing, setWfQueueing] = useState<Record<string, boolean>>({});
-  const [wfQueueResults, setWfQueueResults] = useState<Record<string, any>>({});
+  const [wfQueueResults, setWfQueueResults] = useState<Record<string, AssetActionResult>>({});
   const [skillTaskPending, setSkillTaskPending] = useState(false);
   const [skillTaskNotice, setSkillTaskNotice] = useState<string | null>(null);
 
@@ -107,6 +112,8 @@ export default function AssetsView({
 
   useEffect(() => {
     void fetchData();
+    // fetchData intentionally owns the polling request lifecycle for this page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -157,8 +164,8 @@ export default function AssetsView({
       } else {
         setPipelineError(data.detail || data.error || '管线任务承接失败');
       }
-    } catch (err: any) {
-      setPipelineError(err.message || '网络通讯异常');
+    } catch (err: unknown) {
+      setPipelineError(err instanceof Error ? err.message : '网络通讯异常');
     } finally {
       setPipelineRunning(false);
     }
@@ -175,8 +182,8 @@ export default function AssetsView({
         throw new Error(data.error || data.detail || `工作流测试失败（HTTP ${res.status}）`);
       }
       setWfTestResults((prev) => ({ ...prev, [name]: data }));
-    } catch (err: any) {
-      setWfTestResults((prev) => ({ ...prev, [name]: { error: err.message } }));
+    } catch (err: unknown) {
+      setWfTestResults((prev) => ({ ...prev, [name]: { error: err instanceof Error ? err.message : '工作流测试失败' } }));
     } finally {
       setWfTesting((prev) => ({ ...prev, [name]: false }));
     }
@@ -194,8 +201,8 @@ export default function AssetsView({
       if (data.id) {
         openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
       }
-    } catch (err: any) {
-      setWfQueueResults((prev) => ({ ...prev, [name]: { error: err.message || '工作流验收任务承接失败' } }));
+    } catch (err: unknown) {
+      setWfQueueResults((prev) => ({ ...prev, [name]: { error: err instanceof Error ? err.message : '工作流验收任务承接失败' } }));
     } finally {
       setWfQueueing((prev) => ({ ...prev, [name]: false }));
     }
@@ -229,8 +236,8 @@ export default function AssetsView({
       if (!response.ok) throw new Error(payload.detail || payload.error || '技能治理任务登记失败');
       setSkillTaskNotice(`已登记技能治理任务：${payload.title || skill.name}`);
       if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
-    } catch (error: any) {
-      setSkillTaskNotice(`技能治理任务登记失败：${error.message || '请稍后重试。'}`);
+    } catch (error: unknown) {
+      setSkillTaskNotice(`技能治理任务登记失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setSkillTaskPending(false);
     }
@@ -904,7 +911,7 @@ export default function AssetsView({
                   }}
                   title={skill.path}
                 >
-                  路径: {skill.path.replace(/\/Users\/[^\/]+/g, '~')}
+                  路径: {skill.path.replace(/\/Users\/[^/]+/g, '~')}
                 </div>
               </div>
             ))
