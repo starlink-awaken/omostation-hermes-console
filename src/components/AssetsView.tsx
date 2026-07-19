@@ -68,6 +68,8 @@ export default function AssetsView({
   const [wfTestResults, setWfTestResults] = useState<Record<string, any>>({});
   const [wfQueueing, setWfQueueing] = useState<Record<string, boolean>>({});
   const [wfQueueResults, setWfQueueResults] = useState<Record<string, any>>({});
+  const [skillTaskPending, setSkillTaskPending] = useState(false);
+  const [skillTaskNotice, setSkillTaskNotice] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -196,6 +198,35 @@ export default function AssetsView({
       setWfQueueResults((prev) => ({ ...prev, [name]: { error: err.message || '工作流验收任务承接失败' } }));
     } finally {
       setWfQueueing((prev) => ({ ...prev, [name]: false }));
+    }
+  };
+
+  const handleCreateSkillTask = async () => {
+    const skill = localSkills[0];
+    if (!skill || skillTaskPending) return;
+    setSkillTaskPending(true);
+    setSkillTaskNotice(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `技能治理：${skill.name}`,
+          description: `治理本地技能 ${skill.name}，补齐描述、使用边界、协议归类和可复用入口。来源：${skill.path}`,
+          priority: 'medium',
+          risk_level: 'L1',
+          evidence_required: ['技能描述与使用边界', '协议归类或治理位置', '可复用入口或示例', 'task closeout'],
+          tags: ['assets', 'skill-governance'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || payload.error || '技能治理任务登记失败');
+      setSkillTaskNotice(`已登记技能治理任务：${payload.title || skill.name}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
+    } catch (error: any) {
+      setSkillTaskNotice(`技能治理任务登记失败：${error.message || '请稍后重试。'}`);
+    } finally {
+      setSkillTaskPending(false);
     }
   };
 
@@ -534,10 +565,24 @@ export default function AssetsView({
                 <h3 style={{ margin: 0, fontSize: 15 }}>技能治理</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>本地技能先补描述、归类和协议位置，再谈复用。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Protocol', taskQuery: focusTaskQuery || filteredSkills[0]?.name || 'Assets' }, onNavigate, onOpenTarget)}>
-                <ShieldAlert size={14} />
-                <span>进入协议面</span>
-              </button>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+                <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Protocol', taskQuery: focusTaskQuery || filteredSkills[0]?.name || 'Assets' }, onNavigate, onOpenTarget)}>
+                  <ShieldAlert size={14} />
+                  <span>进入协议面</span>
+                </button>
+                {localSkills[0] && (
+                  <button
+                    type="button"
+                    className="antd-btn antd-btn-primary"
+                    aria-label={`登记技能治理任务 ${localSkills[0].name}`}
+                    disabled={skillTaskPending}
+                    onClick={() => void handleCreateSkillTask()}
+                  >
+                    <ClipboardCheck size={14} />
+                    <span>{skillTaskPending ? '登记中...' : '登记正式任务'}</span>
+                  </button>
+                )}
+              </div>
             </div>
             {assetBacklog.skillItems.length === 0 ? (
               <p className="text-muted" style={{ margin: 0 }}>当前没有可治理技能。</p>
@@ -562,6 +607,7 @@ export default function AssetsView({
                 ))}
               </div>
             )}
+            {skillTaskNotice && <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{skillTaskNotice}</p>}
           </article>
 
           <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>

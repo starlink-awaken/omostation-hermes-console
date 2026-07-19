@@ -101,6 +101,33 @@ describe('AssetsView', () => {
     expect(onNavigate).toHaveBeenCalledWith('Workflows')
   })
 
+  it('registers local skill governance as a formal task', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/ecos/skills') return Promise.resolve(okJson({
+        skills: [{ id: 'skill-local-1', name: '自定义治理技能', description: '用于治理闭环收口', source: 'local', path: '/workspace/skill-local-1' }],
+      }))
+      if (url === '/api/pipelines') return Promise.resolve(okJson({ pipelines: [] }))
+      if (url === '/api/ecos/workflows') return Promise.resolve(okJson({ workflows: [] }))
+      if (url === '/api/tasks') {
+        expect(init?.method).toBe('POST')
+        return Promise.resolve(okJson({ id: 'skill-governance-task', title: '技能治理任务' }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<AssetsView onOpenTarget={onOpenTarget} />)
+
+    const button = await screen.findByRole('button', { name: '登记技能治理任务 自定义治理技能' })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'skill-governance-task' })
+      expect(screen.getByText('已登记技能治理任务：技能治理任务')).toBeInTheDocument()
+    })
+  })
+
   it('filters skills, pipelines, and workflows from one shared asset query', async () => {
     render(<AssetsView />)
 
