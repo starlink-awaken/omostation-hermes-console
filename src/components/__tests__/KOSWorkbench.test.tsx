@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import KOSWorkbench from '../KOSWorkbench'
 
 const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Response
@@ -58,5 +58,32 @@ describe('KOSWorkbench', () => {
     expect(await screen.findByDisplayValue('decision-1')).toBeInTheDocument()
     expect(await screen.findByText('架构决策')).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith('/api/kos/search?q=decision-1&limit=8', undefined)
+  })
+
+  it('writes a knowledge card and shows the persisted reference', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/knowledge/put') {
+        expect(init?.method).toBe('POST')
+        expect(JSON.parse(String(init?.body))).toEqual({
+          slug: 'runtime-note',
+          title: '运行记录',
+          content: '保留运行证据。',
+          tags: ['runtime', 'evidence'],
+        })
+        return Promise.resolve(okJson({ knowledge_ref: 'memory:runtime-note' }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KOSWorkbench />)
+    const form = screen.getByRole('form', { name: '知识注入' })
+    fireEvent.change(within(form).getByRole('textbox', { name: '知识卡片标题' }), { target: { value: '运行记录' } })
+    fireEvent.change(within(form).getByRole('textbox', { name: '知识卡片标识' }), { target: { value: 'runtime-note' } })
+    fireEvent.change(within(form).getByRole('textbox', { name: '知识卡片标签' }), { target: { value: 'runtime, evidence' } })
+    fireEvent.change(within(form).getByRole('textbox', { name: '知识卡片正文' }), { target: { value: '保留运行证据。' } })
+    fireEvent.click(within(form).getByRole('button', { name: /写入知识卡片/ }))
+
+    await waitFor(() => expect(within(form).getByRole('status')).toHaveTextContent('memory:runtime-note'))
   })
 })

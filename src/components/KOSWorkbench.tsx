@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ClipboardList, Database, Loader2, Network, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { AlertTriangle, BookOpen, CheckCircle2, ClipboardList, Database, Loader2, Network, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type JsonRecord = Record<string, unknown>;
@@ -58,6 +58,12 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
   const [clusters, setClusters] = useState<JsonRecord | null>(null);
   const [claim, setClaim] = useState('');
   const [verifyResult, setVerifyResult] = useState<JsonRecord | null>(null);
+  const [writeSlug, setWriteSlug] = useState('');
+  const [writeTitle, setWriteTitle] = useState('');
+  const [writeContent, setWriteContent] = useState('');
+  const [writeTags, setWriteTags] = useState('');
+  const [writeNotice, setWriteNotice] = useState<string | null>(null);
+  const [writing, setWriting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [taskPending, setTaskPending] = useState(false);
@@ -165,6 +171,31 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
     finally { setLoading(null); }
   };
 
+  const writeKnowledge = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!writeSlug.trim() || !writeTitle.trim() || !writeContent.trim()) return;
+    setWriting(true);
+    setWriteNotice(null);
+    setError(null);
+    try {
+      const data = await fetchJson('/api/knowledge/put', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: writeSlug.trim(),
+          title: writeTitle.trim(),
+          content: writeContent.trim(),
+          tags: writeTags.split(',').map((tag) => tag.trim()).filter(Boolean),
+        }),
+      }) as JsonRecord;
+      setWriteNotice(`知识卡片已写入：${displayValue(data.knowledge_ref ?? data.source_ref, '已落盘')}`);
+    } catch (reason) {
+      setError(`知识写入失败：${reason instanceof Error ? reason.message : '未知错误'}`);
+    } finally {
+      setWriting(false);
+    }
+  };
+
   return (
     <section className="services-section" role="region" aria-label="KOS知识检索与校验">
       <div className="section-header">
@@ -215,6 +246,20 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
         <textarea className="antd-input" aria-label="待校验声明" value={claim} onChange={(event) => setClaim(event.target.value)} placeholder="输入需要核验的声明" style={{ minHeight: 72, resize: 'vertical' }} />
         <button type="submit" className="antd-btn antd-btn-primary" disabled={loading === 'verify' || !claim.trim()} style={{ width: 'fit-content' }}>{loading === 'verify' ? <Loader2 size={14} className="spinner" /> : <ShieldCheck size={14} />} 校验声明</button>
         {verifyResult && <pre style={{ margin: 0, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{JSON.stringify(verifyResult, null, 2)}</pre>}
+      </form>
+
+      <form onSubmit={writeKnowledge} className="antd-card" style={{ padding: 16, display: 'grid', gap: 10 }} aria-label="知识注入">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><BookOpen size={17} /><strong>知识注入</strong><span className="text-muted">把经过整理的内容写入本地知识卡片。</span></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+          <input className="antd-input" aria-label="知识卡片标题" value={writeTitle} onChange={(event) => setWriteTitle(event.target.value)} placeholder="标题" />
+          <input className="antd-input" aria-label="知识卡片标识" value={writeSlug} onChange={(event) => setWriteSlug(event.target.value)} placeholder="slug，例如 architecture-decision" />
+          <input className="antd-input" aria-label="知识卡片标签" value={writeTags} onChange={(event) => setWriteTags(event.target.value)} placeholder="标签，用逗号分隔" />
+        </div>
+        <textarea className="antd-input" aria-label="知识卡片正文" value={writeContent} onChange={(event) => setWriteContent(event.target.value)} placeholder="输入可复用的知识、决策或操作说明" style={{ minHeight: 100, resize: 'vertical' }} />
+        <button type="submit" className="antd-btn antd-btn-primary" disabled={writing || !writeSlug.trim() || !writeTitle.trim() || !writeContent.trim()} style={{ width: 'fit-content' }}>
+          {writing ? <Loader2 size={14} className="spinner" /> : <BookOpen size={14} />} {writing ? '写入中...' : '写入知识卡片'}
+        </button>
+        {writeNotice && <span className="text-muted" role="status">{writeNotice}</span>}
       </form>
     </section>
   );
