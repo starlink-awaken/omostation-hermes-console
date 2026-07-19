@@ -628,6 +628,9 @@ export default function OverviewPage({
 }: OverviewPageProps) {
   const [overviewSprintDraftId, setOverviewSprintDraftId] = useState('');
   const [overviewSprintNotice, setOverviewSprintNotice] = useState<string | null>(null);
+  const [pendingDraftId, setPendingDraftId] = useState<string | null>(null);
+  const [draftActionNotice, setDraftActionNotice] = useState<string | null>(null);
+  const [draftActionError, setDraftActionError] = useState<string | null>(null);
   const [registryQuery, setRegistryQuery] = useState('');
   const [registryStatusFilter, setRegistryStatusFilter] = useState<'all' | 'online' | 'degraded' | 'offline'>('all');
   const [state, setState] = useState<OverviewState>({
@@ -731,6 +734,26 @@ export default function OverviewPage({
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const promoteDraft = async (draft: DraftTask) => {
+    if (!draft.id || pendingDraftId) return;
+    setPendingDraftId(draft.id);
+    setDraftActionNotice(null);
+    setDraftActionError(null);
+    try {
+      const response = await fetch(`/api/tasks/drafts/${encodeURIComponent(draft.id)}/promote`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || response.statusText || '任务草稿承接失败');
+      }
+      setDraftActionNotice(`已承接为正式计划任务：${payload.title || draft.title || draft.id}`);
+      await load();
+    } catch (error) {
+      setDraftActionError(error instanceof Error ? error.message : '任务草稿承接失败');
+    } finally {
+      setPendingDraftId(null);
+    }
+  };
 
   const activeAlerts = useMemo(
     () => (state.alerts || []).filter((alert) => alert.status === 'active'),
@@ -1095,6 +1118,12 @@ export default function OverviewPage({
     <div className="animate-fade-in">
       <RuntimeOpsWorkbench currentPage="Overview" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
       <SystemAssuranceWorkbench onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
+
+      {(draftActionNotice || draftActionError) && (
+        <div className={`shell-data-banner ${draftActionError ? 'error' : 'success'}`} role="status" aria-live="polite">
+          {draftActionError || draftActionNotice}
+        </div>
+      )}
 
       <ActionSurfacePanel
         title="总面动作区"
@@ -1491,16 +1520,32 @@ export default function OverviewPage({
             </div>
             <div className="overview-ops-list">
               {focusDrafts.map((draft) => (
-                <button
+                <article
                   key={draft.id || draft.title}
                   className="overview-ops-item"
-                  aria-label={`打开修复草稿 ${draft.title || draft.id}`}
-                  onClick={() => openOverviewTarget(draftTarget(draft), onNavigate, onOpenTarget)}
                 >
-                  <strong>{draft.title || draft.id || '未命名草稿'}</strong>
-                  <span>{draftSourceLabel(draft.source?.type)} · {draft.priority || 'pending'}</span>
-                  <small>{draft.description || draft.source?.id || '进入对应入口继续处理。'}</small>
-                </button>
+                  <button
+                    className="overview-ops-item-main"
+                    aria-label={`打开修复草稿 ${draft.title || draft.id}`}
+                    onClick={() => openOverviewTarget(draftTarget(draft), onNavigate, onOpenTarget)}
+                  >
+                    <strong>{draft.title || draft.id || '未命名草稿'}</strong>
+                    <span>{draftSourceLabel(draft.source?.type)} · {draft.priority || 'pending'}</span>
+                    <small>{draft.description || draft.source?.id || '进入对应入口继续处理。'}</small>
+                  </button>
+                  <div className="overview-ops-item-actions">
+                    <button
+                      className="antd-btn small"
+                      aria-label={`承接为正式计划任务 ${draft.title || draft.id}`}
+                      title="承接为正式计划任务"
+                      disabled={!draft.id || Boolean(pendingDraftId)}
+                      onClick={() => void promoteDraft(draft)}
+                    >
+                      <ClipboardCheck size={13} />
+                      <span>{pendingDraftId === draft.id ? '承接中...' : '承接任务'}</span>
+                    </button>
+                  </div>
+                </article>
               ))}
               {focusDrafts.length === 0 && (
                 <div className="home-focus-empty overview-ops-empty">当前没有覆盖类修复草稿</div>

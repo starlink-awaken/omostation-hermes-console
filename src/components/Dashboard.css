@@ -7649,6 +7649,23 @@ button.system-map-gap {
   transition: border-color 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
 }
 
+.overview-ops-item-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.overview-ops-item-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .overview-ops-item span,
 .overview-ops-item small,
 .overview-ops-command span,

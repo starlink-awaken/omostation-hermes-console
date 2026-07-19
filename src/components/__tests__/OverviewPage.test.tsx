@@ -306,6 +306,15 @@ describe('OverviewPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /打开全站覆盖卡片 验证补证/ }))
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
 
+    fireEvent.click(screen.getByRole('button', { name: '承接为正式计划任务 验证补证：cockpit' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/tasks/drafts/verification-ready-cockpit/promote',
+        { method: 'POST' },
+      )
+      expect(screen.getByText('已承接为正式计划任务：验证补证：cockpit')).toBeInTheDocument()
+    })
+
     fireEvent.click(screen.getByRole('button', { name: /打开修复草稿 能力缺口：补运行探针/ }))
     expect(onNavigate).toHaveBeenCalledWith('SystemMap')
 
