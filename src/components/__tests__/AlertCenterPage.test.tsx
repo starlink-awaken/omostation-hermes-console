@@ -332,4 +332,19 @@ describe('AlertCenterPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '重试告警中心数据' }))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/alerts'))
   })
+
+  it('does not turn an unavailable alert source into zero alerts', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/alerts') return Promise.reject(new Error('alert backend offline'))
+      if (String(input) === '/api/alerts/rules') return Promise.resolve({ ok: true, json: async () => ({ items: mockRules }) } as Response)
+      return Promise.resolve({ ok: true, json: async () => ({ items: [] }) } as Response)
+    })
+
+    render(<AlertCenterPage />)
+
+    const stats = await screen.findByRole('region', { name: '告警统计' })
+    expect(within(stats).getAllByText('N/A')).toHaveLength(4)
+    expect(screen.getAllByText('告警数据不可用')).toHaveLength(2)
+    expect(screen.queryByText('暂无活跃告警')).not.toBeInTheDocument()
+  })
 })

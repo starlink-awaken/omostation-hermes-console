@@ -342,6 +342,7 @@ export default function AlertCenterPage({
 
   const activeAlerts = filteredAlerts.filter(a => a.status === 'active');
   const historyAlerts = filteredAlerts.filter(a => a.status !== 'active');
+  const alertsUnavailable = Boolean(dataError?.includes('告警数据')) && alerts.length === 0;
 
   const stats = getLevelStats();
   const actionableAlerts = (activeAlerts.length ? activeAlerts : alerts).slice(0, 3);
@@ -519,7 +520,7 @@ export default function AlertCenterPage({
       <ActionSurfacePanel
         title="告警动作区"
         subtitle="先分级、再追性能与日志证据，最后把异常正式挂进任务承接。"
-        statusText={activeAlerts.length ? `${activeAlerts.length} 条活跃告警` : '当前无活跃告警'}
+        statusText={alertsUnavailable ? '告警数据不可用' : activeAlerts.length ? `${activeAlerts.length} 条活跃告警` : '当前无活跃告警'}
         items={diagnosticTargets}
         onNavigate={onNavigate}
         onOpenTarget={onOpenTarget}
@@ -626,9 +627,9 @@ export default function AlertCenterPage({
             <p className="text-muted">把最高优先级告警、待追证据来源和后续页面放在一起，不让处理流程断在告警中心。</p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span className="status-badge degraded">严重 {stats.critical}</span>
-            <span className="status-badge degraded">警告 {stats.warning + stats.error}</span>
-            <span className="status-badge online">历史 {historyAlerts.length}</span>
+            <span className="status-badge degraded">严重 {alertsUnavailable ? 'N/A' : stats.critical}</span>
+            <span className="status-badge degraded">警告 {alertsUnavailable ? 'N/A' : stats.warning + stats.error}</span>
+            <span className="status-badge online">历史 {alertsUnavailable ? 'N/A' : historyAlerts.length}</span>
           </div>
         </div>
 
@@ -694,34 +695,34 @@ export default function AlertCenterPage({
       </section>
 
       {/* 告警统计 */}
-      <section className="alert-stats">
+      <section className="alert-stats" role="region" aria-label="告警统计">
         <div className="stats-grid">
           <div className="stat-card stat-critical">
             <AlertCircle size={24} />
             <div className="stat-info">
               <h3>严重</h3>
-              <p className="stat-value">{stats.critical}</p>
+            <p className="stat-value">{alertsUnavailable ? 'N/A' : stats.critical}</p>
             </div>
           </div>
           <div className="stat-card stat-error">
             <AlertTriangle size={24} />
             <div className="stat-info">
               <h3>错误</h3>
-              <p className="stat-value">{stats.error}</p>
+            <p className="stat-value">{alertsUnavailable ? 'N/A' : stats.error}</p>
             </div>
           </div>
           <div className="stat-card stat-warning">
             <AlertTriangle size={24} />
             <div className="stat-info">
               <h3>警告</h3>
-              <p className="stat-value">{stats.warning}</p>
+            <p className="stat-value">{alertsUnavailable ? 'N/A' : stats.warning}</p>
             </div>
           </div>
           <div className="stat-card stat-info">
             <Info size={24} />
             <div className="stat-info">
               <h3>信息</h3>
-              <p className="stat-value">{stats.info}</p>
+            <p className="stat-value">{alertsUnavailable ? 'N/A' : stats.info}</p>
             </div>
           </div>
         </div>
@@ -790,7 +791,13 @@ export default function AlertCenterPage({
       {/* 活跃告警 */}
       {activeTab === 'active' && (
         <div className="alerts-list">
-          {activeAlerts.length === 0 ? (
+            {alertsUnavailable ? (
+              <div className="empty-state">
+                <AlertTriangle size={32} />
+                <h3>告警数据不可用</h3>
+                <p>当前不能据此判断没有活跃告警，请先重试数据源。</p>
+              </div>
+            ) : activeAlerts.length === 0 ? (
             <div className="empty-state">
               <CheckCircle size={48} className="text-success" />
               <h3>暂无活跃告警</h3>
