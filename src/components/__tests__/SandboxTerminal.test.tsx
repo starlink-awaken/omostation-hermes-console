@@ -50,13 +50,13 @@ describe('SandboxTerminal', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开沙箱承接到日志页' }))
     expect(onNavigate).toHaveBeenCalledWith('LogViewer')
 
-    fireEvent.click(screen.getByRole('button', { name: '复制沙箱补位任务 补齐沙箱实验 print(\"Hello from eCOS Sandbox!\") 的收口' }))
+    fireEvent.click(screen.getByRole('button', { name: '复制沙箱补位任务 补齐沙箱实验 print("Hello from eCOS Sandbox!") 的收口' }))
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('补齐沙箱实验 print("Hello from eCOS Sandbox!") 的收口'))
       expect(screen.getByText('已复制沙箱补位任务：补齐沙箱实验 print("Hello from eCOS Sandbox!") 的收口')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: '打开沙箱补位任务 补齐沙箱实验 print(\"Hello from eCOS Sandbox!\") 的收口' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开沙箱补位任务 补齐沙箱实验 print("Hello from eCOS Sandbox!") 的收口' }))
     expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
   })
 
@@ -90,7 +90,7 @@ describe('SandboxTerminal', () => {
 
     render(<SandboxTerminal onOpenTarget={onOpenTarget} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '登记沙箱补位任务 补齐沙箱实验 print(\"Hello from eCOS Sandbox!\") 的收口' }))
+    fireEvent.click(screen.getByRole('button', { name: '登记沙箱补位任务 补齐沙箱实验 print("Hello from eCOS Sandbox!") 的收口' }))
 
     await waitFor(() => {
       expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'sandbox-follow-up-1' })

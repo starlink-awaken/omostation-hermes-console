@@ -71,7 +71,7 @@ const mockServices = [
 ]
 
 function mockAlertCenterFetch() {
-  vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+  vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
     const url = String(input)
     if (url === '/api/alerts') {
       return Promise.resolve({ ok: true, json: async () => ({ items: mockAlerts }) } as Response)

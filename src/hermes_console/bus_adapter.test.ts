@@ -30,7 +30,7 @@ describe("HermesBus", () => {
 
   test("publish posts to agora when agoraUrl set, swallows network errors", async () => {
     const fetchMock = mock(() => Promise.reject(new Error("network down")));
-    const bus = new HermesBus({ agoraUrl: "http://localhost:9", fetchImpl: fetchMock as any });
+    const bus = new HermesBus({ agoraUrl: "http://localhost:9", fetchImpl: fetchMock as typeof fetch });
     const env = bus.buildEnvelope("message:received", { ok: true });
     // Should not throw even though fetch fails.
     await bus.publish(env);

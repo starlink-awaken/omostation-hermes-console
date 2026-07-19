@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { CommandPalette } from '../common/CommandPalette'
-import { useKeyboardShortcuts } from '../common/useCommandPalette'
 
 describe('CommandPalette', () => {
   it('exposes dialog semantics and keyboard selection state', () => {

@@ -45,7 +45,7 @@ describe('EcosWorkflowWorkbench', () => {
 
   it('retries the failed verification action instead of reloading only the catalog', async () => {
     let testAttempts = 0
-    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
       if (url === '/api/ecos/workflow/list') return Promise.resolve(response({ workflows: [{ name: 'health-check', display: '健康检查' }] }))
       if (url === '/api/ecos/workflow/backends') return Promise.resolve(response({ backends: [] }))
