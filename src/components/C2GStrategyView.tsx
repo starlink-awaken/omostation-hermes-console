@@ -150,6 +150,7 @@ export default function C2GStrategyView({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [fixing, setFixing] = useState(false);
   const [fixResult, setFixResult] = useState<string | null>(null);
   const [approvingIds, setApprovingIds] = useState<Record<string, boolean>>({});
@@ -259,11 +260,19 @@ export default function C2GStrategyView({
   const fetchData = async () => {
     try {
       setError(null);
+      setStatusError(null);
       // Fetch Status
       const statusRes = await fetch('/api/omos/status');
-      let statusData = {};
+      let statusData: OmoStatus | null = null;
+      let statusSourceError: string | null = null;
       if (statusRes.ok) {
-        statusData = await statusRes.json();
+        try {
+          statusData = await statusRes.json() as OmoStatus;
+        } catch {
+          statusSourceError = 'OMO 状态返回格式无效';
+        }
+      } else {
+        statusSourceError = `OMO 状态 HTTP ${statusRes.status}`;
       }
 
       // Fetch Cards
@@ -322,13 +331,16 @@ export default function C2GStrategyView({
       }
 
       setStatus(statusData);
+      setStatusError(statusSourceError);
       setCards(cardsData);
       setCheck(checkData);
       setProposals(proposalsData);
       setViolations(violationsData);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || '获取 C2G 数据失败');
+      const message = err.message || '获取 C2G 数据失败';
+      setError(message);
+      setStatusError(message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -359,9 +371,13 @@ export default function C2GStrategyView({
     );
   }
 
-  const sysHealth = status?.system?.health_score ?? 95;
-  const govHealth = status?.governance?.health_score ?? 98;
-  const currentPhase = status?.system?.current_phase || 'Wave 2 (迭代研发期)';
+  const statusSourceUnavailable = Boolean(statusError);
+  const sysHealth = status?.system?.health_score;
+  const govHealth = status?.governance?.health_score;
+  const currentPhase = status?.system?.current_phase;
+  const completedTasks = status?.system?.completed_tasks;
+  const activeTasks = status?.system?.active_tasks;
+  const blockedTasks = status?.system?.blocked_tasks;
   const normalizedGovernanceQuery = governanceQuery.trim().toLowerCase();
   const filteredCards = cards.filter((card) => {
     const matchesQuery = !normalizedGovernanceQuery || [card.id, card.type, card.status, card.title, card.priority, card.domain]
@@ -754,6 +770,14 @@ export default function C2GStrategyView({
         </button>
       </div>
 
+      {(error || statusError) && (
+        <div className="error-banner" role="alert">
+          <AlertTriangle size={16} />
+          <span>{error || statusError}，治理评分与任务统计不会使用默认值。</span>
+          <button type="button" className="antd-btn small" onClick={handleRefresh}>重试</button>
+        </div>
+      )}
+
       {/* 战略核心指标与 SSOT 守门人状态 */}
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
         
@@ -763,7 +787,7 @@ export default function C2GStrategyView({
             <div className="stat-info">
               <h3>当前战役波次</h3>
               <p className="stat-value" style={{ fontSize: '20px', fontWeight: 700, margin: '8px 0', color: 'var(--antd-primary)' }}>
-                {currentPhase}
+                {currentPhase || 'N/A'}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--antd-success)' }}>
                 <Flag size={12} />
@@ -782,11 +806,11 @@ export default function C2GStrategyView({
             <div className="stat-info">
               <h3>系统治理健康分</h3>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', margin: '4px 0' }}>
-                <span className="stat-value" style={{ color: 'var(--antd-success)' }}>{govHealth}</span>
+                <span className="stat-value" style={{ color: 'var(--antd-success)' }}>{govHealth ?? 'N/A'}</span>
                 <span className="text-muted" style={{ fontSize: '12px' }}>/ 100</span>
               </div>
               <p className="text-muted" style={{ fontSize: '11px', margin: 0 }}>
-                系统稳定度: {sysHealth}% (正常运转)
+                {sysHealth === undefined ? '系统稳定度：N/A' : `系统稳定度: ${sysHealth}% (正常运转)`}
               </p>
             </div>
             <div style={{ padding: '6px', background: 'rgba(5, 243, 162, 0.08)', borderRadius: '6px' }}>
@@ -1209,13 +1233,13 @@ export default function C2GStrategyView({
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                   <span className="text-muted">已消除技术债务与任务</span>
                   <span style={{ fontWeight: 600, color: 'var(--antd-success)' }}>
-                    {status?.system?.completed_tasks ?? 0}
+                    {completedTasks ?? 'N/A'}
                   </span>
                 </div>
                 <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
-                    width: `${Math.min(100, ((status?.system?.completed_tasks ?? 10) / ((status?.system?.completed_tasks ?? 10) + (status?.system?.active_tasks ?? 2))) * 100)}%`,
+                    width: `${completedTasks === undefined || activeTasks === undefined ? 0 : Math.min(100, (completedTasks / Math.max(completedTasks + activeTasks, 1)) * 100)}%`,
                     backgroundColor: 'var(--antd-success)'
                   }}></div>
                 </div>
@@ -1225,13 +1249,13 @@ export default function C2GStrategyView({
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                   <span className="text-muted">活跃治理任务</span>
                   <span style={{ fontWeight: 600, color: 'var(--antd-primary)' }}>
-                    {status?.system?.active_tasks ?? 0}
+                    {activeTasks ?? 'N/A'}
                   </span>
                 </div>
                 <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
-                    width: `${Math.min(100, ((status?.system?.active_tasks ?? 2) / 10) * 100)}%`,
+                    width: `${activeTasks === undefined ? 0 : Math.min(100, (activeTasks / 10) * 100)}%`,
                     backgroundColor: 'var(--antd-primary)'
                   }}></div>
                 </div>
@@ -1241,13 +1265,13 @@ export default function C2GStrategyView({
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                   <span className="text-muted">被阻塞任务</span>
                   <span style={{ fontWeight: 600, color: 'var(--antd-error)' }}>
-                    {status?.system?.blocked_tasks ?? 0}
+                    {blockedTasks ?? 'N/A'}
                   </span>
                 </div>
                 <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
-                    width: `${Math.min(100, ((status?.system?.blocked_tasks ?? 0) / 10) * 100)}%`,
+                    width: `${blockedTasks === undefined ? 0 : Math.min(100, (blockedTasks / 10) * 100)}%`,
                     backgroundColor: 'var(--antd-error)'
                   }}></div>
                 </div>

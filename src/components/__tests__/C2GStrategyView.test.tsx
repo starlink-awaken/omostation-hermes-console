@@ -113,6 +113,31 @@ describe('C2GStrategyView', () => {
     expect(fetch).toHaveBeenCalledWith('/api/wave2/proposals/plan')
   })
 
+  it('does not invent governance health or task counts when OMO status is unavailable', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/omos/status') return Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'OMO status unavailable' }) } as Response)
+      if (url === '/api/cards') return Promise.resolve(okJson([]))
+      if (url === '/api/cards/check') return Promise.resolve(okJson({ compliant: true, violations: [] }))
+      if (url === '/api/v1/proposals') return Promise.resolve(okJson({ status: 'ok', proposals: [] }))
+      if (url === '/api/omos/violations') return Promise.resolve(okJson({ status: 'ok', violations: [] }))
+      if (url === '/api/wave2/dashboard') return Promise.resolve(okJson({ status: 'ok', cards: {}, backtest: {}, forecast: {}, proposals: [] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<C2GStrategyView />)
+
+    const healthCard = await screen.findByText('系统治理健康分')
+    const card = healthCard.closest('.stat-card') as HTMLElement
+    expect(within(card).getByText('N/A')).toBeInTheDocument()
+    expect(within(card).queryByText('95')).not.toBeInTheDocument()
+    expect(within(card).queryByText('98')).not.toBeInTheDocument()
+
+    const taskPanel = screen.getByText('治理效能与任务状态').closest('.services-section') as HTMLElement
+    expect(within(taskPanel).getAllByText('N/A')).toHaveLength(3)
+    expect(screen.getByRole('alert')).toHaveTextContent('OMO 状态 HTTP 503')
+  })
+
   it('filters cards, proposals, and direct-io violations from one governance query', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
