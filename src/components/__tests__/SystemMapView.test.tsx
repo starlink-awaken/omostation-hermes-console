@@ -1221,6 +1221,18 @@ describe('SystemMapView', () => {
     expect(fetch).toHaveBeenCalledWith(SYSTEM_MAP_DRAFT_TASKS_URL)
   })
 
+  it('promotes a visible usage-path draft without leaving the system map', async () => {
+    render(<SystemMapView onNavigate={vi.fn()} />)
+
+    const promoteButton = await screen.findByRole('button', { name: '承接为正式计划任务 操作清单：每日体检' })
+    fireEvent.click(promoteButton)
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/drafts/playbook-daily-health-check/promote', { method: 'POST' })
+    })
+    expect(fetch).toHaveBeenCalledWith('/api/cockpit/system-map')
+  })
+
   it('surfaces executable projects, triage commands, and drafts for a focused governance path', async () => {
     render(<SystemMapView onNavigate={vi.fn()} focusUsagePathId="governance-loop" />)
 

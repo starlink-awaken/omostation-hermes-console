@@ -1631,6 +1631,24 @@ export default function SystemMapView({
     }
   };
 
+  const promoteDraftTask = async (task: DraftTask) => {
+    if (!task.read_only || !task.source?.type || pendingActionKey || bulkTriagePending) return;
+    setPendingActionKey(`draft:${task.id}`);
+    setActionNotice('');
+    setActionError('');
+    try {
+      const response = await fetch(`/api/tasks/drafts/${encodeURIComponent(task.id)}/promote`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '任务草稿承接失败');
+      setActionNotice(`已承接为正式计划任务：${payload.title || task.title}`);
+      await load();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : '任务草稿承接失败');
+    } finally {
+      setPendingActionKey(null);
+    }
+  };
+
   const queueProjectTriageCommand = async (command: ProjectAction) => {
     const projectId = command.project_id;
     if (!projectId) return;
@@ -3375,6 +3393,19 @@ export default function SystemMapView({
                         <div className="system-map-usage-draft-foot">
                           <span className={`status-badge ${statusClass(task.priority || 'medium')}`}>{task.priority || 'medium'}</span>
                           <small>{task.draft?.step_count ? `${task.draft.step_count} 步` : '只读草稿'}</small>
+                          {task.read_only && task.source?.type && (
+                            <button
+                              type="button"
+                              className="antd-btn small"
+                              aria-label={`承接为正式计划任务 ${task.title}`}
+                              title="承接为正式计划任务"
+                              disabled={pendingActionKey === `draft:${task.id}` || Boolean(pendingActionKey) || bulkTriagePending}
+                              onClick={() => void promoteDraftTask(task)}
+                            >
+                              <ClipboardCheck size={12} />
+                              <span>{pendingActionKey === `draft:${task.id}` ? '承接中' : '承接任务'}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))
