@@ -1701,7 +1701,7 @@ export default function SystemMapView({
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || response.statusText || '批量验证执行失败');
       const summary = payload.summary || {};
-      setActionNotice(`批量验证完成：通过 ${summary.succeeded || 0} 条，失败 ${summary.failed || 0} 条，候选 ${summary.candidates || 0} 条。`);
+      setActionNotice(`批量验证完成：通过并归档 ${summary.succeeded || 0} 条，失败 ${summary.failed || 0} 条，候选 ${summary.candidates || 0} 条。`);
       await load();
       if (onOpenTarget && (summary.selected || 0) > 0) {
         onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
@@ -4571,7 +4571,7 @@ export default function SystemMapView({
               aria-label="执行待补验证"
               disabled={bulkTriagePending || (systemMap.project_triage.queues.find((queue) => queue.id === 'verification')?.queued || 0) === 0}
               onClick={() => void executeVerificationTriage()}
-              title="顺序执行最多 8 条已承接且尚未通过的低风险验证，并写入执行证据"
+              title="顺序执行最多 8 条已承接且尚未通过的低风险验证；成功后自动归档执行证据，失败保留重试"
             >
               <Send size={13} />
               <span>{bulkTriagePending ? '正在执行' : '执行待补验证'}</span>
