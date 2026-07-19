@@ -109,6 +109,34 @@ describe('InfrastructureOpsWorkbench', () => {
     })
   })
 
+  it('registers the current infrastructure diagnosis as a TaskCenter task', async () => {
+    const onOpenTarget = vi.fn()
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/governance/compute/status') return Promise.resolve({ ok: true, json: async () => computePayload } as Response)
+      if (url === '/api/bos/health') return Promise.resolve({ ok: true, json: async () => bosHealthPayload } as Response)
+      if (url === '/api/bos/services') return Promise.resolve({ ok: true, json: async () => bosServicesPayload } as Response)
+      if (url === '/api/services/status') return Promise.resolve({ ok: true, json: async () => runtimePayload } as Response)
+      if (url === '/api/tasks') {
+        expect(init?.method).toBe('POST')
+        const body = JSON.parse(String(init?.body))
+        expect(body.title).toBe('排查基础设施节点：MacMini (Ollama)')
+        expect(body.tags).toEqual(['infrastructure', 'runtime-governance'])
+        return Promise.resolve({ ok: true, json: async () => ({ id: 'infra-task-1', title: body.title }) } as Response)
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) } as Response)
+    })
+
+    render(<InfrastructureOpsWorkbench currentPage="Compute" onOpenTarget={onOpenTarget} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '登记基础设施任务 排查基础设施节点：MacMini (Ollama)' }))
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'infra-task-1' })
+      expect(screen.getByRole('status')).toHaveTextContent('已登记基础设施任务：排查基础设施节点：MacMini (Ollama)')
+    })
+  })
+
   it('does not present an all-source outage as a healthy zero state', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('infrastructure backend offline'))
 
