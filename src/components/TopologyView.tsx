@@ -16,7 +16,14 @@ import ActionSurfacePanel from './ActionSurfacePanel';
 import InfrastructureOpsWorkbench from './InfrastructureOpsWorkbench';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
-const ServiceNode = memo(({ data }: any) => {
+type ServiceNodeData = {
+  name: string;
+  status: 'online' | 'offline' | 'degraded';
+  latency?: string;
+  uptime?: string | number;
+};
+
+const ServiceNode = memo(({ data }: { data: ServiceNodeData }) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'online': return <CheckCircle size={12} style={{ color: 'var(--antd-success)' }} />;
@@ -94,13 +101,31 @@ type TopologyClosureRow = {
   taskTarget: CockpitNavigationTarget;
 };
 
+type TopologyService = {
+  id?: string;
+  name?: string;
+  status?: string;
+  health?: string;
+  circuit?: string;
+  port_listening?: boolean;
+  latency?: string;
+  uptime?: string | number;
+  dependencies?: unknown;
+  depends_on?: unknown;
+  upstream?: unknown;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 function matchesTopologyFocusQuery(values: Array<string | null | undefined>, query?: string) {
   const normalizedQuery = query?.trim().toLowerCase();
   if (!normalizedQuery) return false;
   return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
 }
 
-function serviceStatus(service: any): 'online' | 'offline' | 'degraded' {
+function serviceStatus(service: TopologyService): 'online' | 'offline' | 'degraded' {
   if (service.circuit === '断路' || service.status === 'offline' || service.status === 'stopped') return 'offline';
   if (service.circuit === '半开' || service.status === 'degraded' || service.status === 'warning') return 'degraded';
   if (service.health === 'unreachable' || service.health === 'unhealthy' || service.health === 'error') return 'offline';
@@ -109,25 +134,30 @@ function serviceStatus(service: any): 'online' | 'offline' | 'degraded' {
   return 'online';
 }
 
-function serviceLatency(service: any): string | undefined {
-  if (service.latency) return service.latency;
+function serviceLatency(service: TopologyService): string | undefined {
+  if (service.latency) return String(service.latency);
   if (service.health && service.health !== 'healthy') return service.health;
   return undefined;
 }
 
-function dependencyNames(service: any): string[] {
+function dependencyNames(service: TopologyService): string[] {
   const candidates = [service.dependencies, service.depends_on, service.upstream];
   return candidates.flatMap((value) => {
     if (!Array.isArray(value)) return [];
     return value.map((item) => {
       if (typeof item === 'string') return item;
-      if (item && typeof item === 'object') return item.name || item.id || item.service || item.target;
+      if (isRecord(item)) {
+        const name = item.name || item.id || item.service || item.target;
+        return typeof name === 'string' ? name : null;
+      }
       return null;
     }).filter(Boolean) as string[];
   });
 }
 
-export function buildTopology(rawServices: any[]): { nodes: Node[]; edges: Edge[] } {
+// 拓扑构图函数被组件测试和运行时复用，保留在此文件作为稳定的纯函数边界。
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildTopology(rawServices: TopologyService[]): { nodes: Node[]; edges: Edge[] } {
   const nodeKeys = new Map<string, string>();
   rawServices.forEach((service) => {
     const key = String(service.id || service.name || '');
@@ -180,7 +210,7 @@ export default function TopologyView({
   focusPageId,
   focusTaskQuery,
 }: TopologyViewProps) {
-  const [services, setServices] = useState<any[]>([]);
+  const [services, setServices] = useState<TopologyService[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [loading, setLoading] = useState(true);
@@ -194,6 +224,8 @@ export default function TopologyView({
 
   useEffect(() => {
     if (focusTaskQuery && services.some((service) => matchesTopologyFocusQuery([service.id, service.name, service.status], focusTaskQuery))) {
+      // 外部导航查询需要同步到拓扑筛选条件。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTopologyQuery(focusTaskQuery);
     }
   }, [focusTaskQuery, services]);
@@ -203,8 +235,12 @@ export default function TopologyView({
       try {
         const response = await fetch('/api/services');
         if (!response.ok) throw new Error('服务拓扑数据不可用');
-        const payload = await response.json();
-        const rawServices = Array.isArray(payload) ? payload : (Array.isArray(payload.items) ? payload.items : []);
+        const payload: unknown = await response.json();
+        const rawServices: TopologyService[] = Array.isArray(payload)
+          ? payload.filter(isRecord) as TopologyService[]
+          : isRecord(payload) && Array.isArray(payload.items)
+            ? payload.items.filter(isRecord) as TopologyService[]
+            : [];
         if (rawServices.length === 0) {
           setServices([]);
           setNodes([]);
