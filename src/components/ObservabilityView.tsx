@@ -43,14 +43,35 @@ type ObservabilityClosureRow = {
   taskTarget: CockpitNavigationTarget;
 };
 
+type ObservabilityDomain = {
+  domain: string;
+  total?: number;
+  success?: number;
+  error?: number;
+  avg_latency?: number;
+};
+
+type ObservabilityBosData = {
+  status?: string;
+  data_quality?: string;
+  domains?: ObservabilityDomain[];
+  summary?: { total_calls?: number };
+};
+
+type ObservabilityArchData = {
+  governance?: { health?: string };
+  git?: { status?: string };
+  system?: { health_score?: number };
+};
+
 export default function ObservabilityView({
   onNavigate,
   onOpenTarget,
   focusPageId,
   focusTaskQuery,
 }: ObservabilityViewProps) {
-  const [archData, setArchData] = useState<any>(null);
-  const [bosData, setBosData] = useState<any>(null);
+  const [archData, setArchData] = useState<ObservabilityArchData | null>(null);
+  const [bosData, setBosData] = useState<ObservabilityBosData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
@@ -62,7 +83,9 @@ export default function ObservabilityView({
 
   useEffect(() => {
     const domains = Array.isArray(bosData?.domains) ? bosData.domains : [];
-    if (focusTaskQuery && domains.some((domain: any) => matchesObservabilityFocusQuery([domain.domain, String(domain.error ?? ''), String(domain.avg_latency ?? '')], focusTaskQuery))) {
+    if (focusTaskQuery && domains.some((domain) => matchesObservabilityFocusQuery([domain.domain, String(domain.error ?? ''), String(domain.avg_latency ?? '')], focusTaskQuery))) {
+      // 外部导航查询命中观测域时同步当前筛选条件。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDomainQuery(focusTaskQuery);
     }
   }, [bosData?.domains, focusTaskQuery]);
@@ -76,8 +99,8 @@ export default function ObservabilityView({
           fetch('/api/bos/metrics'),
         ]);
         const [{ ok: archOk, data: arch, error: archError }, { ok: bosResponseOk, data: bos, error: bosError }] = await Promise.all([
-          readObservabilityResponse<any>(archResult, '架构健康数据'),
-          readObservabilityResponse<any>(bosResult, 'BOS 指标数据'),
+          readObservabilityResponse<ObservabilityArchData>(archResult, '架构健康数据'),
+          readObservabilityResponse<ObservabilityBosData>(bosResult, 'BOS 指标数据'),
         ]);
         const bosUnavailable = bosResponseOk && (bos?.data_quality === 'unavailable' || bos?.status === 'unavailable');
         if (archOk && arch) setArchData(arch);
@@ -97,7 +120,7 @@ export default function ObservabilityView({
   const filteredDomains = useMemo(() => {
     const domains = Array.isArray(bosData?.domains) ? bosData.domains : [];
     const normalizedQuery = domainQuery.trim().toLowerCase();
-    return domains.filter((domain: any) => {
+    return domains.filter((domain) => {
       const matchesQuery = !normalizedQuery || String(domain.domain || '').toLowerCase().includes(normalizedQuery);
       const degraded = (domain.error || 0) > 0 || (domain.avg_latency || 0) >= 700;
       const matchesStatus = domainStatus === 'all' || (domainStatus === 'degraded' ? degraded : !degraded);
@@ -106,7 +129,7 @@ export default function ObservabilityView({
   }, [bosData, domainQuery, domainStatus]);
 
   const observabilityBacklog = useMemo(() => {
-    const degradedDomains = filteredDomains.filter((domain: any) => (domain.error || 0) > 0 || (domain.avg_latency || 0) >= 700);
+    const degradedDomains = filteredDomains.filter((domain) => (domain.error || 0) > 0 || (domain.avg_latency || 0) >= 700);
     const hottestDomains = (degradedDomains.length ? degradedDomains : filteredDomains).slice(0, 3);
     const governanceHealth = archData?.governance?.health || 'unknown';
     const gitDirty = archData?.git?.status && archData.git.status !== 'clean';
@@ -171,7 +194,7 @@ export default function ObservabilityView({
 
   const focusedObservabilityCard = useMemo(() => {
     const domains = Array.isArray(bosData?.domains) ? bosData.domains : [];
-    const matchedDomain = domains.find((domain: any) => (
+    const matchedDomain = domains.find((domain) => (
       matchesObservabilityFocusQuery([
         domain.domain,
         String(domain.error ?? ''),
@@ -549,7 +572,7 @@ export default function ObservabilityView({
               <p className="text-muted" style={{ margin: 0 }}>当前没有明显异常域。</p>
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
-                {observabilityBacklog.degradedDomains.map((domain: any) => (
+                {observabilityBacklog.degradedDomains.map((domain) => (
                   <button
                     key={`domain-${domain.domain}`}
                     type="button"
@@ -704,7 +727,7 @@ export default function ObservabilityView({
                 </tr>
               </thead>
               <tbody>
-                {filteredDomains.map((domain: any) => (
+                {filteredDomains.map((domain) => (
                   <tr key={domain.domain} className="service-row">
                     <td style={{ fontFamily: 'monospace', fontWeight: 500 }}>{domain.domain}</td>
                     <td>{domain.total}</td>
