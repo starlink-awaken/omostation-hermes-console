@@ -12,8 +12,14 @@ describe('GovernanceDomainWorkbench', () => {
   it('renders governance-domain execution chain and navigates to the recommended page', async () => {
     const onNavigate = vi.fn()
 
-    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
+      if (url === '/api/tasks' && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body))
+        expect(body.title).toBe('收敛阻塞项目：kairon')
+        expect(body.tags).toEqual(['governance', 'domain-closure'])
+        return Promise.resolve(okJson({ id: 'governance-task-1', title: body.title }))
+      }
       if (url === '/api/cockpit/system-map') {
         return Promise.resolve(okJson({
           project_portfolio: {
@@ -110,11 +116,17 @@ describe('GovernanceDomainWorkbench', () => {
       expect(screen.getByText('家庭驾驶舱')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText(/项目组合里还有 3 个阻塞项/))
+    fireEvent.click(screen.getByRole('button', { name: /项目组合里还有 3 个阻塞项/ }))
     expect(onNavigate).toHaveBeenCalledWith('C2G')
 
     fireEvent.click(screen.getByRole('button', { name: /去领域应用/ }))
     expect(onNavigate).toHaveBeenCalledWith('DomainApps')
+
+    fireEvent.click(screen.getByRole('button', { name: '登记治理任务 收敛阻塞项目：kairon' }))
+    await waitFor(() => {
+      expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+      expect(screen.getByRole('status')).toHaveTextContent('已登记治理任务：收敛阻塞项目：kairon')
+    })
   })
 
   it('shows empty-state guidance when governance data is sparse', async () => {

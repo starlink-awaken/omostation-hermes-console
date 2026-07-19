@@ -190,6 +190,9 @@ export default function GovernanceDomainWorkbench({
     l4Health: false,
   });
   const [refreshToken, setRefreshToken] = useState(0);
+  const [taskPending, setTaskPending] = useState(false);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -298,6 +301,48 @@ export default function GovernanceDomainWorkbench({
           ? { tab: 'L4Health', taskQuery: summary.topUnhealthyDomain?.id || 'L4Health' }
           : { tab: 'SystemMap', taskQuery: governanceContextQuery };
 
+  const governanceTaskTitle = summary.systemMapUnavailable || summary.debtUnavailable || summary.l4HealthUnavailable
+    ? '恢复治理数据证据'
+    : summary.blockedProjects > 0
+      ? `收敛阻塞项目：${summary.topProject?.id || governanceContextQuery}`
+      : summary.openDebt > 0
+        ? `清理治理债务：${summary.topDebt?.title || governanceContextQuery}`
+        : summary.securityAttention > 0
+          ? `补齐领域安全：${summary.topAttentionApp?.name || governanceContextQuery}`
+          : summary.unhealthyDomains > 0
+            ? `修复不健康域：${summary.topUnhealthyDomain?.name || governanceContextQuery}`
+            : '抽查治理闭环';
+  const governanceTaskDescription = summary.systemMapUnavailable || summary.debtUnavailable || summary.l4HealthUnavailable
+    ? `${summary.nextAction} 请恢复治理数据源，并完成系统地图、债务、领域应用和 L4 健康证据核验。`
+    : `${summary.nextAction} 当前上下文：${governanceContextQuery}。请补齐对象证据、处理结果和 TaskCenter closeout。`;
+  const createGovernanceTask = async () => {
+    setTaskPending(true);
+    setTaskNotice(null);
+    setTaskError(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: governanceTaskTitle,
+          description: governanceTaskDescription,
+          priority: summary.blockedProjects > 0 || summary.openDebt > 0 || summary.securityAttention > 0 || summary.unhealthyDomains > 0 ? 'high' : 'medium',
+          risk_level: summary.systemMapUnavailable || summary.debtUnavailable || summary.l4HealthUnavailable ? 'L2' : 'L1',
+          evidence_required: ['治理对象状态快照', '处理前后证据', '跨域影响确认', 'task closeout'],
+          tags: ['governance', 'domain-closure'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '治理任务登记失败');
+      setTaskNotice(`已登记治理任务：${payload.title || governanceTaskTitle}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+    } catch (requestError) {
+      setTaskError(requestError instanceof Error ? requestError.message : '治理任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
+
   const title =
     currentPage === 'C2G'
       ? '治理决策工作台'
@@ -362,6 +407,40 @@ export default function GovernanceDomainWorkbench({
           <small>点击进入 {summary.nextTab}</small>
         </button>
       </div>
+
+      <section className="services-section" role="region" aria-label="治理任务登记" style={{ marginTop: 16 }}>
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>治理任务登记</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把项目阻塞、技术债、领域安全和域健康异常直接沉到任务中心，保留跨域证据和收口路径。
+            </p>
+          </div>
+          <span className={`status-badge ${summary.blockedProjects || summary.openDebt || summary.securityAttention || summary.unhealthyDomains ? 'degraded' : 'online'}`}>
+            {summary.blockedProjects || summary.openDebt || summary.securityAttention || summary.unhealthyDomains ? '发现治理事项' : '抽查承接'}
+          </span>
+        </div>
+        <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <strong>{governanceTaskTitle}</strong>
+            <p>{governanceTaskDescription}</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="antd-btn"
+              disabled={taskPending}
+              aria-label={`登记治理任务 ${governanceTaskTitle}`}
+              onClick={() => { void createGovernanceTask(); }}
+            >
+              <ClipboardCheck size={14} />
+              <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
+            </button>
+            {taskNotice && <span role="status" aria-live="polite" className="text-muted">{taskNotice}</span>}
+            {taskError && <span role="alert">{taskError}</span>}
+          </div>
+        </article>
+      </section>
 
       <div className="governance-workbench-path">
         {GOVERNANCE_STEPS.map((step, index) => (
