@@ -651,6 +651,20 @@ describe('TaskCenterPage', () => {
     })
   })
 
+  it('selects the task addressed by navigation after task data arrives', async () => {
+    mockTaskCenterFetch(mockTasks)
+
+    render(<TaskCenterPage initialSearchQuery="task-1" />)
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('搜索任务...')).toHaveValue('task-1')
+      const detail = document.querySelector('.task-detail-panel')
+      expect(detail).not.toBeNull()
+      expect(within(detail as HTMLElement).getByText('Deploy gateway')).toBeInTheDocument()
+    })
+    expect(fetch).toHaveBeenCalledWith('/api/tasks/task-1/history')
+  })
+
   it('renders an incoming draft workbench and opens the source back into cockpit context', async () => {
     const onOpenTarget = vi.fn()
     mockTaskCenterFetch(mockTasks)

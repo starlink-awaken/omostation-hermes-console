@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Clock,
   CheckCircle,
@@ -313,6 +313,7 @@ export default function TaskCenterPage({
   const [manualTaskPriority, setManualTaskPriority] = useState<Task['priority']>('medium');
   const [manualTaskRisk, setManualTaskRisk] = useState('L1');
   const [manualTaskEvidence, setManualTaskEvidence] = useState('');
+  const appliedNavigationQueryRef = useRef('');
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -364,6 +365,28 @@ export default function TaskCenterPage({
     setSearchQuery(initialSearchQuery);
     setActiveSourceFilter(isDraftSourceType(initialSearchQuery) ? initialSearchQuery : 'all');
   }, [initialSearchQuery]);
+
+  useEffect(() => {
+    const query = initialSearchQuery.trim().toLowerCase();
+    if (query === appliedNavigationQueryRef.current && selectedTask) return;
+    appliedNavigationQueryRef.current = query;
+    if (!query) {
+      setSelectedTask(null);
+      return;
+    }
+
+    const exactMatch = tasks.find((task) => [
+      task.id,
+      task.title,
+      task.source?.id,
+      task.source?.title,
+    ].some((value) => String(value || '').trim().toLowerCase() === query));
+    const laneMatch = tasks.find((task) => (
+      task.read_only && String(task.source?.type || '').trim().toLowerCase() === query
+    ));
+    const matchedTask = exactMatch || laneMatch || null;
+    if (matchedTask && matchedTask.id !== selectedTask?.id) setSelectedTask(matchedTask);
+  }, [initialSearchQuery, selectedTask, tasks]);
 
   useEffect(() => {
     if (!selectedTask || selectedTask.read_only) {
