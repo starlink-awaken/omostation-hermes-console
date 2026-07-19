@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, AlertTriangle, CheckCircle, ClipboardCheck, Clock, FileText, GitBranch, Play, RefreshCw, XCircle } from 'lucide-react';
 import './Dashboard.css';
 import ActionSurfacePanel from './ActionSurfacePanel';
@@ -79,6 +79,7 @@ export default function WorkflowsView({
   const [workflowTotal, setWorkflowTotal] = useState(0);
   const [hasMoreWorkflows, setHasMoreWorkflows] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const loadedWorkflowCount = useRef(0);
 
   const fetchWorkflows = async (offset = 0, append = false) => {
     if (append) setLoadingMore(true);
@@ -89,9 +90,23 @@ export default function WorkflowsView({
         throw new Error(data.error || '工作流运行数据不可用');
       }
       const nextWorkflows = Array.isArray(data.workflows) ? data.workflows : [];
-      setWorkflows((current) => append ? [...current, ...nextWorkflows] : nextWorkflows);
-      setWorkflowTotal(typeof data.total === 'number' ? data.total : nextWorkflows.length);
-      setHasMoreWorkflows(data.has_more === true);
+      const total = typeof data.total === 'number' ? data.total : nextWorkflows.length;
+      const preserveLoadedHistory = !append && loadedWorkflowCount.current > nextWorkflows.length;
+      setWorkflows((current) => {
+        if (append) {
+          const knownIds = new Set(current.map((workflow) => workflow.id));
+          loadedWorkflowCount.current = current.length + nextWorkflows.filter((workflow) => !knownIds.has(workflow.id)).length;
+          return [...current, ...nextWorkflows.filter((workflow) => !knownIds.has(workflow.id))];
+        }
+        if (preserveLoadedHistory) {
+          const pageIds = new Set(nextWorkflows.map((workflow) => workflow.id));
+          return [...nextWorkflows, ...current.filter((workflow) => !pageIds.has(workflow.id))];
+        }
+        loadedWorkflowCount.current = nextWorkflows.length;
+        return nextWorkflows;
+      });
+      setWorkflowTotal(total);
+      setHasMoreWorkflows(data.has_more === true || preserveLoadedHistory);
       setDataError(null);
     } catch (e) {
       console.error('Failed to load workflows:', e);

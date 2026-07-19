@@ -227,7 +227,7 @@ export default function EcosWorkflowWorkbench({ onNavigate, onOpenTarget }: Ecos
           </article>}
           <article className="antd-card" style={{ padding: 14 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><ClipboardCheck size={15} /><strong>历史运行证据</strong><span className="status-badge online">{logs.length}</span></div>
-            {logs.length === 0 ? <p className="text-muted" style={{ margin: '10px 0 0' }}>暂无 eCOS 运行日志。</p> : <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>{logs.slice(0, 5).map((log, index) => <div key={`${String(log.workflow_id ?? log.name ?? 'run')}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}><span>{String(log.name ?? log.workflow_id ?? '未命名运行')}</span><span className="text-muted">{String(log.status ?? 'unknown')} · {String(log.generated_at ?? '无时间')}</span></div>)}</div>}
+            {logs.length === 0 ? <p className="text-muted" style={{ margin: '10px 0 0' }}>暂无 eCOS 运行日志。</p> : <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>{logs.map((log, index) => <div key={`${String(log.workflow_id ?? log.name ?? 'run')}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}><span>{String(log.name ?? log.workflow_id ?? '未命名运行')}</span><span className="text-muted">{String(log.status ?? 'unknown')} · {String(log.generated_at ?? '无时间')}</span></div>)}</div>}
           </article>
         </div>
       </div>
