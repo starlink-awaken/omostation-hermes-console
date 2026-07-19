@@ -1651,6 +1651,7 @@ export default function SystemMapView({
       if (!response.ok) throw new Error(payload.detail || response.statusText || '验证缺口承接失败');
       const summary = payload.summary || {};
       setActionNotice(`已批量承接验证缺口：${summary.queued || 0} 条，跳过 ${summary.skipped || 0} 条，失败 ${summary.errors || 0} 条。`);
+      await load();
       if (onOpenTarget && (summary.queued || 0) > 0) {
         onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
       }
@@ -1675,6 +1676,7 @@ export default function SystemMapView({
       if (!response.ok) throw new Error(payload.detail || response.statusText || '运行探针承接失败');
       const summary = payload.summary || {};
       setActionNotice(`已批量承接运行探针：${summary.queued || 0} 条，跳过 ${summary.skipped || 0} 条，失败 ${summary.errors || 0} 条。`);
+      await load();
       if (onOpenTarget && (summary.queued || 0) > 0) {
         onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
       }
@@ -1700,6 +1702,7 @@ export default function SystemMapView({
       if (!response.ok) throw new Error(payload.detail || response.statusText || '批量验证执行失败');
       const summary = payload.summary || {};
       setActionNotice(`批量验证完成：通过 ${summary.succeeded || 0} 条，失败 ${summary.failed || 0} 条，候选 ${summary.candidates || 0} 条。`);
+      await load();
       if (onOpenTarget && (summary.selected || 0) > 0) {
         onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
       }
@@ -1725,6 +1728,7 @@ export default function SystemMapView({
       if (!response.ok) throw new Error(payload.detail || response.statusText || '运行探针执行失败');
       const summary = payload.summary || {};
       setActionNotice(`运行探针完成：通过 ${summary.succeeded || 0} 条，失败 ${summary.failed || 0} 条，已批准候选 ${summary.candidates || 0} 条。`);
+      await load();
       if (onOpenTarget && (summary.selected || 0) > 0) {
         onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
       }
@@ -1749,6 +1753,7 @@ export default function SystemMapView({
       if (!response.ok) throw new Error(payload.detail || response.statusText || '全站缺口承接失败');
       const summary = payload.summary || {};
       setActionNotice(`已批量承接全站缺口：${summary.queued || 0} 条，跳过 ${summary.skipped || 0} 条，失败 ${summary.errors || 0} 条。`);
+      await load();
       if (onOpenTarget && (summary.queued || 0) > 0) {
         onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-' });
       }
