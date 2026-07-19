@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 
 interface DataPoint {
-  [key: string]: any;
+  [key: string]: string | number | null | undefined;
 }
 
 interface PieChartProps {
