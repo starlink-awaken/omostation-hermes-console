@@ -45,6 +45,7 @@ import { useCommandPalette, useKeyboardShortcuts } from './common/useCommandPale
 import { useQuickActions } from './common/useQuickActions';
 import {
   clearRecentNavigation,
+  normalizeNavigationTarget,
   parseNavigationHash,
   readRecentNavigation,
   recordRecentNavigation,
@@ -2891,41 +2892,44 @@ export default function Dashboard() {
   ], [activeGroupLabel, contextualUsagePaths, domainDraftCount, firstDomainDraft, shellDomainApps, shellSourceAvailability, shellTaskDrafts, sidebarCoverage, sidebarProjectPortfolio, sidebarUsagePaths.length]);
 
   const setActiveTab = (tab: string) => {
+    const normalizedTarget = normalizeNavigationTarget({ tab });
+    const nextTab = normalizedTarget.tab;
     setFocusedProjectId(null);
     setFocusedUsagePathId(null);
     setFocusedGapId(null);
     setFocusedCoverageDimensionId(null);
-    setFocusedPageId(null);
+    setFocusedPageId(normalizedTarget.pageId || null);
     setFocusedFeatureDomainId(null);
     setTaskSearchSeed('');
     setTaskDraftKey(null);
     setAlertTab(null);
     setMobileNavOpen(false);
-    setActiveTabState(tab);
-    recordRecentNavigation({ tab }, PAGE_REGISTRY_BY_ID.get(tab)?.title || tab);
+    setActiveTabState(nextTab);
+    recordRecentNavigation(normalizedTarget, PAGE_REGISTRY_BY_ID.get(nextTab)?.title || nextTab);
     setRecentNavigation(readRecentNavigation());
-    writeNavigationHash({ tab });
+    writeNavigationHash(normalizedTarget);
   };
 
   const openContextTarget = (target: CockpitNavigationTarget) => {
-    const matchedDraft = findTaskDraftForTarget(target, shellTaskDrafts);
+    const normalizedTarget = normalizeNavigationTarget(target);
+    const matchedDraft = findTaskDraftForTarget(normalizedTarget, shellTaskDrafts);
     const incomingDraft = matchedDraft ? taskDraftToIncomingDraft(matchedDraft) : null;
-    const resolvedDraftKey = target.draftKey || (incomingDraft ? persistTaskCenterDraft(incomingDraft) : null);
-    setFocusedProjectId(target.projectId || null);
-    setFocusedUsagePathId(target.usagePathId || null);
-    setFocusedGapId(target.gapId || null);
-    setFocusedCoverageDimensionId(target.coverageDimensionId || null);
-    setFocusedPageId(target.pageId || null);
-    setFocusedFeatureDomainId(target.featureDomainId || null);
-    setTaskSearchSeed(target.taskQuery || '');
+    const resolvedDraftKey = normalizedTarget.draftKey || (incomingDraft ? persistTaskCenterDraft(incomingDraft) : null);
+    setFocusedProjectId(normalizedTarget.projectId || null);
+    setFocusedUsagePathId(normalizedTarget.usagePathId || null);
+    setFocusedGapId(normalizedTarget.gapId || null);
+    setFocusedCoverageDimensionId(normalizedTarget.coverageDimensionId || null);
+    setFocusedPageId(normalizedTarget.pageId || null);
+    setFocusedFeatureDomainId(normalizedTarget.featureDomainId || null);
+    setTaskSearchSeed(normalizedTarget.taskQuery || '');
     setTaskDraftKey(resolvedDraftKey);
-    setAlertTab(target.alertTab || null);
+    setAlertTab(normalizedTarget.alertTab || null);
     setMobileNavOpen(false);
-    setActiveTabState(target.tab);
-    recordRecentNavigation(target, PAGE_REGISTRY_BY_ID.get(target.tab)?.title || target.tab);
+    setActiveTabState(normalizedTarget.tab);
+    recordRecentNavigation(normalizedTarget, PAGE_REGISTRY_BY_ID.get(normalizedTarget.tab)?.title || normalizedTarget.tab);
     setRecentNavigation(readRecentNavigation());
     writeNavigationHash({
-      ...target,
+      ...normalizedTarget,
       draftKey: resolvedDraftKey || undefined,
     });
   };
