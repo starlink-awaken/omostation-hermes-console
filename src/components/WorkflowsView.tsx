@@ -13,6 +13,15 @@ interface WorkflowRecord {
   updated: string;
 }
 
+interface WorkflowListPayload {
+  status?: string;
+  workflows?: WorkflowRecord[];
+  total?: number;
+  offset?: number;
+  limit?: number;
+  has_more?: boolean;
+}
+
 interface WorkflowDetail {
   workflow_id: string;
   task_description: string;
@@ -67,15 +76,22 @@ export default function WorkflowsView({
   const [dataError, setDataError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [workflowTotal, setWorkflowTotal] = useState(0);
+  const [hasMoreWorkflows, setHasMoreWorkflows] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchWorkflows = async () => {
+  const fetchWorkflows = async (offset = 0, append = false) => {
+    if (append) setLoadingMore(true);
     try {
-      const res = await fetch('/api/metaos/workflows');
+      const res = await fetch(`/api/metaos/workflows?limit=20&offset=${offset}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.status !== 'ok') {
         throw new Error(data.error || '工作流运行数据不可用');
       }
-      setWorkflows(Array.isArray(data.workflows) ? data.workflows : []);
+      const nextWorkflows = Array.isArray(data.workflows) ? data.workflows : [];
+      setWorkflows((current) => append ? [...current, ...nextWorkflows] : nextWorkflows);
+      setWorkflowTotal(typeof data.total === 'number' ? data.total : nextWorkflows.length);
+      setHasMoreWorkflows(data.has_more === true);
       setDataError(null);
     } catch (e) {
       console.error('Failed to load workflows:', e);
@@ -83,6 +99,7 @@ export default function WorkflowsView({
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
@@ -413,7 +430,7 @@ export default function WorkflowsView({
       <ActionSurfacePanel
         title="工作流处理区"
         subtitle="先处理待授权，再回资产与协议面补证据，最后把异常承接进任务中心。"
-        statusText={filteredWorkflows.length ? `${filteredWorkflows.length}/${workflows.length} 条工作流记录` : workflows.length ? '当前筛选无工作流记录' : '等待工作流记录'}
+        statusText={filteredWorkflows.length ? `${filteredWorkflows.length}/${workflowTotal} 条工作流记录` : workflowTotal ? '当前筛选无工作流记录' : '等待工作流记录'}
         items={actionItems}
         onNavigate={onNavigate}
         onOpenTarget={onOpenTarget}
@@ -739,6 +756,17 @@ export default function WorkflowsView({
                 </div>
               ))}
             </div>
+          )}
+          {hasMoreWorkflows && (
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label="加载更多工作流历史"
+              onClick={() => void fetchWorkflows(workflows.length, true)}
+              disabled={loadingMore}
+            >
+              {loadingMore ? '正在加载...' : `加载更多（已显示 ${workflows.length}/${workflowTotal}）`}
+            </button>
           )}
         </div>
 

@@ -13,7 +13,7 @@ describe('WorkflowsView', () => {
     vi.mocked(fetch).mockReset()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
-      if (url === '/api/metaos/workflows') {
+      if (url.startsWith('/api/metaos/workflows?')) {
         return Promise.resolve(okJson({
           status: 'ok',
           workflows: [{
@@ -113,7 +113,7 @@ describe('WorkflowsView', () => {
       },
     ]
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
-      if (String(input) === '/api/metaos/workflows') return Promise.resolve(okJson({ status: 'ok', workflows: records }))
+      if (String(input).startsWith('/api/metaos/workflows?')) return Promise.resolve(okJson({ status: 'ok', workflows: records, total: records.length, has_more: false }))
       return Promise.resolve(okJson({}))
     })
 
@@ -206,7 +206,7 @@ describe('WorkflowsView', () => {
     let detailAttempts = 0
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
-      if (url === '/api/metaos/workflows') {
+      if (url.startsWith('/api/metaos/workflows?')) {
         return Promise.resolve(okJson({
           status: 'ok',
           workflows: [{
