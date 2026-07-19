@@ -1190,3 +1190,32 @@ describe('Dashboard global search', () => {
     fireEvent.click(screen.getByRole('button', { name: '重试全站数据源' }))
     await waitFor(() => expect(screen.getByTestId('dashboard-page-view')).toHaveAttribute('data-refresh-token', '1'))
   })
+
+  it('indexes governance objects in the global entry', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson({}))
+      if (url === '/api/debt') {
+        return Promise.resolve(okJson({ items: [{ id: 'debt-runtime', title: '运行探针债务', severity: 'high', lifecycle_state: 'open', dimension: 'runtime' }] }))
+      }
+      if (url === '/api/l4/health') {
+        return Promise.resolve(okJson({ domains: [{ id: 'family', name: '家庭域', issue_count: 2, signal_count: 1, capabilities: ['任务'] }] }))
+      }
+      if (url === '/api/v1/proposals') {
+        return Promise.resolve(okJson({ status: 'ok', proposals: [{ id: 'proposal-runtime', type: 'governance', status: 'pending', description: '补运行探针' }] }))
+      }
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<Dashboard />)
+    const search = await screen.findByLabelText('全局搜索输入框')
+
+    fireEvent.change(search, { target: { value: '运行探针债务' } })
+    await waitFor(() => expect(screen.getByText('技术债务：运行探针债务')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: '家庭域' } })
+    await waitFor(() => expect(screen.getByText('L4 域：家庭域')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: 'proposal-runtime' } })
+    await waitFor(() => expect(screen.getByText('C2G 提案：proposal-runtime')).toBeInTheDocument())
+  })

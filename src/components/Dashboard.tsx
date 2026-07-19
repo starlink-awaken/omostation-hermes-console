@@ -3053,7 +3053,7 @@ export default function Dashboard() {
   useEffect(() => {
     const buildDynamicSearch = async () => {
       try {
-        const [systemMapRes, tasksRes, domainAppsRes, alertsRes, meshServicesRes, computeStatusRes, logsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes] = await Promise.all([
+        const [systemMapRes, tasksRes, domainAppsRes, alertsRes, meshServicesRes, computeStatusRes, logsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes, debtRes, l4HealthRes, proposalsRes] = await Promise.all([
           fetchSearchData('/api/cockpit/system-map'),
           fetchSearchData('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80'),
           fetchSearchData('/api/domain-apps'),
@@ -3066,6 +3066,9 @@ export default function Dashboard() {
           fetchSearchData('/api/ecos/skills'),
           fetchSearchData('/api/pipelines'),
           fetchSearchData('/api/ecos/workflows'),
+          fetchSearchData('/api/debt'),
+          fetchSearchData('/api/l4/health'),
+          fetchSearchData('/api/v1/proposals'),
         ]);
         setShellSourceAvailability({
           systemMap: systemMapRes.ok,
@@ -3086,6 +3089,9 @@ export default function Dashboard() {
           ['技能资产', skillsRes],
           ['工具管线', pipelinesRes],
           ['资产工作流', ecosWorkflowsRes],
+          ['技术债务', debtRes],
+          ['L4 域健康', l4HealthRes],
+          ['C2G 提案', proposalsRes],
         ] as const;
         setShellDataWarnings(
           sourceFailures
@@ -3758,6 +3764,110 @@ export default function Dashboard() {
                 'workflow',
                 '技术资产',
                 '工作流',
+              ],
+            });
+          });
+        }
+
+        if (debtRes.ok) {
+          const debtPayload = (debtRes.data || {}) as {
+            items?: Array<{
+              id?: string;
+              title?: string;
+              severity?: string;
+              lifecycle_state?: string;
+              owner?: string;
+              dimension?: string;
+            }>;
+          };
+          (debtPayload.items || []).forEach((item) => {
+            if (!item.id) return;
+            targets.push({
+              id: `debt-${item.id}`,
+              tab: 'Debt',
+              label: `技术债务：${item.title || item.id}`,
+              group: `技术债务 · ${item.severity || item.lifecycle_state || 'unknown'}`,
+              context: { taskQuery: item.id },
+              keywords: [
+                item.id,
+                item.title || '',
+                item.severity || '',
+                item.lifecycle_state || '',
+                item.owner || '',
+                item.dimension || '',
+                'debt',
+                '技术债务',
+                '治理风险',
+              ],
+            });
+          });
+        }
+
+        if (l4HealthRes.ok) {
+          const l4Payload = (l4HealthRes.data || {}) as {
+            domains?: Array<{
+              id?: string;
+              name?: string;
+              issue_count?: number;
+              signal_count?: number;
+              capabilities?: string[];
+              fresh?: boolean;
+            }>;
+          };
+          (l4Payload.domains || []).forEach((domain) => {
+            if (!domain.id) return;
+            targets.push({
+              id: `l4-domain-${domain.id}`,
+              tab: 'L4Health',
+              label: `L4 域：${domain.name || domain.id}`,
+              group: `L4 域健康 · ${domain.issue_count || domain.signal_count ? '需关注' : '正常'}`,
+              context: { taskQuery: domain.id },
+              keywords: [
+                domain.id,
+                domain.name || '',
+                String(domain.issue_count ?? ''),
+                String(domain.signal_count ?? ''),
+                ...(domain.capabilities || []),
+                domain.fresh === false ? 'stale' : 'fresh',
+                'L4',
+                '域健康',
+                '风险',
+              ],
+            });
+          });
+        }
+
+        if (proposalsRes.ok) {
+          const proposalsPayload = (proposalsRes.data || {}) as {
+            proposals?: Array<{
+              id?: string;
+              type?: string;
+              status?: string;
+              debt_id?: string;
+              target_model?: string;
+              scope?: string;
+              description?: string;
+            }>;
+          };
+          (proposalsPayload.proposals || []).forEach((proposal) => {
+            if (!proposal.id) return;
+            targets.push({
+              id: `c2g-proposal-${proposal.id}`,
+              tab: 'C2G',
+              label: `C2G 提案：${proposal.id}`,
+              group: `C2G 提案 · ${proposal.status || 'unknown'}`,
+              context: { taskQuery: proposal.id },
+              keywords: [
+                proposal.id,
+                proposal.type || '',
+                proposal.status || '',
+                proposal.debt_id || '',
+                proposal.target_model || '',
+                proposal.scope || '',
+                proposal.description || '',
+                'C2G',
+                '提案',
+                '治理决策',
               ],
             });
           });

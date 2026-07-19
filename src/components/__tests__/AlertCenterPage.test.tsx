@@ -344,7 +344,9 @@ describe('AlertCenterPage', () => {
 
     const stats = await screen.findByRole('region', { name: '告警统计' })
     expect(within(stats).getAllByText('N/A')).toHaveLength(4)
-    expect(screen.getAllByText('告警数据不可用')).toHaveLength(2)
+    expect(screen.getByRole('heading', { name: '告警数据不可用' })).toBeInTheDocument()
+    const actionRegion = screen.getByRole('heading', { name: '告警动作区' }).closest('section') as HTMLElement
+    expect(within(actionRegion).getByText('告警数据不可用')).toBeInTheDocument()
     expect(screen.queryByText('暂无活跃告警')).not.toBeInTheDocument()
   })
 })
