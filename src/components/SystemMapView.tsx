@@ -2833,9 +2833,13 @@ export default function SystemMapView({
 
   if (error || !systemMap) {
     return (
-      <div className="system-map-error">
+      <div className="system-map-error" role="alert">
         <ShieldAlert size={18} />
         <span>{error || '系统地图不可用'}</span>
+        <button type="button" className="antd-btn" onClick={() => void load()}>
+          <RefreshCw size={14} />
+          <span>重试系统地图</span>
+        </button>
       </div>
     );
   }

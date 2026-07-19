@@ -870,6 +870,31 @@ describe('SystemMapView', () => {
     })
   }, 15000)
 
+  it('keeps a retry action available when the system map source is unavailable', async () => {
+    let attempts = 0
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+      if (url === '/api/cockpit/system-map') {
+        attempts += 1
+        return attempts === 1
+          ? ({ ok: false, status: 503, json: async () => ({}) } as Response)
+          : okJson(systemMapPayload)
+      }
+      if (url === SYSTEM_MAP_DRAFT_TASKS_URL) return okJson(draftTasksPayload)
+      throw new Error(`Unexpected fetch: ${url}`)
+    })
+
+    render(<SystemMapView onNavigate={vi.fn()} />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('系统地图读取失败')
+    fireEvent.click(screen.getByRole('button', { name: '重试系统地图' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('来源证据预览')).toBeInTheDocument()
+      expect(attempts).toBe(2)
+    })
+  })
+
   it('opens the focused project detail when launched with a project id', async () => {
     render(<SystemMapView onNavigate={vi.fn()} focusProjectId="kairon" />)
 
