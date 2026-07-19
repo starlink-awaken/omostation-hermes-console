@@ -450,7 +450,11 @@ describe('OverviewPage', () => {
     await waitFor(() => {
       expect(screen.getByText('运行总面')).toBeInTheDocument()
       expect(screen.getByText('服务登记')).toBeInTheDocument()
-      expect(screen.getByRole('alert')).toHaveTextContent('概览部分数据暂不可用：运行状态')
+      expect(screen.getAllByRole('alert').some((alert) => alert.textContent?.includes('概览部分数据暂不可用：运行状态'))).toBe(true)
+      const summaryGrid = screen.getByText('服务登记').closest('.stats-grid') as HTMLElement
+      const alertsCard = within(summaryGrid).getByText('活跃告警').closest('.stat-card') as HTMLElement
+      expect(within(alertsCard).getByText('2')).toBeInTheDocument()
+      expect(alertsCard).toHaveTextContent('运行状态数据不可用')
     })
   }, 30000)
 

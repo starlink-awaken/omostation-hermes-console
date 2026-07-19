@@ -45,4 +45,24 @@ describe('RuntimeOpsWorkbench', () => {
       expect(within(region).queryByText('运行平稳')).not.toBeInTheDocument()
     })
   })
+
+  it('keeps partial runtime failures out of healthy zero counts', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson({ usage_paths: [] }))
+      if (url === '/api/alerts?status=active&limit=20') return Promise.reject(new Error('alert source offline'))
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<RuntimeOpsWorkbench currentPage="Overview" />)
+
+    await waitFor(() => {
+      const region = screen.getByRole('region', { name: '运行诊断工作台' })
+      expect(within(region).getByText('证据不完整')).toBeInTheDocument()
+      expect(within(region).getAllByText('N/A')).toHaveLength(1)
+      const alertSummary = within(region).getByText('活跃告警').closest('.runtime-workbench-card') as HTMLElement
+      expect(within(alertSummary).getByText('告警数据不可用')).toBeInTheDocument()
+      expect(within(region).queryByText('运行平稳')).not.toBeInTheDocument()
+    })
+  })
 })

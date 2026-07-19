@@ -43,8 +43,11 @@ type RuntimeOpsWorkbenchProps = {
 type RuntimeWorkbenchState = {
   loading: boolean;
   usagePath: RuntimeUsagePath | null;
+  usagePathAvailable: boolean;
   alerts: RuntimeAlert[];
+  alertsAvailable: boolean;
   services: RuntimeService[];
+  servicesAvailable: boolean;
   error: string | null;
 };
 
@@ -109,8 +112,11 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
   const [state, setState] = useState<RuntimeWorkbenchState>({
     loading: true,
     usagePath: null,
+    usagePathAvailable: false,
     alerts: [],
+    alertsAvailable: false,
     services: [],
+    servicesAvailable: false,
     error: null,
   });
   const [retryToken, setRetryToken] = useState(0);
@@ -126,19 +132,22 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
           fetch('/api/services/status'),
         ]);
 
-        const nextState: RuntimeWorkbenchState = {
-          loading: false,
-          usagePath: null,
-          alerts: [],
-          services: [],
-          error: null,
-        };
-
         const [{ ok: systemMapOk, data: systemMap, error: systemMapError }, { ok: alertsOk, data: alertsData, error: alertsError }, { ok: servicesOk, data: servicesData, error: servicesError }] = await Promise.all([
           readRuntimeResponse<{ usage_paths?: RuntimeUsagePath[] }>(systemMapResult, '系统地图数据'),
           readRuntimeResponse<{ items?: RuntimeAlert[] }>(alertsResult, '活跃告警数据'),
           readRuntimeResponse<{ items?: RuntimeService[] }>(servicesResult, '服务状态数据'),
         ]);
+
+        const nextState: RuntimeWorkbenchState = {
+          loading: false,
+          usagePath: null,
+          usagePathAvailable: systemMapOk,
+          alerts: [],
+          alertsAvailable: alertsOk,
+          services: [],
+          servicesAvailable: servicesOk,
+          error: null,
+        };
 
         if (systemMapOk && systemMap) {
           const usagePaths = (systemMap.usage_paths || []) as RuntimeUsagePath[];
@@ -190,13 +199,17 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
   const runtimeContextQuery = activeAlerts[0]?.source || degradedServices[0]?.name || 'runtime';
   const noRuntimeSources = !state.loading
     && Boolean(state.error)
-    && state.alerts.length === 0
-    && state.services.length === 0
-    && !state.usagePath;
+    && !state.alertsAvailable
+    && !state.servicesAvailable
+    && !state.usagePathAvailable;
+  const alertsUnavailable = !state.alertsAvailable;
+  const servicesUnavailable = !state.servicesAvailable;
 
   const currentIndex = pathPages.findIndex((page) => page.id === currentPage);
   const recommended = noRuntimeSources
     ? '运行诊断数据不可用，先恢复数据源再判断是否平稳。'
+    : state.error
+      ? '运行证据不完整，先恢复失败数据源再判断是否平稳。'
     : nextAction(currentPage, activeAlerts, degradedServices);
 
   return (
@@ -208,8 +221,8 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
             {state.usagePath?.intent || '把概览、拓扑、性能、日志和沙箱串成一条可执行的运行排障路径。'}
           </p>
         </div>
-        <span className={`status-badge ${state.loading ? 'online' : noRuntimeSources ? 'offline' : activeAlerts.length > 0 || degradedServices.length > 0 ? 'degraded' : 'online'}`}>
-          {state.loading ? '同步中' : noRuntimeSources ? '数据不可用' : activeAlerts.length > 0 || degradedServices.length > 0 ? '需要排查' : '运行平稳'}
+        <span className={`status-badge ${state.loading ? 'online' : noRuntimeSources ? 'offline' : state.error || activeAlerts.length > 0 || degradedServices.length > 0 ? 'degraded' : 'online'}`}>
+          {state.loading ? '同步中' : noRuntimeSources ? '数据不可用' : state.error ? '证据不完整' : activeAlerts.length > 0 || degradedServices.length > 0 ? '需要排查' : '运行平稳'}
         </span>
       </div>
 
@@ -223,18 +236,18 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
       <div className="runtime-workbench-summary">
         <div className="runtime-workbench-card">
           <span>活跃告警</span>
-          <strong>{noRuntimeSources ? 'N/A' : state.alerts.filter((alert) => alert.status === 'active').length}</strong>
-          <small>{noRuntimeSources ? '告警数据不可用' : '严重/错误优先推进到告警中心和日志页。'}</small>
+          <strong>{alertsUnavailable ? 'N/A' : state.alerts.filter((alert) => alert.status === 'active').length}</strong>
+          <small>{alertsUnavailable ? '告警数据不可用' : '严重/错误优先推进到告警中心和日志页。'}</small>
         </div>
         <div className="runtime-workbench-card">
           <span>异常服务</span>
-          <strong>{noRuntimeSources ? 'N/A' : state.services.filter((service) => service.status !== 'online').length}</strong>
-          <small>{noRuntimeSources ? '服务状态不可用' : '离线或降级服务优先去性能监控和拓扑确认范围。'}</small>
+          <strong>{servicesUnavailable ? 'N/A' : state.services.filter((service) => service.status !== 'online').length}</strong>
+          <small>{servicesUnavailable ? '服务状态不可用' : '离线或降级服务优先去性能监控和拓扑确认范围。'}</small>
         </div>
         <div className="runtime-workbench-card runtime-workbench-card-wide">
           <span>建议下一步</span>
           <strong>{recommended}</strong>
-          <small>{noRuntimeSources ? '当前不能据此判断运行质量' : `当前页：${pathPages[currentIndex]?.title || currentPage}`}</small>
+          <small>{state.error ? '当前不能据此判断运行质量' : `当前页：${pathPages[currentIndex]?.title || currentPage}`}</small>
         </div>
       </div>
 
@@ -279,7 +292,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
             ))}
             {activeAlerts.length === 0 && (
               <div className="home-focus-empty runtime-workbench-empty">
-                当前没有活跃告警
+                {alertsUnavailable ? '告警数据不可用' : '当前没有活跃告警'}
               </div>
             )}
           </div>
@@ -307,7 +320,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
             ))}
             {degradedServices.length === 0 && (
               <div className="home-focus-empty runtime-workbench-empty">
-                当前没有异常服务
+                {servicesUnavailable ? '服务状态数据不可用' : '当前没有异常服务'}
               </div>
             )}
           </div>
