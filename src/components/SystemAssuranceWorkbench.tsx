@@ -128,6 +128,10 @@ function statusLabel(status?: string) {
   return '观察';
 }
 
+function sourceUnavailable(source: { status?: string; error?: string }) {
+  return source.status === 'unavailable' || Boolean(source.error);
+}
+
 function layerStatusLabel(layer: LayerStatus) {
   if (layer.status === 'ok') return '正常';
   if (layer.status === 'down') return '离线';
@@ -170,19 +174,19 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
 
   const unavailableSources = useMemo(() => {
     const sources: string[] = [];
-    if (state.layers.status === 'unavailable' || state.layers.error) sources.push('层健康');
-    if (state.m0.status === 'unavailable' || state.m0.error) sources.push('M0 快照');
-    if (state.protocols.status === 'unavailable' || state.protocols.error) sources.push('协议 API');
-    if (state.e2e.status === 'unavailable' || state.e2e.error) sources.push('E2E');
-    if (state.omo.status === 'unavailable' || state.omo.error) sources.push('OMO 报告');
-    if (state.convergence.status === 'unavailable' || state.convergence.error) sources.push('入口收敛');
-    if (state.cron.status === 'unavailable' || state.cron.error) sources.push('Cron 摘要');
-    if (state.governance.status === 'unavailable' || state.governance.error) sources.push('治理摘要');
-    if (state.bosTrends.status === 'unavailable' || state.bosTrends.error) sources.push('BOS 趋势');
-    if (state.context.status === 'unavailable' || state.context.error) sources.push('L4 context');
-    if (state.ecosStatus.status === 'unavailable' || state.ecosStatus.error) sources.push('eCOS 状态');
-    if (state.ecosHealth.status === 'unavailable' || state.ecosHealth.error) sources.push('eCOS 健康');
-    if (state.omoHealth.status === 'unavailable' || state.omoHealth.error) sources.push('OMO 健康');
+    if (sourceUnavailable(state.layers)) sources.push('层健康');
+    if (sourceUnavailable(state.m0)) sources.push('M0 快照');
+    if (sourceUnavailable(state.protocols)) sources.push('协议 API');
+    if (sourceUnavailable(state.e2e)) sources.push('E2E');
+    if (sourceUnavailable(state.omo)) sources.push('OMO 报告');
+    if (sourceUnavailable(state.convergence)) sources.push('入口收敛');
+    if (sourceUnavailable(state.cron)) sources.push('Cron 摘要');
+    if (sourceUnavailable(state.governance)) sources.push('治理摘要');
+    if (sourceUnavailable(state.bosTrends)) sources.push('BOS 趋势');
+    if (sourceUnavailable(state.context)) sources.push('L4 context');
+    if (sourceUnavailable(state.ecosStatus)) sources.push('eCOS 状态');
+    if (sourceUnavailable(state.ecosHealth)) sources.push('eCOS 健康');
+    if (sourceUnavailable(state.omoHealth)) sources.push('OMO 健康');
     return sources;
   }, [state]);
 
@@ -190,7 +194,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
   const layerUnavailable = state.layers.status === 'unavailable' || !!state.layers.error || layerSummary.total_layers === undefined;
   const layerTone = layerUnavailable ? 'offline' : layerSummary.down ? 'offline' : layerSummary.degraded ? 'degraded' : 'online';
   const e2eTone = state.e2e.error || state.e2e.status === 'unavailable' ? 'offline' : state.e2e.result?.includes('passed') ? 'online' : 'degraded';
-  const omoTone = state.omo.error || state.omo.status === 'unavailable' ? 'offline' : (state.omo.open || 0) > 0 ? 'degraded' : 'online';
+  const omoTone = sourceUnavailable(state.omo) ? 'offline' : (state.omo.open || 0) > 0 ? 'degraded' : 'online';
   const convergenceTone = state.convergence.error || state.convergence.status === 'unavailable' ? 'offline' : (state.convergence.convergence_pct || 0) >= 80 ? 'online' : 'degraded';
   const ecosTone = state.ecosStatus.error || state.ecosStatus.status === 'unavailable' ? 'offline' : statusTone(state.ecosStatus.status || 'ok');
   const omoHealthTone = state.omoHealth.error || state.omoHealth.status === 'unavailable' ? 'offline' : statusTone(state.omoHealth.status || 'ok');
@@ -266,7 +270,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
         <article className={`overview-coverage-card ${omoTone}`}>
           <div className="overview-ops-head">
             <strong><ClipboardCheck size={15} /> OMO 报告</strong>
-            <span className={`status-badge ${omoTone}`}>{state.omo.error ? '不可用' : `${state.omo.open || 0} 开放`}</span>
+            <span className={`status-badge ${omoTone}`}>{sourceUnavailable(state.omo) ? '不可用' : `${state.omo.open || 0} 开放`}</span>
           </div>
           <p>{state.omo.summary || '尚未取得 OMO 报告'}</p>
           <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Debt', taskQuery: governanceContextQuery })}>
@@ -311,12 +315,12 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
           <div className="overview-ops-list">
             <div className="overview-ops-item">
               <strong>eCOS 健康</strong>
-              <span>{state.ecosHealth.error ? '不可用' : state.ecosHealth.service || '已返回健康信号'}</span>
+              <span>{sourceUnavailable(state.ecosHealth) ? '不可用' : state.ecosHealth.service || '已返回健康信号'}</span>
               <small>{state.ecosHealth.error || '已探测 /api/ecos/health'}</small>
             </div>
             <div className="overview-ops-item">
               <strong>OMO 健康</strong>
-              <span>{state.omoHealth.error ? '不可用' : state.omoHealth.service || '已返回健康信号'}</span>
+              <span>{sourceUnavailable(state.omoHealth) ? '不可用' : state.omoHealth.service || '已返回健康信号'}</span>
               <small>{state.omoHealth.error || '已探测 /api/omos/health'}</small>
             </div>
           </div>
@@ -380,7 +384,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
             </div>
             <div className="overview-ops-item">
               <strong>OMO 未闭环</strong>
-              <span>{state.omo.open ?? '-'} 条开放债务</span>
+              <span>{sourceUnavailable(state.omo) ? '-' : state.omo.open ?? '-'} 条开放债务</span>
               <small>{state.omo.summary || '报告尚未返回。'}</small>
             </div>
           </div>
@@ -391,7 +395,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
         <article className="overview-ops-column">
           <div className="overview-ops-head">
             <strong>自动化流水线</strong>
-            <span className={`status-badge ${state.cron.error ? 'offline' : 'degraded'}`}>{state.cron.error ? '不可用' : `${state.cron.today_count ?? 0} 今日`}</span>
+            <span className={`status-badge ${sourceUnavailable(state.cron) ? 'offline' : 'degraded'}`}>{sourceUnavailable(state.cron) ? '不可用' : `${state.cron.today_count ?? 0} 今日`}</span>
           </div>
           <div className="overview-ops-list">
             <div className="overview-ops-item">
@@ -405,7 +409,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
         <article className="overview-ops-column">
           <div className="overview-ops-head">
             <strong>治理审计</strong>
-            <span className={`status-badge ${state.governance.error ? 'offline' : (state.governance.unresolved || 0) > 0 ? 'degraded' : 'online'}`}>{state.governance.error ? '不可用' : `健康 ${state.governance.health_score ?? '-'}`}</span>
+            <span className={`status-badge ${sourceUnavailable(state.governance) ? 'offline' : (state.governance.unresolved || 0) > 0 ? 'degraded' : 'online'}`}>{sourceUnavailable(state.governance) ? '不可用' : `健康 ${state.governance.health_score ?? '-'}`}</span>
           </div>
           <div className="overview-ops-list">
             <div className="overview-ops-item">
@@ -419,7 +423,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
         <article className="overview-ops-column">
           <div className="overview-ops-head">
             <strong>BOS 趋势</strong>
-            <span className={`status-badge ${state.bosTrends.error ? 'offline' : state.bosTrends.total_all_time ? 'online' : 'degraded'}`}>{state.bosTrends.error ? '不可用' : state.bosTrends.total_all_time ? `${state.bosTrends.total_all_time} 总调用` : '无样本'}</span>
+            <span className={`status-badge ${sourceUnavailable(state.bosTrends) ? 'offline' : state.bosTrends.total_all_time ? 'online' : 'degraded'}`}>{sourceUnavailable(state.bosTrends) ? '不可用' : state.bosTrends.total_all_time ? `${state.bosTrends.total_all_time} 总调用` : '无样本'}</span>
           </div>
           <div className="overview-ops-list">
             <div className="overview-ops-item">

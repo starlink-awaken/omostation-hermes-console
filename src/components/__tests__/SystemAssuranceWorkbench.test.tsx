@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import SystemAssuranceWorkbench from '../SystemAssuranceWorkbench'
 
 const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Response
@@ -70,5 +70,27 @@ describe('SystemAssuranceWorkbench', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '重新检查' }))
     await waitFor(() => expect(statusCalls).toBe(2))
+  })
+
+  it('does not turn unavailable summaries into zero-valued evidence', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (['/api/omo-report', '/api/cron/summary', '/api/governance/summary', '/api/bos/trends', '/api/ecos/health', '/api/omos/health'].includes(url)) {
+        return Promise.resolve(okJson({ status: 'unavailable' }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<SystemAssuranceWorkbench />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('OMO 报告')
+      expect(within(screen.getByText('OMO 报告').closest('article') as HTMLElement).getByText('不可用')).toBeInTheDocument()
+      expect(within(screen.getByText('自动化流水线').closest('article') as HTMLElement).getByText('不可用')).toBeInTheDocument()
+      expect(within(screen.getByText('治理审计').closest('article') as HTMLElement).getByText('不可用')).toBeInTheDocument()
+      expect(within(screen.getByText('BOS 趋势').closest('article') as HTMLElement).getByText('不可用')).toBeInTheDocument()
+      expect(screen.queryByText('0 开放')).not.toBeInTheDocument()
+      expect(screen.queryByText('0 今日')).not.toBeInTheDocument()
+    })
   })
 })
