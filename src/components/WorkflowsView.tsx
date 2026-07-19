@@ -119,23 +119,14 @@ export default function WorkflowsView({
   };
 
   useEffect(() => {
+    // 页面挂载及定时刷新都从外部运行态同步列表。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchWorkflows();
     const interval = setInterval(() => {
       void fetchWorkflows();
     }, 5000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (!focusTaskQuery) return;
-    const matchedWorkflow = filteredWorkflows.find((workflow) => (
-      matchesWorkflowFocusQuery([workflow.id, workflow.task, workflow.status], focusTaskQuery)
-    ));
-    if (matchedWorkflow) setWorkflowQuery(focusTaskQuery);
-    if (matchedWorkflow) {
-      void loadDetail(matchedWorkflow.id);
-    }
-  }, [focusTaskQuery, workflows]);
 
   const filteredWorkflows = useMemo(() => {
     const query = workflowQuery.trim().toLowerCase();
@@ -148,7 +139,9 @@ export default function WorkflowsView({
   }, [workflowQuery, workflowStatusFilter, workflows]);
 
   useEffect(() => {
+    // 筛选条件变化后关闭已经不可见的详情对象。
     if (selectedWf && !filteredWorkflows.some((workflow) => workflow.id === selectedWf.workflow_id)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedWf(null);
       setDetailId(null);
     }
@@ -171,6 +164,19 @@ export default function WorkflowsView({
     }
   };
 
+  useEffect(() => {
+    if (!focusTaskQuery) return;
+    const matchedWorkflow = filteredWorkflows.find((workflow) => (
+      matchesWorkflowFocusQuery([workflow.id, workflow.task, workflow.status], focusTaskQuery)
+    ));
+    // 导航查询来自页面外部，需要同步到列表筛选并展开匹配详情。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (matchedWorkflow) setWorkflowQuery(focusTaskQuery);
+    if (matchedWorkflow) {
+      void loadDetail(matchedWorkflow.id);
+    }
+  }, [focusTaskQuery, filteredWorkflows]);
+
   const handleApprove = async (id: string) => {
     setApprovingId(id);
     setApprovalMessage(null);
@@ -188,8 +194,8 @@ export default function WorkflowsView({
       } else {
         setApprovalMessage({ tone: 'error', text: `工作流 ${id} 授权失败：${data.error || '后端未确认授权'}` });
       }
-    } catch (e: any) {
-      setApprovalMessage({ tone: 'error', text: `工作流 ${id} 授权失败：${e.message || '网络异常'}` });
+    } catch (e: unknown) {
+      setApprovalMessage({ tone: 'error', text: `工作流 ${id} 授权失败：${e instanceof Error ? e.message : '网络异常'}` });
     } finally {
       setApprovingId(null);
     }
@@ -215,8 +221,8 @@ export default function WorkflowsView({
         text: data.created === false ? `任务已存在：${data.id}` : `已承接为任务：${data.id}`,
       });
       if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
-    } catch (error: any) {
-      setApprovalMessage({ tone: 'error', text: `工作流任务承接失败：${error.message || '网络异常'}` });
+    } catch (error: unknown) {
+      setApprovalMessage({ tone: 'error', text: `工作流任务承接失败：${error instanceof Error ? error.message : '网络异常'}` });
     } finally {
       setQueueingId(null);
     }
@@ -390,7 +396,7 @@ export default function WorkflowsView({
     }
 
     return null;
-  }, [filteredWorkflows, focusPageId, focusTaskQuery, selectedWf, workflowClosureRows]);
+  }, [focusPageId, focusTaskQuery, selectedWf, workflowClosureRows, workflows]);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
