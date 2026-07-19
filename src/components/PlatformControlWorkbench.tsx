@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, Cpu, Gift, RefreshCw, Settings2, TerminalSquare } from 'lucide-react';
+import { Activity, AlertTriangle, ClipboardCheck, Cpu, Gift, RefreshCw, Settings2, TerminalSquare } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface ArchHealthPayload {
@@ -156,6 +156,9 @@ export default function PlatformControlWorkbench({
     quests: false,
   });
   const [refreshToken, setRefreshToken] = useState(0);
+  const [taskPending, setTaskPending] = useState(false);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -263,6 +266,47 @@ export default function PlatformControlWorkbench({
       : summary.nextTab === 'QuestBoard'
         ? { tab: 'QuestBoard', taskQuery: summary.topQuest ? String(summary.topQuest.id) : 'QuestBoard' }
         : { tab: summary.nextTab, taskQuery: platformContextQuery };
+  const controlTaskTitle = unavailableSources.length > 0
+    ? '恢复控制面证据'
+    : summary.bosUnavailable || summary.archUnavailable || summary.avgLatency > 1200 || (summary.successRate !== null && summary.successRate < 95)
+      ? `处理控制面波动：${summary.topDomain?.domain || currentPage}`
+      : summary.pipelinesUnavailable || pipelines.length === 0
+        ? '补齐调度管线入口'
+        : summary.metricsUnavailable || summary.services > summary.healthyServices
+          ? '恢复控制面服务健康'
+          : summary.activeQuests.length > 0
+            ? `推进控制面落地：${summary.topQuest?.title || '家庭冒险'}`
+            : '抽查控制链路';
+  const controlTaskDescription = unavailableSources.length > 0
+    ? `${summary.nextAction} 当前有控制面数据源不可用，请恢复证据并完成观测、调度、系统控制、沙箱和落地链路核验。`
+    : `${summary.nextAction} 当前上下文：${platformContextQuery}。请补齐控制面证据、处理结果和 TaskCenter closeout。`;
+  const createControlTask = async () => {
+    setTaskPending(true);
+    setTaskNotice(null);
+    setTaskError(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: controlTaskTitle,
+          description: controlTaskDescription,
+          priority: unavailableSources.length > 0 || summary.bosUnavailable || summary.archUnavailable || summary.services > summary.healthyServices ? 'high' : 'medium',
+          risk_level: unavailableSources.length > 0 ? 'L2' : 'L1',
+          evidence_required: ['控制面状态快照', '观测/调度/服务证据', '验证或处理结果', 'task closeout'],
+          tags: ['platform-control', 'runtime-governance'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '控制面任务登记失败');
+      setTaskNotice(`已登记控制面任务：${payload.title || controlTaskTitle}`);
+      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+    } catch (requestError) {
+      setTaskError(requestError instanceof Error ? requestError.message : '控制面任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
 
   const title =
     currentPage === 'Observability'
@@ -332,6 +376,40 @@ export default function PlatformControlWorkbench({
           <small>点击进入 {summary.nextTab}</small>
         </button>
       </div>
+
+      <section className="services-section" role="region" aria-label="控制面任务登记" style={{ marginTop: 16 }}>
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>控制面任务登记</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              把观测波动、管线缺口、服务不健康和落地阻塞直接沉到任务中心，保留控制链路的处理证据。
+            </p>
+          </div>
+          <span className={`status-badge ${unavailableSources.length > 0 || summary.bosUnavailable || summary.archUnavailable || summary.services > summary.healthyServices ? 'degraded' : 'online'}`}>
+            {unavailableSources.length > 0 || summary.bosUnavailable || summary.archUnavailable || summary.services > summary.healthyServices ? '需要处理' : '可抽查'}
+          </span>
+        </div>
+        <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <strong>{controlTaskTitle}</strong>
+            <p>{controlTaskDescription}</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="antd-btn"
+              disabled={taskPending}
+              aria-label={`登记控制面任务 ${controlTaskTitle}`}
+              onClick={() => { void createControlTask(); }}
+            >
+              <ClipboardCheck size={14} />
+              <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
+            </button>
+            {taskNotice && <span role="status" aria-live="polite" className="text-muted">{taskNotice}</span>}
+            {taskError && <span role="alert">{taskError}</span>}
+          </div>
+        </article>
+      </section>
 
       <div className="platform-workbench-path">
         {PLATFORM_STEPS.map((step, index) => (

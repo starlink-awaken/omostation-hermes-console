@@ -12,8 +12,14 @@ describe('PlatformControlWorkbench', () => {
   it('renders the platform control chain and navigates to the suggested next page', async () => {
     const onNavigate = vi.fn()
 
-    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
+      if (url === '/api/tasks' && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body))
+        expect(body.title).toBe('处理控制面波动：governance')
+        expect(body.tags).toEqual(['platform-control', 'runtime-governance'])
+        return Promise.resolve(okJson({ id: 'control-task-1', title: body.title }))
+      }
       if (url === '/api/v1/arch-health') {
         return Promise.resolve(okJson({
           system: { health_score: 87 },
@@ -64,11 +70,17 @@ describe('PlatformControlWorkbench', () => {
       expect(screen.getByText('整理客厅')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText(/观测面还有波动/))
+    fireEvent.click(screen.getByRole('button', { name: /观测面还有波动/ }))
     expect(onNavigate).toHaveBeenCalledWith('Observability')
 
     fireEvent.click(screen.getByRole('button', { name: /去冒险板/ }))
     expect(onNavigate).toHaveBeenCalledWith('QuestBoard')
+
+    fireEvent.click(screen.getByRole('button', { name: '登记控制面任务 处理控制面波动：governance' }))
+    await waitFor(() => {
+      expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+      expect(screen.getByRole('status')).toHaveTextContent('已登记控制面任务：处理控制面波动：governance')
+    })
   })
 
   it('shows empty-state guidance when platform data is sparse', async () => {
