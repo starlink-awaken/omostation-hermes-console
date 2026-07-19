@@ -145,6 +145,7 @@ export default function AlertCenterPage({
     if (!focusTaskQuery) return;
     if (rules.some((rule) => matchesAlertFocusQuery([rule.id, rule.name, rule.condition, rule.level], focusTaskQuery))) {
       setActiveTab('rules');
+      setSearchQuery(focusTaskQuery);
       return;
     }
     const matchedAlert = alerts.find((alert) => (
@@ -152,6 +153,7 @@ export default function AlertCenterPage({
     ));
     if (matchedAlert) {
       setActiveTab(matchedAlert.status === 'active' ? 'active' : 'history');
+      setSearchQuery(focusTaskQuery);
     }
   }, [alerts, focusTaskQuery, rules]);
 

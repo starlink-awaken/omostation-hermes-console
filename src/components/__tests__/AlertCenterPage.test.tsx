@@ -282,6 +282,7 @@ describe('AlertCenterPage', () => {
 
     const focusRegion = await screen.findByRole('region', { name: '当前告警承接焦点' })
     expect(within(focusRegion).getByText('Mesh degradation')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByPlaceholderText('搜索告警...')).toHaveValue('Mesh degradation'))
 
     fireEvent.click(within(focusRegion).getByRole('button', { name: '打开告警焦点对象 Mesh degradation' }))
     fireEvent.click(within(focusRegion).getByRole('button', { name: '打开告警焦点任务 Mesh degradation' }))
