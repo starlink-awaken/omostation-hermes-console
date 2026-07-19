@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Cpu, Play, Activity, List, GitCommit, RefreshCw } from 'lucide-react';
 import WorkflowGraph from './WorkflowGraph';
+import type { Node } from 'reactflow';
 import PlatformControlWorkbench from './PlatformControlWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
@@ -10,8 +11,33 @@ interface EventLog {
   type: string;
   time: string;
   source: string;
-  payload: any;
+  payload?: {
+    node_id?: string;
+    step_index?: number;
+  };
 }
+
+type EngineNode = {
+  id: string;
+  index?: number;
+  label?: string;
+};
+
+type EngineEdge = {
+  source: string;
+  target: string;
+};
+
+type EngineResult = {
+  error?: string;
+  id?: string;
+  [key: string]: unknown;
+};
+
+type MetaosPlan = EngineResult & {
+  nodes?: EngineNode[];
+  edges?: EngineEdge[];
+};
 
 interface EnginesViewProps {
   onNavigate?: (tab: string) => void;
@@ -35,19 +61,19 @@ export default function EnginesView({
   const [pipelines, setPipelines] = useState<string[]>([]);
   const [events, setEvents] = useState<EventLog[]>([]);
   const [activeSteps, setActiveSteps] = useState<string[]>([]);
-  const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [selectedNode, setSelectedNode] = useState<Node<{ label: string }> | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPipeline, setSelectedPipeline] = useState('');
   const [pipelineInput, setPipelineInput] = useState('');
   const [running, setRunning] = useState(false);
-  const [runResult, setRunResult] = useState<any>(null);
+  const [runResult, setRunResult] = useState<EngineResult | null>(null);
   const [dataError, setDataError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [pipelineQuery, setPipelineQuery] = useState('');
   const [eventTypeFilter, setEventTypeFilter] = useState('all');
   
   const [planning, setPlanning] = useState(false);
-  const [metaosPlan, setMetaosPlan] = useState<any>(null);
+  const [metaosPlan, setMetaosPlan] = useState<MetaosPlan | null>(null);
   const filteredPipelines = useMemo(() => {
     const query = pipelineQuery.trim().toLowerCase();
     if (!query) return pipelines;
@@ -82,6 +108,8 @@ export default function EnginesView({
   };
 
   useEffect(() => {
+    // 引擎页同时建立管线轮询和 SSE 事件订阅。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchData();
     const interval = setInterval(fetchData, 10000); // Polling for pipelines
     
@@ -89,18 +117,18 @@ export default function EnginesView({
     const eventSource = new EventSource('/api/events');
     eventSource.onmessage = (e) => {
       try {
-        const eventData = JSON.parse(e.data);
+        const eventData = JSON.parse(e.data) as EventLog;
         
         if (eventData.type === 'node_running' || eventData.type === 'node_completed' || eventData.type === 'node_failed' || eventData.type === 'node_awaiting_approval') {
             const nodeId = eventData.payload?.node_id;
-            if (nodeId !== undefined) {
+            if (typeof nodeId === 'string') {
                 setActiveSteps(prev => {
                     return prev.includes(nodeId) ? prev : [...prev, nodeId];
                 });
             }
         } else if (eventData.type === 'pipeline:step:ok' || eventData.type === 'pipeline:step:error') {
             const stepIndex = eventData.payload?.step_index;
-            if (stepIndex !== undefined) {
+            if (typeof stepIndex === 'number') {
                 setActiveSteps(prev => {
                     const stepId = `step_${stepIndex}`;
                     return prev.includes(stepId) ? prev : [...prev, stepId];
@@ -115,7 +143,7 @@ export default function EnginesView({
           const updated = [eventData, ...prev];
           return updated.slice(0, 50);
         });
-      } catch (err) {
+      } catch {
         // parsing error or keep-alive ping
       }
     };
@@ -124,12 +152,16 @@ export default function EnginesView({
       clearInterval(interval);
       eventSource.close();
     };
+    // fetchData intentionally owns this effect's polling lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken]);
 
   useEffect(() => {
     if (!focusTaskQuery) return;
     const matchedPipeline = pipelines.find((pipeline) => matchesEnginesFocusQuery([pipeline], focusTaskQuery));
     if (matchedPipeline) {
+      // 外部导航查询命中管线时，同步到当前执行选择。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPipeline(matchedPipeline);
     }
   }, [focusTaskQuery, pipelines]);
@@ -150,8 +182,8 @@ export default function EnginesView({
       if (data.id) {
         openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
       }
-    } catch (e: any) {
-      setRunResult({ error: e.message });
+    } catch (e: unknown) {
+      setRunResult({ error: e instanceof Error ? e.message : '管线任务承接失败' });
     } finally {
       setRunning(false);
     }
@@ -174,8 +206,8 @@ export default function EnginesView({
       } else {
         setRunResult(data);
       }
-    } catch (e: any) {
-      setRunResult({ error: e.message });
+    } catch (e: unknown) {
+      setRunResult({ error: e instanceof Error ? e.message : 'MetaOS 规划失败' });
     } finally {
       setPlanning(false);
     }
@@ -197,8 +229,8 @@ export default function EnginesView({
       if (data.id) {
         openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
       }
-    } catch (e: any) {
-      setRunResult({ error: e.message });
+    } catch (e: unknown) {
+      setRunResult({ error: e instanceof Error ? e.message : 'MetaOS 任务承接失败' });
     } finally {
       setRunning(false);
     }
