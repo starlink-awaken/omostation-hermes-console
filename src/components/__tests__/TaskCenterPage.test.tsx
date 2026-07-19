@@ -286,6 +286,26 @@ describe('TaskCenterPage', () => {
     expect(screen.getByText('加载中...')).toBeInTheDocument()
   })
 
+  it('loads additional task pages without losing the total count', async () => {
+    const taskUrl = '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true'
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === taskUrl) return Promise.resolve(okJson({ items: [mockTasks[0]], total: 2, offset: 0, limit: 1, has_more: true }))
+      if (url === `${taskUrl}&offset=1`) return Promise.resolve(okJson({ items: [mockTasks[1]], total: 2, offset: 1, limit: 1, has_more: false }))
+      if (url === '/api/domain-apps') return Promise.resolve(okJson({ items: [domainAppSnapshot] }))
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<TaskCenterPage />)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '加载更多任务' })).toBeInTheDocument())
+    expect(screen.getByText('已加载 1 / 2 条任务')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '加载更多任务' }))
+
+    await waitFor(() => expect(screen.getAllByText('Review debt').length).toBeGreaterThan(0))
+    expect(screen.queryByRole('button', { name: '加载更多任务' })).not.toBeInTheDocument()
+  })
+
   it('keeps a retry action available after a controlled verification fails', async () => {
     const failedControlledTask = {
       ...mockTasks[0],

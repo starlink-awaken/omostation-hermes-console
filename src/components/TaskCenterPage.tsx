@@ -22,6 +22,9 @@ import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
 import { type CockpitNavigationTarget, openCockpitNavigationTarget } from './cockpitNavigation';
 import { taskDraftSourceTarget } from './taskDraftHandoff';
 
+const TASK_LIST_URL = '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true';
+const TASK_PAGE_SIZE = 100;
+
 interface DomainAppSnapshot {
   id: string;
   name: string;
@@ -333,6 +336,10 @@ export default function TaskCenterPage({
   onOpenTarget,
 }: TaskCenterPageProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskTotal, setTaskTotal] = useState<number | null>(null);
+  const [taskOffset, setTaskOffset] = useState(0);
+  const [taskHasMore, setTaskHasMore] = useState(false);
+  const [taskLoadingMore, setTaskLoadingMore] = useState(false);
   const [domainApps, setDomainApps] = useState<DomainAppSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -369,13 +376,17 @@ export default function TaskCenterPage({
     const fetchTasks = async () => {
       try {
         const [tasksResult, domainAppsResult] = await Promise.allSettled([
-          fetch('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true'),
+          fetch(TASK_LIST_URL),
           fetch('/api/domain-apps'),
         ]);
 
         if (tasksResult.status === 'fulfilled' && tasksResult.value.ok) {
           const data = await tasksResult.value.json();
-          setTasks(data.items || []);
+          const items = Array.isArray(data.items) ? data.items : [];
+          setTasks(items);
+          setTaskTotal(typeof data.total === 'number' ? data.total : items.length);
+          setTaskOffset(typeof data.offset === 'number' ? data.offset + items.length : items.length);
+          setTaskHasMore(data.has_more === true || (typeof data.has_more !== 'boolean' && items.length >= TASK_PAGE_SIZE));
           setDataError(null);
         } else {
           const reason = tasksResult.status === 'rejected'
@@ -400,6 +411,30 @@ export default function TaskCenterPage({
     const interval = setInterval(fetchTasks, 30000);
     return () => clearInterval(interval);
   }, [refreshToken]);
+
+  const loadMoreTasks = async () => {
+    if (!taskHasMore || taskLoadingMore) return;
+    setTaskLoadingMore(true);
+    setActionError(null);
+    try {
+      const response = await fetch(`${TASK_LIST_URL}&offset=${taskOffset}`);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || `任务服务返回 HTTP ${response.status}`);
+      const items = Array.isArray(data.items) ? data.items as Task[] : [];
+      setTasks((current) => {
+        const merged = new Map(current.map((task) => [task.id, task]));
+        items.forEach((task) => merged.set(task.id, task));
+        return [...merged.values()];
+      });
+      setTaskTotal(typeof data.total === 'number' ? data.total : taskTotal);
+      setTaskOffset(taskOffset + items.length);
+      setTaskHasMore(data.has_more === true);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : '更多任务加载失败');
+    } finally {
+      setTaskLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     if (!selectedTask) return;
@@ -2357,6 +2392,21 @@ export default function TaskCenterPage({
           ))
         )}
       </div>
+      {taskTotal !== null && taskTotal > tasks.length && (
+        <div style={{ display: 'grid', justifyItems: 'center', gap: 8, padding: '16px 0' }}>
+          <span className="text-muted" style={{ fontSize: 12 }}>已加载 {tasks.length} / {taskTotal} 条任务</span>
+          <button
+            type="button"
+            className="antd-btn"
+            aria-label="加载更多任务"
+            disabled={taskLoadingMore}
+            onClick={() => { void loadMoreTasks(); }}
+          >
+            <RefreshCw size={14} className={taskLoadingMore ? 'spinning' : undefined} />
+            <span>{taskLoadingMore ? '加载中...' : '加载更多任务'}</span>
+          </button>
+        </div>
+      )}
 
       {/* 任务详情 */}
       {selectedTask && selectedTaskMatchesFilter && (
