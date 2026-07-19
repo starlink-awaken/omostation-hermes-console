@@ -210,4 +210,28 @@ describe('AssetsView', () => {
       taskQuery: 'cockpit-ecos-workflow-nightly-governance-dry_run',
     }))
   })
+
+  it('does not treat an unavailable workflow test as a successful result', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/ecos/skills') return Promise.resolve(okJson({ skills: [] }))
+      if (url === '/api/pipelines') return Promise.resolve(okJson({ pipelines: [] }))
+      if (url === '/api/ecos/workflows') return Promise.resolve(okJson({ workflows: [{ name: 'nightly-governance', description: '夜间治理巡检', steps: 5 }] }))
+      if (url === '/api/ecos/workflow/test?name=nightly-governance') {
+        return Promise.resolve({ ok: false, status: 503, json: async () => ({}) } as Response)
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<AssetsView />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /自动化工作流/ })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /自动化工作流/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '测试运行' }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/最近测试失败/)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '登记工作流验收任务 nightly-governance' })).not.toBeInTheDocument()
+      expect(screen.getByText(/HTTP 503/)).toBeInTheDocument()
+    })
+  })
 })

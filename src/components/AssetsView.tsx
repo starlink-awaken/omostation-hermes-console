@@ -168,7 +168,10 @@ export default function AssetsView({
       const res = await fetch(`/api/ecos/workflow/test?name=${encodeURIComponent(name)}`, {
         method: 'POST',
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        throw new Error(data.error || data.detail || `工作流测试失败（HTTP ${res.status}）`);
+      }
       setWfTestResults((prev) => ({ ...prev, [name]: data }));
     } catch (err: any) {
       setWfTestResults((prev) => ({ ...prev, [name]: { error: err.message } }));
