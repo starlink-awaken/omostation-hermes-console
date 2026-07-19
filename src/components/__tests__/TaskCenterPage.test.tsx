@@ -430,6 +430,28 @@ describe('TaskCenterPage', () => {
     expect(pendingStat?.textContent).toContain('1')
   })
 
+  it('supports bulk pause and resume for selected formal tasks', async () => {
+    mockTaskCenterFetch(mockTasks)
+
+    render(<TaskCenterPage />)
+
+    const runningCheckbox = await screen.findByRole('checkbox', { name: '选择任务 Deploy gateway' })
+    fireEvent.click(runningCheckbox)
+
+    fireEvent.click(screen.getByRole('button', { name: '批量暂停选中任务' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/task-1/pause', { method: 'POST' })
+      expect(screen.getByRole('status')).toHaveTextContent('已批量暂停 1 条正式任务。')
+    })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: '选择任务 Deploy gateway' }))
+    fireEvent.click(screen.getByRole('button', { name: '批量恢复选中任务' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/task-1/resume', { method: 'POST' })
+      expect(screen.getByRole('status')).toHaveTextContent('已批量恢复 1 条正式任务。')
+    })
+  })
+
   it('builds a task workbench that selects focus tasks and opens follow-up pages', async () => {
     const onNavigate = vi.fn()
     mockTaskCenterFetch([...mockTasks, domainAppDraft])

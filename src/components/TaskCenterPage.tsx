@@ -291,6 +291,7 @@ export default function TaskCenterPage({
   const [activeSourceFilter, setActiveSourceFilter] = useState<DraftLaneFilter>('all');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [refreshToken, setRefreshToken] = useState(0);
   const [actionPending, setActionPending] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -511,6 +512,10 @@ export default function TaskCenterPage({
     }
     return true;
   });
+  const selectableTasks = filteredTasks.filter((task) => !task.read_only && (task.status === 'pending' || task.status === 'in_progress'));
+  const selectedTasks = selectableTasks.filter((task) => selectedTaskIds.includes(task.id));
+  const selectedInProgressTasks = selectedTasks.filter((task) => task.status === 'in_progress');
+  const selectedPendingTasks = selectedTasks.filter((task) => task.status === 'pending');
 
   useEffect(() => {
     if (selectedTask && !filteredTasks.some((task) => task.id === selectedTask.id)) {
@@ -823,6 +828,41 @@ export default function TaskCenterPage({
     finally {
       setActionPending(null);
     }
+  };
+
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTaskIds((current) => current.includes(taskId)
+      ? current.filter((id) => id !== taskId)
+      : [...current, taskId]);
+  };
+
+  const runBulkTaskAction = async (action: 'pause' | 'resume') => {
+    const eligibleTasks = action === 'pause' ? selectedInProgressTasks : selectedPendingTasks;
+    if (eligibleTasks.length === 0) return;
+    setActionPending(`bulk-${action}`);
+    setActionError(null);
+    setActionNotice(null);
+    const nextStatus: Task['status'] = action === 'pause' ? 'pending' : 'in_progress';
+    const results = await Promise.allSettled(eligibleTasks.map(async (task) => {
+      const response = await fetch(`/api/tasks/${task.id}/${action}`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || payload.error || response.statusText || '批量任务操作失败');
+      return task.id;
+    }));
+    const succeededIds = results
+      .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
+      .map((result) => result.value);
+    if (succeededIds.length > 0) {
+      setTasks((currentTasks) => currentTasks.map((task) => succeededIds.includes(task.id) ? { ...task, status: nextStatus } : task));
+      setSelectedTask((currentTask) => currentTask && succeededIds.includes(currentTask.id) ? { ...currentTask, status: nextStatus } : currentTask);
+    }
+    setSelectedTaskIds((current) => current.filter((id) => !succeededIds.includes(id)));
+    if (succeededIds.length === eligibleTasks.length) {
+      setActionNotice(`已批量${action === 'pause' ? '暂停' : '恢复'} ${succeededIds.length} 条正式任务。`);
+    } else {
+      setActionError(`批量${action === 'pause' ? '暂停' : '恢复'}部分完成：${succeededIds.length}/${eligibleTasks.length}，失败项请单独重试。`);
+    }
+    setActionPending(null);
   };
 
   const runApprovalAction = async (task: Task, action: 'request-approval' | 'approve') => {
@@ -1913,6 +1953,42 @@ export default function TaskCenterPage({
           <Plus size={14} />
           新建任务
         </button>
+        {selectableTasks.length > 0 && (
+          <button
+            className="btn btn-outline"
+            aria-label={selectedTasks.length === selectableTasks.length ? '清除全部任务选择' : '全选当前可操作任务'}
+            onClick={() => setSelectedTaskIds(selectedTasks.length === selectableTasks.length ? [] : selectableTasks.map((task) => task.id))}
+          >
+            {selectedTasks.length === selectableTasks.length ? '清除选择' : `全选可操作 (${selectableTasks.length})`}
+          </button>
+        )}
+        {selectedTasks.length > 0 && (
+          <div role="group" aria-label="批量任务操作" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <span className="text-muted" style={{ fontSize: 12 }}>已选 {selectedTasks.length}</span>
+            {selectedInProgressTasks.length > 0 && (
+              <button
+                className="btn btn-outline"
+                aria-label="批量暂停选中任务"
+                disabled={actionPending !== null}
+                onClick={() => { void runBulkTaskAction('pause'); }}
+              >
+                <Pause size={14} />
+                批量暂停
+              </button>
+            )}
+            {selectedPendingTasks.length > 0 && (
+              <button
+                className="btn btn-outline"
+                aria-label="批量恢复选中任务"
+                disabled={actionPending !== null}
+                onClick={() => { void runBulkTaskAction('resume'); }}
+              >
+                <Play size={14} />
+                批量恢复
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {manualTaskOpen && (
@@ -1996,7 +2072,18 @@ export default function TaskCenterPage({
               onClick={() => setSelectedTask(task)}
             >
               <div className="task-header">
-                <div className="task-id">{task.id}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {!task.read_only && (task.status === 'pending' || task.status === 'in_progress') && (
+                    <input
+                      type="checkbox"
+                      aria-label={`选择任务 ${task.title}`}
+                      checked={selectedTaskIds.includes(task.id)}
+                      onChange={() => toggleTaskSelection(task.id)}
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                  )}
+                  <div className="task-id">{task.id}</div>
+                </div>
                 <div className="task-priority">
                   <span
                     className="priority-badge"
