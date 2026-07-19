@@ -242,7 +242,10 @@ describe('Dashboard global search', () => {
   })
 
   it('keeps static page dimensions visible when the system map is unavailable', async () => {
-    vi.mocked(fetch).mockResolvedValue(okJson({}))
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/cockpit/system-map') return Promise.reject(new Error('system map offline'))
+      return Promise.resolve(okJson({ items: [] }))
+    })
 
     render(<Dashboard />)
 
@@ -250,6 +253,15 @@ describe('Dashboard global search', () => {
     expect(within(context).getByText('健康')).toBeInTheDocument()
     expect(within(context).getByText('告警')).toBeInTheDocument()
     expect(within(context).getByText('任务')).toBeInTheDocument()
+
+    await waitFor(() => {
+      const dimension = screen.getByLabelText('覆盖维度 页面覆盖')
+      expect(within(dimension).getByText('N/A')).toBeInTheDocument()
+      expect(within(dimension).getByText('数据不可用')).toBeInTheDocument()
+      const overview = screen.getByRole('region', { name: '整站能力总览' })
+      const pagesTile = within(overview).getByText('页面覆盖').closest('.dashboard-overview-tile') as HTMLElement
+      expect(within(pagesTile).getByText('N/A')).toBeInTheDocument()
+    })
   })
 
   it('searches dynamic projects and task drafts from SystemMap and TaskCenter', async () => {

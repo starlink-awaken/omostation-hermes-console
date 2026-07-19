@@ -454,6 +454,12 @@ interface DashboardOverviewTile {
   target: CockpitNavigationTarget;
 }
 
+interface ShellSourceAvailability {
+  systemMap: boolean;
+  tasks: boolean;
+  domainApps: boolean;
+}
+
 interface PageContextChecklistItem {
   id: string;
   title: string;
@@ -1207,6 +1213,11 @@ export default function Dashboard() {
   const [sidebarUsagePaths, setSidebarUsagePaths] = useState<SearchUsagePath[]>([]);
   const [shellTaskDrafts, setShellTaskDrafts] = useState<SearchTaskDraft[]>([]);
   const [shellDomainApps, setShellDomainApps] = useState<SearchDomainAppsPayload | null>(null);
+  const [shellSourceAvailability, setShellSourceAvailability] = useState<ShellSourceAvailability>({
+    systemMap: false,
+    tasks: false,
+    domainApps: false,
+  });
   const [cockpitPages, setCockpitPages] = useState<SearchCockpitPage[]>([]);
   const [pageMaturityItems, setPageMaturityItems] = useState<PageMaturityItem[]>([]);
   const [featureDomains, setFeatureDomains] = useState<SearchFeatureDomain[]>([]);
@@ -2074,6 +2085,9 @@ export default function Dashboard() {
   const domainDraftCount = shellTaskDrafts.filter((task) => task.source?.type === 'system_map_domain_app').length;
   const firstDomainDraft = shellTaskDrafts.find((task) => task.source?.type === 'system_map_domain_app');
   const dimensionCoverageRows = useMemo<DimensionCoverageRow[]>(() => {
+    const systemMapUnavailable = !shellSourceAvailability.systemMap;
+    const tasksUnavailable = !shellSourceAvailability.tasks;
+    const domainAppsUnavailable = !shellSourceAvailability.domainApps;
     const pageScore = sidebarCoverage?.summary.score ?? 0;
     const projectScore = sidebarProjectPortfolio?.summary.score ?? 0;
     const domainTotal = shellDomainApps?.summary?.total ?? 0;
@@ -2083,81 +2097,81 @@ export default function Dashboard() {
       {
         id: 'dimension-pages',
         title: '页面覆盖',
-        value: `${pageScore}%`,
-        detail: `就绪 ${sidebarCoverage?.summary.ready ?? 0} · 观察 ${sidebarCoverage?.summary.watch ?? 0} · 缺口 ${sidebarCoverage?.summary.gap ?? 0}`,
-        risk: `待补页面 ${sidebarCoverage?.attentionItems.length ?? 0}`,
-        statusTone: pageScore >= 70 ? 'online' : pageScore >= 40 ? 'degraded' : 'offline',
-        statusLabel: pageScore >= 70 ? '成型' : pageScore >= 40 ? '观察' : '缺口',
+        value: systemMapUnavailable ? 'N/A' : `${pageScore}%`,
+        detail: systemMapUnavailable ? '页面成熟度数据不可用' : `就绪 ${sidebarCoverage?.summary.ready ?? 0} · 观察 ${sidebarCoverage?.summary.watch ?? 0} · 缺口 ${sidebarCoverage?.summary.gap ?? 0}`,
+        risk: systemMapUnavailable ? '先重试系统地图数据源' : `待补页面 ${sidebarCoverage?.attentionItems.length ?? 0}`,
+        statusTone: systemMapUnavailable ? 'offline' : pageScore >= 70 ? 'online' : pageScore >= 40 ? 'degraded' : 'offline',
+        statusLabel: systemMapUnavailable ? '数据不可用' : pageScore >= 70 ? '成型' : pageScore >= 40 ? '观察' : '缺口',
         target: { tab: 'SystemMap' },
       },
       {
         id: 'dimension-projects',
         title: '项目组合',
-        value: `${projectScore}%`,
-        detail: `阻塞 ${sidebarProjectPortfolio?.summary.blocked ?? 0} · 风险 ${sidebarProjectPortfolio?.summary.at_risk ?? 0} · 健康 ${sidebarProjectPortfolio?.summary.healthy ?? 0}`,
-        risk: `优先项目 ${sidebarProjectPortfolio?.priorityProjects.length ?? 0}`,
-        statusTone: projectScore >= 70 ? 'online' : projectScore >= 40 ? 'degraded' : 'offline',
-        statusLabel: projectScore >= 70 ? '成型' : projectScore >= 40 ? '观察' : '缺口',
+        value: systemMapUnavailable ? 'N/A' : `${projectScore}%`,
+        detail: systemMapUnavailable ? '项目组合数据不可用' : `阻塞 ${sidebarProjectPortfolio?.summary.blocked ?? 0} · 风险 ${sidebarProjectPortfolio?.summary.at_risk ?? 0} · 健康 ${sidebarProjectPortfolio?.summary.healthy ?? 0}`,
+        risk: systemMapUnavailable ? '先重试系统地图数据源' : `优先项目 ${sidebarProjectPortfolio?.priorityProjects.length ?? 0}`,
+        statusTone: systemMapUnavailable ? 'offline' : projectScore >= 70 ? 'online' : projectScore >= 40 ? 'degraded' : 'offline',
+        statusLabel: systemMapUnavailable ? '数据不可用' : projectScore >= 70 ? '成型' : projectScore >= 40 ? '观察' : '缺口',
         target: { tab: 'SystemMap', projectId: sidebarProjectPortfolio?.priorityProjects?.[0]?.id || null },
       },
       {
         id: 'dimension-domain-apps',
         title: '领域挂载',
-        value: String(domainTotal),
-        detail: `就绪 ${domainReady} · 安全关注 ${domainSecurityAttention}`,
-        risk: `待承接草稿 ${domainDraftCount}`,
-        statusTone: domainSecurityAttention === 0 && domainTotal > 0 ? 'online' : domainTotal > 0 ? 'degraded' : 'offline',
-        statusLabel: domainSecurityAttention === 0 && domainTotal > 0 ? '成型' : domainTotal > 0 ? '观察' : '缺口',
+        value: domainAppsUnavailable ? 'N/A' : String(domainTotal),
+        detail: domainAppsUnavailable ? '领域应用数据不可用' : `就绪 ${domainReady} · 安全关注 ${domainSecurityAttention}`,
+        risk: domainAppsUnavailable ? '先重试领域应用数据源' : `待承接草稿 ${domainDraftCount}`,
+        statusTone: domainAppsUnavailable ? 'offline' : domainSecurityAttention === 0 && domainTotal > 0 ? 'online' : domainTotal > 0 ? 'degraded' : 'offline',
+        statusLabel: domainAppsUnavailable ? '数据不可用' : domainSecurityAttention === 0 && domainTotal > 0 ? '成型' : domainTotal > 0 ? '观察' : '缺口',
         target: { tab: 'DomainApps', taskQuery: shellDomainApps?.items?.[0]?.id || firstDomainDraft?.source?.id || '' },
       },
       {
         id: 'dimension-usage-paths',
         title: '使用路径',
-        value: String(sidebarUsagePaths.length),
-        detail: `当前登记 ${sidebarUsagePaths.length} 条整站路径`,
-        risk: `缺路径页面 ${siteClosureSummary.missingPath}`,
-        statusTone: sidebarUsagePaths.length >= 3 ? 'online' : sidebarUsagePaths.length > 0 ? 'degraded' : 'offline',
-        statusLabel: sidebarUsagePaths.length >= 3 ? '成型' : sidebarUsagePaths.length > 0 ? '观察' : '缺口',
+        value: systemMapUnavailable ? 'N/A' : String(sidebarUsagePaths.length),
+        detail: systemMapUnavailable ? '使用路径数据不可用' : `当前登记 ${sidebarUsagePaths.length} 条整站路径`,
+        risk: systemMapUnavailable ? '先重试系统地图数据源' : `缺路径页面 ${siteClosureSummary.missingPath}`,
+        statusTone: systemMapUnavailable ? 'offline' : sidebarUsagePaths.length >= 3 ? 'online' : sidebarUsagePaths.length > 0 ? 'degraded' : 'offline',
+        statusLabel: systemMapUnavailable ? '数据不可用' : sidebarUsagePaths.length >= 3 ? '成型' : sidebarUsagePaths.length > 0 ? '观察' : '缺口',
         target: { tab: 'SystemMap', usagePathId: contextualUsagePaths[0]?.id || sidebarUsagePaths[0]?.id || null },
       },
       {
         id: 'dimension-feature-domains',
         title: '能力域',
-        value: String(featureDomains.length),
-        detail: `当前映射 ${featureDomains.length} 个能力域`,
-        risk: `缺映射页面 ${siteClosureSummary.missingFeatureDomain}`,
-        statusTone: featureDomains.length >= 3 ? 'online' : featureDomains.length > 0 ? 'degraded' : 'offline',
-        statusLabel: featureDomains.length >= 3 ? '成型' : featureDomains.length > 0 ? '观察' : '缺口',
+        value: systemMapUnavailable ? 'N/A' : String(featureDomains.length),
+        detail: systemMapUnavailable ? '能力域数据不可用' : `当前映射 ${featureDomains.length} 个能力域`,
+        risk: systemMapUnavailable ? '先重试系统地图数据源' : `缺映射页面 ${siteClosureSummary.missingFeatureDomain}`,
+        statusTone: systemMapUnavailable ? 'offline' : featureDomains.length >= 3 ? 'online' : featureDomains.length > 0 ? 'degraded' : 'offline',
+        statusLabel: systemMapUnavailable ? '数据不可用' : featureDomains.length >= 3 ? '成型' : featureDomains.length > 0 ? '观察' : '缺口',
         target: { tab: 'SystemMap', featureDomainId: featureDomains[0]?.id || null },
       },
       {
         id: 'dimension-playbooks',
         title: '操作清单',
-        value: String(playbooks.length),
-        detail: `当前登记 ${playbooks.length} 条操作清单`,
-        risk: `缺清单页面 ${siteClosureSummary.missingPlaybook}`,
-        statusTone: playbooks.length >= 3 ? 'online' : playbooks.length > 0 ? 'degraded' : 'offline',
-        statusLabel: playbooks.length >= 3 ? '成型' : playbooks.length > 0 ? '观察' : '缺口',
+        value: systemMapUnavailable ? 'N/A' : String(playbooks.length),
+        detail: systemMapUnavailable ? '操作清单数据不可用' : `当前登记 ${playbooks.length} 条操作清单`,
+        risk: systemMapUnavailable ? '先重试系统地图数据源' : `缺清单页面 ${siteClosureSummary.missingPlaybook}`,
+        statusTone: systemMapUnavailable ? 'offline' : playbooks.length >= 3 ? 'online' : playbooks.length > 0 ? 'degraded' : 'offline',
+        statusLabel: systemMapUnavailable ? '数据不可用' : playbooks.length >= 3 ? '成型' : playbooks.length > 0 ? '观察' : '缺口',
         target: { tab: 'SystemMap', usagePathId: currentPagePrimaryPath?.id || sidebarUsagePaths[0]?.id || null },
       },
       {
         id: 'dimension-roadmap',
         title: '路线图',
-        value: String(roadmapItems.length),
-        detail: `当前登记 ${roadmapItems.length} 个路线图条目`,
-        risk: `缺路线图页面 ${siteClosureSummary.missingRoadmap}`,
-        statusTone: roadmapItems.length >= 3 ? 'online' : roadmapItems.length > 0 ? 'degraded' : 'offline',
-        statusLabel: roadmapItems.length >= 3 ? '成型' : roadmapItems.length > 0 ? '观察' : '缺口',
+        value: systemMapUnavailable ? 'N/A' : String(roadmapItems.length),
+        detail: systemMapUnavailable ? '路线图数据不可用' : `当前登记 ${roadmapItems.length} 个路线图条目`,
+        risk: systemMapUnavailable ? '先重试系统地图数据源' : `缺路线图页面 ${siteClosureSummary.missingRoadmap}`,
+        statusTone: systemMapUnavailable ? 'offline' : roadmapItems.length >= 3 ? 'online' : roadmapItems.length > 0 ? 'degraded' : 'offline',
+        statusLabel: systemMapUnavailable ? '数据不可用' : roadmapItems.length >= 3 ? '成型' : roadmapItems.length > 0 ? '观察' : '缺口',
         target: { tab: 'SystemMap', pageId: roadmapItems[0]?.cockpit_page || null },
       },
       {
         id: 'dimension-tasks',
         title: '任务承接',
-        value: String(shellTaskDrafts.length),
-        detail: `当前焦点 ${shellTaskDrafts[0]?.title || '未登记任务草稿'}`,
-        risk: `缺任务页面 ${siteClosureSummary.missingTask}`,
-        statusTone: shellTaskDrafts.length >= 5 ? 'online' : shellTaskDrafts.length > 0 ? 'degraded' : 'offline',
-        statusLabel: shellTaskDrafts.length >= 5 ? '成型' : shellTaskDrafts.length > 0 ? '观察' : '缺口',
+        value: tasksUnavailable ? 'N/A' : String(shellTaskDrafts.length),
+        detail: tasksUnavailable ? '任务承接数据不可用' : `当前焦点 ${shellTaskDrafts[0]?.title || '未登记任务草稿'}`,
+        risk: tasksUnavailable ? '先重试任务数据源' : `缺任务页面 ${siteClosureSummary.missingTask}`,
+        statusTone: tasksUnavailable ? 'offline' : shellTaskDrafts.length >= 5 ? 'online' : shellTaskDrafts.length > 0 ? 'degraded' : 'offline',
+        statusLabel: tasksUnavailable ? '数据不可用' : shellTaskDrafts.length >= 5 ? '成型' : shellTaskDrafts.length > 0 ? '观察' : '缺口',
         target: { tab: 'TaskCenter', taskQuery: shellTaskDrafts[0]?.source?.id || shellTaskDrafts[0]?.title || '' },
       },
     ];
@@ -2171,6 +2185,7 @@ export default function Dashboard() {
     roadmapItems,
     shellDomainApps,
     shellTaskDrafts,
+    shellSourceAvailability,
     sidebarCoverage,
     sidebarProjectPortfolio,
     sidebarUsagePaths,
@@ -2765,39 +2780,39 @@ export default function Dashboard() {
     {
       id: 'overview-pages',
       title: '页面覆盖',
-      value: `${sidebarCoverage?.summary.score ?? 0}%`,
-      detail: `就绪 ${sidebarCoverage?.summary.ready ?? 0} · 缺口 ${sidebarCoverage?.summary.gap ?? 0}`,
+      value: shellSourceAvailability.systemMap ? `${sidebarCoverage?.summary.score ?? 0}%` : 'N/A',
+      detail: shellSourceAvailability.systemMap ? `就绪 ${sidebarCoverage?.summary.ready ?? 0} · 缺口 ${sidebarCoverage?.summary.gap ?? 0}` : '页面覆盖数据不可用',
       target: { tab: 'SystemMap' },
     },
     {
       id: 'overview-projects',
       title: '项目组合',
-      value: `${sidebarProjectPortfolio?.summary.score ?? 0}%`,
-      detail: `阻塞 ${sidebarProjectPortfolio?.summary.blocked ?? 0} · 风险 ${sidebarProjectPortfolio?.summary.at_risk ?? 0}`,
+      value: shellSourceAvailability.systemMap ? `${sidebarProjectPortfolio?.summary.score ?? 0}%` : 'N/A',
+      detail: shellSourceAvailability.systemMap ? `阻塞 ${sidebarProjectPortfolio?.summary.blocked ?? 0} · 风险 ${sidebarProjectPortfolio?.summary.at_risk ?? 0}` : '项目组合数据不可用',
       target: { tab: 'SystemMap', projectId: sidebarProjectPortfolio?.priorityProjects?.[0]?.id || null },
     },
     {
       id: 'overview-domains',
       title: '领域挂载',
-      value: String(shellDomainApps?.summary?.total ?? 0),
-      detail: `就绪 ${shellDomainApps?.summary?.ready ?? 0} · 待承接 ${domainDraftCount}`,
+      value: shellSourceAvailability.domainApps ? String(shellDomainApps?.summary?.total ?? 0) : 'N/A',
+      detail: shellSourceAvailability.domainApps ? `就绪 ${shellDomainApps?.summary?.ready ?? 0} · 待承接 ${domainDraftCount}` : '领域挂载数据不可用',
       target: { tab: 'DomainApps', taskQuery: shellDomainApps?.items?.[0]?.id || firstDomainDraft?.source?.id || '' },
     },
     {
       id: 'overview-tasks',
       title: '任务草稿',
-      value: String(shellTaskDrafts.length),
-      detail: `当前焦点 ${shellTaskDrafts[0]?.title || '未登记'}`,
+      value: shellSourceAvailability.tasks ? String(shellTaskDrafts.length) : 'N/A',
+      detail: shellSourceAvailability.tasks ? `当前焦点 ${shellTaskDrafts[0]?.title || '未登记'}` : '任务草稿数据不可用',
       target: { tab: 'TaskCenter', taskQuery: shellTaskDrafts[0]?.source?.id || shellTaskDrafts[0]?.title || '' },
     },
     {
       id: 'overview-paths',
       title: '使用路径',
-      value: String(sidebarUsagePaths.length),
-      detail: `当前分区 ${activeGroupLabel || '未归类'} · 首推 ${contextualUsagePaths[0]?.title || '未登记'}`,
+      value: shellSourceAvailability.systemMap ? String(sidebarUsagePaths.length) : 'N/A',
+      detail: shellSourceAvailability.systemMap ? `当前分区 ${activeGroupLabel || '未归类'} · 首推 ${contextualUsagePaths[0]?.title || '未登记'}` : '使用路径数据不可用',
       target: { tab: 'SystemMap', usagePathId: contextualUsagePaths[0]?.id || null },
     },
-  ], [activeGroupLabel, contextualUsagePaths, domainDraftCount, firstDomainDraft, shellDomainApps, shellTaskDrafts, sidebarCoverage, sidebarProjectPortfolio, sidebarUsagePaths.length]);
+  ], [activeGroupLabel, contextualUsagePaths, domainDraftCount, firstDomainDraft, shellDomainApps, shellSourceAvailability, shellTaskDrafts, sidebarCoverage, sidebarProjectPortfolio, sidebarUsagePaths.length]);
 
   const setActiveTab = (tab: string) => {
     setFocusedProjectId(null);
@@ -3052,6 +3067,11 @@ export default function Dashboard() {
           fetchSearchData('/api/pipelines'),
           fetchSearchData('/api/ecos/workflows'),
         ]);
+        setShellSourceAvailability({
+          systemMap: systemMapRes.ok,
+          tasks: tasksRes.ok,
+          domainApps: domainAppsRes.ok,
+        });
         const targets: SearchTarget[] = [];
         const sourceFailures = [
           ['系统地图', systemMapRes],
@@ -3746,6 +3766,7 @@ export default function Dashboard() {
         setDynamicSearchTargets(targets);
       } catch (error) {
         console.error('Failed to build dynamic search targets:', error);
+        setShellSourceAvailability({ systemMap: false, tasks: false, domainApps: false });
         setShellDataWarnings(['全站搜索数据（壳层请求异常）']);
         setDynamicSearchTargets([]);
         setSidebarUsagePaths([]);
