@@ -4468,7 +4468,7 @@ export default function Dashboard() {
             </button>
             <button
               type="button"
-              className="topbar-btn"
+              className="topbar-btn topbar-export"
               aria-label="导出全站运行快照"
               title="导出全站运行快照"
               disabled={snapshotExportState === 'exporting'}
@@ -4483,7 +4483,7 @@ export default function Dashboard() {
             )}
             <button
               type="button"
-              className="topbar-btn"
+              className="topbar-btn topbar-link"
               aria-label="复制当前页面链接"
               title="复制当前页面链接"
               onClick={() => { void copyCurrentNavigationLink(); }}

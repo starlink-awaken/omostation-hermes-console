@@ -6689,6 +6689,7 @@ button.system-map-gap {
   }
 
   .topbar-search-wrap {
+    flex: 1 1 120px;
     width: 100%;
     max-width: none;
     min-width: 0;
@@ -6699,6 +6700,8 @@ button.system-map-gap {
   }
 
   .topbar-actions .topbar-mode-entry,
+  .topbar-actions .topbar-export,
+  .topbar-actions .topbar-link,
   .user-profile {
     display: none;
   }
