@@ -453,4 +453,17 @@ describe('OverviewPage', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('概览部分数据暂不可用：运行状态')
     })
   }, 30000)
+
+  it('does not turn a complete overview outage into zero-valued health', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('overview backend offline'))
+
+    render(<OverviewPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/概览部分数据暂不可用/)).toBeInTheDocument()
+      expect(screen.getAllByText('N/A').length).toBeGreaterThanOrEqual(4)
+      expect(screen.queryByText('0 / 0')).not.toBeInTheDocument()
+      expect(screen.queryAllByText('0%')).toHaveLength(0)
+    })
+  }, 30000)
 })

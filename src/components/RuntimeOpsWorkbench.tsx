@@ -188,9 +188,16 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
     [state.services],
   );
   const runtimeContextQuery = activeAlerts[0]?.source || degradedServices[0]?.name || 'runtime';
+  const noRuntimeSources = !state.loading
+    && Boolean(state.error)
+    && state.alerts.length === 0
+    && state.services.length === 0
+    && !state.usagePath;
 
   const currentIndex = pathPages.findIndex((page) => page.id === currentPage);
-  const recommended = nextAction(currentPage, activeAlerts, degradedServices);
+  const recommended = noRuntimeSources
+    ? '运行诊断数据不可用，先恢复数据源再判断是否平稳。'
+    : nextAction(currentPage, activeAlerts, degradedServices);
 
   return (
     <section className="services-section runtime-workbench" aria-label="运行诊断工作台">
@@ -201,8 +208,8 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
             {state.usagePath?.intent || '把概览、拓扑、性能、日志和沙箱串成一条可执行的运行排障路径。'}
           </p>
         </div>
-        <span className={`status-badge ${activeAlerts.length > 0 || degradedServices.length > 0 ? 'degraded' : 'online'}`}>
-          {state.loading ? '同步中' : activeAlerts.length > 0 || degradedServices.length > 0 ? '需要排查' : '运行平稳'}
+        <span className={`status-badge ${state.loading ? 'online' : noRuntimeSources ? 'offline' : activeAlerts.length > 0 || degradedServices.length > 0 ? 'degraded' : 'online'}`}>
+          {state.loading ? '同步中' : noRuntimeSources ? '数据不可用' : activeAlerts.length > 0 || degradedServices.length > 0 ? '需要排查' : '运行平稳'}
         </span>
       </div>
 
@@ -216,18 +223,18 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
       <div className="runtime-workbench-summary">
         <div className="runtime-workbench-card">
           <span>活跃告警</span>
-          <strong>{state.alerts.filter((alert) => alert.status === 'active').length}</strong>
-          <small>严重/错误优先推进到告警中心和日志页。</small>
+          <strong>{noRuntimeSources ? 'N/A' : state.alerts.filter((alert) => alert.status === 'active').length}</strong>
+          <small>{noRuntimeSources ? '告警数据不可用' : '严重/错误优先推进到告警中心和日志页。'}</small>
         </div>
         <div className="runtime-workbench-card">
           <span>异常服务</span>
-          <strong>{state.services.filter((service) => service.status !== 'online').length}</strong>
-          <small>离线或降级服务优先去性能监控和拓扑确认范围。</small>
+          <strong>{noRuntimeSources ? 'N/A' : state.services.filter((service) => service.status !== 'online').length}</strong>
+          <small>{noRuntimeSources ? '服务状态不可用' : '离线或降级服务优先去性能监控和拓扑确认范围。'}</small>
         </div>
         <div className="runtime-workbench-card runtime-workbench-card-wide">
           <span>建议下一步</span>
           <strong>{recommended}</strong>
-          <small>当前页：{pathPages[currentIndex]?.title || currentPage}</small>
+          <small>{noRuntimeSources ? '当前不能据此判断运行质量' : `当前页：${pathPages[currentIndex]?.title || currentPage}`}</small>
         </div>
       </div>
 

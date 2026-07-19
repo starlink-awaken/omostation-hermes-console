@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import RuntimeOpsWorkbench from '../RuntimeOpsWorkbench'
 
@@ -31,5 +31,18 @@ describe('RuntimeOpsWorkbench', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '查看服务 cockpit-api' }))
     expect(onNavigate).toHaveBeenCalledWith('Performance')
+  })
+
+  it('does not present an all-source outage as a stable runtime', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('runtime backend offline'))
+
+    render(<RuntimeOpsWorkbench currentPage="Overview" />)
+
+    await waitFor(() => {
+      const region = screen.getByRole('region', { name: '运行诊断工作台' })
+      expect(within(region).getByText('数据不可用')).toBeInTheDocument()
+      expect(within(region).getAllByText('N/A')).toHaveLength(2)
+      expect(within(region).queryByText('运行平稳')).not.toBeInTheDocument()
+    })
   })
 })

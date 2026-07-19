@@ -753,6 +753,14 @@ export default function OverviewPage({
   const domainApps = state.systemMap?.domain_apps?.summary;
   const domainAttention = state.systemMap?.domain_apps?.attention_items || [];
   const pageMaturity = state.systemMap?.page_maturity?.summary;
+  const noOverviewSources = !state.loading
+    && Boolean(state.error)
+    && state.registry.length === 0
+    && state.runtime.length === 0
+    && state.alerts.length === 0
+    && !state.systemMap
+    && state.drafts.length === 0
+    && state.domainApps.length === 0;
   const readOnlyDrafts = useMemo(
     () => state.drafts.filter((draft) => draft.read_only && draft.source?.type && DRAFT_SOURCE_LABELS[draft.source.type]),
     [state.drafts],
@@ -1350,8 +1358,8 @@ export default function OverviewPage({
           </div>
           <div className="stat-info">
             <h3>服务登记</h3>
-            <p className="stat-value">{state.registry.length}</p>
-            <span className="task-stat-subline">运行中 {state.registry.filter((service) => ['running', 'active'].includes(service.status)).length}</span>
+            <p className="stat-value">{noOverviewSources ? 'N/A' : state.registry.length}</p>
+            <span className="task-stat-subline">{noOverviewSources ? '登记数据不可用' : `运行中 ${state.registry.filter((service) => ['running', 'active'].includes(service.status)).length}`}</span>
           </div>
         </div>
 
@@ -1361,8 +1369,8 @@ export default function OverviewPage({
           </div>
           <div className="stat-info">
             <h3>活跃告警</h3>
-            <p className="stat-value">{activeAlerts.length}</p>
-            <span className="task-stat-subline">异常服务 {unstableRuntime.length}</span>
+            <p className="stat-value">{noOverviewSources ? 'N/A' : activeAlerts.length}</p>
+            <span className="task-stat-subline">{noOverviewSources ? '告警数据不可用' : `异常服务 ${unstableRuntime.length}`}</span>
           </div>
         </div>
 
@@ -1372,8 +1380,8 @@ export default function OverviewPage({
           </div>
           <div className="stat-info">
             <h3>项目风险</h3>
-            <p className="stat-value">{summary?.blocked || 0} / {summary?.projects || 0}</p>
-            <span className="task-stat-subline">{summaryStatusText(summary?.status)} · 风险 {summary?.at_risk || 0}</span>
+            <p className="stat-value">{noOverviewSources ? 'N/A' : `${summary?.blocked || 0} / ${summary?.projects || 0}`}</p>
+            <span className="task-stat-subline">{noOverviewSources ? '项目风险数据不可用' : `${summaryStatusText(summary?.status)} · 风险 ${summary?.at_risk || 0}`}</span>
           </div>
         </div>
 
@@ -1383,8 +1391,8 @@ export default function OverviewPage({
           </div>
           <div className="stat-info">
             <h3>组合得分</h3>
-            <p className="stat-value">{summary?.score || 0}%</p>
-            <span className="task-stat-subline">健康项目 {summary?.healthy || 0}</span>
+            <p className="stat-value">{noOverviewSources ? 'N/A' : `${summary?.score || 0}%`}</p>
+            <span className="task-stat-subline">{noOverviewSources ? '组合评分数据不可用' : `健康项目 ${summary?.healthy || 0}`}</span>
           </div>
         </div>
       </div>
@@ -1410,8 +1418,8 @@ export default function OverviewPage({
             onClick={() => openOverviewTarget({ tab: 'SystemMap' }, onNavigate, onOpenTarget)}
           >
             <span>运行缺口</span>
-            <strong>{projectFocus?.runtime_gap || 0}</strong>
-            <small>待动作 {projectFocus?.needs_action || 0} · 就绪并运行 {projectFocus?.ready_and_running || 0}</small>
+            <strong>{noOverviewSources ? 'N/A' : projectFocus?.runtime_gap || 0}</strong>
+            <small>{noOverviewSources ? '运行缺口数据不可用' : `待动作 ${projectFocus?.needs_action || 0} · 就绪并运行 ${projectFocus?.ready_and_running || 0}`}</small>
           </button>
           <button
             className={`overview-coverage-card ${coverageTone(100 - ((projectFocus?.verification_gap || 0) * 15), projectFocus?.verification_gap || 0, projectFocus?.verification_ready || 0)}`}
@@ -1419,8 +1427,8 @@ export default function OverviewPage({
             onClick={() => openOverviewTarget({ tab: 'TaskCenter', taskQuery: '验证' }, onNavigate, onOpenTarget)}
           >
             <span>验证补证</span>
-            <strong>{projectFocus?.verification_ready || 0}</strong>
-            <small>验证缺口 {projectFocus?.verification_gap || 0} · 草稿 {readOnlyDrafts.filter((draft) => draft.source?.type === 'system_map_verification_ready').length}</small>
+            <strong>{noOverviewSources ? 'N/A' : projectFocus?.verification_ready || 0}</strong>
+            <small>{noOverviewSources ? '验证证据数据不可用' : `验证缺口 ${projectFocus?.verification_gap || 0} · 草稿 ${readOnlyDrafts.filter((draft) => draft.source?.type === 'system_map_verification_ready').length}`}</small>
           </button>
           <button
             className={`overview-coverage-card ${coverageTone(pageMaturity?.score || 0, pageMaturity?.gap || 0, pageMaturity?.watch || 0)}`}
@@ -1428,8 +1436,8 @@ export default function OverviewPage({
             onClick={() => openOverviewTarget({ tab: 'TaskCenter', taskQuery: '页面' }, onNavigate, onOpenTarget)}
           >
             <span>页面成熟度</span>
-            <strong>{pageMaturity?.score || 0}%</strong>
-            <small>ready {pageMaturity?.ready || 0} · watch {pageMaturity?.watch || 0}</small>
+            <strong>{noOverviewSources ? 'N/A' : `${pageMaturity?.score || 0}%`}</strong>
+            <small>{noOverviewSources ? '页面成熟度数据不可用' : `ready ${pageMaturity?.ready || 0} · watch ${pageMaturity?.watch || 0}`}</small>
           </button>
           <button
             className={`overview-coverage-card ${coverageTone(domainApps?.score || 0, domainApps?.high_risk || 0, domainApps?.external_mounts || 0)}`}
@@ -1437,8 +1445,8 @@ export default function OverviewPage({
             onClick={() => openOverviewTarget({ tab: 'DomainApps' }, onNavigate, onOpenTarget)}
           >
             <span>领域挂载</span>
-            <strong>{domainApps?.score || 0}%</strong>
-            <small>运行 {domainApps?.running || 0} / {domainApps?.total || 0} · 高风险 {domainApps?.high_risk || 0}</small>
+            <strong>{noOverviewSources ? 'N/A' : `${domainApps?.score || 0}%`}</strong>
+            <small>{noOverviewSources ? '领域挂载数据不可用' : `运行 ${domainApps?.running || 0} / ${domainApps?.total || 0} · 高风险 ${domainApps?.high_risk || 0}`}</small>
           </button>
           <button
             className={`overview-coverage-card ${coverageTone(capabilityCoverage?.score || 0, capabilityCoverage?.failed_cells || 0, capabilityCoverage?.warning_cells || 0)}`}
@@ -1446,8 +1454,8 @@ export default function OverviewPage({
             onClick={() => openOverviewTarget({ tab: 'SystemMap' }, onNavigate, onOpenTarget)}
           >
             <span>能力矩阵</span>
-            <strong>{capabilityCoverage?.score || 0}%</strong>
-            <small>warning {capabilityCoverage?.warning_cells || 0} · failed {capabilityCoverage?.failed_cells || 0}</small>
+            <strong>{noOverviewSources ? 'N/A' : `${capabilityCoverage?.score || 0}%`}</strong>
+            <small>{noOverviewSources ? '能力矩阵数据不可用' : `warning ${capabilityCoverage?.warning_cells || 0} · failed ${capabilityCoverage?.failed_cells || 0}`}</small>
           </button>
         </div>
 
