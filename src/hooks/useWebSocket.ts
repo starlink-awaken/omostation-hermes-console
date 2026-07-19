@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface UseWebSocketOptions {
   url: string;
-  onMessage?: (data: any) => void;
+  onMessage?: (data: unknown) => void;
   onError?: (error: Event) => void;
   onOpen?: () => void;
   onClose?: () => void;
@@ -12,7 +12,7 @@ interface UseWebSocketOptions {
 
 interface UseWebSocketReturn {
   isConnected: boolean;
-  send: (data: any) => void;
+  send: (data: unknown) => void;
   reconnect: () => void;
   disconnect: () => void;
 }
@@ -30,6 +30,19 @@ export function useWebSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectRef = useRef<() => void>(() => undefined);
+
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setIsConnected(false);
+  }, []);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -66,7 +79,7 @@ export function useWebSocket({
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current += 1;
           reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
+            connectRef.current();
           }, reconnectInterval);
         }
       };
@@ -77,7 +90,7 @@ export function useWebSocket({
     }
   }, [url, onMessage, onError, onOpen, onClose, reconnectInterval, maxReconnectAttempts]);
 
-  const send = useCallback((data: any) => {
+  const send = useCallback((data: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       const message = typeof data === 'string' ? data : JSON.stringify(data);
       wsRef.current.send(message);
@@ -87,21 +100,11 @@ export function useWebSocket({
   const reconnect = useCallback(() => {
     disconnect();
     reconnectAttemptsRef.current = 0;
-    connect();
-  }, [connect]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    setIsConnected(false);
-  }, []);
+    connectRef.current();
+  }, [disconnect]);
 
   useEffect(() => {
+    connectRef.current = connect;
     connect();
 
     return () => {
@@ -121,7 +124,7 @@ export function useWebSocket({
 interface UseRealtimeDataOptions<T> {
   url: string;
   initialData: T;
-  transform?: (data: any) => T;
+  transform?: (data: unknown) => T;
 }
 
 interface UseRealtimeDataReturn<T> {
