@@ -876,6 +876,8 @@ describe('SystemMapView', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('kairon 项目详情')).toBeInTheDocument()
       expect(screen.getByText('工作流时间线')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'kairon 验证历史' })).toBeInTheDocument()
+      expect(screen.getByText('run-kairon · checks 1')).toBeInTheDocument()
       expect(screen.getByText('run：run-kairon')).toBeInTheDocument()
     })
   })

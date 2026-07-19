@@ -1254,6 +1254,9 @@ function ProjectDetailPanel({
   const verification = project.runtime.latest_verification;
   const attentionChecks = project.coverage_checks.filter((check) => check.status !== 'ready');
   const latestWorkflowRun = project.workflow.runs[0];
+  const verificationHistory = project.workflow.runs
+    .filter((run) => run.verify_checks > 0 || Boolean(run.verify_status && run.verify_status !== 'unknown'))
+    .slice(0, 4);
   const primaryRepairCheck = attentionChecks[0] || project.coverage_checks[0];
   return (
     <section className="services-section system-map-section system-map-project-detail" aria-label={`${project.id} 项目详情`}>
@@ -1332,6 +1335,20 @@ function ProjectDetailPanel({
               证据来源：{verification.source}
               {verification.command ? ` · ${verification.command}` : ''}
               {verification.closeout_ref ? ` · ${verification.closeout_ref}` : ''}
+            </div>
+          )}
+          {verificationHistory.length > 0 && (
+            <div className="system-map-verification-history" role="region" aria-label={`${project.id} 验证历史`}>
+              <strong>验证历史</strong>
+              <div className="system-map-workflow-timeline">
+                {verificationHistory.map((run) => (
+                  <div className={`system-map-workflow-event ${statusClass(run.verify_status)}`} key={run.run_id}>
+                    <strong>{verifyText(run.verify_status)}</strong>
+                    <span>{run.run_id} · checks {run.verify_checks}</span>
+                    <small>{run.latest_ts ? shortDate(run.latest_ts) : '暂无时间'}</small>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </article>
