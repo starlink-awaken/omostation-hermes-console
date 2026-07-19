@@ -2181,12 +2181,16 @@ function ConstructionControlSection({
   cockpitPages,
   onTabChange,
   onOpenTarget,
+  onPromoteDraft,
+  pendingDraftId,
 }: {
   architecture: SiteArchitecture;
   focus: OperatingFocus;
   cockpitPages: CockpitPageMeta[];
   onTabChange?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  onPromoteDraft: (draft: FocusActionDraft) => void;
+  pendingDraftId: string | null;
 }) {
   const pagesInUsage = new Set(
     focus.actionDrafts
@@ -2308,16 +2312,34 @@ function ConstructionControlSection({
           </div>
           <div className="home-architecture-list">
             {verificationDrafts.map((draft) => (
-              <button
+              <article
                 key={`home-build-verify-${draft.id}`}
                 className="home-architecture-item"
-                aria-label={`打开首页验证补证 ${draft.sourceId}`}
-                onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: draft.sourceId }, onTabChange, onOpenTarget)}
               >
-                <strong>{draft.title}</strong>
-                <span>{draft.sourceLabel} · {draft.priority || 'pending'}</span>
+                <button
+                  type="button"
+                  className="home-architecture-item-main"
+                  aria-label={`打开首页验证补证 ${draft.sourceId}`}
+                  onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: draft.sourceId }, onTabChange, onOpenTarget)}
+                >
+                  <strong>{draft.title}</strong>
+                  <span>{draft.sourceLabel} · {draft.priority || 'pending'}</span>
+                </button>
                 <small>{draft.description || '进入任务中心承接验证补证。'}</small>
-              </button>
+                <div className="home-architecture-item-actions">
+                  <button
+                    type="button"
+                    className="antd-btn small"
+                    aria-label={`承接为正式计划任务 ${draft.title}`}
+                    title="承接为正式计划任务"
+                    disabled={Boolean(pendingDraftId)}
+                    onClick={() => onPromoteDraft(draft)}
+                  >
+                    <ClipboardCheck size={13} />
+                    <span>{pendingDraftId === draft.id ? '承接中' : '承接任务'}</span>
+                  </button>
+                </div>
+              </article>
             ))}
             {verificationDimension && (
               <button
@@ -2951,6 +2973,27 @@ export default function HomePage({
   const [loading, setLoading] = useState(true);
   const [homeError, setHomeError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [pendingDraftId, setPendingDraftId] = useState<string | null>(null);
+  const [draftActionNotice, setDraftActionNotice] = useState<string | null>(null);
+  const [draftActionError, setDraftActionError] = useState<string | null>(null);
+
+  const promoteDraft = async (draft: FocusActionDraft) => {
+    if (pendingDraftId) return;
+    setPendingDraftId(draft.id);
+    setDraftActionNotice(null);
+    setDraftActionError(null);
+    try {
+      const response = await fetch(`/api/tasks/drafts/${encodeURIComponent(draft.id)}/promote`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '任务草稿承接失败');
+      setDraftActionNotice(`已承接为正式计划任务：${payload.title || draft.title}`);
+      setRefreshToken((value) => value + 1);
+    } catch (error) {
+      setDraftActionError(error instanceof Error ? error.message : '任务草稿承接失败');
+    } finally {
+      setPendingDraftId(null);
+    }
+  };
   const siteClosureRows = useMemo(() => buildSiteClosureRows({
     cockpitPages,
     featureDomains: siteArchitecture.featureDomains,
@@ -3146,6 +3189,21 @@ export default function HomePage({
         </div>
       )}
 
+      {(draftActionNotice || draftActionError) && (
+        <div
+          role={draftActionError ? 'alert' : 'status'}
+          style={{
+            padding: '10px 14px',
+            border: `1px solid ${draftActionError ? 'rgba(255, 71, 87, 0.35)' : 'rgba(82, 196, 26, 0.35)'}`,
+            borderRadius: 'var(--antd-radius-md)',
+            background: draftActionError ? 'rgba(255, 71, 87, 0.08)' : 'rgba(82, 196, 26, 0.08)',
+            color: draftActionError ? 'var(--antd-error)' : 'var(--antd-success)',
+          }}
+        >
+          {draftActionError || draftActionNotice}
+        </div>
+      )}
+
       {/* 系统健康总览 */}
               <HealthSummarySection
         healthScore={healthSummary.health_score}
@@ -3186,6 +3244,8 @@ export default function HomePage({
         cockpitPages={cockpitPages}
         onTabChange={onTabChange}
         onOpenTarget={onOpenTarget}
+        onPromoteDraft={(draft) => { void promoteDraft(draft); }}
+        pendingDraftId={pendingDraftId}
       />
 
       <FocusedHomeClosureSection

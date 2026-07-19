@@ -389,7 +389,13 @@ describe('HomePage', () => {
       expect(screen.getByRole('button', { name: '打开项目任务 toolbox' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开首页症状对象 页面有了但不会用' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '打开首页症状任务 能看不能证' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '承接为正式计划任务 验证补证：cockpit' })).toBeInTheDocument()
     }, { timeout: 8000 })
+
+    fireEvent.click(screen.getByRole('button', { name: '承接为正式计划任务 验证补证：cockpit' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/drafts/verification-ready-cockpit/promote', { method: 'POST' })
+    })
 
     fireEvent.click(screen.getByRole('button', { name: /打开系统地图/ }))
     expect(onTabChange).toHaveBeenCalledWith('SystemMap')

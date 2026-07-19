@@ -7185,6 +7185,27 @@ button.system-map-gap {
   padding: 14px;
 }
 
+.home-architecture-item-main {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-architecture-item-main:hover strong {
+  color: var(--antd-color-primary);
+}
+
+.home-architecture-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .home-architecture-roadmap-lane:hover,
 .home-architecture-item:hover {
   border-color: var(--antd-border-color-hover);
