@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Bot, ClipboardList, GitBranch, PlayCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { BookOpen, Bot, ClipboardCheck, ClipboardList, GitBranch, PlayCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 interface TaskItem {
@@ -174,6 +174,9 @@ export default function KnowledgeExecutionWorkbench({
   const [systemMap, setSystemMap] = useState<SystemMapLite>({});
   const [sourceErrors, setSourceErrors] = useState<string[]>([]);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [taskPending, setTaskPending] = useState(false);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -349,6 +352,57 @@ export default function KnowledgeExecutionWorkbench({
     ];
   }, [currentPage, pipelines, skills, summary, systemMap.gaps, systemMap.playbooks, systemMap.usage_paths, workflowDefinitions, workflows.length]);
 
+  const executionTaskDraft = useMemo(() => {
+    const source = summary.gap || summary.roadmapItem || summary.usagePath;
+    const title = summary.gap?.title
+      ? `补齐执行能力：${summary.gap.title}`
+      : summary.roadmapItem?.title
+        ? `落地执行路线：${summary.roadmapItem.title}`
+        : summary.usagePath?.title
+          ? `落地使用路径：${summary.usagePath.title}`
+          : '建立知识到任务执行样本';
+    const description = summary.gap?.next
+      || summary.roadmapItem?.problem
+      || summary.usagePath?.intent
+      || '把知识、能力、工作流和任务中心串成一条可回放的执行链路。';
+    return {
+      title,
+      description,
+      priority: summary.gap?.severity === 'high' || summary.gap?.severity === 'critical' ? 'high' : 'medium',
+      sourceType: summary.gap ? 'capability_gap' : summary.roadmapItem ? 'roadmap' : summary.usagePath ? 'usage_path' : 'execution_sample',
+      sourceId: source?.id || currentPage,
+    };
+  }, [currentPage, summary.gap, summary.roadmapItem, summary.usagePath]);
+
+  const createExecutionTask = async () => {
+    setTaskPending(true);
+    setTaskNotice(null);
+    setTaskError(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: executionTaskDraft.title,
+          description: executionTaskDraft.description,
+          priority: executionTaskDraft.priority,
+          risk_level: 'L1',
+          evidence_required: ['知识或路线图对象', '能力/工作流执行证据', 'TaskCenter closeout'],
+          tags: ['knowledge-execution', executionTaskDraft.sourceType],
+          source: { type: executionTaskDraft.sourceType, id: executionTaskDraft.sourceId },
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '执行任务登记失败');
+      setTaskNotice(`已登记执行任务：${payload.title || executionTaskDraft.title}`);
+      if (payload.id) openWorkbenchTarget('TaskCenter', String(payload.id));
+    } catch (requestError) {
+      setTaskError(requestError instanceof Error ? requestError.message : '执行任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
+
   return (
     <section className="knowledge-execution-workbench antd-card">
       <div className="section-header" style={{ marginBottom: 0 }}>
@@ -401,6 +455,38 @@ export default function KnowledgeExecutionWorkbench({
           <small>点击进入 {summary.nextTab}</small>
         </button>
       </div>
+
+      <section className="services-section" role="region" aria-label="执行任务登记" style={{ marginTop: 16 }}>
+        <div className="section-header">
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16 }}>执行任务登记</h2>
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              当前路径、能力缺口或路线图项还没有在途任务时，直接登记正式执行项，避免只看汇总不落地。
+            </p>
+          </div>
+          <span className="status-badge degraded">可直接落任务</span>
+        </div>
+        <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <strong>{executionTaskDraft.title}</strong>
+            <p>{executionTaskDraft.description}</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="antd-btn"
+              disabled={taskPending}
+              aria-label={`登记执行任务 ${executionTaskDraft.title}`}
+              onClick={() => { void createExecutionTask(); }}
+            >
+              <ClipboardCheck size={14} />
+              <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
+            </button>
+            {taskNotice && <span role="status" aria-live="polite" className="text-muted">{taskNotice}</span>}
+            {taskError && <span role="alert">{taskError}</span>}
+          </div>
+        </article>
+      </section>
 
       <div className="knowledge-execution-path">
         {EXECUTION_STEPS.map((step, index) => (

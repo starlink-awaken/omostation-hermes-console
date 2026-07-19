@@ -142,6 +142,36 @@ describe('KnowledgeExecutionWorkbench', () => {
     })
   })
 
+  it('registers a knowledge gap as a formal execution task', async () => {
+    const onOpenTarget = vi.fn()
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/tasks' && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body))
+        expect(body.title).toBe('补齐执行能力：知识页还缺执行导流')
+        expect(body.tags).toEqual(['knowledge-execution', 'capability_gap'])
+        return Promise.resolve(okJson({ id: 'execution-task-1', title: body.title }))
+      }
+      if (url === '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80') {
+        return Promise.resolve(okJson({ items: [] }))
+      }
+      if (url === '/api/cockpit/system-map') {
+        return Promise.resolve(okJson({ gaps: [{ id: 'knowledge-gap', title: '知识页还缺执行导流', severity: 'high', next: '补上知识页到任务中心的桥。' }] }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KnowledgeExecutionWorkbench currentPage="Knowledge" onOpenTarget={onOpenTarget} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '登记执行任务 补齐执行能力：知识页还缺执行导流' }))
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'execution-task-1' })
+      expect(screen.getByRole('status')).toHaveTextContent('已登记执行任务：补齐执行能力：知识页还缺执行导流')
+    })
+  })
+
   it('keeps the execution path visible when the skills source fails', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       if (String(input) === '/api/ecos/skills') {
