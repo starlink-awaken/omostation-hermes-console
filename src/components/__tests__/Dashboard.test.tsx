@@ -164,6 +164,24 @@ describe('Dashboard global search', () => {
     expect(options[0]).toHaveAttribute('aria-selected', 'true')
   })
 
+  it('keeps Enter activation valid when refreshed search results shrink', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({ items: [] }))
+
+    render(<Dashboard />)
+    const search = await screen.findByLabelText('全局搜索输入框')
+    fireEvent.change(search, { target: { value: '任务' } })
+    const results = await screen.findByRole('listbox', { name: '全局搜索结果' })
+    const initialOptions = within(results).getAllByRole('option')
+    expect(initialOptions.length).toBeGreaterThan(1)
+    fireEvent.keyDown(search, { key: 'ArrowDown' })
+
+    fireEvent.change(search, { target: { value: '没有这个入口' } })
+    fireEvent.change(search, { target: { value: '任务' } })
+    fireEvent.keyDown(search, { key: 'Enter' })
+
+    expect(screen.getByTestId('dashboard-page-view')).toBeInTheDocument()
+  })
+
   it('copies the current contextual URL for handoff', async () => {
     window.location.hash = '#system-map?project=mesh-router&task=repair'
     vi.mocked(fetch).mockResolvedValue(okJson({ items: [] }))

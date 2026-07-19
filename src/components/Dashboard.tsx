@@ -1306,6 +1306,10 @@ export default function Dashboard() {
       .map((item) => item.target)
       .slice(0, 8);
   }, [dynamicSearchTargets, knowledgeSearchTargets, searchQuery]);
+  // 动态数据源刷新时结果数量可能缩短，展示和回车都使用仍然有效的下标。
+  const activeSearchResultIndex = searchResults.length > 0
+    ? Math.min(searchResultIndex, searchResults.length - 1)
+    : 0;
 
   const shellActions = useMemo(() => {
     const items: DashboardShellAction[] = [];
@@ -4385,7 +4389,7 @@ export default function Dashboard() {
                 aria-label="全局搜索输入框"
                 aria-controls="cockpit-global-search-results"
                 aria-expanded={Boolean(searchQuery.trim())}
-                aria-activedescendant={searchResults[searchResultIndex] ? `cockpit-search-result-${searchResults[searchResultIndex].id}` : undefined}
+                aria-activedescendant={searchResults[activeSearchResultIndex] ? `cockpit-search-result-${searchResults[activeSearchResultIndex].id}` : undefined}
                 value={searchQuery}
                 onChange={(event) => {
                   setSearchQuery(event.target.value);
@@ -4400,8 +4404,8 @@ export default function Dashboard() {
                     event.preventDefault();
                     setSearchResultIndex((index) => Math.max(index - 1, 0));
                   }
-                  if (event.key === 'Enter' && searchResults[searchResultIndex]) {
-                    openSearchTarget(searchResults[searchResultIndex]);
+                  if (event.key === 'Enter' && searchResults[activeSearchResultIndex]) {
+                    openSearchTarget(searchResults[activeSearchResultIndex]);
                   }
                   if (event.key === 'Escape') {
                     setSearchQuery('');
@@ -4418,7 +4422,7 @@ export default function Dashboard() {
                     id={`cockpit-search-result-${target.id}`}
                     type="button"
                     role="option"
-                    aria-selected={searchResults[searchResultIndex]?.id === target.id}
+                    aria-selected={searchResults[activeSearchResultIndex]?.id === target.id}
                     className="topbar-search-result"
                     onMouseDown={(event) => event.preventDefault()}
                     onMouseEnter={() => setSearchResultIndex(searchResults.findIndex((item) => item.id === target.id))}
