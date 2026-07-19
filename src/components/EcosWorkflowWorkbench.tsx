@@ -105,8 +105,18 @@ export default function EcosWorkflowWorkbench({ onNavigate, onOpenTarget }: Ecos
     }
   };
 
-  useEffect(() => { void loadCatalog(); }, []);
-  useEffect(() => { if (selectedName) void inspectWorkflow(selectedName); }, [selectedName]);
+  useEffect(() => {
+    // 首次挂载时读取 eCOS 工作流目录。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadCatalog();
+  }, []);
+  useEffect(() => {
+    if (selectedName) {
+      // 选择工作流后同步拉取定义和校验结果。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void inspectWorkflow(selectedName);
+    }
+  }, [selectedName]);
 
   const testWorkflow = async (dryRun: boolean) => {
     if (!selectedName) return;
