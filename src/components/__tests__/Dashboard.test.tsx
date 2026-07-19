@@ -206,6 +206,21 @@ describe('Dashboard global search', () => {
     expect(screen.queryByRole('dialog', { name: '命令面板' })).not.toBeInTheDocument()
   })
 
+  it('moves focus into the mobile navigation and closes it with Escape', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({}))
+
+    render(<Dashboard />)
+    const toggle = await screen.findByRole('button', { name: '打开主导航' })
+    fireEvent.click(toggle)
+
+    const sidebar = await screen.findByRole('complementary', { name: '控制台侧边栏' })
+    const close = sidebar.querySelector('.mobile-nav-close') as HTMLButtonElement
+    expect(close).toHaveFocus()
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '打开主导航' })).toHaveFocus())
+  })
+
   it('refreshes only the active page workbench from the global header', async () => {
     vi.mocked(fetch).mockResolvedValue(okJson({}))
 

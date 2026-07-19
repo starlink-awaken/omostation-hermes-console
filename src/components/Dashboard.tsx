@@ -1287,6 +1287,9 @@ export default function Dashboard() {
   const [snapshotExportState, setSnapshotExportState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
   const [linkCopyState, setLinkCopyState] = useState<'idle' | 'success' | 'error'>('idle');
   const globalSearchInputRef = useRef<HTMLInputElement>(null);
+  const mobileNavToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileNavCloseRef = useRef<HTMLButtonElement>(null);
+  const mobileSidebarRef = useRef<HTMLElement>(null);
   const taskCenterIncomingDraft = useMemo(() => readTaskCenterDraft(taskDraftKey), [taskDraftKey]);
 
   const searchResults = useMemo(() => {
@@ -2966,6 +2969,39 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    mobileNavCloseRef.current?.focus();
+    const sidebar = mobileSidebarRef.current;
+    if (!sidebar) return undefined;
+
+    const handleMobileNavKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMobileNavOpen(false);
+        mobileNavToggleRef.current?.focus();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(sidebar.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleMobileNavKeyDown);
+    return () => document.removeEventListener('keydown', handleMobileNavKeyDown);
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
     if (pageSprintRows.length === 0) {
       if (pageSprintFocusId) {
         // 刷新后没有可展示的页面时清理失效焦点。
@@ -4273,7 +4309,7 @@ export default function Dashboard() {
           onClick={() => setMobileNavOpen(false)}
         />
       )}
-      <aside role="complementary" aria-label="控制台侧边栏" className={`sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
+      <aside ref={mobileSidebarRef} role="complementary" aria-label="控制台侧边栏" className={`sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo-box" aria-hidden="true">
             <Activity size={18} />
@@ -4282,6 +4318,7 @@ export default function Dashboard() {
           <button
             type="button"
             className="mobile-nav-close"
+            ref={mobileNavCloseRef}
             aria-label="关闭主导航"
             onClick={() => setMobileNavOpen(false)}
           >
@@ -4392,6 +4429,7 @@ export default function Dashboard() {
           <button
             type="button"
             className="topbar-btn mobile-nav-toggle"
+            ref={mobileNavToggleRef}
             aria-label={mobileNavOpen ? '关闭主导航' : '打开主导航'}
             aria-expanded={mobileNavOpen}
             onClick={() => setMobileNavOpen((open) => !open)}
