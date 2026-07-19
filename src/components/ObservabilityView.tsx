@@ -56,6 +56,9 @@ export default function ObservabilityView({
   const [retryToken, setRetryToken] = useState(0);
   const [domainQuery, setDomainQuery] = useState('');
   const [domainStatus, setDomainStatus] = useState<'all' | 'degraded' | 'healthy'>('all');
+  const [taskPending, setTaskPending] = useState(false);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   useEffect(() => {
     const domains = Array.isArray(bosData?.domains) ? bosData.domains : [];
@@ -225,6 +228,46 @@ export default function ObservabilityView({
     return null;
   }, [archData, bosData, focusPageId, focusTaskQuery, observabilityClosureRows]);
   const observabilityContextQuery = observabilityBacklog.degradedDomains[0]?.domain || domainQuery.trim() || focusTaskQuery || 'Observability';
+  const observabilityTaskDraft = useMemo(() => {
+    const firstDomain = observabilityBacklog.degradedDomains[0];
+    const title = firstDomain ? `处理观测异常：${firstDomain.domain}` : '补齐运行可观测治理链路';
+    const description = firstDomain
+      ? `${firstDomain.domain} 当前失败 ${firstDomain.error || 0} 次，平均延迟 ${firstDomain.avg_latency || 0} ms。请关联日志、网格路由和告警证据，确认根因并完成治理收口。`
+      : '当前没有明确热点域，先抽查架构健康、BOS 指标、日志和告警链路，确认运行可观测面仍能支撑异常治理。';
+    return {
+      title,
+      description,
+      taskTarget: { tab: 'TaskCenter' as const, taskQuery: firstDomain?.domain || 'Observability' },
+      objectTarget: { tab: firstDomain ? 'LogViewer' as const : 'Observability' as const, taskQuery: firstDomain?.domain || 'Observability' },
+    };
+  }, [observabilityBacklog.degradedDomains]);
+  const createObservabilityTask = async () => {
+    setTaskPending(true);
+    setTaskNotice(null);
+    setTaskError(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: observabilityTaskDraft.title,
+          description: observabilityTaskDraft.description,
+          priority: observabilityBacklog.degradedDomains.length > 0 ? 'high' : 'medium',
+          risk_level: 'L1',
+          evidence_required: ['BOS 指标时间点', '日志或网格路由证据', '告警关联与处理结果', 'task closeout'],
+          tags: ['observability', 'runtime-governance'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '观测任务登记失败');
+      setTaskNotice(`已登记观测治理任务：${payload.title || observabilityTaskDraft.title}`);
+      if (payload.id) openCockpitNavigationTarget({ ...observabilityTaskDraft.taskTarget, taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+    } catch (requestError) {
+      setTaskError(requestError instanceof Error ? requestError.message : '观测任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -421,6 +464,50 @@ export default function ObservabilityView({
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="services-section" role="region" aria-label="观测治理任务">
+        <div className="section-header">
+          <div>
+            <h2>观测治理任务</h2>
+            <p className="text-muted">把当前异常域或观测链路缺口直接登记为正式任务，继续补日志、路由、告警和 closeout 证据。</p>
+          </div>
+          <span className={`status-badge ${observabilityBacklog.degradedDomains.length > 0 ? 'degraded' : 'online'}`}>
+            {observabilityBacklog.degradedDomains.length > 0 ? '发现异常' : '抽查承接'}
+          </span>
+        </div>
+        <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
+          <div>
+            <strong>{observabilityTaskDraft.title}</strong>
+            <p>{observabilityTaskDraft.description}</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="antd-btn"
+              disabled={taskPending}
+              aria-label={`登记观测治理任务 ${observabilityTaskDraft.title}`}
+              onClick={() => { void createObservabilityTask(); }}
+            >
+              <ClipboardCheck size={14} />
+              <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
+            </button>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label={`打开观测治理对象 ${observabilityTaskDraft.title}`}
+              onClick={() => openCockpitNavigationTarget(observabilityTaskDraft.objectTarget, onNavigate, onOpenTarget)}
+            >
+              <Activity size={14} />
+              <span>看证据</span>
+            </button>
+          </div>
+        </article>
+        {(taskNotice || taskError) && (
+          <div className="shell-data-banner" role="status" aria-live="polite">
+            {taskNotice || taskError}
+          </div>
+        )}
       </section>
 
       <section className="services-section">

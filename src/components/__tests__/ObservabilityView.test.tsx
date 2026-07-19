@@ -115,6 +115,44 @@ describe('ObservabilityView', () => {
     expect(onNavigate).not.toHaveBeenCalled()
   })
 
+  it('registers the leading observability anomaly as a TaskCenter task', async () => {
+    const onOpenTarget = vi.fn()
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/v1/arch-health') {
+        return Promise.resolve(okJson({
+          system: { health_score: 88 },
+          git: { status: 'dirty', uncommitted: 3 },
+          governance: { health: 'watch' },
+        }))
+      }
+      if (url === '/api/bos/metrics') {
+        return Promise.resolve(okJson({
+          summary: { total_calls: 32, avg_latency: 780, success_count: 30 },
+          domains: [{ domain: 'governance', total: 12, success: 11, error: 1, avg_latency: 780 }],
+        }))
+      }
+      if (url === '/api/tasks') {
+        expect(init?.method).toBe('POST')
+        const body = JSON.parse(String(init?.body))
+        expect(body.title).toBe('处理观测异常：governance')
+        expect(body.tags).toEqual(['observability', 'runtime-governance'])
+        return Promise.resolve(okJson({ id: 'observability-task-1', title: '处理观测异常：governance' }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<ObservabilityView onOpenTarget={onOpenTarget} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '登记观测治理任务 处理观测异常：governance' }))
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'observability-task-1' })
+      expect(screen.getByRole('status')).toHaveTextContent('已登记观测治理任务：处理观测异常：governance')
+    })
+  })
+
   it('surfaces observability closure routing when focus hits governance tasking', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
