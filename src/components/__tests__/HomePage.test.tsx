@@ -572,6 +572,25 @@ describe('HomePage', () => {
     expect(onOpenTarget).toHaveBeenNthCalledWith(2, { tab: 'TaskCenter', taskQuery: 'Guide' })
   })
 
+  it('surfaces metric data quality instead of leaving empty charts unexplained', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/health/summary') return Promise.resolve(okJson({ health_score: 90, active_services: 1, total_services: 1, active_tasks: 0, today_requests: 0 }))
+      if (url === '/api/cockpit/system-map') return Promise.resolve(okJson(systemMapPayload))
+      if (url.startsWith('/api/tasks') || url.startsWith('/api/alerts')) return Promise.resolve(okJson({ items: [] }))
+      if (url.startsWith('/api/metrics')) return Promise.resolve(okJson({ health_score: [], requests: [], error_rate: [], data_quality: 'partial', degraded_reasons: ['请求量暂无可信历史数据'] }))
+      if (url.startsWith('/api/omos/thoughts')) return Promise.resolve(okJson({ status: 'ok', thoughts: [] }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('指标数据：部分可用')).toBeInTheDocument()
+      expect(screen.getByText('请求量暂无可信历史数据')).toBeInTheDocument()
+    })
+  })
+
   it('reloads the selected metrics time range from the API', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)

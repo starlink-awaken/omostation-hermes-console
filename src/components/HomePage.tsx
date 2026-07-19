@@ -2964,6 +2964,8 @@ export default function HomePage({
   const [healthScoreData, setHealthScoreData] = useState<DataPoint[]>([]);
   const [requestsData, setRequestsData] = useState<DataPoint[]>([]);
   const [errorRateData, setErrorRateData] = useState<DataPoint[]>([]);
+  const [metricsDataQuality, setMetricsDataQuality] = useState<string>('unavailable');
+  const [metricsDegradedReasons, setMetricsDegradedReasons] = useState<string[]>([]);
   const [metricsRange, setMetricsRange] = useState<MetricsTimeRange>('24h');
   const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [operatingFocus, setOperatingFocus] = useState<OperatingFocus>(DEFAULT_OPERATING_FOCUS);
@@ -3047,6 +3049,8 @@ export default function HomePage({
         setHealthScoreData(metricsRes.data.health_score || []);
         setRequestsData(metricsRes.data.requests || []);
         setErrorRateData(metricsRes.data.error_rate || []);
+        setMetricsDataQuality(metricsRes.data.data_quality || 'unavailable');
+        setMetricsDegradedReasons(metricsRes.data.degraded_reasons || []);
         setThoughts(thoughtsRes.data.status === 'ok' ? thoughtsRes.data.thoughts || [] : []);
 
         if (systemMapRes.ok) {
@@ -3330,6 +3334,8 @@ export default function HomePage({
         healthScoreData={healthScoreData}
         requestsData={requestsData}
         errorRateData={errorRateData}
+        dataQuality={metricsDataQuality}
+        degradedReasons={metricsDegradedReasons}
         onTimeRangeChange={setMetricsRange}
       />
 
