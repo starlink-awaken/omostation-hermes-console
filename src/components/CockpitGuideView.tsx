@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Compass, LayoutDashboard, Map as MapIcon, Route, Sparkles } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, Compass, LayoutDashboard, Map as MapIcon, Route, Sparkles } from 'lucide-react';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
@@ -521,6 +521,27 @@ export default function CockpitGuideView({
   const [metrics, setMetrics] = useState<GuideMetrics>(DEFAULT_METRICS);
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const [guideRetryToken, setGuideRetryToken] = useState(0);
+  const [pendingDraftId, setPendingDraftId] = useState<string | null>(null);
+  const [draftActionNotice, setDraftActionNotice] = useState<string | null>(null);
+  const [draftActionError, setDraftActionError] = useState<string | null>(null);
+
+  const promoteFeaturedDraft = async (draft: GuideMetrics['featuredDrafts'][number]) => {
+    if (pendingDraftId) return;
+    setPendingDraftId(draft.id);
+    setDraftActionNotice(null);
+    setDraftActionError(null);
+    try {
+      const response = await fetch(`/api/tasks/drafts/${encodeURIComponent(draft.id)}/promote`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '任务草稿承接失败');
+      setDraftActionNotice(`已承接为正式计划任务：${payload.title || draft.title}`);
+      setGuideRetryToken((token) => token + 1);
+    } catch (error) {
+      setDraftActionError(error instanceof Error ? error.message : '任务草稿承接失败');
+    } finally {
+      setPendingDraftId(null);
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -1631,6 +1652,12 @@ export default function CockpitGuideView({
         </div>
       )}
 
+      {(draftActionNotice || draftActionError) && (
+        <div className={`shell-data-banner ${draftActionError ? 'error' : ''}`} role={draftActionError ? 'alert' : 'status'}>
+          <span>{draftActionError || draftActionNotice}</span>
+        </div>
+      )}
+
       <section className="cockpit-guide-section">
         <div className="section-header">
           <div>
@@ -2299,19 +2326,36 @@ export default function CockpitGuideView({
             </div>
             <div className="cockpit-guide-task-list">
               {metrics.featuredDrafts.map((draft) => (
-                <button
+                <article
                   key={draft.id}
-                  type="button"
                   className="cockpit-guide-task-item"
-                  aria-label={`打开补位任务 ${draft.title}`}
-                  onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: draft.sourceId }, onNavigate, onOpenTarget)}
                 >
-                  <div>
-                    <strong>{draft.title}</strong>
-                    <small>{draft.sourceType}</small>
-                  </div>
+                  <button
+                    type="button"
+                    className="cockpit-guide-task-item-main"
+                    aria-label={`打开补位任务 ${draft.title}`}
+                    onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: draft.sourceId }, onNavigate, onOpenTarget)}
+                  >
+                    <div>
+                      <strong>{draft.title}</strong>
+                      <small>{draft.sourceType}</small>
+                    </div>
+                  </button>
                   <p>{draft.description || `优先在任务中心承接 ${draft.sourceId}。`}</p>
-                </button>
+                  <div className="cockpit-guide-task-actions">
+                    <button
+                      type="button"
+                      className="antd-btn small"
+                      aria-label={`承接为正式计划任务 ${draft.title}`}
+                      title="承接为正式计划任务"
+                      disabled={Boolean(pendingDraftId)}
+                      onClick={() => void promoteFeaturedDraft(draft)}
+                    >
+                      <ClipboardCheck size={13} />
+                      <span>{pendingDraftId === draft.id ? '承接中' : '承接任务'}</span>
+                    </button>
+                  </div>
+                </article>
               ))}
               {metrics.featuredDrafts.length === 0 && (
                 <div className="cockpit-guide-task-empty">当前没有需要承接的补位草稿。</div>

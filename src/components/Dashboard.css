@@ -9662,6 +9662,17 @@ button.platform-workbench-item {
   text-align: left;
 }
 
+.cockpit-guide-task-item-main {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .cockpit-guide-task-lane,
 .cockpit-guide-task-item {
   color: inherit;
@@ -9672,6 +9683,10 @@ button.platform-workbench-item {
 .cockpit-guide-task-item:hover {
   border-color: var(--antd-border-color-hover);
   background: rgba(79, 172, 254, 0.05);
+}
+
+.cockpit-guide-task-item-main:hover strong {
+  color: var(--antd-color-primary);
 }
 
 .cockpit-guide-task-lane strong,
@@ -9704,6 +9719,12 @@ button.platform-workbench-item {
   color: var(--antd-text-secondary);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.cockpit-guide-task-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .cockpit-guide-focus-head {

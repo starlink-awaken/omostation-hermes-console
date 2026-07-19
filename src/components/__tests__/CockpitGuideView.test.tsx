@@ -281,7 +281,13 @@ describe('CockpitGuideView', () => {
       expect(screen.getAllByText('系统治理').length).toBeGreaterThan(0)
       expect(screen.getByRole('button', { name: '打开页面 系统地图' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '查看页面覆盖 系统地图' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '承接为正式计划任务 页面能力：补齐 性能监控' })).toBeInTheDocument()
     }, { timeout: 8000 })
+
+    fireEvent.click(screen.getByRole('button', { name: '承接为正式计划任务 页面能力：补齐 性能监控' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/tasks/drafts/page-maturity-Performance/promote', { method: 'POST' })
+    })
   }, 20000)
 
   it('keeps the guide available when task draft data fails', async () => {
