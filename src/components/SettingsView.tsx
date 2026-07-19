@@ -107,6 +107,19 @@ type VersionHistoryItem = {
   endpoint_list?: Array<{ path?: string; method?: string; version?: string }>;
 };
 
+type SettingsMetrics = {
+  timestamp?: string;
+  services?: number;
+  healthy?: number;
+  latency?: Record<string, string | number>;
+};
+
+type InstanceRegistrationResult = {
+  error?: string;
+  task_id?: string;
+  [key: string]: unknown;
+};
+
 function matchesSettingsFocusQuery(values: Array<string | null | undefined>, query?: string | null) {
   if (!query) return false;
   const normalizedQuery = query.trim().toLowerCase();
@@ -134,7 +147,7 @@ export default function SettingsView({
   focusPageId,
   focusTaskQuery,
 }: SettingsViewProps) {
-  const [metrics, setMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<SettingsMetrics | null>(null);
   const [domainApps, setDomainApps] = useState<SettingsDomainAppsPayload | null>(null);
   const [doctor, setDoctor] = useState<DoctorStatus | null>(null);
   const [doctorError, setDoctorError] = useState<string | null>(null);
@@ -143,7 +156,7 @@ export default function SettingsView({
   const [versionError, setVersionError] = useState<string | null>(null);
   const [instanceUrl, setInstanceUrl] = useState('');
   const [instanceService, setInstanceService] = useState('');
-  const [registerResult, setRegisterResult] = useState<any>(null);
+  const [registerResult, setRegisterResult] = useState<InstanceRegistrationResult | null>(null);
   const [registering, setRegistering] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [securityQuery, setSecurityQuery] = useState('');
@@ -323,7 +336,7 @@ export default function SettingsView({
     try {
       const res = await fetch('/api/metrics/history');
       if (!res.ok) throw new Error(`指标服务返回 HTTP ${res.status}`);
-      setMetrics(await res.json());
+      setMetrics(await res.json() as SettingsMetrics);
       setLoadError(null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : '系统指标暂不可用');
@@ -376,6 +389,8 @@ export default function SettingsView({
   };
 
   useEffect(() => {
+    // 设置页同时订阅控制面、领域安全、doctor 和版本快照。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchMetrics();
     void fetchDomainApps();
     void fetchDoctor();
@@ -404,13 +419,13 @@ export default function SettingsView({
       fd.append('service', instanceService);
       fd.append('mcp_endpoint', instanceUrl);
       const res = await fetch('/api/instance', { method: 'POST', body: fd });
-      const result = await res.json();
+      const result = await res.json() as InstanceRegistrationResult;
       setRegisterResult(result);
       if (res.ok) {
         await refreshSettingsData();
       }
-    } catch (e: any) {
-      setRegisterResult({ error: e.message });
+    } catch (e: unknown) {
+      setRegisterResult({ error: e instanceof Error ? e.message : '实例注册请求失败' });
     } finally {
       setRegistering(false);
     }
