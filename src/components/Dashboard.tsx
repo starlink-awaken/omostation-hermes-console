@@ -229,6 +229,24 @@ interface SearchAlert {
   created_at?: string;
 }
 
+interface SearchAlertRule {
+  id: string;
+  name?: string;
+  condition?: string;
+  level?: string;
+  enabled?: boolean;
+  channels?: string[];
+}
+
+interface SearchQuest {
+  id: number | string;
+  title?: string;
+  type?: string;
+  reward?: number;
+  completed?: number;
+  assignee?: string;
+}
+
 interface SearchResearchItem {
   id: number | string;
   topic?: string;
@@ -3054,11 +3072,12 @@ export default function Dashboard() {
   useEffect(() => {
     const buildDynamicSearch = async () => {
       try {
-        const [systemMapRes, tasksRes, domainAppsRes, alertsRes, meshServicesRes, computeStatusRes, logsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes, debtRes, l4HealthRes, proposalsRes, gbrainAgentsRes] = await Promise.all([
+        const [systemMapRes, tasksRes, domainAppsRes, alertsRes, alertRulesRes, meshServicesRes, computeStatusRes, logsRes, researchRes, metaosWorkflowsRes, skillsRes, pipelinesRes, ecosWorkflowsRes, debtRes, l4HealthRes, proposalsRes, gbrainAgentsRes, questsRes] = await Promise.all([
           fetchSearchData('/api/cockpit/system-map'),
           fetchSearchData('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80'),
           fetchSearchData('/api/domain-apps'),
           fetchSearchData('/api/alerts?limit=80'),
+          fetchSearchData('/api/alerts/rules'),
           fetchSearchData('/api/bos/services'),
           fetchSearchData('/api/governance/compute/status'),
           fetchSearchData('/api/logs?limit=100'),
@@ -3071,6 +3090,7 @@ export default function Dashboard() {
           fetchSearchData('/api/l4/health'),
           fetchSearchData('/api/v1/proposals'),
           fetchSearchData('/admin/api/agents'),
+          fetchSearchData('/api/omos/quests'),
         ]);
         setShellSourceAvailability({
           systemMap: systemMapRes.ok,
@@ -3585,6 +3605,31 @@ export default function Dashboard() {
           });
         }
 
+        if (alertRulesRes.ok) {
+          const rulesPayload = (alertRulesRes.data || {}) as { items?: SearchAlertRule[] };
+          (rulesPayload.items || []).forEach((rule) => {
+            if (!rule.id) return;
+            targets.push({
+              id: `alert-rule-${rule.id}`,
+              tab: 'AlertCenter',
+              label: `告警规则：${rule.name || rule.id}`,
+              group: `告警规则 · ${rule.enabled === false ? '已停用' : rule.level || 'unknown'}`,
+              context: { taskQuery: rule.name || rule.id, alertTab: 'rules' },
+              keywords: [
+                rule.id,
+                rule.name || '',
+                rule.condition || '',
+                rule.level || '',
+                ...(rule.channels || []),
+                rule.enabled === false ? 'disabled' : 'enabled',
+                'alert rule',
+                '告警规则',
+                '规则',
+              ],
+            });
+          });
+        }
+
         if (meshServicesRes.ok) {
           const meshPayload = (meshServicesRes.data || {}) as { services?: Array<{ uri?: string; domain?: string; action?: string; transport?: string }> };
           const services = meshPayload.services || [];
@@ -3892,6 +3937,33 @@ export default function Dashboard() {
               group: `GBrain 管理 · ${String(agent.status || 'unknown')}`,
               context: { taskQuery: `agent ${name}` },
               keywords: [id, name, String(agent.scope || ''), String(agent.auth_type || ''), String(agent.status || ''), 'GBrain', 'agent', '智能体', '凭证'],
+            });
+          });
+        }
+
+        if (questsRes.ok) {
+          const questsPayload = (questsRes.data || {}) as { quests?: SearchQuest[] };
+          (questsPayload.quests || []).forEach((quest) => {
+            const id = String(quest.id || '').trim();
+            if (!id) return;
+            targets.push({
+              id: `quest-${id}`,
+              tab: 'QuestBoard',
+              label: `家庭 Quest：${quest.title || id}`,
+              group: `家庭任务 · ${quest.completed === 1 ? '已完成' : '进行中'}`,
+              context: { taskQuery: id },
+              keywords: [
+                id,
+                quest.title || '',
+                quest.type || '',
+                String(quest.reward ?? ''),
+                String(quest.completed ?? ''),
+                quest.assignee || '',
+                'quest',
+                '家庭',
+                '积分',
+                '成长',
+              ],
             });
           });
         }

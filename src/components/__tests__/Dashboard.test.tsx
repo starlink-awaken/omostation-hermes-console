@@ -1157,6 +1157,32 @@ describe('Dashboard global search', () => {
     await waitFor(() => expect(screen.getByText('Mock Page')).toBeInTheDocument())
   })
 
+  it('indexes alert rules and family quests in the global entry', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/alerts/rules') {
+        return Promise.resolve(okJson({ items: [{ id: 'rule-latency', name: '延迟过高', condition: 'latency > 500', level: 'warning', enabled: true }] }))
+      }
+      if (url === '/api/omos/quests') {
+        return Promise.resolve(okJson({ quests: [{ id: 42, title: '完成家庭复盘', type: 'growth', reward: 20, completed: 0, assignee: '老王' }] }))
+      }
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<Dashboard />)
+    const search = await screen.findByLabelText('全局搜索输入框')
+
+    fireEvent.change(search, { target: { value: '延迟过高' } })
+    const ruleTarget = await screen.findByText('告警规则：延迟过高')
+    fireEvent.click(ruleTarget)
+    await waitFor(() => expect(screen.getByText('Alert Mock rules')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: '完成家庭复盘' } })
+    const questTarget = await screen.findByText('家庭 Quest：完成家庭复盘')
+    fireEvent.click(questTarget)
+    await waitFor(() => expect(screen.getByText('Mock Page')).toBeInTheDocument())
+  })
+
   it('searches live mesh, compute and log objects from the global entry', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
