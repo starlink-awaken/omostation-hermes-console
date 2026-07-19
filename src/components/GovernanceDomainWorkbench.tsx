@@ -250,9 +250,6 @@ export default function GovernanceDomainWorkbench({
     } else if (openDebt > 0) {
       nextAction = `技术债账本里还有 ${openDebt} 条未关闭事项，先清债。`;
       nextTab = 'Debt';
-    } else if (!sourceAvailability.l4Health && !sourceAvailability.systemMap) {
-      nextAction = '领域与域健康证据暂不可用，先重试治理来源。';
-      nextTab = 'DomainApps';
     } else if (securityAttention > 0) {
       nextAction = `有 ${securityAttention} 个领域应用还在吃安全关注，先看领域挂载。`;
       nextTab = 'DomainApps';

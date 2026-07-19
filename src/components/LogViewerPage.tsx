@@ -9,7 +9,7 @@ interface LogEntry {
   level: 'debug' | 'info' | 'warning' | 'error' | 'fatal';
   source: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 type LogLevel = 'all' | 'debug' | 'info' | 'warning' | 'error' | 'fatal';
@@ -111,6 +111,8 @@ export default function LogViewerPage({
   }, [logHasMore, logLoadingMore, logOffset, logTotal]);
 
   useEffect(() => {
+    // 日志页挂载和流式模式都通过同一个刷新函数同步真实日志。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshLogs();
     if (!isStreaming) return undefined;
     const interval = setInterval(() => void refreshLogs(), 5000);
@@ -128,6 +130,8 @@ export default function LogViewerPage({
     if (!focusTaskQuery) return;
     const matchedSource = logs.find((log) => matchesLogFocusQuery([log.source], focusTaskQuery))?.source;
     if (matchedSource) {
+      // 外部导航查询优先定位来源，再回退到全文搜索。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFilterSource(matchedSource);
       return;
     }

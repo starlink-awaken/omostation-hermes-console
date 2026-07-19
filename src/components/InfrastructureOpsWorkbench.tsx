@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Activity, ArrowRight, ClipboardCheck, Cpu, FileText, Gauge, Network, Route, Server, Workflow } from 'lucide-react';
+import { Activity, ArrowRight, ClipboardCheck, Cpu, FileText, Gauge, Network, Route, Workflow } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
 
 type InfraPage = 'McpMesh' | 'Topology' | 'Compute' | 'Overview' | 'LogViewer' | string;

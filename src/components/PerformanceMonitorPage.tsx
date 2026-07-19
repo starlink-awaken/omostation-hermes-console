@@ -84,6 +84,8 @@ export default function PerformanceMonitorPage({
 
   useEffect(() => {
     if (focusTaskQuery && services.some((service) => matchesPerformanceFocusQuery([service.name, service.status, service.cpu, service.memory, service.uptime], focusTaskQuery))) {
+      // 外部导航查询命中服务时同步性能筛选条件。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setServiceQuery(focusTaskQuery);
     }
   }, [focusTaskQuery, services]);

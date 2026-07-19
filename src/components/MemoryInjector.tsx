@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { Database, Search, Save, Loader2, Link as LinkIcon, BookOpen, Clock } from 'lucide-react';
 
+type MemorySearchResult = {
+  title?: string;
+  chunk_text?: string;
+  [key: string]: unknown;
+};
+
 export default function MemoryInjector() {
   const [activeSubTab, setActiveSubTab] = useState('write');
   
@@ -15,7 +21,7 @@ export default function MemoryInjector() {
   // Search State
   const [query, setQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<MemorySearchResult[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
 
   const handleWrite = async (e: React.FormEvent) => {
@@ -46,8 +52,8 @@ export default function MemoryInjector() {
       setTitle('');
       setContent('');
       setTags('');
-    } catch (err: any) {
-      setWriteResult({ status: 'error', msg: `注入失败: ${err.message}` });
+    } catch (err: unknown) {
+      setWriteResult({ status: 'error', msg: `注入失败: ${err instanceof Error ? err.message : '请求失败'}` });
     } finally {
       setWriteLoading(false);
     }
@@ -94,9 +100,9 @@ export default function MemoryInjector() {
               ? data.results
               : [];
       setSearchResults(results);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setSearchError(`检索失败：${err.message || '知识服务暂不可用。'}`);
+      setSearchError(`检索失败：${err instanceof Error ? err.message : '知识服务暂不可用。'}`);
     } finally {
       setSearchLoading(false);
     }
