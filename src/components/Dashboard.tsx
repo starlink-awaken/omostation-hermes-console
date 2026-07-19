@@ -35,6 +35,7 @@ import {
   Download,
   Shield,
   History,
+  Link2,
 } from 'lucide-react';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette } from './common/CommandPalette';
@@ -1280,6 +1281,7 @@ export default function Dashboard() {
   const [closureDraftNotice, setClosureDraftNotice] = useState<string | null>(null);
   const [pageSprintDraftNotice, setPageSprintDraftNotice] = useState<string | null>(null);
   const [snapshotExportState, setSnapshotExportState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
+  const [linkCopyState, setLinkCopyState] = useState<'idle' | 'success' | 'error'>('idle');
   const globalSearchInputRef = useRef<HTMLInputElement>(null);
   const taskCenterIncomingDraft = useMemo(() => readTaskCenterDraft(taskDraftKey), [taskDraftKey]);
 
@@ -3061,6 +3063,16 @@ export default function Dashboard() {
     setSearchQuery('');
   };
 
+  const copyCurrentNavigationLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopyState('success');
+      window.setTimeout(() => setLinkCopyState('idle'), 2400);
+    } catch {
+      setLinkCopyState('error');
+    }
+  };
+
   const commandPaletteCommands = [
     ...COCKPIT_PAGE_REGISTRY.map((page) => ({
       id: page.id.toLowerCase(),
@@ -4403,6 +4415,20 @@ export default function Dashboard() {
             {snapshotExportState !== 'idle' && (
               <span className="text-muted" role="status" aria-live="polite">
                 {snapshotExportState === 'exporting' ? '导出中...' : snapshotExportState === 'success' ? '快照已导出' : '快照导出失败'}
+              </span>
+            )}
+            <button
+              type="button"
+              className="topbar-btn"
+              aria-label="复制当前页面链接"
+              title="复制当前页面链接"
+              onClick={() => { void copyCurrentNavigationLink(); }}
+            >
+              <Link2 size={16} aria-hidden="true" />
+            </button>
+            {linkCopyState !== 'idle' && (
+              <span className="text-muted" role="status" aria-live="polite">
+                {linkCopyState === 'success' ? '链接已复制' : '复制失败'}
               </span>
             )}
             <button

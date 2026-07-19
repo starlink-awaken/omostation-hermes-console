@@ -164,6 +164,19 @@ describe('Dashboard global search', () => {
     expect(options[0]).toHaveAttribute('aria-selected', 'true')
   })
 
+  it('copies the current contextual URL for handoff', async () => {
+    window.location.hash = '#system-map?project=mesh-router&task=repair'
+    vi.mocked(fetch).mockResolvedValue(okJson({ items: [] }))
+
+    render(<Dashboard />)
+    fireEvent.click(await screen.findByRole('button', { name: '复制当前页面链接' }))
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('#system-map?project=mesh-router&task=repair'))
+      expect(screen.getByRole('status')).toHaveTextContent('链接已复制')
+    })
+  })
+
   it('toggles the command palette with Ctrl+K instead of registering duplicate handlers', async () => {
     vi.mocked(fetch).mockResolvedValue(okJson({}))
 
