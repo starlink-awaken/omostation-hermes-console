@@ -51,6 +51,31 @@ describe('SystemAssuranceWorkbench', () => {
     expect(onNavigate).toHaveBeenCalledWith('Protocol')
   })
 
+  it('registers a cross-cutting assurance gap as a formal task', async () => {
+    const onNavigate = vi.fn()
+    let taskRequest: RequestInit | undefined
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/tasks' && init?.method === 'POST') {
+        taskRequest = init
+        return Promise.resolve(okJson({ id: 77, title: '推进入口收敛：未收敛入口' }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<SystemAssuranceWorkbench onNavigate={onNavigate} />)
+
+    const button = await screen.findByRole('button', { name: '登记系统保证任务 推进入口收敛：未收敛入口' })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('已登记系统保证任务：推进入口收敛：未收敛入口')
+      expect(onNavigate).toHaveBeenCalledWith('TaskCenter')
+    })
+    expect(taskRequest?.body).toContain('系统保证快照')
+    expect(taskRequest?.body).toContain('cockpit.system-assurance-workbench')
+  })
+
   it('shows incomplete evidence and retries every source', async () => {
     let statusCalls = 0
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {

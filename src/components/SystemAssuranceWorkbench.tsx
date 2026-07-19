@@ -142,6 +142,9 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
   const [state, setState] = useState<AssuranceState>(EMPTY_STATE);
   const [loading, setLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [taskPending, setTaskPending] = useState(false);
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -204,6 +207,52 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
   const governanceContextQuery = state.omo.open ? 'open' : 'governance';
   const convergenceContextQuery = state.convergence.remaining?.[0] || 'convergence';
   const openAssuranceTarget = (target: CockpitNavigationTarget) => openCockpitNavigationTarget(target, onNavigate, onOpenTarget);
+  const assuranceGap = unavailableSources.length > 0
+    || layerUnavailable
+    || e2eTone !== 'online'
+    || omoTone !== 'online'
+    || convergenceTone !== 'online';
+  const assuranceTaskTitle = unavailableSources[0]
+    ? `补齐系统保证证据：${unavailableSources[0]}`
+    : (state.omo.open || 0) > 0
+      ? `收敛治理债务：${state.omo.open} 项开放项`
+      : convergenceTone !== 'online'
+        ? `推进入口收敛：${state.convergence.remaining?.[0] || '未收敛入口'}`
+        : e2eTone !== 'online'
+          ? '补齐 E2E 验证证据'
+          : '执行系统保证复核';
+  const assuranceTaskDescription = unavailableSources.length > 0
+    ? `系统保证工作台检测到 ${unavailableSources.join('、')} 不可用。请恢复证据源，重新执行核验，并完成 TaskCenter closeout。`
+    : `系统保证工作台检测到横向保障缺口：${assuranceTaskTitle}。请补齐层健康、协议、E2E、治理债务或入口收敛证据，并记录处理结果。`;
+
+  const createAssuranceTask = async () => {
+    setTaskPending(true);
+    setTaskNotice(null);
+    setTaskError(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: assuranceTaskTitle,
+          description: assuranceTaskDescription,
+          priority: unavailableSources.length > 0 || e2eTone === 'offline' ? 'high' : 'medium',
+          risk_level: unavailableSources.length > 0 ? 'L2' : 'L1',
+          evidence_required: ['系统保证快照', '相关层、协议或服务证据', '验证与收敛结果', 'task closeout'],
+          tags: ['system-assurance', 'governance'],
+          source: 'cockpit.system-assurance-workbench',
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || response.statusText || '系统保证任务登记失败');
+      setTaskNotice(`已登记系统保证任务：${payload.title || assuranceTaskTitle}`);
+      if (payload.id) openAssuranceTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) });
+    } catch (requestError) {
+      setTaskError(requestError instanceof Error ? requestError.message : '系统保证任务登记失败');
+    } finally {
+      setTaskPending(false);
+    }
+  };
 
   return (
     <section className="services-section overview-ops-panel" role="region" aria-label="系统保证工作台">
@@ -218,7 +267,20 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
           <RefreshCw size={13} />
           <span>{loading ? '检查中' : '重新检查'}</span>
         </button>
+        {!loading && assuranceGap && (
+          <button type="button" className="antd-btn small" onClick={() => void createAssuranceTask()} disabled={taskPending} aria-label={`登记系统保证任务 ${assuranceTaskTitle}`}>
+            <ClipboardCheck size={13} />
+            <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
+          </button>
+        )}
       </div>
+
+      {(taskNotice || taskError) && (
+        <div className={taskError ? 'overview-inline-error' : 'shell-data-banner'} role={taskError ? 'alert' : 'status'}>
+          {taskError ? <AlertTriangle size={16} /> : <ClipboardCheck size={16} />}
+          <span>{taskError || taskNotice}</span>
+        </div>
+      )}
 
       {unavailableSources.length > 0 && (
         <div className="overview-inline-error" role="alert">
