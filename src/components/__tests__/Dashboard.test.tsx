@@ -1203,10 +1203,10 @@ describe('Dashboard global search', () => {
       if (url.startsWith('/api/tasks?')) return Promise.resolve(okJson({ items: [] }))
       if (url === '/api/domain-apps') return Promise.resolve(okJson({ items: [] }))
       if (url === '/api/alerts?limit=80') return Promise.resolve(okJson({ items: [] }))
-      if (url === '/api/cockpit/research-hub') {
+      if (url.startsWith('/api/cockpit/research-hub?')) {
         return Promise.resolve(okJson({ recent: [{ id: 42, topic: '家庭研究', summary: '研究摘要', status: 'active', tags: ['家庭'] }] }))
       }
-      if (url === '/api/metaos/workflows') {
+      if (url.startsWith('/api/metaos/workflows?')) {
         return Promise.resolve(okJson({ workflows: [{ workflow_id: 'wf-42', task: '家庭执行链', status: 'running' }] }))
       }
       if (url === '/api/ecos/skills') {
