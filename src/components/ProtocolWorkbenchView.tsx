@@ -34,6 +34,9 @@ type ProtocolPayload = {
   };
   layers: ProtocolLayer[];
   recent_workflows: ProtocolWorkflow[];
+  offset?: number;
+  limit?: number;
+  has_more?: boolean;
   commands: Array<{
     id: string;
     label: string;
@@ -158,13 +161,22 @@ export default function ProtocolWorkbenchView({
   const [protocolQuery, setProtocolQuery] = useState('');
   const [protocolStatusFilter, setProtocolStatusFilter] = useState('all');
   const [sourceError, setSourceError] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = async () => {
-    const result = await fetchJson<ProtocolPayload>('/api/cockpit/protocol-hub', EMPTY_PAYLOAD, '协议工作台');
-    setPayload(result.data);
+  const load = async (offset = 0, append = false) => {
+    if (append) setLoadingMore(true);
+    const result = await fetchJson<ProtocolPayload>(
+      `/api/cockpit/protocol-hub?limit=20&offset=${offset}`,
+      EMPTY_PAYLOAD,
+      '协议工作台',
+    );
+    setPayload((current) => append
+      ? { ...result.data, recent_workflows: [...current.recent_workflows, ...result.data.recent_workflows] }
+      : result.data);
     setSourceError(result.error);
     setLoading(false);
     setRefreshing(false);
+    setLoadingMore(false);
   };
 
   useEffect(() => {
@@ -925,6 +937,7 @@ export default function ProtocolWorkbenchView({
             <h2>最近编排记录</h2>
             <p className="text-muted">协议层不是只看定义，最近 workflow 记录能证明它到底有没有被实际承接。</p>
           </div>
+          <span className="status-badge online">显示 {filteredProtocolWorkflows.length}/{payload.summary.recent_runs}</span>
         </div>
         <div style={{ display: 'grid', gap: 12 }}>
           {payload.recent_workflows.length === 0 ? (
@@ -947,6 +960,19 @@ export default function ProtocolWorkbenchView({
             </article>
           ))}
         </div>
+        {payload.has_more && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+            <button
+              type="button"
+              className="antd-btn"
+              aria-label="加载更多协议运行记录"
+              onClick={() => void load(payload.recent_workflows.length, true)}
+              disabled={loadingMore}
+            >
+              {loadingMore ? '正在加载...' : `加载更多（已显示 ${payload.recent_workflows.length}/${payload.summary.recent_runs}）`}
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="services-section">

@@ -18,7 +18,7 @@ describe('ProtocolWorkbenchView', () => {
   it('renders protocol layer summary and related navigation', async () => {
     const onNavigate = vi.fn()
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
-      if (String(input) === '/api/cockpit/protocol-hub') {
+      if (String(input).startsWith('/api/cockpit/protocol-hub?')) {
         return Promise.resolve(okJson({
           summary: {
             workflow_definitions: 12,
