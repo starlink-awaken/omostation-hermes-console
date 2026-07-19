@@ -18,6 +18,55 @@ interface NodeTraffic {
   tokens_per_second_avg: number | null;
 }
 
+interface ComputeNode {
+  id: string;
+  name?: string;
+  status: string;
+  model?: string;
+  type?: string;
+  cpu_usage?: number;
+  gpu_usage?: number;
+}
+
+interface ComputeQuotaProvider {
+  provider: string;
+  available?: boolean;
+  error?: { message?: string };
+  used_percent?: number;
+  balance_usd?: number;
+  usage?: { total_used?: number; total_granted?: number };
+}
+
+interface ScheduledComputeTask {
+  task_id: string;
+  task_name: string;
+  node_id: string;
+  engine: string;
+  status: string;
+  progress: number;
+}
+
+interface ComputeModel {
+  model_name: string;
+  provider: string;
+  status: string;
+  latency_p50?: number;
+  tokens_per_second?: number;
+  calls_today?: number | null;
+}
+
+interface ComputeData {
+  circuit_broken?: boolean;
+  daily_budget?: number;
+  nodes?: ComputeNode[];
+  quota?: { quota?: ComputeQuotaProvider[] };
+  traffic_by_node?: NodeTraffic[];
+  scheduled_tasks?: ScheduledComputeTask[];
+  available_models?: ComputeModel[];
+  summary?: { avg_latency_ms?: number; avg_tokens_per_second?: number };
+  cost_board?: { interception_rate?: number; saved_vs_cloud_usd?: number | string };
+}
+
 interface ComputeViewProps {
   onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
@@ -48,7 +97,7 @@ export default function ComputeView({
   focusPageId,
   focusTaskQuery,
 }: ComputeViewProps) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<ComputeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -83,8 +132,8 @@ export default function ComputeView({
       if (!res.ok) setGenResult('❌ ' + (json.detail || '请求失败'));
       else if (json.status === 'success') setGenResult(json.content || '(空)');
       else setGenResult('❌ ' + (json.error || '生成失败'));
-    } catch (err: any) {
-      setGenResult('❌ ' + (err.message || String(err)));
+    } catch (err: unknown) {
+      setGenResult('❌ ' + (err instanceof Error ? err.message : '请求失败'));
     } finally {
       setGenLoading(false);
     }
@@ -104,8 +153,8 @@ export default function ComputeView({
       if (!res.ok) throw new Error(data.detail || data.error || '结果登记失败');
       setGenQueueMessage(data.created === false ? '这份生成结果已经登记过。' : '生成结果已登记到任务中心。');
       if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
-    } catch (err: any) {
-      setGenQueueMessage(`生成结果登记失败：${err.message || '请稍后重试。'}`);
+    } catch (err: unknown) {
+      setGenQueueMessage(`生成结果登记失败：${err instanceof Error ? err.message : '请稍后重试。'}`);
     } finally {
       setGenQueueLoading(false);
     }
@@ -126,10 +175,10 @@ export default function ComputeView({
         setData(json);
         setCircuitBroken(!!json.circuit_broken);
         setDailyBudget(json.daily_budget !== undefined ? json.daily_budget : null);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelled) {
           setData(null);
-          setError(`算力状态暂不可用：${err.message || '接口读取失败'}`);
+          setError(`算力状态暂不可用：${err instanceof Error ? err.message : '接口读取失败'}`);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -158,8 +207,8 @@ export default function ComputeView({
       if (!res.ok) throw new Error(result.detail || result.error || '登记失败');
       setControlMessage({ tone: 'success', text: nextVal ? '熔断变更已登记，等待人工审批' : '恢复云端路由已登记，等待人工审批' });
       openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: result.id }, onNavigate, onOpenTarget);
-    } catch (err: any) {
-      setControlMessage({ tone: 'error', text: '修改熔断状态发生异常：' + err.message });
+    } catch (err: unknown) {
+      setControlMessage({ tone: 'error', text: '修改熔断状态发生异常：' + (err instanceof Error ? err.message : '请求失败') });
     } finally {
       setControlPending(null);
     }
@@ -179,14 +228,14 @@ export default function ComputeView({
       if (!res.ok) throw new Error(result.detail || result.error || '登记失败');
       setControlMessage({ tone: 'success', text: `每日预算 $${val} 变更已登记，等待人工审批` });
       openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: result.id }, onNavigate, onOpenTarget);
-    } catch (err: any) {
-      setControlMessage({ tone: 'error', text: '修改预算异常：' + err.message });
+    } catch (err: unknown) {
+      setControlMessage({ tone: 'error', text: '修改预算异常：' + (err instanceof Error ? err.message : '请求失败') });
     } finally {
       setControlPending(null);
     }
   };
 
-  const wakeupNode = async (node: any) => {
+  const wakeupNode = async (node: ComputeNode) => {
     if (!node?.id || node.status === 'online') return;
     const confirmed = window.confirm(`确认把节点“${node.name || node.id}”登记为唤醒任务？`);
     if (!confirmed) return;
@@ -207,27 +256,29 @@ export default function ComputeView({
       if (result.id) {
         openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: result.id }, onNavigate, onOpenTarget);
       }
-    } catch (err: any) {
-      setControlMessage({ tone: 'error', text: `节点唤醒失败：${err.message || '请求异常'}` });
+    } catch (err: unknown) {
+      setControlMessage({ tone: 'error', text: `节点唤醒失败：${err instanceof Error ? err.message : '请求异常'}` });
     } finally {
       setWakeupNodeId(null);
     }
   };
 
-  const nodes = data?.nodes || [];
-  const quota = data?.quota?.quota || [];
-  const trafficByNode: NodeTraffic[] = data?.traffic_by_node || [];
+  const nodes = useMemo<ComputeNode[]>(() => data?.nodes || [], [data?.nodes]);
+  const quota: ComputeQuotaProvider[] = data?.quota?.quota || [];
+  const trafficByNode = useMemo<NodeTraffic[]>(() => data?.traffic_by_node || [], [data?.traffic_by_node]);
   const summary = data?.summary || {};
   const costBoard = data?.cost_board || {};
-  const availableModels = data?.available_models || [];
+  const availableModels: ComputeModel[] = data?.available_models || [];
   useEffect(() => {
-    if (focusTaskQuery && nodes.some((node: any) => matchesComputeFocusQuery([node.id, node.name, node.model, node.type, node.status], focusTaskQuery))) {
+    if (focusTaskQuery && nodes.some((node) => matchesComputeFocusQuery([node.id, node.name, node.model, node.type, node.status], focusTaskQuery))) {
+      // 外部导航查询命中算力节点时同步筛选条件。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNodeQuery(focusTaskQuery);
     }
   }, [focusTaskQuery, nodes]);
   const filteredNodes = useMemo(() => {
     const query = nodeQuery.trim().toLowerCase();
-    return nodes.filter((node: any) => {
+    return nodes.filter((node) => {
       if (nodeStatusFilter !== 'all' && node.status !== nodeStatusFilter) return false;
       if (!query) return true;
       return [node.id, node.name, node.model, node.type, node.status]
@@ -237,13 +288,13 @@ export default function ComputeView({
         .includes(query);
     });
   }, [nodeQuery, nodeStatusFilter, nodes]);
-  const filteredNodeIds = useMemo(() => new Set(filteredNodes.map((node: any) => node.id)), [filteredNodes]);
+  const filteredNodeIds = useMemo(() => new Set(filteredNodes.map((node) => node.id)), [filteredNodes]);
   const filteredTrafficByNode = useMemo(() => trafficByNode.filter((traffic) => {
     if (filteredNodeIds.has(traffic.node_id)) return true;
     if (!nodeQuery.trim()) return false;
     return [traffic.node_id, traffic.node_label, traffic.route_type].join(' ').toLowerCase().includes(nodeQuery.trim().toLowerCase());
   }), [filteredNodeIds, nodeQuery, trafficByNode]);
-  const filteredScheduledTasks = useMemo(() => (data?.scheduled_tasks || []).filter((task: any) => {
+  const filteredScheduledTasks = useMemo(() => (data?.scheduled_tasks || []).filter((task) => {
     if (filteredNodeIds.has(task.node_id)) return true;
     if (!nodeQuery.trim()) return false;
     return [task.task_id, task.task_name, task.node_id, task.engine, task.status].filter(Boolean).join(' ').toLowerCase().includes(nodeQuery.trim().toLowerCase());
@@ -273,8 +324,8 @@ export default function ComputeView({
 
   const computeBacklog = (() => {
     const scheduledTasks = data?.scheduled_tasks || [];
-    const saturatedNodes = nodes.filter((node: any) => node.status !== 'online' || (node.cpu_usage ?? 0) >= 70 || (node.gpu_usage ?? 0) >= 70);
-    const providerRisks = quota.filter((provider: any) => {
+    const saturatedNodes = nodes.filter((node) => node.status !== 'online' || (node.cpu_usage ?? 0) >= 70 || (node.gpu_usage ?? 0) >= 70);
+    const providerRisks = quota.filter((provider) => {
       const usedPercent = provider.used_percent !== undefined
         ? provider.used_percent
         : provider.usage?.total_granted
@@ -321,10 +372,10 @@ export default function ComputeView({
     },
   ];
 
-  const saturatedNodeCount = nodes.filter((node: any) => (
+  const saturatedNodeCount = nodes.filter((node) => (
     node.status !== 'online' || (node.cpu_usage ?? 0) >= 70 || (node.gpu_usage ?? 0) >= 70
   )).length;
-  const providerRiskCount = quota.filter((provider: any) => {
+  const providerRiskCount = quota.filter((provider) => {
     const usedPercent = provider.used_percent !== undefined
       ? provider.used_percent
       : provider.usage?.total_granted
@@ -395,7 +446,7 @@ export default function ComputeView({
   ];
 
   const focusedComputeCard = (() => {
-    const matchedNode = nodes.find((node: any) => (
+    const matchedNode = nodes.find((node) => (
       matchesComputeFocusQuery([
         String(node.id || ''),
         node.name,
@@ -414,7 +465,7 @@ export default function ComputeView({
       };
     }
 
-    const matchedProvider = quota.find((provider: any) => (
+    const matchedProvider = quota.find((provider) => (
       matchesComputeFocusQuery([
         provider.provider,
         provider.error,
@@ -597,8 +648,8 @@ export default function ComputeView({
             <p className="text-muted">把高压节点、预算风险和任务分流直接翻成下一步动作，不再只看监控数字。</p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span className="status-badge degraded">高压节点 {computeBacklog.saturatedNodes.filter((node: any) => node.status !== 'online' || (node.cpu_usage ?? 0) >= 70 || (node.gpu_usage ?? 0) >= 70).length}</span>
-            <span className="status-badge degraded">预算风险 {computeBacklog.providerRisks.filter((provider: any) => !provider.available || provider.error).length || computeBacklog.providerRisks.length}</span>
+            <span className="status-badge degraded">高压节点 {computeBacklog.saturatedNodes.filter((node) => node.status !== 'online' || (node.cpu_usage ?? 0) >= 70 || (node.gpu_usage ?? 0) >= 70).length}</span>
+            <span className="status-badge degraded">预算风险 {computeBacklog.providerRisks.filter((provider) => !provider.available || provider.error).length || computeBacklog.providerRisks.length}</span>
             <span className="status-badge online">调度任务 {computeBacklog.scheduledTasks.length}</span>
           </div>
         </div>
@@ -619,7 +670,7 @@ export default function ComputeView({
               <p className="text-muted" style={{ margin: 0 }}>当前没有需要处理的节点压力。</p>
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
-                {computeBacklog.saturatedNodes.map((node: any) => (
+                {computeBacklog.saturatedNodes.map((node) => (
                   <button
                     key={`node-${node.id}`}
                     type="button"
@@ -648,7 +699,7 @@ export default function ComputeView({
             <div style={{ display: 'grid', gap: 10 }}>
               {computeBacklog.providerRisks.length === 0 ? (
                 <p className="text-muted" style={{ margin: 0 }}>当前没有明显的供应商风险。</p>
-              ) : computeBacklog.providerRisks.map((provider: any, index: number) => {
+              ) : computeBacklog.providerRisks.map((provider, index: number) => {
                 const usedPercent = provider.used_percent !== undefined
                   ? provider.used_percent
                   : provider.usage?.total_granted
@@ -936,7 +987,7 @@ export default function ComputeView({
         </section>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
-          {filteredNodes.map((node: any) => {
+          {filteredNodes.map((node) => {
             const cpuLoad = node.cpu_usage;
             const gpuLoad = node.gpu_usage;
             const isOnline = node.status === 'online';
@@ -1114,7 +1165,7 @@ export default function ComputeView({
                       </td>
                     </tr>
                   ) : (
-                    filteredScheduledTasks.map((task: any) => (
+                    filteredScheduledTasks.map((task) => (
                       <tr key={task.task_id} className="service-row">
                         <td style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '11.5px' }}>{task.task_id}</td>
                         <td style={{ fontSize: '11.5px' }}>{task.task_name}</td>
@@ -1174,7 +1225,7 @@ export default function ComputeView({
                 暂无活跃的供应商鉴权数据
               </div>
             ) : (
-              quota.map((q: any, i: number) => {
+              quota.map((q, i: number) => {
                 const usedPercent = q.used_percent !== undefined && q.used_percent !== null
                   ? q.used_percent
                   : q.usage?.total_granted
@@ -1271,7 +1322,7 @@ export default function ComputeView({
                   </td>
                 </tr>
               ) : (
-                availableModels.map((m: any, idx: number) => (
+                availableModels.map((m, idx: number) => (
                   <tr key={idx} className="service-row">
                     <td style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '12.5px' }}>{m.model_name}</td>
                     <td style={{ textTransform: 'capitalize' }}>{m.provider}</td>
