@@ -1198,6 +1198,7 @@ export default function Dashboard() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dynamicSearchTargets, setDynamicSearchTargets] = useState<SearchTarget[]>([]);
+  const [knowledgeSearchTargets, setKnowledgeSearchTargets] = useState<SearchTarget[]>([]);
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
   const [focusedUsagePathId, setFocusedUsagePathId] = useState<string | null>(null);
   const [focusedGapId, setFocusedGapId] = useState<string | null>(null);
@@ -1237,7 +1238,7 @@ export default function Dashboard() {
     const query = searchQuery.trim();
     if (!query) return [];
     const queryTerms = expandSearchAliases([query]);
-    return [...dynamicSearchTargets, ...searchTargets]
+    return [...knowledgeSearchTargets, ...dynamicSearchTargets, ...searchTargets]
       .map((target) => ({
         target,
         score: scoreSearchTarget(target, query, queryTerms),
@@ -1249,7 +1250,7 @@ export default function Dashboard() {
       })
       .map((item) => item.target)
       .slice(0, 8);
-  }, [dynamicSearchTargets, searchQuery]);
+  }, [dynamicSearchTargets, knowledgeSearchTargets, searchQuery]);
 
   const shellActions = useMemo(() => {
     const items: DashboardShellAction[] = [];
@@ -3895,6 +3896,48 @@ export default function Dashboard() {
     const interval = setInterval(buildDynamicSearch, 30000);
     return () => clearInterval(interval);
   }, [pageRefreshToken]);
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) {
+      setKnowledgeSearchTargets([]);
+      return undefined;
+    }
+
+    setKnowledgeSearchTargets([]);
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      const response = await fetchSearchData(`/api/kos/search?q=${encodeURIComponent(query)}&limit=8`);
+      if (!active || !response.ok) return;
+      const payload = (response.data || {}) as { results?: unknown[]; items?: unknown[] };
+      const records = Array.isArray(payload.results)
+        ? payload.results
+        : Array.isArray(payload.items)
+          ? payload.items
+          : [];
+      const targets = records.flatMap((record, index) => {
+        if (!record || typeof record !== 'object') return [];
+        const item = record as Record<string, unknown>;
+        const id = String(item.id || item.slug || item.title || `result-${index}`);
+        const title = String(item.title || item.name || item.slug || id);
+        const excerpt = String(item.chunk_text || item.content || item.text || '');
+        return [{
+          id: `kos-search-${id}-${index}`,
+          tab: 'Knowledge',
+          label: `知识证据：${title}`,
+          group: '知识证据 · KOS',
+          context: { taskQuery: id },
+          keywords: [id, title, excerpt, 'KOS', '知识', '证据', '记忆', '上下文'],
+        }];
+      });
+      setKnowledgeSearchTargets(targets);
+    }, 220);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [searchQuery]);
 
   // 面包屑
   const getBreadcrumbItems = () => {

@@ -1219,3 +1219,21 @@ describe('Dashboard global search', () => {
     fireEvent.change(screen.getByLabelText('全局搜索输入框'), { target: { value: 'proposal-runtime' } })
     await waitFor(() => expect(screen.getByText('C2G 提案：proposal-runtime')).toBeInTheDocument())
   })
+
+  it('indexes live KOS evidence in the global entry', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/kos/search?q=%E6%9E%B6%E6%9E%84%E5%86%B3%E7%AD%96&limit=8') {
+        return Promise.resolve(okJson({ results: [{ id: 'decision-1', title: '架构决策', chunk_text: '保留来源证据。' }] }))
+      }
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<Dashboard />)
+    const search = await screen.findByLabelText('全局搜索输入框')
+    fireEvent.change(search, { target: { value: '架构决策' } })
+
+    const target = await screen.findByText('知识证据：架构决策')
+    fireEvent.click(target)
+    await waitFor(() => expect(screen.getByText('Mock Page')).toBeInTheDocument())
+  })
