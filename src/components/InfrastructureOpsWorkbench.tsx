@@ -273,6 +273,12 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
           risk_level: noInfrastructureSources ? 'L2' : 'L1',
           evidence_required: ['基础设施状态快照', '网格/服务/算力证据', '日志或处理结果', 'task closeout'],
           tags: ['infrastructure', 'runtime-governance'],
+          source: {
+            type: 'cockpit.infrastructure-workbench',
+            id: infrastructureContextQuery,
+            title: '基础设施工作台',
+            target: { tab: currentPage, taskQuery: infrastructureContextQuery },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

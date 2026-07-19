@@ -487,6 +487,13 @@ export default function ProtocolWorkbenchView({
           priority: 'high',
           risk_level: 'L1',
           evidence_required: ['协议定义或元模型快照', '工作流运行证据', '桥接或治理处理结果', 'task closeout'],
+          tags: ['protocol', 'governance'],
+          source: {
+            type: 'cockpit.protocol-workbench',
+            id: activeProtocolSurface.id,
+            title: '协议工作台',
+            target: activeProtocolSurface.objectTarget,
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

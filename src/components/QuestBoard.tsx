@@ -192,6 +192,12 @@ export default function QuestBoard({
           risk_level: 'L1',
           evidence_required: ['家庭任务完成记录', '积分日志或成员反馈', 'TaskCenter closeout'],
           tags: ['family', 'quest-board'],
+          source: {
+            type: 'cockpit.quest-board',
+            id: String(quest.id),
+            title: '积分冒险',
+            target: { tab: 'QuestBoard', taskQuery: quest.title },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

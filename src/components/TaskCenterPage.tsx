@@ -194,6 +194,19 @@ function sourceTypeLabel(type?: string): string {
   if (type === 'cockpit.runtime-workbench') return '运行诊断';
   if (type === 'cockpit.system-assurance-workbench') return '系统保证';
   if (type === 'cockpit.mcp-mesh-resolver') return 'MCP 解析';
+  if (type === 'cockpit.task-center') return '手工登记';
+  if (type === 'cockpit.assets-skill') return '技术资产';
+  if (type === 'cockpit.governance-domain-workbench') return '系统治理';
+  if (type === 'cockpit.infrastructure-workbench') return '基础设施';
+  if (type === 'cockpit.knowledge-hub') return '知识中枢';
+  if (type === 'cockpit.l4-health') return 'L4 健康';
+  if (type === 'cockpit.log-viewer') return '日志治理';
+  if (type === 'cockpit.performance-monitor') return '性能监控';
+  if (type === 'cockpit.platform-control-workbench') return '平台控制';
+  if (type === 'cockpit.protocol-workbench') return '协议工作台';
+  if (type === 'cockpit.quest-board') return '积分冒险';
+  if (type === 'cockpit.sandbox-terminal') return '隔离沙箱';
+  if (type === 'cockpit.topology-view') return '全局拓扑';
   return '草稿来源';
 }
 
@@ -270,6 +283,19 @@ function sourceActionLabel(task: Task): string {
   if (task.source.type === 'cockpit.runtime-workbench') return '回运行诊断';
   if (task.source.type === 'cockpit.system-assurance-workbench') return '回系统保证';
   if (task.source.type === 'cockpit.mcp-mesh-resolver') return '回 MCP 解析';
+  if (task.source.type === 'cockpit.task-center') return '回手工登记';
+  if (task.source.type === 'cockpit.assets-skill') return '回技术资产';
+  if (task.source.type === 'cockpit.governance-domain-workbench') return '回系统治理';
+  if (task.source.type === 'cockpit.infrastructure-workbench') return '回基础设施';
+  if (task.source.type === 'cockpit.knowledge-hub') return '回知识中枢';
+  if (task.source.type === 'cockpit.l4-health') return '回 L4 健康';
+  if (task.source.type === 'cockpit.log-viewer') return '回日志查看器';
+  if (task.source.type === 'cockpit.performance-monitor') return '回性能监控';
+  if (task.source.type === 'cockpit.platform-control-workbench') return '回平台控制';
+  if (task.source.type === 'cockpit.protocol-workbench') return '回协议工作台';
+  if (task.source.type === 'cockpit.quest-board') return '回积分冒险';
+  if (task.source.type === 'cockpit.sandbox-terminal') return '回隔离沙箱';
+  if (task.source.type === 'cockpit.topology-view') return '回全局拓扑';
   return '打开来源';
 }
 
@@ -283,6 +309,19 @@ function sourceCompletionHint(task: Task): string {
   if (task.source.type === 'cockpit.runtime-workbench') return '目标是完成运行告警、性能、日志或拓扑证据收口。';
   if (task.source.type === 'cockpit.system-assurance-workbench') return '目标是补齐横向系统保证证据并完成 closeout。';
   if (task.source.type === 'cockpit.mcp-mesh-resolver') return '目标是核对 BOS 解析、路由和实例验收证据。';
+  if (task.source.type === 'cockpit.task-center') return '目标是把手工发现登记为可追踪的正式任务。';
+  if (task.source.type === 'cockpit.assets-skill') return '目标是补齐技能资产的描述、边界和可复用入口。';
+  if (task.source.type === 'cockpit.governance-domain-workbench') return '目标是完成治理对象的跨域证据收口。';
+  if (task.source.type === 'cockpit.infrastructure-workbench') return '目标是完成基础设施状态、证据和处理结果收口。';
+  if (task.source.type === 'cockpit.knowledge-hub') return '目标是把知识上下文带入验证、执行和 closeout。';
+  if (task.source.type === 'cockpit.l4-health') return '目标是完成 L4 域健康、信号和关联应用收口。';
+  if (task.source.type === 'cockpit.log-viewer') return '目标是从日志异常追到根因、告警恢复和 closeout。';
+  if (task.source.type === 'cockpit.performance-monitor') return '目标是把性能热点追到告警、日志和持续治理。';
+  if (task.source.type === 'cockpit.platform-control-workbench') return '目标是完成控制面状态、验证和处理结果收口。';
+  if (task.source.type === 'cockpit.protocol-workbench') return '目标是核对协议、工作流、桥接和治理证据。';
+  if (task.source.type === 'cockpit.quest-board') return '目标是把家庭积分任务的完成记录纳入长期跟踪。';
+  if (task.source.type === 'cockpit.sandbox-terminal') return '目标是保留沙箱实验输出、结论和后续动作。';
+  if (task.source.type === 'cockpit.topology-view') return '目标是核对拓扑依赖、节点健康和下游影响。';
   if (task.source.type === 'system_map_playbook') return '目标是让执行路径、证据和 done_when 形成完整闭环。';
   return '回来源面继续完成闭环。';
 }
@@ -778,6 +817,13 @@ export default function TaskCenterPage({
           priority: manualTaskPriority,
           risk_level: manualTaskRisk,
           evidence_required,
+          tags: ['manual-task'],
+          source: {
+            type: 'cockpit.task-center',
+            id: title,
+            title: '任务中心手工登记',
+            target: { tab: 'TaskCenter', taskQuery: title },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

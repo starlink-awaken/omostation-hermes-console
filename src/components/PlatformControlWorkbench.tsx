@@ -295,6 +295,12 @@ export default function PlatformControlWorkbench({
           risk_level: unavailableSources.length > 0 ? 'L2' : 'L1',
           evidence_required: ['控制面状态快照', '观测/调度/服务证据', '验证或处理结果', 'task closeout'],
           tags: ['platform-control', 'runtime-governance'],
+          source: {
+            type: 'cockpit.platform-control-workbench',
+            id: platformContextQuery,
+            title: '平台控制工作台',
+            target: { tab: currentPage, taskQuery: platformContextQuery },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

@@ -107,6 +107,12 @@ export default function SandboxTerminal({
           risk_level: 'L1',
           evidence_required: ['沙箱执行输出或拦截原因', '日志或引擎关联证据', '实验结论与后续动作', 'task closeout'],
           tags: ['sandbox', 'follow-up'],
+          source: {
+            type: 'cockpit.sandbox-terminal',
+            id: sandboxTaskDraft.title,
+            title: '隔离沙箱',
+            target: { tab: 'Sandbox', taskQuery: sandboxTaskDraft.title },
+          },
         }),
       });
       const data = await response.json().catch(() => ({}));

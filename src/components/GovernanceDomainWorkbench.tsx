@@ -330,6 +330,12 @@ export default function GovernanceDomainWorkbench({
           risk_level: summary.systemMapUnavailable || summary.debtUnavailable || summary.l4HealthUnavailable ? 'L2' : 'L1',
           evidence_required: ['治理对象状态快照', '处理前后证据', '跨域影响确认', 'task closeout'],
           tags: ['governance', 'domain-closure'],
+          source: {
+            type: 'cockpit.governance-domain-workbench',
+            id: currentPage,
+            title: '系统治理工作台',
+            target: { tab: currentPage, taskQuery: governanceTaskTitle },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

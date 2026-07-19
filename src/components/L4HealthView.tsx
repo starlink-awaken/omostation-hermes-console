@@ -150,6 +150,13 @@ export default function L4HealthView({
           priority: domain?.issue_count || risk?.severity === 'critical' ? 'high' : 'medium',
           risk_level: 'L1',
           evidence_required: ['域健康快照', '问题与信号处理结果', '关联应用或观测证据', 'task closeout'],
+          tags: ['l4-health', 'domain-closure'],
+          source: {
+            type: 'cockpit.l4-health',
+            id: domain?.id || risk?.risk || 'l4-health',
+            title: 'L4 域健康',
+            target: { tab: 'L4Health', taskQuery: subject },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

@@ -407,6 +407,14 @@ describe('TaskCenterPage', () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith('/api/tasks', expect.objectContaining({ method: 'POST' }))
     })
+    const taskRequest = vi.mocked(fetch).mock.calls
+      .find(([input, init]) => String(input) === '/api/tasks' && init?.method === 'POST')?.[1]
+    const taskBody = JSON.parse(String(taskRequest?.body)) as { source?: { type?: string; target?: { tab?: string } }; tags?: string[] }
+    expect(taskBody.source).toEqual(expect.objectContaining({
+      type: 'cockpit.task-center',
+      target: expect.objectContaining({ tab: 'TaskCenter' }),
+    }))
+    expect(taskBody.tags).toContain('manual-task')
     expect(screen.getByRole('status')).toHaveTextContent('人工发现任务')
   })
 

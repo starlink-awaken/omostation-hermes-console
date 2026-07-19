@@ -277,6 +277,13 @@ export default function TopologyView({
           priority: service?.status === 'offline' ? 'high' : 'medium',
           risk_level: 'L1',
           evidence_required: ['拓扑节点与依赖快照', '节点健康或端口证据', '网格与日志处理结果', 'task closeout'],
+          tags: ['topology', 'runtime-governance'],
+          source: {
+            type: 'cockpit.topology-view',
+            id: service?.id || subject,
+            title: '全局拓扑',
+            target: { tab: 'Topology', taskQuery: subject },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

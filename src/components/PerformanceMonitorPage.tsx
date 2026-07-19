@@ -206,6 +206,13 @@ export default function PerformanceMonitorPage({
           priority: firstDegradedService ? 'high' : 'medium',
           risk_level: 'L1',
           evidence_required: ['性能指标时间点', '告警或日志证据', '根因与处理结果', 'task closeout'],
+          tags: ['performance', 'runtime-governance'],
+          source: {
+            type: 'cockpit.performance-monitor',
+            id: serviceName,
+            title: '性能监控',
+            target: { tab: 'Performance', taskQuery: serviceName },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

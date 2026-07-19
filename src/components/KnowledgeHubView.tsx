@@ -298,6 +298,13 @@ export default function KnowledgeHubView({
           priority: 'medium',
           risk_level: 'L1',
           evidence_required: ['知识上下文或检索证据', '关联对象验证结果', '后续执行结果', 'task closeout'],
+          tags: ['knowledge', 'knowledge-handoff'],
+          source: {
+            type: 'cockpit.knowledge-hub',
+            id: activeKnowledgeSurface.id,
+            title: activeKnowledgeSurface.title,
+            target: activeKnowledgeSurface.objectTarget,
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

@@ -283,6 +283,13 @@ export default function LogViewerPage({
           priority: firstCriticalLog?.level === 'fatal' ? 'critical' : 'high',
           risk_level: 'L1',
           evidence_required: ['日志或性能证据', '根因与处理结果', '告警恢复状态', 'task closeout'],
+          tags: ['logs', 'observability'],
+          source: {
+            type: 'cockpit.log-viewer',
+            id: source,
+            title: '日志查看器',
+            target: { tab: 'LogViewer', taskQuery: source },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

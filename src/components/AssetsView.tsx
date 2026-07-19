@@ -217,6 +217,12 @@ export default function AssetsView({
           risk_level: 'L1',
           evidence_required: ['技能描述与使用边界', '协议归类或治理位置', '可复用入口或示例', 'task closeout'],
           tags: ['assets', 'skill-governance'],
+          source: {
+            type: 'cockpit.assets-skill',
+            id: skill.path || skill.name,
+            title: '技术资产库',
+            target: { tab: 'Assets', taskQuery: skill.name },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));
