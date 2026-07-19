@@ -58,8 +58,8 @@ export default function SandboxTerminal({
       } else {
         setOutput(`[执行被拦截或失败]\n\n${data.error}`);
       }
-    } catch (err: any) {
-      setOutput(`网络异常: ${err.message}`);
+    } catch (err: unknown) {
+      setOutput(`网络异常: ${err instanceof Error ? err.message : '请求失败'}`);
     } finally {
       setIsRunning(false);
     }
@@ -86,8 +86,8 @@ export default function SandboxTerminal({
       if (!response.ok) throw new Error(data.detail || data.error || '结果登记失败');
       setDraftNotice(data.created === false ? '这份沙箱结果已经登记过。' : '沙箱结果已登记到任务中心。');
       if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
-    } catch (error: any) {
-      setDraftNotice(`沙箱结果登记失败：${error.message || '请稍后重试。'}`);
+    } catch (error: unknown) {
+      setDraftNotice(`沙箱结果登记失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setIsQueueingResult(false);
     }
@@ -119,8 +119,8 @@ export default function SandboxTerminal({
       if (!response.ok) throw new Error(data.detail || data.error || '沙箱补位任务登记失败');
       setDraftNotice(`已登记沙箱补位任务：${data.title || sandboxTaskDraft.title}`);
       if (data.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: data.id }, onNavigate, onOpenTarget);
-    } catch (error: any) {
-      setDraftNotice(`沙箱补位任务登记失败：${error.message || '请稍后重试。'}`);
+    } catch (error: unknown) {
+      setDraftNotice(`沙箱补位任务登记失败：${error instanceof Error ? error.message : '请稍后重试。'}`);
     } finally {
       setIsCreatingTask(false);
     }
