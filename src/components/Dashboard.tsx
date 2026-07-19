@@ -2905,7 +2905,6 @@ export default function Dashboard() {
         governance_cards: '/api/cards',
         governance_proposals: '/api/v1/proposals',
         protocol_hub: '/api/cockpit/protocol-hub',
-        instance: '/api/instance',
         opc_workspace: '/api/opc/workspace',
         architecture_health: '/api/v1/arch-health',
         metrics_history: '/api/metrics/history',
@@ -2918,7 +2917,8 @@ export default function Dashboard() {
         m0_status: '/api/v1/m0',
         runtime_status: '/api/v1/status',
         engine_events: '/api/events',
-        metaos_plan: '/api/metaos/plan',
+        api_version: '/api/version',
+        api_version_history: '/api/version/history',
       } as const;
       try {
         const snapshot = await Promise.all(Object.entries(endpoints).map(async ([key, url]) => {

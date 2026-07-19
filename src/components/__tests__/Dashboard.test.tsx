@@ -231,7 +231,11 @@ describe('Dashboard global search', () => {
       'architecture_health',
       'governance_summary',
       'm0_status',
+      'api_version',
+      'api_version_history',
     ]))
+    expect(payload.endpoints).not.toHaveProperty('instance')
+    expect(payload.endpoints).not.toHaveProperty('metaos_plan')
     expect(anchorClick).toHaveBeenCalled()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:cockpit-snapshot')
     anchorClick.mockRestore()
