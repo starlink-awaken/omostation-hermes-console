@@ -264,7 +264,7 @@ describe('Dashboard global search', () => {
       endpoints: Record<string, { ok: boolean }>
     }
     expect(payload.schema_version).toBe(2)
-    expect(payload.endpoint_count).toBe(44)
+    expect(payload.endpoint_count).toBe(57)
     expect(payload.active_tab).toBe('Home')
     expect(Object.keys(payload.endpoints)).toEqual(expect.arrayContaining([
       'system_map',
@@ -284,12 +284,25 @@ describe('Dashboard global search', () => {
       'bos_health',
       'l4_health',
       'debt',
+      'omos_health',
+      'omos_quests',
+      'omo_doctor',
+      'cron_summary',
+      'bos_trends',
+      'runtime_context',
+      'e2e_status',
+      'wave2_dashboard',
+      'wave2_proposals_plan',
       'protocol_hub',
       'architecture_health',
       'governance_summary',
       'm0_status',
       'api_version',
       'api_version_history',
+      'gbrain_stats',
+      'gbrain_health',
+      'gbrain_agents',
+      'gbrain_requests',
     ]))
     expect(payload.endpoints).not.toHaveProperty('instance')
     expect(payload.endpoints).not.toHaveProperty('metaos_plan')

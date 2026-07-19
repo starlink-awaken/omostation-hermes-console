@@ -3014,7 +3014,16 @@ export default function Dashboard() {
         l4_trend: '/api/l4/trend',
         debt: '/api/debt',
         omos_status: '/api/omos/status',
+        omos_health: '/api/omos/health',
         omos_violations: '/api/omos/violations',
+        omos_quests: '/api/omos/quests',
+        omo_doctor: '/api/omo/doctor',
+        cron_summary: '/api/cron/summary',
+        bos_trends: '/api/bos/trends',
+        runtime_context: '/api/context',
+        e2e_status: '/api/e2e',
+        wave2_dashboard: '/api/wave2/dashboard',
+        wave2_proposals_plan: '/api/wave2/proposals/plan',
         governance_cards: '/api/cards',
         governance_proposals: '/api/v1/proposals',
         protocol_hub: '/api/cockpit/protocol-hub?limit=100&offset=0',
@@ -3032,6 +3041,10 @@ export default function Dashboard() {
         engine_events: '/api/events',
         api_version: '/api/version',
         api_version_history: '/api/version/history',
+        gbrain_stats: '/admin/api/stats',
+        gbrain_health: '/admin/api/health-indicators',
+        gbrain_agents: '/admin/api/agents',
+        gbrain_requests: '/admin/api/requests?page=1',
       } as const;
       try {
         const snapshot = await Promise.all(Object.entries(endpoints).map(async ([key, url]) => {
