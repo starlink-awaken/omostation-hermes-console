@@ -193,6 +193,12 @@ export default function TopologyView({
   const [topologyStatusFilter, setTopologyStatusFilter] = useState<'all' | 'online' | 'degraded' | 'offline'>('all');
 
   useEffect(() => {
+    if (focusTaskQuery && services.some((service) => matchesTopologyFocusQuery([service.id, service.name, service.status], focusTaskQuery))) {
+      setTopologyQuery(focusTaskQuery);
+    }
+  }, [focusTaskQuery, services]);
+
+  useEffect(() => {
     const fetchServices = async () => {
       try {
         const response = await fetch('/api/services');

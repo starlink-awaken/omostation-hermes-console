@@ -59,6 +59,7 @@ export default function ComputeView({
   const [wakeupNodeId, setWakeupNodeId] = useState<string | null>(null);
   const [nodeQuery, setNodeQuery] = useState('');
   const [nodeStatusFilter, setNodeStatusFilter] = useState<'all' | 'online' | 'degraded' | 'offline'>('all');
+
   // 本地生成 (经 /api/governance/compute/generate → BOS → omlx)
   const [genPrompt, setGenPrompt] = useState<string>('');
   const [genModel, setGenModel] = useState<string>('coder');
@@ -219,6 +220,11 @@ export default function ComputeView({
   const summary = data?.summary || {};
   const costBoard = data?.cost_board || {};
   const availableModels = data?.available_models || [];
+  useEffect(() => {
+    if (focusTaskQuery && nodes.some((node: any) => matchesComputeFocusQuery([node.id, node.name, node.model, node.type, node.status], focusTaskQuery))) {
+      setNodeQuery(focusTaskQuery);
+    }
+  }, [focusTaskQuery, nodes]);
   const filteredNodes = useMemo(() => {
     const query = nodeQuery.trim().toLowerCase();
     return nodes.filter((node: any) => {

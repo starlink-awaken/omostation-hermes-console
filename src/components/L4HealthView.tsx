@@ -106,6 +106,11 @@ export default function L4HealthView({
   const healthUnavailable = healthData?.data_quality === 'unavailable';
   const normalizedHealthQuery = healthQuery.trim().toLowerCase();
   const allDomains = healthData?.domains || [];
+  useEffect(() => {
+    if (focusTaskQuery && allDomains.some((domain) => matchesL4FocusQuery([domain.id, domain.name, domain.issue_count, domain.signal_count, domain.capabilities.join(',')], focusTaskQuery))) {
+      setHealthQuery(focusTaskQuery);
+    }
+  }, [allDomains, focusTaskQuery]);
   const isHealthyDomain = (domain: DomainHealth) => domain.fresh && domain.issue_count === 0 && domain.has_state && domain.has_status;
   const filteredDomains = allDomains.filter((domain) => {
     const matchesQuery = !normalizedHealthQuery || [domain.id, domain.name, domain.capabilities.join(' '), String(domain.issue_count), String(domain.signal_count)]

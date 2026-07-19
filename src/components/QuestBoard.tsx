@@ -111,6 +111,12 @@ export default function QuestBoard({
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (focusTaskQuery && quests.some((quest) => matchesQuestFocusQuery([quest.id, quest.title, quest.type, quest.assignee, quest.reward], focusTaskQuery))) {
+      setQuestQuery(focusTaskQuery);
+    }
+  }, [focusTaskQuery, quests]);
+
   const handleCreateQuest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !assignee) return;

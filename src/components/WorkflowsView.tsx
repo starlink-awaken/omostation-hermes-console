@@ -99,6 +99,7 @@ export default function WorkflowsView({
     const matchedWorkflow = filteredWorkflows.find((workflow) => (
       matchesWorkflowFocusQuery([workflow.id, workflow.task, workflow.status], focusTaskQuery)
     ));
+    if (matchedWorkflow) setWorkflowQuery(focusTaskQuery);
     if (matchedWorkflow) {
       void loadDetail(matchedWorkflow.id);
     }

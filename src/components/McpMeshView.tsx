@@ -133,6 +133,7 @@ export default function McpMeshView({
       || matchesMeshQuery(service.action, focusTaskQuery),
     ) || null;
     if (matchedService) {
+      setMeshQuery(focusTaskQuery);
       setSelectedDomain(matchedService.domain);
       setResolveUri(matchedService.uri);
       return;

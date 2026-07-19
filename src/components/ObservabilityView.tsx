@@ -58,6 +58,13 @@ export default function ObservabilityView({
   const [domainStatus, setDomainStatus] = useState<'all' | 'degraded' | 'healthy'>('all');
 
   useEffect(() => {
+    const domains = Array.isArray(bosData?.domains) ? bosData.domains : [];
+    if (focusTaskQuery && domains.some((domain: any) => matchesObservabilityFocusQuery([domain.domain, String(domain.error ?? ''), String(domain.avg_latency ?? '')], focusTaskQuery))) {
+      setDomainQuery(focusTaskQuery);
+    }
+  }, [bosData?.domains, focusTaskQuery]);
+
+  useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {

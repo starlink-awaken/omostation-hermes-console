@@ -83,6 +83,12 @@ export default function PerformanceMonitorPage({
   const [taskPending, setTaskPending] = useState(false);
 
   useEffect(() => {
+    if (focusTaskQuery && services.some((service) => matchesPerformanceFocusQuery([service.name, service.status, service.cpu, service.memory, service.uptime], focusTaskQuery))) {
+      setServiceQuery(focusTaskQuery);
+    }
+  }, [focusTaskQuery, services]);
+
+  useEffect(() => {
     const fetchData = async () => {
       setRefreshing(true);
       setError(null);
