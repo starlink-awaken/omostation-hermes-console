@@ -113,7 +113,9 @@ export default function AlertCenterPage({
   const [dataError, setDataError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
+  // 外部导航参数变化时同步当前告警子页。
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTab(initialTab);
   }, [initialTab]);
 
@@ -185,6 +187,8 @@ export default function AlertCenterPage({
   useEffect(() => {
     if (!focusTaskQuery) return;
     if (rules.some((rule) => matchesAlertFocusQuery([rule.id, rule.name, rule.condition, rule.level], focusTaskQuery))) {
+      // 外部任务焦点需要同时切换子页并填入检索词。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab('rules');
       setSearchQuery(focusTaskQuery);
       return;
