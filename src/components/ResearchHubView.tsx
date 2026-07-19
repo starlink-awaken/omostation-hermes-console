@@ -210,49 +210,6 @@ export default function ResearchHubView({
     }
   };
 
-  useEffect(() => {
-    void load();
-  }, []);
-
-  const filteredResearch = useMemo(() => {
-    const query = researchQuery.trim().toLowerCase();
-    return payload.recent.filter((item) => {
-      if (researchStatusFilter !== 'all' && item.status !== researchStatusFilter) return false;
-      if (!query) return true;
-      return [item.id, item.topic, item.summary, item.status, item.agent, item.next_action, ...item.tags]
-        .join(' ')
-        .toLowerCase()
-        .includes(query);
-    });
-  }, [payload.recent, researchQuery, researchStatusFilter]);
-
-  useEffect(() => {
-    if (!focusTaskQuery) return;
-    const matchedResearch = filteredResearch.find((item) => (
-      matchesResearchFocusQuery([
-        item.id,
-        item.topic,
-        item.summary,
-        item.status,
-        item.agent,
-        item.next_action,
-        item.last_event?.label,
-        ...item.tags,
-      ], focusTaskQuery)
-    ));
-    if (matchedResearch && matchedResearch.id !== selectedResearchId) {
-      void openDetail(matchedResearch.id);
-    }
-  }, [filteredResearch, focusTaskQuery, selectedResearchId]);
-
-  useEffect(() => {
-    if (selectedResearchId !== null && !filteredResearch.some((item) => item.id === selectedResearchId)) {
-      setSelectedResearchId(null);
-      setResearchDetail(null);
-      setDetailError(null);
-    }
-  }, [filteredResearch, selectedResearchId]);
-
   const openDetail = async (researchId: number) => {
     setSelectedResearchId(researchId);
     setResearchDetail(null);
@@ -271,6 +228,56 @@ export default function ResearchHubView({
     }
     setDetailLoading(false);
   };
+
+  useEffect(() => {
+    // 页面挂载时从研究服务同步列表。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, []);
+
+  const filteredResearch = useMemo(() => {
+    const query = researchQuery.trim().toLowerCase();
+    return payload.recent.filter((item) => {
+      if (researchStatusFilter !== 'all' && item.status !== researchStatusFilter) return false;
+      if (!query) return true;
+      return [item.id, item.topic, item.summary, item.status, item.agent, item.next_action, ...item.tags]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [payload.recent, researchQuery, researchStatusFilter]);
+
+  useEffect(() => {
+    // 外部导航查询命中列表对象时，自动展开详情。
+    if (!focusTaskQuery) return;
+    const matchedResearch = filteredResearch.find((item) => (
+      matchesResearchFocusQuery([
+        item.id,
+        item.topic,
+        item.summary,
+        item.status,
+        item.agent,
+        item.next_action,
+        item.last_event?.label,
+        ...item.tags,
+      ], focusTaskQuery)
+    ));
+    if (matchedResearch && matchedResearch.id !== selectedResearchId) {
+      // 详情加载函数会同步更新选中对象及加载态，这是导航驱动的外部状态同步。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void openDetail(matchedResearch.id);
+    }
+  }, [filteredResearch, focusTaskQuery, selectedResearchId]);
+
+  useEffect(() => {
+    // 筛选条件变化后清理已经不可见的详情对象。
+    if (selectedResearchId !== null && !filteredResearch.some((item) => item.id === selectedResearchId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedResearchId(null);
+      setResearchDetail(null);
+      setDetailError(null);
+    }
+  }, [filteredResearch, selectedResearchId]);
 
   const closeDetail = () => {
     setSelectedResearchId(null);
