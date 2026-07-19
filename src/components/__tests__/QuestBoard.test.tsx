@@ -102,6 +102,39 @@ describe('QuestBoard', () => {
     expect(onNavigate).not.toHaveBeenCalled()
   })
 
+  it('registers an active family quest as a TaskCenter task', async () => {
+    const onOpenTarget = vi.fn()
+
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/omos/quests' && !init?.method) {
+        return Promise.resolve(okJson({
+          status: 'ok',
+          quests: [{ id: 1, title: '整理客厅', type: 'responsibility', reward: 15, completed: 0, assignee: 'child' }],
+          profiles: [{ role: 'child', name: '孩子', level: 3, wisdomPoints: 12, responsibilityPoints: 24 }],
+          logs: [],
+        }))
+      }
+      if (url === '/api/tasks') {
+        expect(init?.method).toBe('POST')
+        const body = JSON.parse(String(init?.body))
+        expect(body.title).toBe('家庭任务：整理客厅')
+        expect(body.tags).toEqual(['family', 'quest-board'])
+        return Promise.resolve(okJson({ id: 'family-task-1', title: '家庭任务：整理客厅' }))
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<QuestBoard onOpenTarget={onOpenTarget} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '承接家庭任务 整理客厅' }))
+
+    await waitFor(() => {
+      expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'family-task-1' })
+      expect(screen.getByRole('status')).toHaveTextContent('已承接家庭任务：家庭任务：整理客厅')
+    })
+  })
+
   it('filters family quests by text and completion state', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       if (String(input) === '/api/omos/quests') {

@@ -78,6 +78,7 @@ export default function QuestBoard({
   const [assignee, setAssignee] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [completingId, setCompletingId] = useState<number | null>(null);
+  const [queueingTaskId, setQueueingTaskId] = useState<number | null>(null);
   const [actionFeedback, setActionFeedback] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
 
   const fetchBoardData = async () => {
@@ -174,6 +175,38 @@ export default function QuestBoard({
       setActionFeedback({ status: 'error', message: `操作错误：${err.message || '请稍后重试。'}` });
     } finally {
       setCompletingId(null);
+    }
+  };
+
+  const handleQueueTaskCenter = async (quest: Quest) => {
+    setQueueingTaskId(quest.id);
+    setActionFeedback(null);
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `家庭任务：${quest.title}`,
+          description: `把家庭积分任务“${quest.title}”纳入 Cockpit 长期跟踪。类型：${quest.type}；奖励：${quest.reward}；指派：${quest.assignee}。`,
+          priority: 'medium',
+          risk_level: 'L1',
+          evidence_required: ['家庭任务完成记录', '积分日志或成员反馈', 'TaskCenter closeout'],
+          tags: ['family', 'quest-board'],
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || payload.error || '家庭任务承接失败');
+      }
+      const taskTitle = payload.title || `家庭任务：${quest.title}`;
+      setActionFeedback({ status: 'success', message: `已承接家庭任务：${taskTitle}` });
+      if (payload.id) {
+        openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+      }
+    } catch (err: any) {
+      setActionFeedback({ status: 'error', message: `家庭任务承接失败：${err.message || '请稍后重试。'}` });
+    } finally {
+      setQueueingTaskId(null);
     }
   };
 
@@ -845,19 +878,36 @@ export default function QuestBoard({
                       </span>
                     </div>
                     
-                    <button 
-                      className="antd-btn antd-btn-primary"
-                      disabled={completingId !== null}
-                      onClick={() => handleCompleteQuest(quest.id)}
-                      aria-label={`完成任务: ${quest.title}`}
-                      style={{ height: '32px' }}
-                    >
-                      {completingId === quest.id ? (
-                        <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-                      ) : (
-                        <><CheckCircle2 size={12} aria-hidden="true" /> 达成</>
-                      )}
-                    </button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 }}>
+                      <button
+                        type="button"
+                        className="antd-btn"
+                        disabled={queueingTaskId !== null}
+                        onClick={() => void handleQueueTaskCenter(quest)}
+                        aria-label={`承接家庭任务 ${quest.title}`}
+                        style={{ height: '32px' }}
+                      >
+                        {queueingTaskId === quest.id ? (
+                          <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                        ) : (
+                          <><ClipboardCheck size={12} aria-hidden="true" /> 登记正式任务</>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="antd-btn antd-btn-primary"
+                        disabled={completingId !== null}
+                        onClick={() => void handleCompleteQuest(quest.id)}
+                        aria-label={`完成任务: ${quest.title}`}
+                        style={{ height: '32px' }}
+                      >
+                        {completingId === quest.id ? (
+                          <Loader2 size={12} className="animate-spin" aria-hidden="true" />
+                        ) : (
+                          <><CheckCircle2 size={12} aria-hidden="true" /> 达成</>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
