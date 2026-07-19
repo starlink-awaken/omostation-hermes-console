@@ -11,7 +11,7 @@ describe('QuickActionsPanel', () => {
   it('opens the task center from the task quick action', () => {
     render(<QuickActionsPanel isOpen onClose={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /打开任务中心/ }))
+    fireEvent.click(screen.getByRole('option', { name: /打开任务中心/ }))
 
     expect(window.location.hash).toBe('#tasks')
   })
@@ -21,7 +21,7 @@ describe('QuickActionsPanel', () => {
     window.addEventListener('cockpit:focus-search', handler)
     render(<QuickActionsPanel isOpen onClose={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /全局搜索/ }))
+    fireEvent.click(screen.getByRole('option', { name: /全局搜索/ }))
 
     expect(handler).toHaveBeenCalledTimes(1)
     window.removeEventListener('cockpit:focus-search', handler)
@@ -32,9 +32,23 @@ describe('QuickActionsPanel', () => {
     window.addEventListener('cockpit:export-snapshot', handler)
     render(<QuickActionsPanel isOpen onClose={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /导出运行快照/ }))
+    fireEvent.click(screen.getByRole('option', { name: /导出运行快照/ }))
 
     expect(handler).toHaveBeenCalledTimes(1)
     window.removeEventListener('cockpit:export-snapshot', handler)
+  })
+
+  it('restores focus to the trigger after closing', () => {
+    const trigger = document.createElement('button')
+    trigger.type = 'button'
+    trigger.textContent = '快捷操作'
+    document.body.appendChild(trigger)
+    trigger.focus()
+    const { rerender } = render(<QuickActionsPanel isOpen onClose={vi.fn()} />)
+
+    rerender(<QuickActionsPanel isOpen={false} onClose={vi.fn()} />)
+
+    expect(trigger).toHaveFocus()
+    trigger.remove()
   })
 })

@@ -73,4 +73,10 @@ describe('cockpitNavigation', () => {
       alertTab: 'rules',
     })
   })
+
+  it('keeps the protected GBrain admin surface reachable by deep link', () => {
+    writeNavigationHash({ tab: 'GBrainAdmin' })
+    expect(window.location.hash).toBe('#gbrain-admin')
+    expect(parseNavigationHash(window.location.hash)?.tab).toBe('GBrainAdmin')
+  })
 })

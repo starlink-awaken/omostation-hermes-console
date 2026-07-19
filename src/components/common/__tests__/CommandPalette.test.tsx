@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { CommandPalette, useKeyboardShortcuts } from '../CommandPalette'
+import { CommandPalette } from '../CommandPalette'
+import { useKeyboardShortcuts } from '../useCommandPalette'
 
 describe('CommandPalette', () => {
   it('does not render when closed', () => {

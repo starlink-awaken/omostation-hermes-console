@@ -849,7 +849,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
 
   if (opc) {
     domainRouteCards.push({
-      id: 'route-opc-workspace',
+      id: 'route-opc-workspace-summary',
       title: 'OPC 作战台',
       subtitle: opc.exists ? 'OPC · SSOT 聚合视图' : 'OPC · 待补入口',
       summary: opc.positioning?.summary || 'OPC 保持领域 SSOT，Cockpit 负责入口、状态、周动作和发布承接。',

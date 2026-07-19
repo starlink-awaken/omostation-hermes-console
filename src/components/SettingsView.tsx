@@ -104,7 +104,7 @@ type VersionHistoryItem = {
   version?: string;
   deprecated?: boolean;
   endpoints?: number;
-  endpoint_list?: Array<{ path?: string; version?: string }>;
+  endpoint_list?: Array<{ path?: string; method?: string; version?: string }>;
 };
 
 function matchesSettingsFocusQuery(values: Array<string | null | undefined>, query?: string | null) {
@@ -159,7 +159,7 @@ export default function SettingsView({
     const query = endpointQuery.trim().toLowerCase();
     const endpoints = currentVersionRecord?.endpoint_list || [];
     if (!query) return endpoints;
-    return endpoints.filter((endpoint) => `${endpoint.path || ''} ${endpoint.version || ''}`.toLowerCase().includes(query));
+    return endpoints.filter((endpoint) => `${endpoint.method || ''} ${endpoint.path || ''} ${endpoint.version || ''}`.toLowerCase().includes(query));
   }, [currentVersionRecord, endpointQuery]);
   const registerStatus = registerResult?.error ? '失败' : registerResult ? '已返回' : '待提交';
   const registrationFocus = [
@@ -621,7 +621,7 @@ export default function SettingsView({
                   <History size={16} className="text-accent" aria-hidden="true" />
                   <div style={{ flex: 1 }}>
                     <strong>{item.version || '未知版本'} {item.deprecated ? '· 已弃用' : '· 支持中'}</strong>
-                    <p>{item.endpoints ?? item.endpoint_list?.length ?? 0} 个端点 · {item.endpoint_list?.slice(0, 3).map((endpoint) => endpoint.path).filter(Boolean).join('、') || '暂无端点路径'}</p>
+                    <p>{item.endpoints ?? item.endpoint_list?.length ?? 0} 个操作 · {item.endpoint_list?.slice(0, 3).map((endpoint) => `${endpoint.method || 'API'} ${endpoint.path || ''}`).join('、') || '暂无端点路径'}</p>
                   </div>
                 </article>
               ))}
@@ -639,7 +639,7 @@ export default function SettingsView({
               <input
                 type="search"
                 aria-label="筛选当前 API 端点"
-                placeholder="筛选路径，例如 /api/tasks"
+                placeholder="筛选方法或路径，例如 POST /api/tasks"
                 value={endpointQuery}
                 onChange={(event) => setEndpointQuery(event.target.value)}
                 style={{ width: '100%', maxWidth: 420, marginBottom: 8 }}
@@ -650,8 +650,9 @@ export default function SettingsView({
                     <span className="text-muted">当前版本没有可显示的端点目录。</span>
                   </div>
                 ) : currentEndpoints.map((endpoint) => (
-                  <div key={`${endpoint.version || versionInfo?.current_version || 'current'}:${endpoint.path}`} className="action-surface-item" style={{ alignItems: 'center' }}>
+                  <div key={`${endpoint.version || versionInfo?.current_version || 'current'}:${endpoint.method || 'API'}:${endpoint.path}`} className="action-surface-item" style={{ alignItems: 'center' }}>
                     <Route size={14} className="text-accent" aria-hidden="true" />
+                    <span className="status-badge online">{endpoint.method || 'API'}</span>
                     <code style={{ flex: 1 }}>{endpoint.path || '未知路径'}</code>
                     <span className="status-badge online">{endpoint.version || versionInfo?.current_version || '未知版本'}</span>
                   </div>

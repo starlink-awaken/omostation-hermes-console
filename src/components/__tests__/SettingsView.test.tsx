@@ -131,8 +131,9 @@ describe('SettingsView', () => {
       if (url === '/api/version/history') return Promise.resolve(okJson([{
         version: 'v2',
         endpoint_list: [
-          { path: '/api/tasks', version: 'v2' },
-          { path: '/api/version', version: 'v2' },
+          { path: '/api/tasks', method: 'GET', version: 'v2' },
+          { path: '/api/tasks', method: 'POST', version: 'v2' },
+          { path: '/api/version', method: 'GET', version: 'v2' },
         ],
       }]))
       return Promise.resolve(okJson({}))
@@ -141,14 +142,20 @@ describe('SettingsView', () => {
     render(<SettingsView />)
 
     const catalog = await screen.findByRole('region', { name: '当前 API 端点目录' })
-    expect(within(catalog).getByText('/api/tasks')).toBeInTheDocument()
+    expect(within(catalog).getAllByText('/api/tasks')).toHaveLength(2)
     expect(within(catalog).getByText('/api/version')).toBeInTheDocument()
 
     fireEvent.change(within(catalog).getByRole('searchbox', { name: '筛选当前 API 端点' }), { target: { value: 'tasks' } })
 
-    expect(within(catalog).getByText('匹配 1/2')).toBeInTheDocument()
-    expect(within(catalog).getByText('/api/tasks')).toBeInTheDocument()
+    expect(within(catalog).getByText('匹配 2/3')).toBeInTheDocument()
+    expect(within(catalog).getAllByText('/api/tasks')).toHaveLength(2)
     expect(within(catalog).queryByText('/api/version')).not.toBeInTheDocument()
+
+    fireEvent.change(within(catalog).getByRole('searchbox', { name: '筛选当前 API 端点' }), { target: { value: 'POST' } })
+
+    expect(within(catalog).getByText('匹配 1/3')).toBeInTheDocument()
+    expect(within(catalog).getByText('POST')).toBeInTheDocument()
+    expect(within(catalog).getAllByText('/api/tasks')).toHaveLength(1)
   })
 
   it('submits instance registration and shows returned status', async () => {

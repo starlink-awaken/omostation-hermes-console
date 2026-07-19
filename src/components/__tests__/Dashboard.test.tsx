@@ -134,8 +134,19 @@ describe('Dashboard global search', () => {
     const palette = paletteInput.closest('.command-palette')
     expect(palette).not.toBeNull()
     for (const page of COCKPIT_PAGE_REGISTRY) {
-      expect(within(palette as HTMLElement).getByRole('button', { name: new RegExp(page.title) })).toBeInTheDocument()
+      expect(within(palette as HTMLElement).getByRole('option', { name: new RegExp(page.title) })).toBeInTheDocument()
     }
+  })
+
+  it('toggles the command palette with Ctrl+K instead of registering duplicate handlers', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({}))
+
+    render(<Dashboard />)
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    expect(await screen.findByRole('dialog', { name: '命令面板' })).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    expect(screen.queryByRole('dialog', { name: '命令面板' })).not.toBeInTheDocument()
   })
 
   it('refreshes only the active page workbench from the global header', async () => {
@@ -154,6 +165,26 @@ describe('Dashboard global search', () => {
       expect(screen.getByTestId('dashboard-page-view')).toHaveAttribute('data-refresh-token', '1')
       expect(vi.mocked(fetch).mock.calls.length).toBeGreaterThan(initialFetchCount)
     })
+  })
+
+  it('keeps quick action keyboard shortcuts aligned with their visible actions', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({}))
+
+    render(<Dashboard />)
+
+    fireEvent.keyDown(window, { key: 'n', ctrlKey: true })
+    await waitFor(() => expect(screen.getByText(/TaskCenter Mock/)).toBeInTheDocument())
+
+    fireEvent.keyDown(window, { key: 'r', ctrlKey: true })
+    await waitFor(() => expect(screen.getByTestId('dashboard-page-view')).toHaveAttribute('data-refresh-token', '1'))
+
+    fireEvent.keyDown(window, { key: 'j', ctrlKey: true })
+    const quickActions = await screen.findByRole('dialog', { name: '快捷操作' })
+    fireEvent.click(within(quickActions).getByRole('option', { name: /刷新数据/ }))
+    await waitFor(() => expect(screen.getByTestId('dashboard-page-view')).toHaveAttribute('data-refresh-token', '2'))
+
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true, shiftKey: true })
+    expect(screen.getByLabelText('全局搜索输入框')).toHaveFocus()
   })
 
   it('exports a full-site snapshot across every shell data dimension', async () => {
@@ -571,7 +602,7 @@ describe('Dashboard global search', () => {
 
 	    const pageAuditRegion = screen.getByRole('region', { name: '页面闭环覆盖审计' })
 	    expect(within(pageAuditRegion).getByText((_, element) => element?.textContent?.trim() === '工作台缺口 0')).toBeInTheDocument()
-	    expect(within(pageAuditRegion).getByText((_, element) => element?.textContent?.trim() === '焦点承接缺口 0')).toBeInTheDocument()
+    expect(within(pageAuditRegion).getByText((_, element) => element?.textContent?.trim() === '焦点承接缺口 0')).toBeInTheDocument()
 	    fireEvent.click(within(pageAuditRegion).getByRole('button', { name: '展开全部页面闭环覆盖审计列表' }))
 	    const meshAuditCard = within(pageAuditRegion).getByLabelText('页面闭环 网格与 MCP')
 	    expect(within(meshAuditCard).getByText('工作台')).toBeInTheDocument()
@@ -940,6 +971,16 @@ describe('Dashboard global search', () => {
     await waitFor(() => {
       expect(screen.getByText('概览中心 (Overview)')).toBeInTheDocument()
     })
+
+    fireEvent.click(screen.getByTitle('命令面板 (Ctrl+K)'))
+    const palette = await screen.findByRole('dialog', { name: '命令面板' })
+    const paletteInput = within(palette).getByRole('textbox', { name: '命令面板搜索' })
+    fireEvent.change(paletteInput, { target: { value: 'mesh-router' } })
+    const projectCommands = within(palette).getAllByRole('option', { name: /mesh-router/ })
+    expect(projectCommands.length).toBeGreaterThan(0)
+    fireEvent.click(projectCommands[0])
+
+    await waitFor(() => expect(window.location.hash).toContain('project=mesh-router'))
   }, 45000)
 
   it('shows a complete coverage state when page maturity has no attention items', async () => {

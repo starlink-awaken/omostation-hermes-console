@@ -194,7 +194,7 @@ describe('CockpitGuideView', () => {
 
     await waitFor(() => {
       expect(screen.getByText('全站导览')).toBeInTheDocument()
-      expect(screen.getByText('25 页')).toBeInTheDocument()
+      expect(screen.getByText('26 页')).toBeInTheDocument()
       expect(screen.getAllByText('3 条').length).toBeGreaterThan(0)
       expect(screen.getByText('4 个')).toBeInTheDocument()
       expect(screen.getByText('2 页待补')).toBeInTheDocument()
@@ -226,7 +226,7 @@ describe('CockpitGuideView', () => {
       expect(screen.getByText('回来源页补能力')).toBeInTheDocument()
       expect(screen.getByText('补证入口')).toBeInTheDocument()
       expect(screen.getByText('全站覆盖总表')).toBeInTheDocument()
-      expect(screen.getByText((_, node) => node?.textContent === '25 页总览')).toBeInTheDocument()
+      expect(screen.getByText((_, node) => node?.textContent === '26 页总览')).toBeInTheDocument()
       expect(screen.getByText('已登记总图')).toBeInTheDocument()
       expect(screen.getByText('能力域能力总表')).toBeInTheDocument()
       expect(screen.getByText((_, node) => node?.textContent === '4 个能力域')).toBeInTheDocument()

@@ -30,59 +30,74 @@ export function DashboardPage({ initialSubTab = 'monitor' }: DashboardPageProps)
   const [health, setHealth] = useState({ expiring_soon: 0, error_rate: '0%' });
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [sseStatus, setSseStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [loadError, setLoadError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
     setSubTab(initialSubTab);
   }, [initialSubTab]);
 
-  const loadStatsAndHealth = async () => {
+  const loadStatsAndHealth = async (): Promise<boolean> => {
     try {
       const statsData = await api.stats();
       setStats(statsData);
       const healthData = await api.health();
       setHealth(healthData);
+      setLoadError(null);
       setIsAuthenticated(true);
+      return true;
     } catch (err: any) {
       if (err.message === 'Unauthorized' || err.message === 'HTTP 401') {
         setIsAuthenticated(false);
+        setLoadError(null);
+      } else {
+        setLoadError(err instanceof Error ? err.message : 'GBrain 管理接口不可用');
       }
+      return false;
     }
   };
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || loadError) return;
 
-    loadStatsAndHealth();
+    let cancelled = false;
+    let es: EventSource | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const start = async () => {
+      const available = await loadStatsAndHealth();
+      if (!available || cancelled) return;
 
-    const es = new EventSource('/admin/events');
-    eventSourceRef.current = es;
-    es.onopen = () => setSseStatus('connected');
-    es.onmessage = (e) => {
-      try {
-        const event = JSON.parse(e.data) as FeedEvent;
-        setEvents(prev => [event, ...prev].slice(0, 50));
-      } catch {}
+      es = new EventSource('/admin/events');
+      eventSourceRef.current = es;
+      es.onopen = () => setSseStatus('connected');
+      es.onmessage = (e) => {
+        try {
+          const event = JSON.parse(e.data) as FeedEvent;
+          setEvents(prev => [event, ...prev].slice(0, 50));
+        } catch {}
+      };
+      es.onerror = () => {
+        setSseStatus('disconnected');
+        // On connection error, check if auth has expired
+        void loadStatsAndHealth();
+        setTimeout(() => {
+          setSseStatus('connecting');
+          es?.close();
+        }, 5000);
+      };
+
+      interval = setInterval(() => {
+        void loadStatsAndHealth();
+      }, 15000);
     };
-    es.onerror = () => {
-      setSseStatus('disconnected');
-      // On connection error, check if auth has expired
-      loadStatsAndHealth();
-      setTimeout(() => {
-        setSseStatus('connecting');
-        es.close();
-      }, 5000);
-    };
-
-    const interval = setInterval(() => {
-      loadStatsAndHealth();
-    }, 15000);
+    void start();
 
     return () => {
-      es.close();
-      clearInterval(interval);
+      cancelled = true;
+      es?.close();
+      if (interval) clearInterval(interval);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadError]);
 
   const timeAgo = (ts: string) => {
     const diff = Date.now() - new Date(ts).getTime();
@@ -100,6 +115,21 @@ export function DashboardPage({ initialSubTab = 'monitor' }: DashboardPageProps)
           loadStatsAndHealth();
         }} />
       </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <section className="antd-card animate-fade-in" role="alert" style={{ padding: '24px', border: '1px solid var(--antd-border-color)' }}>
+        <h2 style={{ margin: 0, fontSize: 16 }}>GBrain 管理接口暂不可用</h2>
+        <p className="text-muted" style={{ margin: '8px 0 0' }}>
+          统计、凭证和访问日志没有成功读取，页面不会把空数据当成真实的 0。请确认 GBrain admin 服务已挂载后重试。
+        </p>
+        <p style={{ margin: '12px 0', fontSize: 13 }}>原因：{loadError}</p>
+        <button type="button" className="antd-btn" onClick={() => setLoadError(null)}>
+          重试
+        </button>
+      </section>
     );
   }
 

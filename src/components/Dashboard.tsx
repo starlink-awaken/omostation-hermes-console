@@ -33,11 +33,13 @@ import {
   X,
   RefreshCw,
   Download,
+  Shield,
 } from 'lucide-react';
 import Breadcrumb from './common/Breadcrumb';
-import { CommandPalette, useCommandPalette } from './common/CommandPalette';
-import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
-import { useKeyboardShortcuts } from './common/CommandPalette';
+import { CommandPalette } from './common/CommandPalette';
+import QuickActionsPanel from './common/QuickActionsPanel';
+import { useCommandPalette, useKeyboardShortcuts } from './common/useCommandPalette';
+import { useQuickActions } from './common/useQuickActions';
 import { parseNavigationHash, writeNavigationHash, type CockpitNavigationTarget } from './cockpitNavigation';
 import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
 import {
@@ -70,6 +72,10 @@ const DomainAppsView = lazy(() => import('./DomainAppsView'));
 const SystemMapView = lazy(() => import('./SystemMapView'));
 const OverviewPage = lazy(() => import('./OverviewPage'));
 const KnowledgeHubView = lazy(() => import('./KnowledgeHubView'));
+const GBrainAdminView = lazy(async () => {
+  const module = await import('./GBrain/GBrainDashboard');
+  return { default: module.DashboardPage };
+});
 const ResearchHubView = lazy(() => import('./ResearchHubView'));
 const ProtocolWorkbenchView = lazy(() => import('./ProtocolWorkbenchView'));
 const CockpitGuideView = lazy(() => import('./CockpitGuideView'));
@@ -362,6 +368,7 @@ const NAV_ICON_BY_TAB: Record<string, React.ComponentType<{ size?: number; class
   Compute: Cpu,
   Research: Search,
   Knowledge: Database,
+  GBrainAdmin: Shield,
   Engines: Cpu,
   Assets: Briefcase,
   Protocol: Command,
@@ -396,6 +403,10 @@ interface PageMaturityItem {
   page_id: string;
   score: number;
   status: string;
+  usage_paths?: string[];
+  domains?: string[];
+  playbook_steps?: string[];
+  roadmap_items?: string[];
   next_action?: string;
   page?: {
     id?: string;
@@ -1024,6 +1035,7 @@ const PAGE_SEARCH_KEYWORDS: Record<string, string[]> = {
   Compute: ['compute', 'aetherforge', '模型', '网关', '成本'],
   Research: ['research', '研究', 'publish', 'timeline', 'dossier', 'minerva'],
   Knowledge: ['knowledge', 'gbrain', 'kos', '检索', '记忆'],
+  GBrainAdmin: ['gbrain', 'admin', '智能体', '凭证', 'token', '校准', '访问日志'],
   Engines: ['engine', 'kairon', 'gbrain', '引擎'],
   Assets: ['assets', 'ecos', '技能', '管线', 'workflow'],
   Protocol: ['protocol', 'ecos', 'model-driven', 'mof', 'lifecycle', '元模型'],
@@ -1069,6 +1081,7 @@ const PAGE_WORKBENCH_IDS = new Set([
   'Compute',
   'Research',
   'Knowledge',
+  'GBrainAdmin',
   'Engines',
   'Assets',
   'Protocol',
@@ -1097,6 +1110,7 @@ const PAGE_FOCUS_HANDOFF_IDS = new Set([
   'Compute',
   'Research',
   'Knowledge',
+  'GBrainAdmin',
   'Engines',
   'Assets',
   'Workflows',
@@ -1491,17 +1505,32 @@ export default function Dashboard() {
     currentPageRoadmapItems.forEach((item) => {
       items.push({ id: `roadmap-${item.id}`, label: '路线图', value: item.title || item.id });
     });
+    if (items.every((item) => item.label !== '能力域')) {
+      (currentPageMaturity?.domains || []).slice(0, 3).forEach((domain) => {
+        items.push({ id: `maturity-domain-${domain}`, label: '能力域', value: domain });
+      });
+    }
     return items.slice(0, 5);
-  }, [currentPageFeatureDomains, currentPagePlaybooks, currentPageRoadmapItems]);
+  }, [currentPageFeatureDomains, currentPageMaturity, currentPagePlaybooks, currentPageRoadmapItems]);
   const currentPageChecklist = useMemo<PageContextChecklistItem[]>(() => {
     const pageLabel = currentCockpitPage?.title || currentPageTarget?.label || activeTab;
+    const maturityDomains = currentPageMaturity?.domains || [];
+    const maturityUsagePaths = currentPageMaturity?.usage_paths || [];
+    const maturityPlaybooks = currentPageMaturity?.playbook_steps || [];
+    const maturityRoadmaps = currentPageMaturity?.roadmap_items || [];
+    const featureDomainsLinked = currentPageFeatureDomains.length > 0 || maturityDomains.length > 0;
+    const playbooksLinked = currentPagePlaybooks.length > 0 || maturityPlaybooks.length > 0;
+    const roadmapsLinked = currentPageRoadmapItems.length > 0 || maturityRoadmaps.length > 0;
+    const primaryMaturityPath = maturityUsagePaths[0];
     return [
       {
         id: 'path',
         title: '使用路径',
-        status: currentPagePrimaryPath ? 'linked' : 'missing',
+        status: currentPagePrimaryPath || maturityUsagePaths.length > 0 ? 'linked' : 'missing',
         detail: currentPagePrimaryPath
           ? `已挂到 ${currentPagePrimaryPath.title || currentPagePrimaryPath.id}`
+          : primaryMaturityPath
+            ? `页面成熟度记录已挂到 ${primaryMaturityPath}`
           : `${pageLabel} 还没进入明确的使用路径。`,
         target: currentPagePrimaryPath
           ? { tab: 'SystemMap', usagePathId: currentPagePrimaryPath.id }
@@ -1510,9 +1539,11 @@ export default function Dashboard() {
       {
         id: 'feature-domain',
         title: '能力域',
-        status: currentPageFeatureDomains.length > 0 ? 'linked' : 'missing',
+        status: featureDomainsLinked ? 'linked' : 'missing',
         detail: currentPageFeatureDomains.length > 0
           ? `已接到 ${currentPageFeatureDomains.map((domain) => domain.title || domain.id).join(' / ')}`
+          : maturityDomains.length > 0
+            ? `页面成熟度记录已接到 ${maturityDomains.join(' / ')}`
           : `${pageLabel} 还缺能力域映射。`,
         target: currentPageFeatureDomains[0]
           ? { tab: 'SystemMap', featureDomainId: currentPageFeatureDomains[0].id }
@@ -1521,9 +1552,11 @@ export default function Dashboard() {
       {
         id: 'playbook',
         title: '操作清单',
-        status: currentPagePlaybooks.length > 0 ? 'linked' : 'missing',
+        status: playbooksLinked ? 'linked' : 'missing',
         detail: currentPagePlaybooks.length > 0
           ? `已进入 ${currentPagePlaybooks.map((playbook) => playbook.title || playbook.id).join(' / ')}`
+          : maturityPlaybooks.length > 0
+            ? `页面成熟度记录已接入 ${maturityPlaybooks.length} 个步骤`
           : `${pageLabel} 还没挂进操作清单。`,
         target: currentPagePrimaryPath
           ? { tab: 'SystemMap', usagePathId: currentPagePrimaryPath.id }
@@ -1532,9 +1565,11 @@ export default function Dashboard() {
       {
         id: 'roadmap',
         title: '路线图',
-        status: currentPageRoadmapItems.length > 0 ? 'linked' : 'missing',
+        status: roadmapsLinked ? 'linked' : 'missing',
         detail: currentPageRoadmapItems.length > 0
           ? `已接到 ${currentPageRoadmapItems.map((item) => item.title || item.id).join(' / ')}`
+          : maturityRoadmaps.length > 0
+            ? `页面成熟度记录已接入 ${maturityRoadmaps.length} 个条目`
           : `${pageLabel} 还没进入路线图条目。`,
         target: { tab: 'SystemMap', pageId: activeTab },
       },
@@ -1556,6 +1591,7 @@ export default function Dashboard() {
     currentCockpitPage,
     currentPageDraft,
     currentPageFeatureDomains,
+    currentPageMaturity,
     currentPagePlaybooks,
     currentPagePrimaryPath,
     currentPageRoadmapItems,
@@ -1585,22 +1621,27 @@ export default function Dashboard() {
       .map((pageId) => {
         const pageTarget = searchTargets.find((target) => target.tab === pageId);
         const pageMeta = cockpitPages.find((page) => page.id === pageId);
+        const maturity = pageMaturityItems.find((item) => (item.page?.id || item.page_id) === pageId);
         const pageTitle = pageMeta?.title || pageTarget?.label || pageId;
-        const hasPath = sidebarUsagePaths.some((path) => path.pages?.some((page) => page.id === pageId));
+        const hasPath = sidebarUsagePaths.some((path) => path.pages?.some((page) => page.id === pageId))
+          || Boolean(maturity?.usage_paths?.length);
         const matchedDomains = featureDomains.filter((domain) => domain.cockpit_page === pageId || domain.providers?.includes(pageId));
+        const hasMaturityDomains = Boolean(maturity?.domains?.length);
         const matchedPlaybooks = playbooks.filter((playbook) => (playbook.steps || []).some((step) => (step.page_id || step.page?.id) === pageId));
+        const hasMaturityPlaybooks = Boolean(maturity?.playbook_steps?.length);
         const matchedRoadmapItems = roadmapItems.filter((item) => item.cockpit_page === pageId);
+        const hasMaturityRoadmaps = Boolean(maturity?.roadmap_items?.length);
         const matchedDraft = shellTaskDrafts.find((task) => taskDraftMatchesPage(task, pageId, pageTitle)) || null;
 
         const missingItems: string[] = [];
         const linkedItems: string[] = [];
         if (hasPath) linkedItems.push('路径');
         else missingItems.push('路径');
-        if (matchedDomains.length > 0) linkedItems.push('能力域');
+        if (matchedDomains.length > 0 || hasMaturityDomains) linkedItems.push('能力域');
         else missingItems.push('能力域');
-        if (matchedPlaybooks.length > 0) linkedItems.push('操作清单');
+        if (matchedPlaybooks.length > 0 || hasMaturityPlaybooks) linkedItems.push('操作清单');
         else missingItems.push('操作清单');
-        if (matchedRoadmapItems.length > 0) linkedItems.push('路线图');
+        if (matchedRoadmapItems.length > 0 || hasMaturityRoadmaps) linkedItems.push('路线图');
         else missingItems.push('路线图');
         if (matchedDraft) linkedItems.push('任务');
         else missingItems.push('任务');
@@ -2773,13 +2814,6 @@ export default function Dashboard() {
     writeNavigationHash({ tab });
   };
 
-  const commandPaletteCommands = COCKPIT_PAGE_REGISTRY.map((page) => ({
-    id: page.id.toLowerCase(),
-    label: page.title,
-    description: `${page.purpose} ${page.whenToUse}`,
-    action: () => setActiveTab(page.id),
-  }));
-
   const openContextTarget = (target: CockpitNavigationTarget) => {
     const matchedDraft = findTaskDraftForTarget(target, shellTaskDrafts);
     const incomingDraft = matchedDraft ? taskDraftToIncomingDraft(matchedDraft) : null;
@@ -2920,11 +2954,15 @@ export default function Dashboard() {
       }
     };
 
+    const refreshCurrentPage = () => setPageRefreshToken((value) => value + 1);
+
     window.addEventListener('cockpit:focus-search', focusGlobalSearch);
     window.addEventListener('cockpit:export-snapshot', exportSnapshot);
+    window.addEventListener('cockpit:refresh-page', refreshCurrentPage);
     return () => {
       window.removeEventListener('cockpit:focus-search', focusGlobalSearch);
       window.removeEventListener('cockpit:export-snapshot', exportSnapshot);
+      window.removeEventListener('cockpit:refresh-page', refreshCurrentPage);
     };
   }, [activeTab]);
 
@@ -2949,12 +2987,30 @@ export default function Dashboard() {
     setSearchQuery('');
   };
 
+  const commandPaletteCommands = [
+    ...COCKPIT_PAGE_REGISTRY.map((page) => ({
+      id: page.id.toLowerCase(),
+      label: page.title,
+      description: `${page.purpose} ${page.whenToUse}`,
+      action: () => setActiveTab(page.id),
+    })),
+    ...dynamicSearchTargets
+      .filter((target) => !target.id.startsWith('page-'))
+      .slice(0, 80)
+      .map((target) => ({
+        id: `dynamic-${target.id}`,
+        label: target.label,
+        description: `${target.group} · ${target.keywords.slice(0, 3).filter(Boolean).join(' / ')}`,
+        action: () => openSearchTarget(target),
+      })),
+  ];
+
   const openSidebarProject = (projectId: string) => {
     openContextTarget({ tab: 'SystemMap', projectId });
   };
 
   // 命令面板
-  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette(commandPaletteCommands);
+  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette, toggle: toggleCommandPalette } = useCommandPalette();
 
   // 快捷操作面板
   const { isOpen: isQuickActionsOpen, open: openQuickActions, close: closeQuickActions } = useQuickActions();
@@ -2962,13 +3018,20 @@ export default function Dashboard() {
   // 键盘快捷键
   useKeyboardShortcuts({
     shortcuts: [
-      { key: 'k', ctrl: true, description: '打开命令面板', action: openCommandPalette },
+      { key: 'k', ctrl: true, description: '切换命令面板', action: toggleCommandPalette },
       { key: 'j', ctrl: true, description: '打开快捷操作', action: openQuickActions },
       { key: '1', ctrl: true, description: '首页', action: () => setActiveTab('Home') },
       { key: '2', ctrl: true, description: '概览', action: () => setActiveTab('Overview') },
       { key: '3', ctrl: true, description: '告警', action: () => setActiveTab('AlertCenter') },
       { key: '4', ctrl: true, description: '日志', action: () => setActiveTab('LogViewer') },
       { key: '5', ctrl: true, description: '任务', action: () => setActiveTab('TaskCenter') },
+      { key: 'n', ctrl: true, description: '打开任务中心', action: () => setActiveTab('TaskCenter') },
+      { key: 'l', ctrl: true, description: '打开日志', action: () => setActiveTab('LogViewer') },
+      { key: 'f', ctrl: true, shift: true, description: '聚焦全局搜索', action: () => { setSearchQuery(''); globalSearchInputRef.current?.focus(); } },
+      { key: '`', ctrl: true, description: '打开隔离沙箱', action: () => setActiveTab('Sandbox') },
+      { key: 'a', ctrl: true, description: '打开告警中心', action: () => setActiveTab('AlertCenter') },
+      { key: 'r', ctrl: true, description: '刷新当前页面数据', action: () => setPageRefreshToken((value) => value + 1) },
+      { key: ',', ctrl: true, description: '打开系统设置', action: () => setActiveTab('Settings') },
     ],
   });
 
@@ -3743,6 +3806,8 @@ export default function Dashboard() {
         return { title: '协议工作台 (Protocol)', subtitle: '把 ecos、model-driven、workflow 和治理桥接能力拉成一张可巡检、可跳转、可复制命令的协议操作面。' };
       case 'Knowledge':
         return { title: '分布式知识中枢 (Knowledge)', subtitle: '跨域检索与记忆摄取管线的状态和监控。' };
+      case 'GBrainAdmin':
+        return { title: 'GBrain 管理控制面 (GBrain Admin)', subtitle: '管理智能体接入、访问凭证、模型校准与请求审计；受保护操作由 GBrain 自己的登录边界承接。' };
       case 'Sandbox':
         return { title: '隔离安全沙箱 (Sandbox)', subtitle: '在线执行测试或运行未校验的任务指令。' };
       case 'Workflows':
@@ -5291,6 +5356,27 @@ export default function Dashboard() {
                 onOpenTarget={openContextTarget}
                 focusPageId={focusedPageId}
                 focusTaskQuery={taskSearchSeed}
+              />,
+            )
+          )}
+
+          {activeTab === 'GBrainAdmin' && (
+            renderLazyView(
+              'GBrain 管理',
+              <GBrainAdminView
+                initialSubTab={
+                  /智能体|agent/i.test(taskSearchSeed)
+                    ? 'agents'
+                    : /凭证|token|credential/i.test(taskSearchSeed)
+                      ? 'monitor'
+                      : /校准|calibration|模型/i.test(taskSearchSeed)
+                        ? 'calibration'
+                        : /日志|请求|request|log/i.test(taskSearchSeed)
+                          ? 'logs'
+                          : /记忆|memory/i.test(taskSearchSeed)
+                            ? 'memory'
+                            : 'monitor'
+                }
               />,
             )
           )}

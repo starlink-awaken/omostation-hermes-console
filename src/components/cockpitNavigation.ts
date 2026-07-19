@@ -21,6 +21,7 @@ export const HASH_TO_TAB: Record<string, string> = {
   compute: 'Compute',
   research: 'Research',
   knowledge: 'Knowledge',
+  'gbrain-admin': 'GBrainAdmin',
   engines: 'Engines',
   assets: 'Assets',
   protocol: 'Protocol',

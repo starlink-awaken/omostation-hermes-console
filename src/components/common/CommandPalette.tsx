@@ -1,50 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-
-interface KeyboardShortcut {
-  key: string;
-  ctrl?: boolean;
-  meta?: boolean;
-  shift?: boolean;
-  alt?: boolean;
-  description: string;
-  action: () => void;
-}
-
-interface UseKeyboardShortcutsOptions {
-  shortcuts: KeyboardShortcut[];
-  enabled?: boolean;
-}
-
-export function useKeyboardShortcuts({ shortcuts, enabled = true }: UseKeyboardShortcutsOptions) {
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (!enabled) return;
-
-    // 忽略输入框中的快捷键
-    const target = event.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-      return;
-    }
-
-    for (const shortcut of shortcuts) {
-      const ctrlMatch = shortcut.ctrl ? (event.ctrlKey || event.metaKey) : true;
-      const metaMatch = shortcut.meta ? event.metaKey : true;
-      const shiftMatch = shortcut.shift ? event.shiftKey : true;
-      const altMatch = shortcut.alt ? event.altKey : true;
-      const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
-
-      if (ctrlMatch && metaMatch && shiftMatch && altMatch && keyMatch) {
-        event.preventDefault();
-        shortcut.action();
-        return;
-      }
-    }
-  }, [shortcuts, enabled]);
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-}
+import React, { useState, useEffect, useRef } from 'react';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -61,6 +15,8 @@ interface CommandPaletteProps {
 export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const filteredCommands = commands.filter(cmd =>
     cmd.label.toLowerCase().includes(query.toLowerCase()) ||
@@ -69,24 +25,31 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
 
   useEffect(() => {
     if (isOpen) {
+      previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      // 命令面板每次打开都从空查询和首项开始，避免沿用上次上下文。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery('');
       setSelectedIndex(0);
+      inputRef.current?.focus();
+    } else if (previousFocusRef.current) {
+      previousFocusRef.current.focus();
+      previousFocusRef.current = null;
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedIndex(prev => Math.min(prev + 1, filteredCommands.length - 1));
+        if (filteredCommands.length > 0) {
+          setSelectedIndex(prev => Math.min(prev + 1, filteredCommands.length - 1));
+        }
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setSelectedIndex(prev => Math.max(prev - 1, 0));
+        if (filteredCommands.length > 0) {
+          setSelectedIndex(prev => Math.max(prev - 1, 0));
+        }
         break;
       case 'Enter':
         e.preventDefault();
@@ -106,19 +69,28 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
 
   return (
     <div className="command-palette-overlay" onClick={onClose}>
-      <div className="command-palette" onClick={e => e.stopPropagation()}>
+      <div
+        className="command-palette"
+        role="dialog"
+        aria-modal="true"
+        aria-label="命令面板"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="command-palette-header">
           <input
+            ref={inputRef}
             type="text"
             className="command-palette-input"
             placeholder="输入命令..."
+            aria-label="命令面板搜索"
+            aria-controls="cockpit-command-list"
+            aria-activedescendant={filteredCommands[selectedIndex] ? `command-${filteredCommands[selectedIndex].id}` : undefined}
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            autoFocus
           />
         </div>
-        <div className="command-palette-list">
+        <div id="cockpit-command-list" className="command-palette-list" role="listbox" aria-label="可用命令">
           {filteredCommands.length === 0 ? (
             <div className="command-palette-empty">
               没有找到匹配的命令
@@ -127,6 +99,10 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
             filteredCommands.map((cmd, index) => (
               <button
                 key={cmd.id}
+                id={`command-${cmd.id}`}
+                type="button"
+                role="option"
+                aria-selected={index === selectedIndex}
                 className={`command-palette-item ${index === selectedIndex ? 'selected' : ''}`}
                 onClick={() => {
                   cmd.action();
@@ -148,26 +124,4 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
       </div>
     </div>
   );
-}
-
-export function useCommandPalette(commands: CommandPaletteProps['commands']) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  useKeyboardShortcuts({
-    shortcuts: [
-      {
-        key: 'k',
-        ctrl: true,
-        description: '打开命令面板',
-        action: () => setIsOpen(prev => !prev),
-      },
-    ],
-  });
-
-  return {
-    isOpen,
-    open: () => setIsOpen(true),
-    close: () => setIsOpen(false),
-    toggle: () => setIsOpen(prev => !prev),
-  };
 }
