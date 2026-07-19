@@ -138,6 +138,24 @@ describe('Dashboard global search', () => {
     }
   })
 
+  it('supports keyboard selection across global search results', async () => {
+    vi.mocked(fetch).mockResolvedValue(okJson({ items: [] }))
+
+    render(<Dashboard />)
+    const search = await screen.findByLabelText('全局搜索输入框')
+    fireEvent.change(search, { target: { value: '任务' } })
+
+    const results = await screen.findByRole('listbox', { name: '全局搜索结果' })
+    const options = within(results).getAllByRole('option')
+    expect(options.length).toBeGreaterThan(1)
+    expect(options[0]).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.keyDown(search, { key: 'ArrowDown' })
+    expect(options[1]).toHaveAttribute('aria-selected', 'true')
+    fireEvent.keyDown(search, { key: 'ArrowUp' })
+    expect(options[0]).toHaveAttribute('aria-selected', 'true')
+  })
+
   it('toggles the command palette with Ctrl+K instead of registering duplicate handlers', async () => {
     vi.mocked(fetch).mockResolvedValue(okJson({}))
 

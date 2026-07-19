@@ -1215,6 +1215,7 @@ export default function Dashboard() {
   const [shellDataWarnings, setShellDataWarnings] = useState<string[]>([]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResultIndex, setSearchResultIndex] = useState(0);
   const [dynamicSearchTargets, setDynamicSearchTargets] = useState<SearchTarget[]>([]);
   const [knowledgeSearchTargets, setKnowledgeSearchTargets] = useState<SearchTarget[]>([]);
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
@@ -4255,25 +4256,45 @@ export default function Dashboard() {
                 type="text"
                 placeholder="搜索页面、项目、能力..."
                 aria-label="全局搜索输入框"
+                aria-controls="cockpit-global-search-results"
+                aria-expanded={Boolean(searchQuery.trim())}
+                aria-activedescendant={searchResults[searchResultIndex] ? `cockpit-search-result-${searchResults[searchResultIndex].id}` : undefined}
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setSearchResultIndex(0);
+                }}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && searchResults[0]) {
-                    openSearchTarget(searchResults[0]);
+                  if (event.key === 'ArrowDown' && searchResults.length > 0) {
+                    event.preventDefault();
+                    setSearchResultIndex((index) => Math.min(index + 1, searchResults.length - 1));
+                  }
+                  if (event.key === 'ArrowUp' && searchResults.length > 0) {
+                    event.preventDefault();
+                    setSearchResultIndex((index) => Math.max(index - 1, 0));
+                  }
+                  if (event.key === 'Enter' && searchResults[searchResultIndex]) {
+                    openSearchTarget(searchResults[searchResultIndex]);
                   }
                   if (event.key === 'Escape') {
                     setSearchQuery('');
+                    setSearchResultIndex(0);
                   }
                 }}
               />
             </div>
             {searchQuery.trim() && (
-              <div className="topbar-search-results">
+              <div id="cockpit-global-search-results" className="topbar-search-results" role="listbox" aria-label="全局搜索结果">
                 {searchResults.length > 0 ? searchResults.map((target) => (
                   <button
                     key={target.id}
+                    id={`cockpit-search-result-${target.id}`}
+                    type="button"
+                    role="option"
+                    aria-selected={searchResults[searchResultIndex]?.id === target.id}
                     className="topbar-search-result"
                     onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setSearchResultIndex(searchResults.findIndex((item) => item.id === target.id))}
                     onClick={() => openSearchTarget(target)}
                   >
                     <span>{target.label}</span>
