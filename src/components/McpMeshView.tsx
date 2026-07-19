@@ -19,8 +19,13 @@ interface BosHealth {
   status: string;
   total_routes: number;
   domains: Record<string, number>;
-  metrics: any;
+  metrics: Record<string, unknown>;
 }
+
+type MeshResolveResult = {
+  error?: string;
+  [key: string]: unknown;
+};
 
 interface McpMeshViewProps {
   onNavigate?: (tab: string) => void;
@@ -93,7 +98,7 @@ export default function McpMeshView({
   // URI 解析器
   const [resolveUri, setResolveUri] = useState('bos://memory/kos/search');
   const [resolveArgs, setResolveArgs] = useState('{\n  "query": "SSOT"\n}');
-  const [resolveResult, setResolveResult] = useState<any>(null);
+  const [resolveResult, setResolveResult] = useState<MeshResolveResult | null>(null);
   const [resolving, setResolving] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [resolveTaskPending, setResolveTaskPending] = useState(false);
@@ -125,6 +130,8 @@ export default function McpMeshView({
   };
 
   useEffect(() => {
+    // 网格页刷新服务列表和健康探针两个外部来源。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchData();
   }, [refreshToken]);
 
@@ -136,6 +143,8 @@ export default function McpMeshView({
       || matchesMeshQuery(service.action, focusTaskQuery),
     ) || null;
     if (matchedService) {
+      // 外部导航命中路由时同步筛选、域和解析器对象。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMeshQuery(focusTaskQuery);
       setSelectedDomain(matchedService.domain);
       setResolveUri(matchedService.uri);
@@ -187,8 +196,8 @@ export default function McpMeshView({
       } else {
         setRegisterError(data.error || '注册失败');
       }
-    } catch (err: any) {
-      setRegisterError(err.message || '注册发生错误');
+    } catch (err: unknown) {
+      setRegisterError(err instanceof Error ? err.message : '注册发生错误');
     } finally {
       setRegistering(false);
     }
@@ -205,13 +214,14 @@ export default function McpMeshView({
     try {
       // 校验 JSON
       let parsedArgs = '{}';
-      try {
-        if (resolveArgs.trim()) {
+      if (resolveArgs.trim()) {
+        try {
           JSON.parse(resolveArgs);
           parsedArgs = resolveArgs;
+        } catch {
+          setResolveError('参数 Arguments 必须是合法的 JSON 格式');
+          return;
         }
-      } catch (je) {
-        throw new Error('参数 Arguments 必须是合法的 JSON 格式');
       }
 
       const res = await fetch(`/api/bos/resolve?uri=${encodeURIComponent(resolveUri)}&arguments=${encodeURIComponent(parsedArgs)}`);
@@ -221,8 +231,8 @@ export default function McpMeshView({
       } else {
         setResolveError(data.error || '解析调用失败');
       }
-    } catch (err: any) {
-      setResolveError(err.message || '网络或服务端异常');
+    } catch (err: unknown) {
+      setResolveError(err instanceof Error ? err.message : '网络或服务端异常');
     } finally {
       setResolving(false);
     }
@@ -332,7 +342,7 @@ export default function McpMeshView({
       : resolveError
         ? '解析待修'
         : `待验证 ${resolveUri.split('/')[2] || 'URI'}`;
-  const meshClosureRows: MeshClosureRow[] = [
+  const meshClosureRows = useMemo<MeshClosureRow[]>(() => [
     {
       id: 'domain-observability',
       title: '热点域与观测追证',
@@ -383,7 +393,19 @@ export default function McpMeshView({
       objectTarget: { tab: 'McpMesh', taskQuery: resolveUri || registerName || 'mesh-resolve' },
       taskTarget: { tab: 'TaskCenter', taskQuery: resolveUri || registerName || 'mesh-resolve' },
     },
-  ];
+  ], [
+    firstMissingDomain,
+    firstService,
+    meshBacklog.missingDomains.length,
+    meshBacklog.registrationCount,
+    registerName,
+    registerStatus,
+    resolveResult,
+    resolveSignal,
+    resolveUri,
+    services.length,
+    topDomain,
+  ]);
 
   const focusedMeshCard = useMemo(() => {
     const matchedService = focusTaskQuery
@@ -457,7 +479,7 @@ export default function McpMeshView({
     }
 
     return null;
-  }, [focusPageId, focusTaskQuery, meshBacklog.domainCounts, meshBacklog.missingDomains, services]);
+  }, [focusPageId, focusTaskQuery, meshBacklog.domainCounts, meshBacklog.missingDomains, meshClosureRows, services]);
 
   if (loading) {
     return (
