@@ -346,7 +346,7 @@ function staticPageCount() {
   return GUIDE_GROUPS.reduce((total, group) => total + group.pages.length, 0);
 }
 
-function buildSystemMapRegisteredPageIds(payload: any): Set<string> {
+function buildSystemMapRegisteredPageIds(payload: Record<string, unknown>): Set<string> {
   const registered = new Set<string>();
 
   ((payload.cockpit_pages || []) as Array<{ id?: string }>).forEach((page) => {
@@ -553,7 +553,7 @@ export default function CockpitGuideView({
           fetch('/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=40'),
         ]);
         const [{ ok: systemMapOk, data: payload, error: systemMapError }, { ok: tasksOk, data: tasksPayload, error: tasksError }] = await Promise.all([
-          readGuideResponse<any>(systemMapResult, '系统地图数据'),
+          readGuideResponse<Record<string, unknown>>(systemMapResult, '系统地图数据'),
           readGuideResponse<{ items?: unknown[] }>(tasksResult, '任务草稿数据'),
         ]);
         if (!systemMapOk || !payload) {

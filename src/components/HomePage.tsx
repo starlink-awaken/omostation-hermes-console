@@ -205,6 +205,45 @@ interface ArchitectureRoadmapLane {
   count: number;
 }
 
+interface HomeSystemMap {
+  summary?: Record<string, number>;
+  cockpit_pages?: CockpitPageMeta[];
+  feature_domains?: FeatureDomain[];
+  usage_paths?: UsagePath[];
+  playbooks?: OperatingPlaybook[];
+  roadmap?: {
+    items?: Array<{ cockpit_page?: string; status?: string }>;
+    lanes?: ArchitectureRoadmapLane[];
+  };
+  project_portfolio?: {
+    summary?: Record<string, number | string>;
+    priority_projects?: PriorityProject[];
+    weakest_dimensions?: Array<{
+      id: string;
+      title?: string;
+      status?: string;
+      score?: number;
+      failed?: number;
+      warning?: number;
+      description?: string;
+      attention_projects?: FocusWeakDimension['attentionProjects'];
+    }>;
+  };
+  project_capability_coverage?: { summary?: Record<string, number> };
+  domain_apps?: {
+    summary?: Record<string, number>;
+    attention_items?: Array<{
+      id: string;
+      name?: string;
+      runtime_status?: string;
+      risk_level?: string;
+      security_posture?: string;
+      next_action?: string;
+    }>;
+  };
+  project_focus?: { summary?: Record<string, number> };
+}
+
 interface ArchitectureLaneSummary {
   id: string;
   title: string;
@@ -2975,7 +3014,7 @@ export default function HomePage({
   const [playbooks, setPlaybooks] = useState<OperatingPlaybook[]>([]);
   const [roadmapItems, setRoadmapItems] = useState<Array<{ cockpit_page?: string; status?: string }>>([]);
   const [readOnlyDrafts, setReadOnlyDrafts] = useState<DraftTaskSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [homeError, setHomeError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [pendingDraftId, setPendingDraftId] = useState<string | null>(null);
@@ -3029,7 +3068,7 @@ export default function HomePage({
           fetchHomeData('/api/tasks?limit=3&sort=updated', { items: [] as Task[] }),
           fetchHomeData(`/api/metrics/trend?range=${metricsRange}`, { health_score: [], requests: [], error_rate: [] }),
           fetchHomeData('/api/omos/thoughts', { status: 'unavailable', thoughts: [] as Thought[] }),
-          fetchHomeData('/api/cockpit/system-map', {} as Record<string, any>),
+          fetchHomeData('/api/cockpit/system-map', {} as HomeSystemMap),
           fetchHomeData(HOME_DRAFT_TASKS_URL, { items: [] as DraftTaskSummary[] }),
         ]);
         const failedSources = [
@@ -3088,7 +3127,7 @@ export default function HomePage({
             projectsNeedingAction: systemSummary.projects_needing_action || 0,
             pageGroups: buildPageGroups(cockpitPages),
             featureDomains,
-            roadmapLanes: (systemMap.roadmap?.lanes || []).map((lane: any) => ({
+            roadmapLanes: (systemMap.roadmap?.lanes || []).map((lane) => ({
               id: lane.id,
               title: lane.title,
               count: lane.items?.length || 0,
@@ -3130,7 +3169,7 @@ export default function HomePage({
             capabilityGapDrafts: countDrafts('system_map_capability_gap'),
             pageMaturityDrafts: countDrafts('system_map_page_maturity'),
             actionDrafts,
-            weakestDimensions: (portfolio.weakest_dimensions || []).slice(0, 3).map((dimension: any) => ({
+            weakestDimensions: (portfolio.weakest_dimensions || []).slice(0, 3).map((dimension) => ({
               id: dimension.id,
               title: dimension.title,
               status: dimension.status,
@@ -3140,7 +3179,7 @@ export default function HomePage({
               nextAction: dimension.attention_projects?.[0]?.next_action || dimension.description || '进入系统地图查看修复台。',
               attentionProjects: dimension.attention_projects || [],
             })),
-            domainAttention: (systemMap.domain_apps?.attention_items || []).slice(0, 3).map((item: any) => ({
+            domainAttention: (systemMap.domain_apps?.attention_items || []).slice(0, 3).map((item) => ({
               id: item.id,
               name: item.name || item.id,
               runtimeStatus: item.runtime_status || 'unknown',
