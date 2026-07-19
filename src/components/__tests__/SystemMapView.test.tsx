@@ -858,7 +858,11 @@ describe('SystemMapView', () => {
   it('previews source references inside the system map', async () => {
     render(<SystemMapView onNavigate={vi.fn()} />)
 
-    await waitFor(() => screen.getByText('来源证据预览'))
+    await waitFor(() => {
+      expect(screen.getByText('来源证据预览')).toBeInTheDocument()
+      expect(screen.getByText(/数据快照/)).toBeInTheDocument()
+      expect(screen.getByText(/schema v1/)).toBeInTheDocument()
+    })
     fireEvent.click(screen.getAllByRole('button', { name: /路线图定义/ })[0])
 
     await waitFor(() => {
