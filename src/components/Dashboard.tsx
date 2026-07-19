@@ -3106,6 +3106,12 @@ export default function Dashboard() {
   };
 
   const commandPaletteCommands = [
+    ...recentNavigation.map((entry, index) => ({
+      id: `recent-navigation-${index}-${entry.target.tab}`,
+      label: `最近访问：${entry.label}`,
+      description: `回到${PAGE_REGISTRY_BY_ID.get(entry.target.tab)?.title || entry.target.tab}`,
+      action: () => openContextTarget(entry.target),
+    })),
     ...COCKPIT_PAGE_REGISTRY.map((page) => ({
       id: page.id.toLowerCase(),
       label: page.title,

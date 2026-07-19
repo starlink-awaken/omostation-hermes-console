@@ -86,7 +86,11 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
             aria-controls="cockpit-command-list"
             aria-activedescendant={filteredCommands[selectedIndex] ? `command-${filteredCommands[selectedIndex].id}` : undefined}
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => {
+              setQuery(e.target.value);
+              // 过滤结果变化后回到首项，避免回车仍指向已消失的旧选项。
+              setSelectedIndex(0);
+            }}
             onKeyDown={handleKeyDown}
           />
         </div>

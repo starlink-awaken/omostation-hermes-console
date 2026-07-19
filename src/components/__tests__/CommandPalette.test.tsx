@@ -54,4 +54,27 @@ describe('CommandPalette', () => {
 
     expect(screen.getByText('没有找到匹配的命令')).toBeInTheDocument()
   })
+
+  it('returns to the first filtered command before keyboard activation', () => {
+    const firstAction = vi.fn()
+    const secondAction = vi.fn()
+    render(
+      <CommandPalette
+        isOpen
+        onClose={vi.fn()}
+        commands={[
+          { id: 'first', label: '首页', action: firstAction },
+          { id: 'second', label: '任务中心', action: secondAction },
+        ]}
+      />,
+    )
+
+    const input = screen.getByRole('textbox', { name: '命令面板搜索' })
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    fireEvent.change(input, { target: { value: '首' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(firstAction).toHaveBeenCalledOnce()
+    expect(secondAction).not.toHaveBeenCalled()
+  })
 })
