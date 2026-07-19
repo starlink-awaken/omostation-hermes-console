@@ -167,6 +167,7 @@ export default function ResearchHubView({
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [queueingResearchId, setQueueingResearchId] = useState<number | null>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
 
   const load = async () => {
@@ -179,6 +180,7 @@ export default function ResearchHubView({
 
   const queueResearchTask = async (researchId: number) => {
     setQueueingResearchId(researchId);
+    setQueueError(null);
     try {
       const response = await fetch(`/api/cockpit/research/${researchId}/queue`, { method: 'POST' });
       const payload = await response.json().catch(() => ({}));
@@ -187,10 +189,10 @@ export default function ResearchHubView({
         await load();
         openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: payload.id }, onNavigate, onOpenTarget);
       } else {
-        setDetailError('研究任务承接接口已返回成功，但没有任务 ID，无法定位后续任务。');
+        setQueueError('研究任务承接接口已返回成功，但没有任务 ID，无法定位后续任务。');
       }
     } catch (error) {
-      setDetailError(error instanceof Error ? error.message : '研究任务承接失败');
+      setQueueError(error instanceof Error ? error.message : '研究任务承接失败');
     } finally {
       setQueueingResearchId(null);
     }
@@ -882,6 +884,13 @@ export default function ResearchHubView({
             <span className="status-badge online">待发布回流 {researchWorkbench.publishCount}</span>
           </div>
         </div>
+        {queueError && (
+          <div className="overview-inline-error" role="alert" aria-live="polite" style={{ marginBottom: 12 }}>
+            <AlertTriangle size={16} />
+            <span>研究任务承接失败：{queueError}</span>
+            <button type="button" className="antd-btn small" onClick={() => setQueueError(null)}>关闭</button>
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>

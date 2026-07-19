@@ -100,6 +100,45 @@ describe('ResearchHubView', () => {
     })
   })
 
+  it('shows task queue failures in the research workbench without opening details', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/cockpit/research-hub') {
+        return Promise.resolve(okJson({
+          summary: { total: 1, active: 1, archived: 0, quarantined: 0, published: 0, follow_ups: 1, agents: 1 },
+          recent: [{
+            id: 31,
+            topic: '失败反馈研究',
+            summary: '验证任务失败反馈',
+            created_at: '2026-07-08T06:00:00Z',
+            source_count: 1,
+            tags: [],
+            agent: 'Researcher',
+            status: 'active',
+            follow_up_count: 1,
+            last_event: { label: '已创建', created_at: '2026-07-08T07:00:00Z' },
+            next_action: '继续落任务。',
+          }],
+          commands: [],
+          pipeline: [],
+          related_pages: [],
+        }))
+      }
+      if (url === '/api/cockpit/research/31/queue') {
+        return Promise.resolve({ ok: false, status: 503, json: async () => ({ detail: 'task service offline' }) } as Response)
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<ResearchHubView />)
+    fireEvent.click(await screen.findByRole('button', { name: '落任务 失败反馈研究' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('研究任务承接失败：task service offline')
+    })
+    expect(screen.queryByRole('region', { name: '研究对象详情' })).not.toBeInTheDocument()
+  })
+
   it('opens a research object detail with timeline and publications', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       if (String(input) === '/api/cockpit/research-hub') {
