@@ -793,14 +793,6 @@ export default function OverviewPage({
   const domainApps = state.systemMap?.domain_apps?.summary;
   const domainAttention = state.systemMap?.domain_apps?.attention_items || [];
   const pageMaturity = state.systemMap?.page_maturity?.summary;
-  const noOverviewSources = !state.loading
-    && Boolean(state.error)
-    && !state.registryAvailable
-    && !state.runtimeAvailable
-    && !state.alertsAvailable
-    && !state.systemMapAvailable
-    && !state.draftsAvailable
-    && !state.domainAppsAvailable;
   const registryUnavailable = !state.registryAvailable;
   const runtimeUnavailable = !state.runtimeAvailable;
   const alertsUnavailable = !state.alertsAvailable;
