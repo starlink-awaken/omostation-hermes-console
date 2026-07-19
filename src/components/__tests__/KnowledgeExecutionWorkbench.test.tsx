@@ -28,9 +28,10 @@ describe('KnowledgeExecutionWorkbench', () => {
           ],
         }))
       }
-      if (url === '/api/metaos/workflows') {
+      if (url === '/api/metaos/workflows?limit=100&offset=0') {
         return Promise.resolve(okJson({
           status: 'ok',
+          total: 1,
           workflows: [
             {
               id: 'wf-1',

@@ -21,6 +21,12 @@ interface WorkflowRecord {
   updated?: string;
 }
 
+interface WorkflowPayload {
+  status?: string;
+  workflows?: WorkflowRecord[];
+  total?: number;
+}
+
 interface SkillItem {
   id: string;
   name?: string;
@@ -168,6 +174,7 @@ export default function KnowledgeExecutionWorkbench({
   };
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
+  const [workflowTotal, setWorkflowTotal] = useState(0);
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [pipelines, setPipelines] = useState<string[]>([]);
   const [workflowDefinitions, setWorkflowDefinitions] = useState<WorkflowDefinition[]>([]);
@@ -195,9 +202,9 @@ export default function KnowledgeExecutionWorkbench({
           { items: [] },
           '任务池',
         ),
-        fetchJson<{ status?: string; workflows?: WorkflowRecord[] }>(
-          '/api/metaos/workflows',
-          { status: 'error', workflows: [] },
+        fetchJson<WorkflowPayload>(
+          '/api/metaos/workflows?limit=100&offset=0',
+          { status: 'error', workflows: [], total: 0 },
           '工作流记录',
         ),
         fetchJson<{ skills?: SkillItem[] }>('/api/ecos/skills', { skills: [] }, '技能目录'),
@@ -212,6 +219,7 @@ export default function KnowledgeExecutionWorkbench({
 
       setTasks(taskPayload.data.items || []);
       setWorkflows(workflowPayload.data.workflows || []);
+      setWorkflowTotal(typeof workflowPayload.data.total === 'number' ? workflowPayload.data.total : (workflowPayload.data.workflows || []).length);
       setSkills(skillPayload.data.skills || []);
       setPipelines(pipelinePayload.data.pipelines || []);
       setWorkflowDefinitions(workflowDefinitionPayload.data.workflows || []);
@@ -448,7 +456,7 @@ export default function KnowledgeExecutionWorkbench({
         <div className="knowledge-execution-card">
           <span>执行编排</span>
           <strong>{summary.approvalCount} 条待审批</strong>
-          <small>运行中 {summary.runningWorkflows} · 历史 {workflows.length}</small>
+          <small>运行中 {summary.runningWorkflows} · 历史 {workflows.length}/{workflowTotal}</small>
         </div>
         <button
           type="button"
@@ -674,7 +682,7 @@ export default function KnowledgeExecutionWorkbench({
               <GitBranch size={16} />
               执行与落地
             </strong>
-            <small>任务 {tasks.length} · 编排历史 {workflows.length}</small>
+            <small>任务 {tasks.length} · 编排历史 {workflows.length}/{workflowTotal}</small>
           </div>
           <div className="knowledge-execution-list">
             {summary.latestWorkflow && (
