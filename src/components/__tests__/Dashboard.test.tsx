@@ -1075,6 +1075,60 @@ describe('Dashboard global search', () => {
     })
   }, 20000)
 
+  it('promotes the current page draft from the global page context', async () => {
+    window.location.hash = '#performance'
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/cockpit/system-map') {
+        return Promise.resolve(okJson({
+          cockpit_pages: [{ id: 'Performance', title: '性能监控', group: '开发工具', purpose: '查看性能' }],
+          page_maturity: { summary: { total: 1, ready: 0, watch: 0, gap: 1, score: 0 }, items: [] },
+          usage_paths: [],
+          playbooks: [],
+          projects: [],
+          project_portfolio: { summary: {}, priority_projects: [], weakest_dimensions: [] },
+          feature_domains: [],
+          roadmap: { items: [] },
+          gaps: [],
+        }))
+      }
+      if (url.startsWith('/api/tasks?')) {
+        return Promise.resolve(okJson({
+          items: [{
+            id: 'page-draft-performance',
+            title: '页面能力：补齐性能监控',
+            description: '补能力域映射。',
+            read_only: true,
+            source: { type: 'system_map_page_maturity', id: 'Performance', title: '性能监控' },
+            draft: { kind: 'page_maturity', guard: '先补能力域映射' },
+          }],
+        }))
+      }
+      if (url === '/api/tasks/drafts/page-draft-performance/promote') {
+        expect(init?.method).toBe('POST')
+        return Promise.resolve(okJson({ id: 'promoted-performance', title: '补齐性能监控' }))
+      }
+      if (url === '/api/services') return Promise.resolve(okJson([]))
+      return Promise.resolve(okJson({ items: [] }))
+    })
+
+    render(<Dashboard />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: '当前页面承接' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '承接当前页面草稿 页面能力：补齐性能监控' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '承接当前页面草稿 页面能力：补齐性能监控' }))
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/tasks/drafts/page-draft-performance/promote',
+        { method: 'POST' },
+      )
+      expect(screen.getByText('已承接为正式计划任务：补齐性能监控')).toBeInTheDocument()
+    })
+  }, 20000)
+
   it('resolves hash links into cockpit navigation context', async () => {
     window.location.hash = '#alerts/rules'
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {

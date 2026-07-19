@@ -36,6 +36,7 @@ import {
   Shield,
   History,
   Link2,
+  ClipboardCheck,
 } from 'lucide-react';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette } from './common/CommandPalette';
@@ -1280,6 +1281,9 @@ export default function Dashboard() {
   const [pageAuditExpanded, setPageAuditExpanded] = useState(false);
   const [closureDraftNotice, setClosureDraftNotice] = useState<string | null>(null);
   const [pageSprintDraftNotice, setPageSprintDraftNotice] = useState<string | null>(null);
+  const [currentPageDraftPending, setCurrentPageDraftPending] = useState(false);
+  const [currentPageDraftNotice, setCurrentPageDraftNotice] = useState<string | null>(null);
+  const [currentPageDraftError, setCurrentPageDraftError] = useState<string | null>(null);
   const [snapshotExportState, setSnapshotExportState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
   const [linkCopyState, setLinkCopyState] = useState<'idle' | 'success' | 'error'>('idle');
   const globalSearchInputRef = useRef<HTMLInputElement>(null);
@@ -1461,6 +1465,26 @@ export default function Dashboard() {
     const pageLabel = currentCockpitPage?.title || currentPageTarget?.label || activeTab;
     return shellTaskDrafts.find((task) => taskDraftMatchesPage(task, activeTab, pageLabel)) || null;
   }, [activeTab, currentCockpitPage, currentPageTarget, shellTaskDrafts]);
+
+  const promoteCurrentPageDraft = async () => {
+    if (!currentPageDraft?.id || currentPageDraftPending) return;
+    setCurrentPageDraftPending(true);
+    setCurrentPageDraftNotice(null);
+    setCurrentPageDraftError(null);
+    try {
+      const response = await fetch(`/api/tasks/drafts/${encodeURIComponent(currentPageDraft.id)}/promote`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || response.statusText || '当前页面草稿承接失败');
+      }
+      setCurrentPageDraftNotice(`已承接为正式计划任务：${payload.title || currentPageDraft.title || currentPageDraft.id}`);
+      setPageRefreshToken((value) => value + 1);
+    } catch (error) {
+      setCurrentPageDraftError(error instanceof Error ? error.message : '当前页面草稿承接失败');
+    } finally {
+      setCurrentPageDraftPending(false);
+    }
+  };
   const currentPageExecutionRows = useMemo<PageExecutionRow[]>(() => {
     const pageLabel = currentCockpitPage?.title || currentPageTarget?.label || activeTab;
     const rows: PageExecutionRow[] = [];
@@ -4567,6 +4591,11 @@ export default function Dashboard() {
                 </button>
               ))}
             </section>
+            {(currentPageDraftNotice || currentPageDraftError) && (
+              <div className="dashboard-page-context-feedback" role={currentPageDraftError ? 'alert' : 'status'} aria-live="polite">
+                {currentPageDraftError || currentPageDraftNotice}
+              </div>
+            )}
             <div className="dashboard-page-context-actions">
               <button
                 type="button"
@@ -4600,6 +4629,18 @@ export default function Dashboard() {
                 <ClipboardList size={14} />
                 <span>打开任务承接</span>
               </button>
+              {currentPageDraft?.read_only && (
+                <button
+                  type="button"
+                  className="antd-btn antd-btn-primary"
+                  aria-label={`承接当前页面草稿 ${currentPageDraft.title || currentPageDraft.id}`}
+                  disabled={currentPageDraftPending}
+                  onClick={() => { void promoteCurrentPageDraft(); }}
+                >
+                  <ClipboardCheck size={14} />
+                  <span>{currentPageDraftPending ? '承接中...' : '直接承接草稿'}</span>
+                </button>
+              )}
               <button
                 type="button"
                 className="antd-btn"
