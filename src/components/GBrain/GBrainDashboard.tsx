@@ -64,10 +64,12 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
     let cancelled = false;
     let es: EventSource | null = null;
     let interval: ReturnType<typeof setInterval> | null = null;
-    const start = async () => {
-      const available = await loadStatsAndHealth();
-      if (!available || cancelled) return;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    const reconnectDelay = 5000;
 
+    const connectEvents = () => {
+      if (cancelled) return;
+      setSseStatus('connecting');
       es = new EventSource('/admin/events');
       eventSourceRef.current = es;
       es.onopen = () => setSseStatus('connected');
@@ -78,14 +80,23 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
         } catch {}
       };
       es.onerror = () => {
+        es?.close();
+        eventSourceRef.current = null;
+        if (cancelled) return;
         setSseStatus('disconnected');
-        // On connection error, check if auth has expired
-        void loadStatsAndHealth();
-        setTimeout(() => {
-          setSseStatus('connecting');
-          es?.close();
-        }, 5000);
+        // Re-check auth before retrying, then keep the live feed recoverable.
+        void loadStatsAndHealth().then((available) => {
+          if (!available || cancelled) return;
+          reconnectTimer = setTimeout(connectEvents, reconnectDelay);
+        });
       };
+    };
+
+    const start = async () => {
+      const available = await loadStatsAndHealth();
+      if (!available || cancelled) return;
+
+      connectEvents();
 
       interval = setInterval(() => {
         void loadStatsAndHealth();
@@ -96,6 +107,7 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
     return () => {
       cancelled = true;
       es?.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       if (interval) clearInterval(interval);
     };
   }, [isAuthenticated, loadError]);
