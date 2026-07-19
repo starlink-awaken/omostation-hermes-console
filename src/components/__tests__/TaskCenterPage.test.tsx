@@ -640,6 +640,34 @@ describe('TaskCenterPage', () => {
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'SystemMap', projectId: 'kairon' })
   })
 
+  it('returns a manually created task to its structured cockpit source', async () => {
+    const onOpenTarget = vi.fn()
+    const runtimeTask = {
+      ...mockTasks[0],
+      id: 'runtime-task-1',
+      title: '处理运行告警：cockpit-api',
+      source: {
+        type: 'cockpit.runtime-workbench',
+        id: 'cockpit-api',
+        title: '运行诊断工作台',
+        target: { tab: 'Performance', taskQuery: 'cockpit-api' },
+      },
+    }
+    mockTaskCenterFetch([runtimeTask])
+
+    render(<TaskCenterPage onOpenTarget={onOpenTarget} />)
+
+    await waitFor(() => expect(screen.getAllByText('处理运行告警：cockpit-api').length).toBeGreaterThan(0))
+    fireEvent.click(screen.getByRole('button', { name: '查看任务 处理运行告警：cockpit-api' }))
+
+    await waitFor(() => {
+      expect(screen.getAllByText('运行诊断 · cockpit-api').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button', { name: '回运行诊断' })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: '回运行诊断' }))
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'Performance', taskQuery: 'cockpit-api' })
+  })
+
   it('filters tasks by search query', async () => {
     mockTaskCenterFetch(mockTasks)
 

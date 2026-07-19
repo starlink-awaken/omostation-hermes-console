@@ -244,7 +244,12 @@ export default function McpMeshView({
           risk_level: 'L1',
           evidence_required: ['BOS URI 与参数', '解析返回结果', '路由或实例验收证据', 'task closeout'],
           tags: ['mcp-mesh', 'bos-resolution'],
-          source: 'cockpit.mcp-mesh-resolver',
+          source: {
+            type: 'cockpit.mcp-mesh-resolver',
+            id: resolveUri,
+            title: 'MCP 网格解析器',
+            target: { tab: 'McpMesh', taskQuery: resolveUri },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

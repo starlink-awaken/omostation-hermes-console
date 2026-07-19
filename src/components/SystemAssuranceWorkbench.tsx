@@ -240,7 +240,12 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
           risk_level: unavailableSources.length > 0 ? 'L2' : 'L1',
           evidence_required: ['系统保证快照', '相关层、协议或服务证据', '验证与收敛结果', 'task closeout'],
           tags: ['system-assurance', 'governance'],
-          source: 'cockpit.system-assurance-workbench',
+          source: {
+            type: 'cockpit.system-assurance-workbench',
+            id: 'system-assurance',
+            title: '系统保证工作台',
+            target: { tab: 'Overview', taskQuery: assuranceTaskTitle },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));

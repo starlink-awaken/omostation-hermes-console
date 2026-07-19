@@ -53,6 +53,7 @@ interface Task {
     type: string;
     id: string;
     title: string;
+    target?: TaskNavigationTarget;
   };
   draft?: {
     kind: string;
@@ -190,6 +191,9 @@ function sourceTypeLabel(type?: string): string {
   if (type === 'system_map_domain_app') return '领域应用';
   if (type === 'system_map_capability_gap') return '能力缺口';
   if (type === 'system_map_page_maturity') return '页面能力';
+  if (type === 'cockpit.runtime-workbench') return '运行诊断';
+  if (type === 'cockpit.system-assurance-workbench') return '系统保证';
+  if (type === 'cockpit.mcp-mesh-resolver') return 'MCP 解析';
   return '草稿来源';
 }
 
@@ -252,7 +256,7 @@ function sourceTypeDefaultTarget(type: DraftSourceType, task?: Task | null): Tas
 }
 
 function resolveTaskTarget(task: Task): TaskNavigationTarget | null {
-  return taskDraftSourceTarget(task);
+  return task.source?.target || taskDraftSourceTarget(task);
 }
 
 function sourceActionLabel(task: Task): string {
@@ -263,6 +267,9 @@ function sourceActionLabel(task: Task): string {
   if (task.source.type === 'system_map_capability_gap') return '查看能力缺口';
   if (task.source.type === 'system_map_page_maturity') return '打开来源页面';
   if (task.source.type === 'system_map_playbook') return '打开执行页面';
+  if (task.source.type === 'cockpit.runtime-workbench') return '回运行诊断';
+  if (task.source.type === 'cockpit.system-assurance-workbench') return '回系统保证';
+  if (task.source.type === 'cockpit.mcp-mesh-resolver') return '回 MCP 解析';
   return '打开来源';
 }
 
@@ -273,6 +280,9 @@ function sourceCompletionHint(task: Task): string {
   if (task.source.type === 'system_map_domain_app') return '目标是把领域挂载的运行态、安全门和入口状态收口。';
   if (task.source.type === 'system_map_capability_gap') return '目标是让缺口回到页面、命令、探针和入口都可见。';
   if (task.source.type === 'system_map_page_maturity') return '目标是把页面从 gap/watch 推到可日用。';
+  if (task.source.type === 'cockpit.runtime-workbench') return '目标是完成运行告警、性能、日志或拓扑证据收口。';
+  if (task.source.type === 'cockpit.system-assurance-workbench') return '目标是补齐横向系统保证证据并完成 closeout。';
+  if (task.source.type === 'cockpit.mcp-mesh-resolver') return '目标是核对 BOS 解析、路由和实例验收证据。';
   if (task.source.type === 'system_map_playbook') return '目标是让执行路径、证据和 done_when 形成完整闭环。';
   return '回来源面继续完成闭环。';
 }

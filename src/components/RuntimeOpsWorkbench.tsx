@@ -241,7 +241,12 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
           risk_level: noRuntimeSources ? 'L2' : 'L1',
           evidence_required: ['运行状态快照', '告警、性能或日志证据', '处理结果与复核结论', 'task closeout'],
           tags: ['runtime', 'observability'],
-          source: 'cockpit.runtime-workbench',
+          source: {
+            type: 'cockpit.runtime-workbench',
+            id: runtimeContextQuery,
+            title: '运行诊断工作台',
+            target: { tab: currentPage, taskQuery: runtimeContextQuery },
+          },
         }),
       });
       const payload = await response.json().catch(() => ({}));
