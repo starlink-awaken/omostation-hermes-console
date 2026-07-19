@@ -130,4 +130,19 @@ describe('PlatformControlWorkbench', () => {
       expect(screen.getByText('还没有可调度管线')).toBeInTheDocument()
     })
   })
+
+  it('does not render unavailable control sources as empty zero-valued evidence', async () => {
+    vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input) === '/api/bos/metrics') return Promise.reject(new Error('BOS metrics offline'))
+      if (String(input) === '/api/metrics/history') return Promise.reject(new Error('metrics offline'))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<PlatformControlWorkbench currentPage="Observability" />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('BOS 链路：BOS metrics offline')
+    expect(screen.getByText('BOS 证据不可用')).toBeInTheDocument()
+    expect(screen.getAllByText('服务观测证据不可用')).toHaveLength(2)
+    expect(screen.queryByText('服务 0/0 healthy')).not.toBeInTheDocument()
+  })
 })

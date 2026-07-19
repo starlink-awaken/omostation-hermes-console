@@ -148,6 +148,13 @@ export default function PlatformControlWorkbench({
   const [metrics, setMetrics] = useState<MetricsPayload>({});
   const [quests, setQuests] = useState<QuestPayload>({});
   const [sourceErrors, setSourceErrors] = useState<string[]>([]);
+  const [sourceAvailability, setSourceAvailability] = useState({
+    arch: false,
+    bos: false,
+    pipelines: false,
+    metrics: false,
+    quests: false,
+  });
   const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
@@ -171,6 +178,13 @@ export default function PlatformControlWorkbench({
       setPipelines(pipelineResult.data.pipelines || []);
       setMetrics(metricsResult.data || {});
       setQuests(questResult.data || {});
+      setSourceAvailability({
+        arch: !archResult.error,
+        bos: !bosResult.error,
+        pipelines: !pipelineResult.error,
+        metrics: !metricsResult.error,
+        quests: !questResult.error,
+      });
       setSourceErrors([archResult.error, bosResult.error, pipelineResult.error, metricsResult.error, questResult.error]
         .filter((error): error is string => Boolean(error)));
     };
@@ -190,30 +204,34 @@ export default function PlatformControlWorkbench({
   }, [bosMetrics.data_quality, metrics.data_quality, sourceErrors]);
 
   const summary = useMemo(() => {
+    const archUnavailable = !sourceAvailability.arch;
+    const bosUnavailable = !sourceAvailability.bos || bosMetrics.data_quality === 'unavailable';
+    const metricsUnavailable = !sourceAvailability.metrics || metrics.data_quality === 'unavailable';
+    const pipelinesUnavailable = !sourceAvailability.pipelines;
+    const questsUnavailable = !sourceAvailability.quests;
     const archScore = archHealth.system?.health_score || 0;
-    const bosUnavailable = bosMetrics.data_quality === 'unavailable';
     const avgLatency = bosMetrics.summary?.avg_latency || 0;
     const totalCalls = bosMetrics.summary?.total_calls || 0;
     const successCount = bosMetrics.summary?.success_count || 0;
     const successRate = bosUnavailable ? null : totalCalls > 0 ? Math.round((successCount / totalCalls) * 100) : 0;
-    const activeQuests = (quests.quests || []).filter((quest) => quest.completed === 0);
-    const topDomain = (bosMetrics.domains || []).slice().sort((left, right) => right.total - left.total)[0];
+    const activeQuests = questsUnavailable ? [] : (quests.quests || []).filter((quest) => quest.completed === 0);
+    const topDomain = bosUnavailable ? undefined : (bosMetrics.domains || []).slice().sort((left, right) => right.total - left.total)[0];
     const topQuest = activeQuests[0];
-    const healthyServices = metrics.healthy || 0;
-    const services = metrics.services || 0;
+    const healthyServices = metricsUnavailable ? 0 : metrics.healthy || 0;
+    const services = metricsUnavailable ? 0 : metrics.services || 0;
 
     let nextAction = '先回观测页确认是否有新的系统异常。';
     let nextTab = 'Observability';
-    if (bosUnavailable || archScore < 90 || avgLatency > 1200 || (successRate !== null && successRate < 95)) {
+    if (bosUnavailable || archUnavailable || metricsUnavailable || archScore < 90 || avgLatency > 1200 || (successRate !== null && successRate < 95)) {
       nextAction = `观测面还有波动，先看 Observability 里的链路和健康度。`;
       nextTab = 'Observability';
-    } else if (pipelines.length > 0) {
+    } else if (!pipelinesUnavailable && pipelines.length > 0) {
       nextAction = `当前登记了 ${pipelines.length} 条可用管线，可以去调度页推进下一步。`;
       nextTab = 'Engines';
-    } else if (services > healthyServices) {
+    } else if (!metricsUnavailable && services > healthyServices) {
       nextAction = `控制面里还有 ${services - healthyServices} 个服务未健康，先看 Settings。`;
       nextTab = 'Settings';
-    } else if (activeQuests.length > 0) {
+    } else if (!questsUnavailable && activeQuests.length > 0) {
       nextAction = `还有 ${activeQuests.length} 条家庭冒险在排队，去 QuestBoard 看落地。`;
       nextTab = 'QuestBoard';
     }
@@ -222,7 +240,11 @@ export default function PlatformControlWorkbench({
       archScore,
       avgLatency,
       successRate,
+      archUnavailable,
       bosUnavailable,
+      metricsUnavailable,
+      pipelinesUnavailable,
+      questsUnavailable,
       topDomain,
       topQuest,
       activeQuests,
@@ -231,7 +253,7 @@ export default function PlatformControlWorkbench({
       nextAction,
       nextTab,
     };
-  }, [archHealth, bosMetrics, metrics, pipelines, quests]);
+  }, [archHealth, bosMetrics, metrics, pipelines, quests, sourceAvailability]);
 
   const platformContextQuery = summary.topDomain?.domain || (summary.topQuest ? String(summary.topQuest.id) : 'platform');
   const nextTarget = summary.nextTab === 'Observability'
@@ -282,8 +304,8 @@ export default function PlatformControlWorkbench({
       <div className="platform-workbench-summary">
         <div className="platform-workbench-card">
           <span>架构健康</span>
-          <strong>{summary.archScore || 'N/A'}</strong>
-          <small>git {archHealth.git?.status || 'unknown'} · governance {archHealth.governance?.health || 'unknown'}</small>
+          <strong>{summary.archUnavailable ? 'N/A' : summary.archScore}</strong>
+          <small>{summary.archUnavailable ? '架构健康证据不可用' : `git ${archHealth.git?.status || 'unknown'} · governance ${archHealth.governance?.health || 'unknown'}`}</small>
         </div>
         <div className="platform-workbench-card">
           <span>BOS 链路</span>
@@ -292,13 +314,13 @@ export default function PlatformControlWorkbench({
         </div>
         <div className="platform-workbench-card">
           <span>调度与控制</span>
-          <strong>{pipelines.length} 条管线</strong>
-          <small>服务 {summary.healthyServices}/{summary.services} healthy · 快照 {shortStamp(metrics.timestamp)}</small>
+          <strong>{summary.pipelinesUnavailable ? 'N/A' : `${pipelines.length} 条管线`}</strong>
+          <small>{summary.metricsUnavailable ? '服务观测证据不可用' : `服务 ${summary.healthyServices}/${summary.services} healthy · 快照 ${shortStamp(metrics.timestamp)}`}</small>
         </div>
         <div className="platform-workbench-card">
           <span>落地冒险</span>
-          <strong>{summary.activeQuests.length}</strong>
-          <small>角色 {(quests.profiles || []).length} · 活跃任务 {(quests.quests || []).length}</small>
+          <strong>{summary.questsUnavailable ? 'N/A' : summary.activeQuests.length}</strong>
+          <small>{summary.questsUnavailable ? '冒险板证据不可用' : `角色 ${(quests.profiles || []).length} · 活跃任务 ${(quests.quests || []).length}`}</small>
         </div>
         <button
           type="button"
@@ -336,7 +358,7 @@ export default function PlatformControlWorkbench({
               <Activity size={16} />
               观测热点
             </strong>
-            <small>{bosMetrics.domains?.length || 0} 个 BOS 域</small>
+            <small>{summary.bosUnavailable ? 'BOS 域数据不可用' : `${bosMetrics.domains?.length || 0} 个 BOS 域`}</small>
           </div>
           <div className="platform-workbench-list">
             {summary.topDomain ? (
@@ -354,8 +376,8 @@ export default function PlatformControlWorkbench({
             )}
             <div className="platform-workbench-item">
               <strong>系统健康度</strong>
-              <span>{summary.archScore || 'N/A'} · git {archHealth.git?.status || 'unknown'}</span>
-              <small>治理审计 {archHealth.governance?.health || 'unknown'}</small>
+              <span>{summary.archUnavailable ? 'N/A' : summary.archScore} · git {summary.archUnavailable ? 'N/A' : archHealth.git?.status || 'unknown'}</span>
+              <small>{summary.archUnavailable ? '治理审计证据不可用' : `治理审计 ${archHealth.governance?.health || 'unknown'}`}</small>
             </div>
           </div>
         </div>
@@ -378,7 +400,7 @@ export default function PlatformControlWorkbench({
             ))}
             <button type="button" className="platform-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'Settings', taskQuery: 'settings' }, onNavigate, onOpenTarget)}>
               <strong>系统控制快照</strong>
-              <span>服务 {summary.healthyServices}/{summary.services} healthy · 最近 {shortStamp(metrics.timestamp)}</span>
+              <span>{summary.metricsUnavailable ? '服务观测证据不可用' : `服务 ${summary.healthyServices}/${summary.services} healthy · 最近 ${shortStamp(metrics.timestamp)}`}</span>
               <small>去 Settings 看实例注册和指标历史。</small>
             </button>
             {pipelines.length === 0 && (
