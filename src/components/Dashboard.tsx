@@ -1,12 +1,10 @@
 import React, { Suspense, lazy, useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Activity, 
-  Server, 
   Cpu, 
   Database, 
   CheckCircle, 
   AlertTriangle, 
-  XCircle, 
   Search, 
   Settings, 
   Terminal, 
@@ -1844,7 +1842,9 @@ export default function Dashboard() {
         if (scoreDelta !== 0) return scoreDelta;
         return left.order - right.order;
       })
-      .map(({ order, ...row }) => row)
+      .map((row) => Object.fromEntries(
+        Object.entries(row).filter(([key]) => key !== 'order'),
+      ) as Omit<typeof row, 'order'>)
   ), [cockpitPages, featureDomains, playbooks, roadmapItems, shellTaskDrafts, sidebarUsagePaths]);
   const pageAuditSummary = useMemo(() => ({
     total: pageAuditRows.length,
@@ -2962,7 +2962,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (pageSprintRows.length === 0) {
-      if (pageSprintFocusId) setPageSprintFocusId('');
+      if (pageSprintFocusId) {
+        // 刷新后没有可展示的页面时清理失效焦点。
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPageSprintFocusId('');
+      }
       return;
     }
     if (!pageSprintFocusId || !pageSprintRows.some((row) => row.pageId === pageSprintFocusId)) {
@@ -3214,7 +3218,7 @@ export default function Dashboard() {
         );
 
         if (systemMapRes.ok) {
-          const systemMap = (systemMapRes.data || {}) as Record<string, any>;
+          const systemMap = (systemMapRes.data || {}) as Record<string, unknown>;
           const cockpitPages: SearchCockpitPage[] = systemMap.cockpit_pages || [];
           setCockpitPages(cockpitPages);
           const pageMaturity = systemMap.page_maturity;
@@ -4086,6 +4090,8 @@ export default function Dashboard() {
   useEffect(() => {
     const query = searchQuery.trim();
     if (query.length < 2) {
+      // 查询不足两个字符时清空异步知识结果。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setKnowledgeSearchTargets([]);
       return undefined;
     }
