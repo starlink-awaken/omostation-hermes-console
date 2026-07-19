@@ -43,6 +43,7 @@ import { useCommandPalette, useKeyboardShortcuts } from './common/useCommandPale
 import { useQuickActions } from './common/useQuickActions';
 import {
   clearRecentNavigation,
+  navigationTargetLabel,
   normalizeNavigationTarget,
   parseNavigationHash,
   readRecentNavigation,
@@ -2905,7 +2906,7 @@ export default function Dashboard() {
     setAlertTab(null);
     setMobileNavOpen(false);
     setActiveTabState(nextTab);
-    recordRecentNavigation(normalizedTarget, PAGE_REGISTRY_BY_ID.get(nextTab)?.title || nextTab);
+    recordRecentNavigation(normalizedTarget, navigationTargetLabel(normalizedTarget));
     setRecentNavigation(readRecentNavigation());
     writeNavigationHash(normalizedTarget);
   };
@@ -2926,7 +2927,7 @@ export default function Dashboard() {
     setAlertTab(normalizedTarget.alertTab || null);
     setMobileNavOpen(false);
     setActiveTabState(normalizedTarget.tab);
-    recordRecentNavigation(normalizedTarget, PAGE_REGISTRY_BY_ID.get(normalizedTarget.tab)?.title || normalizedTarget.tab);
+    recordRecentNavigation(normalizedTarget, navigationTargetLabel(normalizedTarget));
     setRecentNavigation(readRecentNavigation());
     writeNavigationHash({
       ...normalizedTarget,

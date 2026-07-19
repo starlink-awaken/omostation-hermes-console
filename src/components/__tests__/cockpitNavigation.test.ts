@@ -3,6 +3,7 @@ import {
   clearRecentNavigation,
   hasNavigationContext,
   navigationHash,
+  navigationTargetLabel,
   normalizeNavigationTarget,
   openCockpitNavigationTarget,
   parseNavigationHash,
@@ -58,6 +59,15 @@ describe('cockpitNavigation', () => {
     expect(hasNavigationContext({ tab: 'Home' })).toBe(false)
     expect(hasNavigationContext({ tab: 'SystemMap', pageId: 'Overview' })).toBe(true)
     expect(hasNavigationContext({ tab: 'AlertCenter', alertTab: 'rules' })).toBe(true)
+  })
+
+  it('keeps contextual identity in recent navigation labels', () => {
+    expect(navigationTargetLabel({ tab: 'SystemMap', projectId: 'mesh-router' }))
+      .toBe('系统地图 · 项目 mesh-router')
+    expect(navigationTargetLabel({ tab: 'TaskCenter', taskQuery: 'repair production entry' }))
+      .toBe('任务中心 · repair production entry')
+    expect(navigationTargetLabel({ tab: 'AlertCenter', alertTab: 'rules' }))
+      .toBe('告警中心 · 告警规则')
   })
 
   it('opens plain tabs through onNavigate and contextual targets through onOpenTarget', () => {

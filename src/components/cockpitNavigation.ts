@@ -60,6 +60,26 @@ const TAB_TO_HASH: Record<string, string> = Object.fromEntries(
 
 const COCKPIT_TAB_IDS = new Set(COCKPIT_PAGE_REGISTRY.map((page) => page.id));
 
+export function navigationTargetLabel(target: CockpitNavigationTarget): string {
+  const baseLabel = COCKPIT_PAGE_REGISTRY.find((page) => page.id === target.tab)?.title || target.tab;
+  const context = target.projectId
+    ? `项目 ${target.projectId}`
+    : target.pageId
+      ? `页面 ${target.pageId}`
+      : target.featureDomainId
+        ? `能力域 ${target.featureDomainId}`
+        : target.usagePathId
+          ? `路径 ${target.usagePathId}`
+          : target.gapId
+            ? `缺口 ${target.gapId}`
+            : target.taskQuery
+              ? target.taskQuery
+              : target.alertTab
+                ? `告警${target.alertTab === 'rules' ? '规则' : target.alertTab === 'history' ? '历史' : '活跃'}`
+                : '';
+  return context ? `${baseLabel} · ${context.slice(0, 80)}` : baseLabel;
+}
+
 /** Keep dynamic page links inside the real Cockpit shell while preserving their focus. */
 export function normalizeNavigationTarget(target: CockpitNavigationTarget): CockpitNavigationTarget {
   if (COCKPIT_TAB_IDS.has(target.tab)) return target;
