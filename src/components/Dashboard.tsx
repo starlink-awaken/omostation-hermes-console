@@ -816,6 +816,49 @@ function DashboardViewFallback({ label }: { label: string }) {
   );
 }
 
+interface DashboardViewErrorBoundaryProps {
+  label: string;
+  children: React.ReactNode;
+}
+
+interface DashboardViewErrorBoundaryState {
+  hasError: boolean;
+}
+
+export class DashboardViewErrorBoundary extends React.Component<
+  DashboardViewErrorBoundaryProps,
+  DashboardViewErrorBoundaryState
+> {
+  state: DashboardViewErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): DashboardViewErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error(`Cockpit 页面 ${this.props.label} 渲染失败`, error, info);
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+
+    return (
+      <div className="dashboard-view-error" role="alert" aria-label={`${this.props.label}加载失败`}>
+        <AlertTriangle size={22} aria-hidden="true" />
+        <strong>{this.props.label}暂时无法加载</strong>
+        <p>页面运行时出现异常，主控制台仍可继续使用。重新加载后会重新获取页面资源。</p>
+        <button
+          type="button"
+          className="antd-btn small"
+          onClick={() => window.location.reload()}
+        >
+          重新加载页面
+        </button>
+      </div>
+    );
+  }
+}
+
 const SEARCH_ALIAS_GROUPS = [
   ['运行态势', '运行探针', '运行健康', '运行总面', '概览中心', 'overview'],
   ['日常体检', '体检', '巡检', '健康检查', 'daily ops', 'daily-health-check'],
@@ -4326,9 +4369,11 @@ export default function Dashboard() {
   const hero = getHeroContent();
 
   const renderLazyView = (label: string, node: React.ReactNode) => (
-    <Suspense fallback={<DashboardViewFallback label={label} />}>
-      {node}
-    </Suspense>
+    <DashboardViewErrorBoundary label={label}>
+      <Suspense fallback={<DashboardViewFallback label={label} />}>
+        {node}
+      </Suspense>
+    </DashboardViewErrorBoundary>
   );
 
   return (

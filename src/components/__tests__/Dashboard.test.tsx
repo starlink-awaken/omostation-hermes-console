@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
-import Dashboard from '../Dashboard'
+import Dashboard, { DashboardViewErrorBoundary } from '../Dashboard'
 import { COCKPIT_PAGE_REGISTRY } from '../cockpitPageRegistry'
 
 vi.mock('../HomePage', () => ({ default: () => <div>Home Mock</div> }))
@@ -69,7 +69,8 @@ describe('Dashboard global search', () => {
       clipboard: {
         writeText: vi.fn().mockResolvedValue(undefined),
       },
-    })
+})
+
   })
 
   it('aligns the sidebar navigation groups with the shared cockpit page registry', async () => {
@@ -1444,3 +1445,21 @@ describe('Dashboard global search', () => {
     fireEvent.click(target)
     await waitFor(() => expect(screen.getByText('Mock Page')).toBeInTheDocument())
   })
+describe('DashboardViewErrorBoundary', () => {
+  it('keeps the shell recoverable when a lazy page throws', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    function BrokenView() {
+      throw new Error('chunk failed')
+    }
+
+    render(
+      <DashboardViewErrorBoundary label="系统地图">
+        <BrokenView />
+      </DashboardViewErrorBoundary>,
+    )
+
+    expect(screen.getByRole('alert', { name: '系统地图加载失败' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '重新加载页面' })).toBeInTheDocument()
+    consoleError.mockRestore()
+  })
+})
