@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle,
   AlertCircle,
@@ -93,6 +93,10 @@ export default function AlertCenterPage({
 }: AlertCenterPageProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alertTotal, setAlertTotal] = useState(0);
+  const [alertOffset, setAlertOffset] = useState(0);
+  const [alertHasMore, setAlertHasMore] = useState(false);
+  const [alertLoadingMore, setAlertLoadingMore] = useState(false);
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterLevel, setFilterLevel] = useState<string>('all');
@@ -122,10 +126,18 @@ export default function AlertCenterPage({
         ]);
 
         const [{ ok: alertsOk, data: alertsData, error: alertsError }, { ok: rulesOk, data: rulesData, error: rulesError }] = await Promise.all([
-          readAlertResponse<{ items?: Alert[] }>(alertsResult, '告警数据'),
+          readAlertResponse<{ items?: Alert[]; total?: number; offset?: number; has_more?: boolean }>(alertsResult, '告警数据'),
           readAlertResponse<{ items?: AlertRule[] }>(rulesResult, '规则数据'),
         ]);
-        if (alertsOk && alertsData) setAlerts(alertsData.items || []);
+        if (alertsOk && alertsData) {
+          const items = Array.isArray(alertsData.items) ? alertsData.items : [];
+          setAlerts(items);
+          setAlertTotal(typeof alertsData.total === 'number' ? alertsData.total : items.length);
+          setAlertOffset(typeof alertsData.offset === 'number' ? alertsData.offset + items.length : items.length);
+          setAlertHasMore(
+            typeof alertsData.has_more === 'boolean' ? alertsData.has_more : items.length >= 100,
+          );
+        }
         if (rulesOk && rulesData) setRules(rulesData.items || []);
         setDataError([alertsError, rulesError].filter(Boolean).join('；') || null);
       } catch (error) {
@@ -140,6 +152,35 @@ export default function AlertCenterPage({
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [refreshToken]);
+
+  const loadMoreAlerts = useCallback(async () => {
+    if (alertLoadingMore || !alertHasMore) return;
+    setAlertLoadingMore(true);
+    try {
+      const response = await fetch(`/api/alerts?limit=100&offset=${alertOffset}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json() as {
+        items?: Alert[];
+        total?: number;
+        offset?: number;
+        has_more?: boolean;
+      };
+      const items = Array.isArray(data.items) ? data.items : [];
+      setAlerts((current) => {
+        const merged = new Map(current.map((alert) => [alert.id, alert]));
+        items.forEach((alert) => merged.set(alert.id, alert));
+        return [...merged.values()];
+      });
+      setAlertTotal(typeof data.total === 'number' ? data.total : alertTotal);
+      setAlertOffset(alertOffset + items.length);
+      setAlertHasMore(typeof data.has_more === 'boolean' ? data.has_more : items.length >= 100);
+      setActionError(null);
+    } catch (error) {
+      setActionError(`加载更多告警失败：${error instanceof Error ? error.message : '请稍后重试'}`);
+    } finally {
+      setAlertLoadingMore(false);
+    }
+  }, [alertHasMore, alertLoadingMore, alertOffset, alertTotal]);
 
   useEffect(() => {
     if (!focusTaskQuery) return;
@@ -905,6 +946,22 @@ export default function AlertCenterPage({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {activeTab !== 'rules' && !alertsUnavailable && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap', padding: '14px 0' }}>
+          <span className="text-muted">已加载 {alerts.length} / {alertTotal} 条告警</span>
+          {alertHasMore && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => void loadMoreAlerts()}
+              disabled={alertLoadingMore}
+            >
+              {alertLoadingMore ? '加载中...' : '加载更多告警'}
+            </button>
+          )}
         </div>
       )}
 

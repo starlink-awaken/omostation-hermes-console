@@ -122,6 +122,47 @@ describe('AlertCenterPage', () => {
     expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2)
   })
 
+  it('loads additional alert pages without losing the total count', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({
+      id: `alert-${index}`,
+      level: 'warning' as const,
+      source: 'runtime',
+      message: `Alert message ${index}`,
+      status: 'active' as const,
+      created_at: '2026-07-11T10:00:00Z',
+      updated_at: '2026-07-11T10:00:00Z',
+    }))
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === '/api/alerts') {
+        return { ok: true, json: async () => ({ items: firstPage, total: 101, offset: 0, limit: 100, has_more: true }) } as Response
+      }
+      if (url === '/api/alerts?limit=100&offset=100') {
+        return { ok: true, json: async () => ({
+          items: [{ ...firstPage[0], id: 'alert-100', message: 'Alert message 100' }],
+          total: 101,
+          offset: 100,
+          limit: 100,
+          has_more: false,
+        }) } as Response
+      }
+      if (url === '/api/alerts/rules') return { ok: true, json: async () => ({ items: [] }) } as Response
+      return { ok: true, json: async () => ({ items: [] }) } as Response
+    })
+
+    render(<AlertCenterPage />)
+
+    await waitFor(() => expect(screen.getByText('已加载 100 / 101 条告警')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '加载更多告警' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('已加载 101 / 101 条告警')).toBeInTheDocument()
+      expect(screen.getByText('Alert message 100')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: '加载更多告警' })).not.toBeInTheDocument()
+    expect(fetch).toHaveBeenLastCalledWith('/api/alerts?limit=100&offset=100')
+  })
+
   it('keeps alerts available when the rules API fails', async () => {
     vi.mocked(fetch).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
