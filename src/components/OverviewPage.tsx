@@ -780,18 +780,18 @@ export default function OverviewPage({
   }, [registryQuery, registryStatusFilter, state.registry]);
 
   const summary = state.systemMap?.project_portfolio?.summary;
-  const priorityProjects = state.systemMap?.project_portfolio?.priority_projects || [];
-  const weakestDimensions = state.systemMap?.project_portfolio?.weakest_dimensions || [];
-  const cockpitPages = state.systemMap?.cockpit_pages || [];
+  const priorityProjects = useMemo(() => state.systemMap?.project_portfolio?.priority_projects || [], [state.systemMap?.project_portfolio?.priority_projects]);
+  const weakestDimensions = useMemo(() => state.systemMap?.project_portfolio?.weakest_dimensions || [], [state.systemMap?.project_portfolio?.weakest_dimensions]);
+  const cockpitPages = useMemo(() => state.systemMap?.cockpit_pages || [], [state.systemMap?.cockpit_pages]);
   const pageGroups = useMemo(() => buildPageGroups(cockpitPages), [cockpitPages]);
-  const featureDomains = state.systemMap?.feature_domains || [];
-  const usagePaths = state.systemMap?.usage_paths || [];
-  const playbooks = state.systemMap?.playbooks || [];
+  const featureDomains = useMemo(() => state.systemMap?.feature_domains || [], [state.systemMap?.feature_domains]);
+  const usagePaths = useMemo(() => state.systemMap?.usage_paths || [], [state.systemMap?.usage_paths]);
+  const playbooks = useMemo(() => state.systemMap?.playbooks || [], [state.systemMap?.playbooks]);
   const roadmapLanes = state.systemMap?.roadmap?.lanes || [];
   const projectFocus = state.systemMap?.project_focus?.summary;
   const capabilityCoverage = state.systemMap?.project_capability_coverage?.summary;
   const domainApps = state.systemMap?.domain_apps?.summary;
-  const domainAttention = state.systemMap?.domain_apps?.attention_items || [];
+  const domainAttention = useMemo(() => state.systemMap?.domain_apps?.attention_items || [], [state.systemMap?.domain_apps?.attention_items]);
   const pageMaturity = state.systemMap?.page_maturity?.summary;
   const registryUnavailable = !state.registryAvailable;
   const runtimeUnavailable = !state.runtimeAvailable;
@@ -1016,7 +1016,7 @@ export default function OverviewPage({
         actionTarget: { tab: 'DomainApps', taskQuery: focusTaskQuery || domainAttention[0]?.id || 'Overview' },
       },
     ],
-        [activeAlerts.length, domainAttention.length, readOnlyDrafts.length],
+        [activeAlerts, domainAttention, focusTaskQuery, readOnlyDrafts],
   );
   const overviewClosureRows = useMemo<OverviewClosureRow[]>(() => {
     const firstWeakDimension = weakestDimensions[0] || null;
