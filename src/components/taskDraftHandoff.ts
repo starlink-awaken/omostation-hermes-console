@@ -163,6 +163,7 @@ export function findTaskDraftForTarget(
   const scored = drafts
     .map((task) => {
       const taskId = normalizeDraftMatchValue(task.id);
+      const sourceType = normalizeDraftMatchValue(task.source?.type);
       const sourceId = normalizeDraftMatchValue(task.source?.id);
       const sourceTitle = normalizeDraftMatchValue(task.source?.title);
       const title = normalizeDraftMatchValue(task.title);
@@ -172,6 +173,7 @@ export function findTaskDraftForTarget(
 
       let score = 0;
       if (query && [taskId, sourceId, sourceTitle, title].includes(query)) score += 6;
+      if (query && sourceType === query) score += 7;
       if (projectId && sourceId === projectId) score += 5;
       if (gapId && sourceId === gapId) score += 5;
       if (pageId && (sourceId === pageId || evidencePageIds.includes(pageId))) score += 5;
