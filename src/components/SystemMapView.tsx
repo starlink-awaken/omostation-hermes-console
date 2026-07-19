@@ -1618,6 +1618,7 @@ export default function SystemMapView({
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || response.statusText || '项目动作承接失败');
       setActionNotice(`已登记为计划任务：${payload.title || action.label}`);
+      await load();
       if (onOpenTarget) {
         onOpenTarget({ tab: 'TaskCenter', taskQuery: payload.id });
       }
@@ -1644,6 +1645,7 @@ export default function SystemMapView({
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || response.statusText || '排查命令承接失败');
       setActionNotice(`已登记为计划任务：${payload.title || command.label}`);
+      await load();
       if (onOpenTarget) {
         onOpenTarget({ tab: 'TaskCenter', taskQuery: payload.id });
       }
