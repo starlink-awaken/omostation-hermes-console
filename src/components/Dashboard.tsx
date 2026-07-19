@@ -2992,6 +2992,7 @@ export default function Dashboard() {
         tasks: '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80',
         domain_apps: '/api/domain-apps',
         alerts: '/api/alerts?limit=80',
+        alert_rules: '/api/alerts/rules',
         mesh_services: '/api/bos/services',
         compute_status: '/api/governance/compute/status',
         logs: '/api/logs?limit=100',
@@ -3000,8 +3001,12 @@ export default function Dashboard() {
         skills: '/api/ecos/skills',
         pipelines: '/api/pipelines',
         ecos_workflows: '/api/ecos/workflows',
+        ecos_workflow_backends: '/api/ecos/workflow/backends',
+        ecos_workflow_actions: '/api/ecos/workflow/actions',
+        ecos_workflow_logs: '/api/ecos/workflow/logs?recent=100',
         health_summary: '/api/health/summary',
         metrics_trend: '/api/metrics/trend?range=24h',
+        metrics_system: '/api/metrics/system?range=24h',
         omo_thoughts: '/api/omos/thoughts',
         services: '/api/services',
         services_status: '/api/services/status',
@@ -3045,6 +3050,7 @@ export default function Dashboard() {
         gbrain_health: '/admin/api/health-indicators',
         gbrain_agents: '/admin/api/agents',
         gbrain_requests: '/admin/api/requests?page=1',
+        gbrain_calibration_profile: '/admin/api/calibration/profile',
       } as const;
       try {
         const snapshot = await Promise.all(Object.entries(endpoints).map(async ([key, url]) => {

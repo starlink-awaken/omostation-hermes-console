@@ -264,13 +264,14 @@ describe('Dashboard global search', () => {
       endpoints: Record<string, { ok: boolean }>
     }
     expect(payload.schema_version).toBe(2)
-    expect(payload.endpoint_count).toBe(57)
+    expect(payload.endpoint_count).toBe(63)
     expect(payload.active_tab).toBe('Home')
     expect(Object.keys(payload.endpoints)).toEqual(expect.arrayContaining([
       'system_map',
       'tasks',
       'domain_apps',
       'alerts',
+      'alert_rules',
       'mesh_services',
       'compute_status',
       'logs',
@@ -279,7 +280,11 @@ describe('Dashboard global search', () => {
       'skills',
       'pipelines',
       'ecos_workflows',
+      'ecos_workflow_backends',
+      'ecos_workflow_actions',
+      'ecos_workflow_logs',
       'health_summary',
+      'metrics_system',
       'services_status',
       'bos_health',
       'l4_health',
@@ -303,6 +308,7 @@ describe('Dashboard global search', () => {
       'gbrain_health',
       'gbrain_agents',
       'gbrain_requests',
+      'gbrain_calibration_profile',
     ]))
     expect(payload.endpoints).not.toHaveProperty('instance')
     expect(payload.endpoints).not.toHaveProperty('metaos_plan')
