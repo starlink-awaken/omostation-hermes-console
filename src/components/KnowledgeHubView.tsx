@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Activity, BookOpen, Bot, Brain, Copy, Database, FileText, GitBranch, Route, ShieldAlert } from 'lucide-react';
+import { Activity, BookOpen, Bot, Copy, Database, FileText, GitBranch, Route, ShieldAlert } from 'lucide-react';
 import { DashboardPage as GBrainDashboard } from './GBrain/GBrainDashboard';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
 import KOSWorkbench from './KOSWorkbench';
@@ -108,6 +108,8 @@ export default function KnowledgeHubView({
   const [knowledgeTaskError, setKnowledgeTaskError] = useState<string | null>(null);
 
   useEffect(() => {
+    // 导航焦点变化时同步知识子面板。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setKnowledgeSubTab(inferredSubTab);
   }, [inferredSubTab]);
 
@@ -191,6 +193,8 @@ export default function KnowledgeHubView({
   useEffect(() => {
     if (!knowledgeQuery.trim() || filteredKnowledgeSurfaces.length === 0) return;
     if (!filteredKnowledgeSurfaces.some((surface) => surface.id === knowledgeSubTab)) {
+      // 过滤结果不再包含当前子面板时，回退到首个可见面板。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setKnowledgeSubTab(filteredKnowledgeSurfaces[0].id);
     }
   }, [filteredKnowledgeSurfaces, knowledgeQuery, knowledgeSubTab]);
