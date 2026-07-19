@@ -241,11 +241,12 @@ function sourceTypeDefaultTarget(type: DraftSourceType, task?: Task | null): Tas
     return { tab: 'SystemMap', gapId: task?.source?.id || null };
   }
   if (type === 'system_map_page_maturity') {
-    return { tab: task?.source?.id || 'SystemMap' };
+    const pageId = task?.source?.id || null;
+    return { tab: pageId || 'SystemMap', pageId };
   }
   if (type === 'system_map_playbook') {
     const target = task ? resolveTaskTarget(task) : null;
-    return { tab: target?.tab || 'SystemMap' };
+    return target || { tab: 'SystemMap' };
   }
   return { tab: 'SystemMap', projectId: task?.source?.id || null };
 }

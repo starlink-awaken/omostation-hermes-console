@@ -934,6 +934,18 @@ describe('TaskCenterPage', () => {
     expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'TaskCenter', taskQuery: 'kairon' })
   })
 
+  it('keeps the concrete page context when opening an operation playbook source lane', async () => {
+    const onOpenTarget = vi.fn()
+    mockTaskCenterFetch([playbookDraft])
+
+    render(<TaskCenterPage onOpenTarget={onOpenTarget} />)
+
+    await screen.findByRole('region', { name: '任务来源带总表' })
+    fireEvent.click(screen.getByRole('button', { name: '打开执行路由 操作清单' }))
+
+    expect(onOpenTarget).toHaveBeenCalledWith({ tab: 'AlertCenter', pageId: 'AlertCenter' })
+  })
+
   it('renders project portfolio drafts with evidence fields', async () => {
     Object.assign(navigator, {
       clipboard: {
