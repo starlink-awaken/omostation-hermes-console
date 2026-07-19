@@ -29,8 +29,25 @@ export function RequestLogPage() {
   const [error, setError] = useState<string | null>(null);
   const [agentOptions, setAgentOptions] = useState<AgentFilterOption[]>([]);
   const [agentOptionsError, setAgentOptionsError] = useState<string | null>(null);
+  const [clockNow] = useState(() => Date.now());
 
-  useEffect(() => { loadPage(page); }, [page, agentFilter]);
+  function loadPage(p: number) {
+    const qs = agentFilter !== 'all' ? `&agent=${encodeURIComponent(agentFilter)}` : '';
+    setLoading(true);
+    setError(null);
+    api.requests(p, qs)
+      .then(setData)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Failed to load request log'))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    // 分页或过滤条件变化时刷新请求日志。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadPage(page);
+    // loadPage closes over the current filter and owns this fetch lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, agentFilter]);
 
   useEffect(() => {
     api.agents()
@@ -49,18 +66,8 @@ export function RequestLogPage() {
       .catch((reason) => setAgentOptionsError(reason instanceof Error ? reason.message : 'Failed to load agents'));
   }, []);
 
-  const loadPage = (p: number) => {
-    const qs = agentFilter !== 'all' ? `&agent=${encodeURIComponent(agentFilter)}` : '';
-    setLoading(true);
-    setError(null);
-    api.requests(p, qs)
-      .then(setData)
-      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Failed to load request log'))
-      .finally(() => setLoading(false));
-  };
-
   const timeAgo = (ts: string) => {
-    const diff = Date.now() - new Date(ts).getTime();
+    const diff = clockNow - new Date(ts).getTime();
     if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
     if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -71,7 +78,7 @@ export function RequestLogPage() {
 
   const formatParams = (params: Record<string, unknown> | null) => {
     if (!params) return null;
-    const { query, slug, partial, limit, ...rest } = params as any;
+    const { query, slug, partial, limit, ...rest } = params;
     const parts: string[] = [];
     if (query) parts.push(`"${query}"`);
     if (slug) parts.push(slug);

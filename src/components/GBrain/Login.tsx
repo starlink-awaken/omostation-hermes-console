@@ -28,7 +28,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
       // session credential after this point.
       setToken('');
       onLogin();
-    } catch (err) {
+    } catch {
       setError('Invalid token.');
     } finally {
       setLoading(false);

@@ -26,14 +26,6 @@ interface Agent {
   status: 'active' | 'revoked';
 }
 
-interface ApiKey {
-  id: string;
-  name: string;
-  created_at: string;
-  last_used_at: string | null;
-  status: 'active' | 'revoked';
-}
-
 export function AgentsPage({ focusQuery }: { focusQuery?: string }) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [hideRevoked, setHideRevoked] = useState(true);
@@ -44,7 +36,18 @@ export function AgentsPage({ focusQuery }: { focusQuery?: string }) {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => { loadAgents(); }, []);
+  function loadAgents() {
+    setLoadError(null);
+    api.agents()
+      .then(setAgents)
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Failed to load agents'));
+  }
+
+  useEffect(() => {
+    // 首次挂载时读取智能体目录。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadAgents();
+  }, []);
 
   useEffect(() => {
     const query = focusQuery?.replace(/^agent\s+/i, '').trim().toLowerCase();
@@ -54,15 +57,12 @@ export function AgentsPage({ focusQuery }: { focusQuery?: string }) {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase() === query),
     );
-    if (matched) setSelectedAgent(matched);
+    if (matched) {
+      // 外部导航查询命中智能体时同步详情选择。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedAgent(matched);
+    }
   }, [agents, focusQuery]);
-
-  const loadAgents = () => {
-    setLoadError(null);
-    api.agents()
-      .then(setAgents)
-      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Failed to load agents'));
-  };
 
   return (
     <>

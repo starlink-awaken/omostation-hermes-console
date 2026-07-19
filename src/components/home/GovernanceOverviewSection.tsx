@@ -8,9 +8,15 @@ interface GovernanceStatus {
   theme: string;
 }
 
+interface GovernanceViolation {
+  file?: string;
+  line?: number;
+  message?: string;
+}
+
 export default function GovernanceOverviewSection() {
   const [govStatus, setGovStatus] = useState<GovernanceStatus | null>(null);
-  const [violations, setViolations] = useState<any[]>([]);
+  const [violations, setViolations] = useState<GovernanceViolation[]>([]);
   const [passed, setPassed] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

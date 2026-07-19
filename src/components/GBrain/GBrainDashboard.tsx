@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BarChart3, Database, Users, Settings2, FileText, Activity, ShieldAlert, Heart, Shield } from 'lucide-react';
+import { BarChart3, Database, Users, Settings2, FileText, Activity, Heart, Shield } from 'lucide-react';
 import { api } from './api';
 import { LoginPage } from './Login';
 import { AgentsPage } from './Agents';
@@ -33,8 +33,11 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
   const [sseStatus, setSseStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [loadError, setLoadError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const [clockNow] = useState(() => Date.now());
 
   useEffect(() => {
+    // 外部导航切换 GBrain 子页面时同步当前工作区。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSubTab(initialSubTab);
   }, [initialSubTab]);
 
@@ -47,8 +50,8 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
       setLoadError(null);
       setIsAuthenticated(true);
       return true;
-    } catch (err: any) {
-      if (err.message === 'Unauthorized' || err.message === 'HTTP 401') {
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.message === 'Unauthorized' || err.message === 'HTTP 401')) {
         setIsAuthenticated(false);
         setLoadError(null);
       } else {
@@ -77,7 +80,9 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
         try {
           const event = JSON.parse(e.data) as FeedEvent;
           setEvents(prev => [event, ...prev].slice(0, 50));
-        } catch {}
+        } catch {
+          // 忽略无法解析的 keep-alive 或损坏事件，不中断事件流。
+        }
       };
       es.onerror = () => {
         es?.close();
@@ -113,7 +118,7 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
   }, [isAuthenticated, loadError]);
 
   const timeAgo = (ts: string) => {
-    const diff = Date.now() - new Date(ts).getTime();
+    const diff = clockNow - new Date(ts).getTime();
     if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     return `${Math.floor(diff / 3600000)}h ago`;
