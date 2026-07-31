@@ -44,6 +44,8 @@ describe('KemsWorkbench', () => {
     fireEvent.click(screen.getByRole('button', { name: '提交独立标注' }))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/sample-1/annotate', expect.objectContaining({ method: 'POST' })))
     fireEvent.change(screen.getByLabelText('人工标注人'), { target: { value: 'reviewer-2' } })
+    fireEvent.click(screen.getByRole('button', { name: '领取样本' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/sample-1/claim', expect.objectContaining({ method: 'POST' })))
     fireEvent.click(screen.getByRole('button', { name: '提交独立标注' }))
     await waitFor(() => expect(screen.getByText('2')).toBeInTheDocument())
     fireEvent.change(screen.getByLabelText('独立裁决人'), { target: { value: 'reviewer-3' } })
