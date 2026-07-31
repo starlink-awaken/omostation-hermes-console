@@ -13,12 +13,15 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
+    "@types/react-router-dom": "^5.3.3",
     "lucide-react": "^1.17.0",
     "postcss": "^8.5.16",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-router-dom": "^7.18.2",
     "reactflow": "^11.11.4",
-    "recharts": "^3.9.0"
+    "recharts": "^3.9.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
