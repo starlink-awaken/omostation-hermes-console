@@ -58,6 +58,7 @@ import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardTopbar } from './DashboardTopbar';
 import { DashboardViewRouter, DashboardViewErrorBoundary } from './DashboardViewRouter';
 import { getHeroContent, getBreadcrumbItems, maturityStatusText, pageContextStatusClass, pageContextChecklistStatusClass } from './dashboardHelpers';
+import { useDashboardSearch } from './useDashboardSearch';
 export { DashboardViewErrorBoundary };
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import {
@@ -1154,10 +1155,6 @@ export default function Dashboard() {
   const [pageRefreshToken, setPageRefreshToken] = useState(0);
   const [shellDataWarnings, setShellDataWarnings] = useState<string[]>([]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResultIndex, setSearchResultIndex] = useState(0);
-  const [dynamicSearchTargets, setDynamicSearchTargets] = useState<SearchTarget[]>([]);
-  const [knowledgeSearchTargets, setKnowledgeSearchTargets] = useState<SearchTarget[]>([]);
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
   const [focusedUsagePathId, setFocusedUsagePathId] = useState<string | null>(null);
   const [focusedGapId, setFocusedGapId] = useState<string | null>(null);
@@ -1173,6 +1170,23 @@ export default function Dashboard() {
   const [sidebarProjectPortfolio, setSidebarProjectPortfolio] = useState<SidebarProjectPortfolio | null>(null);
   const [sidebarUsagePaths, setSidebarUsagePaths] = useState<SearchUsagePath[]>([]);
   const [shellTaskDrafts, setShellTaskDrafts] = useState<SearchTaskDraft[]>([]);
+
+  const openContextTargetRef = useRef<((target: CockpitNavigationTarget) => void) | null>(null);
+  const {
+    searchQuery, setSearchQuery,
+    searchResultIndex, setSearchResultIndex,
+    dynamicSearchTargets, setDynamicSearchTargets,
+    knowledgeSearchTargets,
+    globalSearchInputRef,
+    searchResults, activeSearchResultIndex,
+    openSearchTarget, handleSearchKeyDown,
+  } = useDashboardSearch({
+    staticSearchTargets: searchTargets,
+    workModeSearchTargets,
+    shellTaskDrafts,
+    openContextTargetRef,
+    fetchSearchData,
+  });
   const [shellDomainApps, setShellDomainApps] = useState<SearchDomainAppsPayload | null>(null);
   const [shellSourceAvailability, setShellSourceAvailability] = useState<ShellSourceAvailability>({
     systemMap: false,
@@ -1195,51 +1209,11 @@ export default function Dashboard() {
   const [currentPageDraftError, setCurrentPageDraftError] = useState<string | null>(null);
   const [snapshotExportState, setSnapshotExportState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
   const [linkCopyState, setLinkCopyState] = useState<'idle' | 'success' | 'error'>('idle');
-  const globalSearchInputRef = useRef<HTMLInputElement>(null);
+
   const mobileNavToggleRef = useRef<HTMLButtonElement>(null);
   const mobileNavCloseRef = useRef<HTMLButtonElement>(null);
   const mobileSidebarRef = useRef<HTMLElement>(null);
   const taskCenterIncomingDraft = useMemo(() => readTaskCenterDraft(taskDraftKey), [taskDraftKey]);
-
-  const searchResults = useMemo(() => {
-    const query = searchQuery.trim();
-    if (!query) return [];
-    const queryTerms = expandSearchAliases([query]);
-    return [...knowledgeSearchTargets, ...dynamicSearchTargets, ...searchTargets, ...workModeSearchTargets]
-      .map((target) => ({
-        target,
-        score: scoreSearchTarget(target, query, queryTerms),
-      }))
-      .filter((item) => item.score > 0)
-      .sort((left, right) => {
-        if (right.score !== left.score) return right.score - left.score;
-        return left.target.label.localeCompare(right.target.label, 'zh-CN');
-      })
-      .map((item) => item.target)
-      .slice(0, 8);
-  }, [dynamicSearchTargets, knowledgeSearchTargets, searchQuery]);
-  // 动态数据源刷新时结果数量可能缩短，展示和回车都使用仍然有效的下标。
-  const activeSearchResultIndex = searchResults.length > 0
-    ? Math.min(searchResultIndex, searchResults.length - 1)
-    : 0;
-
-  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'ArrowDown' && searchResults.length > 0) {
-      event.preventDefault();
-      setSearchResultIndex((index) => Math.min(index + 1, searchResults.length - 1));
-    }
-    if (event.key === 'ArrowUp' && searchResults.length > 0) {
-      event.preventDefault();
-      setSearchResultIndex((index) => Math.max(index - 1, 0));
-    }
-    if (event.key === 'Enter' && searchResults[activeSearchResultIndex]) {
-      openSearchTarget(searchResults[activeSearchResultIndex]);
-    }
-    if (event.key === 'Escape') {
-      setSearchQuery('');
-      setSearchResultIndex(0);
-    }
-  };
 
   const shellActions = useMemo(() => {
     const items: DashboardShellAction[] = [];
@@ -2869,6 +2843,9 @@ export default function Dashboard() {
     });
   };
 
+  // Set the ref for the search hook
+  openContextTargetRef.current = openContextTarget;
+
   const clearRecent = () => {
     clearRecentNavigation();
     setRecentNavigation([]);
@@ -3061,26 +3038,6 @@ export default function Dashboard() {
     };
   }, [activeTab]);
 
-  const openSearchTarget = (target: SearchTarget) => {
-    const matchedDraft = target.context?.draftId
-      ? shellTaskDrafts.find((task) => task.id === target.context?.draftId) || null
-      : null;
-    const incomingDraft = matchedDraft ? taskDraftToIncomingDraft(matchedDraft) : null;
-    const draftKey = incomingDraft ? persistTaskCenterDraft(incomingDraft) : null;
-    openContextTarget({
-      tab: target.tab,
-      projectId: target.context?.projectId || null,
-      usagePathId: target.context?.usagePathId || null,
-      gapId: target.context?.gapId || null,
-      coverageDimensionId: target.context?.coverageDimensionId || null,
-      pageId: target.context?.pageId || null,
-      featureDomainId: target.context?.featureDomainId || null,
-      taskQuery: target.context?.taskQuery || '',
-      alertTab: target.context?.alertTab || null,
-      draftKey,
-    });
-    setSearchQuery('');
-  };
 
   const copyCurrentNavigationLink = async () => {
     try {
@@ -4132,49 +4089,6 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [pageRefreshToken]);
 
-  useEffect(() => {
-    const query = searchQuery.trim();
-    if (query.length < 2) {
-      // 查询不足两个字符时清空异步知识结果。
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setKnowledgeSearchTargets([]);
-      return undefined;
-    }
-
-    setKnowledgeSearchTargets([]);
-    let active = true;
-    const timer = window.setTimeout(async () => {
-      const response = await fetchSearchData(`/api/kos/search?q=${encodeURIComponent(query)}&limit=8`);
-      if (!active || !response.ok) return;
-      const payload = (response.data || {}) as { results?: unknown[]; items?: unknown[] };
-      const records = Array.isArray(payload.results)
-        ? payload.results
-        : Array.isArray(payload.items)
-          ? payload.items
-          : [];
-      const targets = records.flatMap((record, index) => {
-        if (!record || typeof record !== 'object') return [];
-        const item = record as Record<string, unknown>;
-        const id = String(item.id || item.slug || item.title || `result-${index}`);
-        const title = String(item.title || item.name || item.slug || id);
-        const excerpt = String(item.chunk_text || item.content || item.text || '');
-        return [{
-          id: `kos-search-${id}-${index}`,
-          tab: 'Knowledge',
-          label: `知识证据：${title}`,
-          group: '知识证据 · KOS',
-          context: { taskQuery: id },
-          keywords: [id, title, excerpt, 'KOS', '知识', '证据', '记忆', '上下文'],
-        }];
-      });
-      setKnowledgeSearchTargets(targets);
-    }, 220);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [searchQuery]);
 
   // 面包屑
   

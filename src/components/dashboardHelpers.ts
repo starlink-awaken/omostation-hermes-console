@@ -120,37 +120,83 @@ export function pageContextChecklistStatusClass(status: string): string {
 // ── Search helpers ──
 
 export function normalizeSearchText(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
+  return value
+    .toLowerCase()
+    .replace(/[()\-_/.,:;]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function tokenizeSearchText(value: string): string[] {
-  return normalizeSearchText(value)
-    .split(/[\s\-_/.]+/)
-    .filter((token) => token.length > 0);
+  const normalized = normalizeSearchText(value);
+  if (!normalized) return [];
+  return [...new Set([normalized, ...normalized.split(' ').filter(Boolean)])];
 }
 
-export function expandSearchAliases(terms: string[]): string[] {
-  const aliases: Record<string, string[]> = {
-    'gbrain': ['gbrain', '智能体', 'agent', 'admin'],
-    'kos': ['kos', '知识', 'knowledge', '检索'],
-    'mcp': ['mcp', 'bos', 'agora', '路由'],
-    'task': ['task', '任务', '执行'],
-    'alert': ['alert', '告警', '规则'],
-    'log': ['log', '日志', 'debug'],
-    'workflow': ['workflow', 'metaos', '编排', 'agent'],
-    'debt': ['debt', '债务', '质量'],
-    'l4': ['l4', '域', '健康'],
-    'quest': ['quest', '积分', '家庭'],
-    'sandbox': ['sandbox', '终端', '执行'],
-    'settings': ['settings', '配置', 'token', '端口'],
-  };
-  const expanded = new Set(terms);
-  for (const term of terms) {
-    for (const [key, values] of Object.entries(aliases)) {
-      if (values.some((v) => v.includes(term) || term.includes(v))) {
-        values.forEach((v) => expanded.add(v));
-      }
+// ── Search aliases ──
+
+const SEARCH_ALIAS_GROUPS = [
+  ['运行态势', '运行探针', '运行健康', '运行总面', '概览中心', 'overview'],
+  ['日常体检', '体检', '巡检', '健康检查', 'daily ops', 'daily-health-check'],
+  ['页面能力', '页面成熟度', '页面补位', '页面', 'page maturity'],
+  ['能力域', '功能域', '能力地图', 'feature domain'],
+  ['验证补证', '验证证据', '补证', '验证', 'verification'],
+  ['家庭', '家庭生活', '家庭驾驶舱', 'family', 'family-hub'],
+  ['协议', '元模型', 'model-driven', 'ecos', 'workflow', '协议工作台'],
+  ['研究', '发布', 'publication', 'dossier', '研究中枢'],
+  ['任务', '草稿', '待办', '行动项', 'task'],
+  ['路线图', 'roadmap', '阶段', '车道'],
+  ['入口', '导航', '页面分组', '功能架构'],
+] as const;
+
+export function expandSearchAliases(values: string[]): string[] {
+  const seed = new Set(values.flatMap((value) => tokenizeSearchText(value)));
+  if (seed.size === 0) return [];
+  for (const aliases of SEARCH_ALIAS_GROUPS) {
+    const matched = aliases.some((alias) => {
+      const normalizedAlias = normalizeSearchText(alias);
+      return [...seed].some((term) => term.includes(normalizedAlias) || normalizedAlias.includes(term));
+    });
+    if (matched) {
+      aliases.forEach((alias) => {
+        tokenizeSearchText(alias).forEach((token) => seed.add(token));
+      });
     }
   }
-  return [...expanded];
+  return [...seed];
+}
+
+// ── Search scoring ──
+
+interface SearchTargetForScoring {
+  label: string;
+  group: string;
+  tab: string;
+  keywords: string[];
+}
+
+export function buildSearchIndex(target: SearchTargetForScoring): string[] {
+  return expandSearchAliases([target.label, target.group, target.tab, ...target.keywords]);
+}
+
+export function scoreSearchTarget(target: SearchTargetForScoring, query: string, queryTerms: string[]): number {
+  const normalizedQuery = normalizeSearchText(query);
+  const label = normalizeSearchText(target.label);
+  const group = normalizeSearchText(target.group);
+  const tab = normalizeSearchText(target.tab);
+  const index = buildSearchIndex(target);
+
+  let score = 0;
+  if (label.includes(normalizedQuery)) score += 12;
+  if (group.includes(normalizedQuery)) score += 6;
+  if (tab.includes(normalizedQuery)) score += 4;
+
+  queryTerms.forEach((term) => {
+    if (!term) return;
+    if (label.includes(term)) score += 8;
+    else if (group.includes(term)) score += 4;
+    else if (index.some((entry) => entry.includes(term) || term.includes(entry))) score += 2;
+  });
+
+  return score;
 }
