@@ -224,6 +224,169 @@ export const SYSTEM_HEALTH_ENDPOINTS = {
   getStatus: '/api/status',
 } as const;
 
+// ── Services (Overview / Topology / Performance) ──
+
+export const SERVICE_ENDPOINTS = {
+  /** List all services */
+  listServices: '/api/services',
+  /** Get service health status */
+  getServiceStatus: '/api/services/status',
+} as const;
+
+// ── BOS Extended ──
+
+export const BOS_EXTENDED_ENDPOINTS = {
+  /** Get BOS mesh health */
+  getHealth: '/api/bos/health',
+  /** Get BOS metrics */
+  getMetrics: '/api/bos/metrics',
+} as const;
+
+// ── L4 Extended ──
+
+export const L4_EXTENDED_ENDPOINTS = {
+  /** Get L4 health trend */
+  getTrend: '/api/l4/trend',
+  /** Get L4 signals */
+  getSignals: '/api/l4/signals',
+} as const;
+
+// ── Sandbox ──
+
+export const SANDBOX_ENDPOINTS = {
+  /** Execute sandbox command */
+  execute: '/api/sandbox/execute',
+  /** Get sandbox queue */
+  getQueue: '/api/cockpit/sandbox/queue',
+} as const;
+
+// ── Wave2 ──
+
+export const WAVE2_ENDPOINTS = {
+  /** Get Wave2 proposals plan */
+  getProposalsPlan: '/api/wave2/proposals/plan',
+  /** Get Wave2 dashboard */
+  getDashboard: '/api/wave2/dashboard',
+} as const;
+
+// ── Cards ──
+
+export const CARDS_ENDPOINTS = {
+  /** List cards */
+  listCards: '/api/cards',
+  /** Check cards */
+  checkCards: '/api/cards/check',
+} as const;
+
+// ── OMOs (Governance) ──
+
+export const OMOS_ENDPOINTS = {
+  /** Get OMO status */
+  getStatus: '/api/omos/status',
+  /** Get OMO violations */
+  getViolations: '/api/omos/violations',
+  /** Get OMO doctor */
+  getDoctor: '/api/omo/doctor',
+} as const;
+
+// ── Compute Extended ──
+
+export const COMPUTE_EXTENDED_ENDPOINTS = {
+  /** Generate compute */
+  generate: '/api/cockpit/compute/generate',
+  /** Get compute queue */
+  getQueue: '/api/cockpit/compute/queue',
+  /** Get compute control queue */
+  getControlQueue: '/api/cockpit/compute/control/queue',
+  /** Get compute generation queue */
+  getGenerationQueue: '/api/cockpit/compute/generation/queue',
+  /** Get governance compute generate */
+  governanceGenerate: '/api/governance/compute/generate',
+} as const;
+
+// ── Triage ──
+
+export const TRIAGE_ENDPOINTS = {
+  /** Get triage queue */
+  getQueue: '/api/cockpit/triage/queue',
+  /** Execute triage */
+  execute: '/api/cockpit/triage/execute',
+} as const;
+
+// ── Coverage ──
+
+export const COVERAGE_ENDPOINTS = {
+  /** Get coverage queue */
+  getQueue: '/api/cockpit/coverage/queue',
+} as const;
+
+// ── Engine ──
+
+export const ENGINE_ENDPOINTS = {
+  /** Get engine queue */
+  getQueue: '/api/cockpit/engine/queue',
+} as const;
+
+// ── Governance Queue ──
+
+export const GOVERNANCE_QUEUE_ENDPOINTS = {
+  /** Get governance queue */
+  getQueue: '/api/cockpit/governance/queue',
+} as const;
+
+// ── MetaOS Extended ──
+
+export const METAOS_EXTENDED_ENDPOINTS = {
+  /** Get MetaOS plan */
+  getPlan: '/api/metaos/plan',
+} as const;
+
+// ── OPC ──
+
+export const OPC_ENDPOINTS = {
+  /** Get OPC workspace */
+  getWorkspace: '/api/opc/workspace',
+} as const;
+
+// ── Metrics ──
+
+export const METRICS_ENDPOINTS = {
+  /** Get metrics history */
+  getHistory: '/api/metrics/history',
+} as const;
+
+// ── Version ──
+
+export const VERSION_ENDPOINTS = {
+  /** Get version */
+  getVersion: '/api/version',
+  /** Get version history */
+  getVersionHistory: '/api/version/history',
+} as const;
+
+// ── Instance ──
+
+export const INSTANCE_ENDPOINTS = {
+  /** Get instance info */
+  getInstance: '/api/instance',
+} as const;
+
+// ── Knowledge Extended ──
+
+export const KNOWLEDGE_EXTENDED_ENDPOINTS = {
+  /** Put knowledge */
+  put: '/api/knowledge/put',
+  /** Search knowledge */
+  search: '/api/knowledge/search',
+} as const;
+
+// ── Arch Health ──
+
+export const ARCH_HEALTH_ENDPOINTS = {
+  /** Get architecture health */
+  getHealth: '/api/v1/arch-health',
+} as const;
+
 // ── Export all endpoints ──
 
 export const API_ENDPOINTS = {
@@ -246,4 +409,23 @@ export const API_ENDPOINTS = {
   kos: KOS_ENDPOINTS,
   cockpitPages: COCKPIT_PAGE_ENDPOINTS,
   systemHealth: SYSTEM_HEALTH_ENDPOINTS,
+  services: SERVICE_ENDPOINTS,
+  bosExtended: BOS_EXTENDED_ENDPOINTS,
+  l4Extended: L4_EXTENDED_ENDPOINTS,
+  sandbox: SANDBOX_ENDPOINTS,
+  wave2: WAVE2_ENDPOINTS,
+  cards: CARDS_ENDPOINTS,
+  omos: OMOS_ENDPOINTS,
+  computeExtended: COMPUTE_EXTENDED_ENDPOINTS,
+  triage: TRIAGE_ENDPOINTS,
+  coverage: COVERAGE_ENDPOINTS,
+  engine: ENGINE_ENDPOINTS,
+  governanceQueue: GOVERNANCE_QUEUE_ENDPOINTS,
+  metaosExtended: METAOS_EXTENDED_ENDPOINTS,
+  opc: OPC_ENDPOINTS,
+  metrics: METRICS_ENDPOINTS,
+  version: VERSION_ENDPOINTS,
+  instance: INSTANCE_ENDPOINTS,
+  knowledgeExtended: KNOWLEDGE_EXTENDED_ENDPOINTS,
+  archHealth: ARCH_HEALTH_ENDPOINTS,
 } as const;
