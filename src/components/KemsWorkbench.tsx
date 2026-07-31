@@ -32,6 +32,50 @@ type AdjudicationItem = {
   adjudicator?: string
 }
 
+const PRIVATE_SOURCE_REVIEW_SCENARIO = 'private-source-review-v1'
+const PRIVATE_SOURCE_REVIEW_VERSION = 'private-source-review-v1.0'
+const PRIVATE_SOURCE_REVIEW_LABEL_TEMPLATE = JSON.stringify({
+  source_kind: 'email',
+  document_type: 'request',
+  actionability: 'follow_up',
+  priority: 'normal',
+  has_deadline: false,
+  has_owner: false,
+  requires_omo_task: false,
+}, null, 2)
+
+const PRIVATE_SOURCE_REVIEW_ENUMS: Record<string, readonly string[]> = {
+  source_kind: ['oa', 'email', 'sms'],
+  document_type: ['task', 'notice', 'request', 'alert', 'transaction', 'conversation', 'other'],
+  actionability: ['actionable', 'follow_up', 'reference', 'no_action'],
+  priority: ['urgent', 'high', 'normal', 'low', 'unknown'],
+}
+const PRIVATE_SOURCE_REVIEW_BOOLEAN_FIELDS = ['has_deadline', 'has_owner', 'requires_omo_task']
+
+const validatePrivateSourceReviewLabels = (scenarioId: string, labels: unknown): string | null => {
+  if (scenarioId !== PRIVATE_SOURCE_REVIEW_SCENARIO) return null
+  if (!labels || typeof labels !== 'object' || Array.isArray(labels)) return 'labels 必须是对象'
+  const record = labels as Record<string, unknown>
+  const required = [...Object.keys(PRIVATE_SOURCE_REVIEW_ENUMS), ...PRIVATE_SOURCE_REVIEW_BOOLEAN_FIELDS]
+  const missing = required.filter(field => !(field in record))
+  const extra = Object.keys(record).filter(field => !required.includes(field))
+  if (missing.length || extra.length) {
+    const details = []
+    if (missing.length) details.push(`缺少字段：${missing.join('、')}`)
+    if (extra.length) details.push(`不支持字段：${extra.join('、')}`)
+    return `private-source-review-v1 标签结构不匹配（${details.join('；')}）`
+  }
+  for (const [field, allowed] of Object.entries(PRIVATE_SOURCE_REVIEW_ENUMS)) {
+    if (typeof record[field] !== 'string' || !allowed.includes(record[field] as string)) {
+      return `${field} 必须使用规定枚举值`
+    }
+  }
+  if (PRIVATE_SOURCE_REVIEW_BOOLEAN_FIELDS.some(field => typeof record[field] !== 'boolean')) {
+    return 'has_deadline、has_owner、requires_omo_task 必须是布尔值'
+  }
+  return null
+}
+
 const api = async (url: string, init?: RequestInit) => {
   const response = await fetch(url, init)
   if (!response.ok) throw new Error(`请求失败 (${response.status})`)
@@ -60,7 +104,7 @@ export default function KemsWorkbench() {
   const [adjudicationQueue, setAdjudicationQueue] = useState<AdjudicationItem[]>([])
   const [selectedAdjudication, setSelectedAdjudication] = useState<AdjudicationItem | null>(null)
   const [adjudicationImport, setAdjudicationImport] = useState('')
-  const [annotation, setAnnotation] = useState({ annotator: '', adjudicator: '', version: '', labels: '{}' })
+  const [annotation, setAnnotation] = useState({ annotator: '', adjudicator: '', version: PRIVATE_SOURCE_REVIEW_VERSION, labels: PRIVATE_SOURCE_REVIEW_LABEL_TEMPLATE })
   const [kemsAction, setKemsAction] = useState('')
 
   const loadQueue = async () => {
@@ -240,6 +284,8 @@ export default function KemsWorkbench() {
     let labels: unknown
     try { labels = JSON.parse(annotation.labels) } catch { setError('labels 必须是合法 JSON 对象'); return }
     if (!labels || typeof labels !== 'object' || Array.isArray(labels) || !Object.keys(labels).length || !annotation.adjudicator.trim() || !annotation.version.trim()) { setError('labels、裁决人和裁决版本均为必填'); return }
+    const schemaError = validatePrivateSourceReviewLabels(selectedAdjudication.scenario_id, labels)
+    if (schemaError) { setError(schemaError); return }
     setKemsAction('adjudication-submit')
     try {
       const data = await api(`/api/kems/adjudication/${encodeURIComponent(selectedAdjudication.sample_id)}/adjudicate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ labels, adjudicator: annotation.adjudicator.trim(), annotation_version: annotation.version.trim() }) })
@@ -253,6 +299,8 @@ export default function KemsWorkbench() {
     let labels: unknown
     try { labels = JSON.parse(annotation.labels) } catch { setError('labels 必须是合法 JSON 对象'); return }
     if (!labels || typeof labels !== 'object' || Array.isArray(labels) || !Object.keys(labels).length || !annotation.annotator.trim() || !annotation.version.trim()) { setError('labels、标注人和标注版本均为必填'); return }
+    const schemaError = validatePrivateSourceReviewLabels(selectedAdjudication.scenario_id, labels)
+    if (schemaError) { setError(schemaError); return }
     setKemsAction('annotation-submit')
     try {
       const data = await api(`/api/kems/adjudication/${encodeURIComponent(selectedAdjudication.sample_id)}/annotate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ labels, annotator: annotation.annotator.trim(), annotation_version: annotation.version.trim() }) })
@@ -344,7 +392,7 @@ export default function KemsWorkbench() {
             <label>标注人<input className="antd-input" aria-label="人工标注人" value={annotation.annotator} onChange={event => setAnnotation({ ...annotation, annotator: event.target.value })} required /></label>
             <label>标注版本<input className="antd-input" aria-label="标注版本" value={annotation.version} onChange={event => setAnnotation({ ...annotation, version: event.target.value })} placeholder="ann-2026-08-01" required /></label>
             <button className="antd-btn" type="button" onClick={() => void claimAdjudication()} disabled={kemsAction === 'adjudication-claim' || selectedAdjudication.annotation_status === 'adjudicated'}><UserCheck size={14} /> 领取样本</button>
-            <label>结构化 labels JSON<textarea className="antd-input kems-json-input" aria-label="结构化 labels JSON" value={annotation.labels} onChange={event => setAnnotation({ ...annotation, labels: event.target.value })} required /></label>
+            <label>结构化 labels JSON<textarea className="antd-input kems-json-input" aria-label="结构化 labels JSON" value={annotation.labels} onChange={event => setAnnotation({ ...annotation, labels: event.target.value })} required /><small>private-source-review-v1 使用固定字段契约；后端会再次校验。</small></label>
             <button className="antd-btn antd-btn-primary" type="button" onClick={() => void submitIndependentAnnotation()} disabled={kemsAction === 'annotation-submit' || selectedAdjudication.annotation_status === 'adjudicated'}><CheckCircle2 size={14} /> 提交独立标注</button>
             <label>独立裁决人<input className="antd-input" aria-label="独立裁决人" value={annotation.adjudicator} onChange={event => setAnnotation({ ...annotation, adjudicator: event.target.value })} placeholder="不能与标注人相同" required /></label>
             <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'adjudication-submit' || selectedAdjudication.annotation_count !== 2}><CheckCircle2 size={14} /> 提交最终 adjudication</button>
