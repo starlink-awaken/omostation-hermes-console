@@ -30,4 +30,12 @@
 .kems-correction-form p { font-size: 12px; margin-bottom: 2px; }
 .kems-correction-form label { display: grid; gap: 5px; color: var(--antd-text-secondary); font-size: 11px; }
 .kems-correction-form .antd-input { width: 100%; }
+.kems-control-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kems-inline-form { display: flex; gap: 8px; }
+.kems-inline-form .antd-input { min-width: 0; flex: 1; }
+.kems-result-list { display: grid; gap: 8px; margin-top: 12px; }
+.kems-result-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--antd-border-color); padding: 7px 0; font-size: 12px; }
+.kems-result-note { color: var(--antd-text-secondary); font-size: 12px; margin-top: 12px; overflow-wrap: anywhere; }
+.kems-json-result { max-height: 130px; overflow: auto; white-space: pre-wrap; font-size: 11px; color: var(--antd-text-secondary); }
+@media (max-width: 1100px) { .kems-control-grid { grid-template-columns: 1fr; } }
 @media (max-width: 860px) { .kems-grid { grid-template-columns: 1fr; } .kems-toolbar { flex-direction: column; } }
