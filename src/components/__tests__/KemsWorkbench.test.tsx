@@ -28,7 +28,8 @@ describe('KemsWorkbench', () => {
       if (url === '/api/kems/ocr/review-queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
       if (url === '/api/kems/adjudication/queue?limit=100') return { ok: true, json: async () => ({ items: [{ sample_id: 'sample-1', source_ref: 'vault://redacted/source', scenario_id: 'oa-notice', split: 'test', annotation_status: 'pending', labels: {} }] }) } as Response
       if (url.endsWith('/claim')) return { ok: true, json: async () => ({ item: { sample_id: 'sample-1', source_ref: 'vault://redacted/source', scenario_id: 'oa-notice', split: 'test', annotation_status: 'reviewed', labels: {} } }) } as Response
-      if (url.endsWith('/adjudicate')) return { ok: true, json: async () => ({ item: { sample_id: 'sample-1', source_ref: 'vault://redacted/source', scenario_id: 'oa-notice', split: 'test', annotation_status: 'adjudicated', labels: { category: 'notice' } } }) } as Response
+      if (url.endsWith('/annotate')) return { ok: true, json: async () => ({ item: { sample_id: 'sample-1', source_ref: 'vault://redacted/source', scenario_id: 'oa-notice', split: 'test', annotation_status: 'conflict', annotation_count: 2, annotation_conflict: true, labels: {} } }) } as Response
+      if (url.endsWith('/adjudicate')) return { ok: true, json: async () => ({ item: { sample_id: 'sample-1', source_ref: 'vault://redacted/source', scenario_id: 'oa-notice', split: 'test', annotation_status: 'adjudicated', annotation_count: 2, labels: { category: 'notice' } } }) } as Response
       void init
       return { ok: true, json: async () => ({ items: [] }) } as Response
     })
@@ -40,7 +41,13 @@ describe('KemsWorkbench', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/sample-1/claim', expect.objectContaining({ method: 'POST' })))
     fireEvent.change(screen.getByLabelText('标注版本'), { target: { value: 'ann-1' } })
     fireEvent.change(screen.getByLabelText('结构化 labels JSON'), { target: { value: '{"category":"notice"}' } })
-    fireEvent.click(screen.getByRole('button', { name: '提交 adjudicated' }))
+    fireEvent.click(screen.getByRole('button', { name: '提交独立标注' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/sample-1/annotate', expect.objectContaining({ method: 'POST' })))
+    fireEvent.change(screen.getByLabelText('人工标注人'), { target: { value: 'reviewer-2' } })
+    fireEvent.click(screen.getByRole('button', { name: '提交独立标注' }))
+    await waitFor(() => expect(screen.getByText('2')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('独立裁决人'), { target: { value: 'reviewer-3' } })
+    fireEvent.click(screen.getByRole('button', { name: '提交最终 adjudication' }))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/sample-1/adjudicate', expect.objectContaining({ method: 'POST' })))
   })
 

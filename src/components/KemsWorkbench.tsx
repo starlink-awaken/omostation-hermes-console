@@ -27,6 +27,9 @@ type AdjudicationItem = {
   labels?: Record<string, unknown>
   annotation_version?: string
   annotator?: string
+  annotation_count?: number
+  annotation_conflict?: boolean
+  adjudicator?: string
 }
 
 const api = async (url: string, init?: RequestInit) => {
@@ -57,7 +60,7 @@ export default function KemsWorkbench() {
   const [adjudicationQueue, setAdjudicationQueue] = useState<AdjudicationItem[]>([])
   const [selectedAdjudication, setSelectedAdjudication] = useState<AdjudicationItem | null>(null)
   const [adjudicationImport, setAdjudicationImport] = useState('')
-  const [annotation, setAnnotation] = useState({ annotator: '', version: '', labels: '{}' })
+  const [annotation, setAnnotation] = useState({ annotator: '', adjudicator: '', version: '', labels: '{}' })
   const [kemsAction, setKemsAction] = useState('')
 
   const loadQueue = async () => {
@@ -236,13 +239,26 @@ export default function KemsWorkbench() {
     if (!selectedAdjudication) return
     let labels: unknown
     try { labels = JSON.parse(annotation.labels) } catch { setError('labels 必须是合法 JSON 对象'); return }
-    if (!labels || typeof labels !== 'object' || Array.isArray(labels) || !Object.keys(labels).length || !annotation.annotator.trim() || !annotation.version.trim()) { setError('labels、标注人和标注版本均为必填'); return }
+    if (!labels || typeof labels !== 'object' || Array.isArray(labels) || !Object.keys(labels).length || !annotation.adjudicator.trim() || !annotation.version.trim()) { setError('labels、裁决人和裁决版本均为必填'); return }
     setKemsAction('adjudication-submit')
     try {
-      const data = await api(`/api/kems/adjudication/${encodeURIComponent(selectedAdjudication.sample_id)}/adjudicate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ labels, annotator: annotation.annotator.trim(), annotation_version: annotation.version.trim() }) })
+      const data = await api(`/api/kems/adjudication/${encodeURIComponent(selectedAdjudication.sample_id)}/adjudicate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ labels, adjudicator: annotation.adjudicator.trim(), annotation_version: annotation.version.trim() }) })
       setSelectedAdjudication(data.item)
       await loadAdjudicationQueue()
     } catch (err) { setError(err instanceof Error ? err.message : '提交人工裁决失败') } finally { setKemsAction('') }
+  }
+
+  const submitIndependentAnnotation = async () => {
+    if (!selectedAdjudication) return
+    let labels: unknown
+    try { labels = JSON.parse(annotation.labels) } catch { setError('labels 必须是合法 JSON 对象'); return }
+    if (!labels || typeof labels !== 'object' || Array.isArray(labels) || !Object.keys(labels).length || !annotation.annotator.trim() || !annotation.version.trim()) { setError('labels、标注人和标注版本均为必填'); return }
+    setKemsAction('annotation-submit')
+    try {
+      const data = await api(`/api/kems/adjudication/${encodeURIComponent(selectedAdjudication.sample_id)}/annotate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ labels, annotator: annotation.annotator.trim(), annotation_version: annotation.version.trim() }) })
+      setSelectedAdjudication(data.item)
+      await loadAdjudicationQueue()
+    } catch (err) { setError(err instanceof Error ? err.message : '提交独立标注失败') } finally { setKemsAction('') }
   }
 
   const buildAdjudicatedManifest = async () => {
@@ -324,12 +340,14 @@ export default function KemsWorkbench() {
         <form className="kems-panel kems-correction-form" onSubmit={submitAdjudication}>
           <div className="kems-panel-heading"><div><h3>裁决样本</h3><span>{selectedAdjudication?.sample_id || '先选择一条样本'}</span></div><UserCheck size={16} /></div>
           {selectedAdjudication ? <>
-            <dl className="kems-metadata"><div><dt>来源引用</dt><dd>{selectedAdjudication.source_ref}</dd></div><div><dt>场景 / 切分</dt><dd>{selectedAdjudication.scenario_id} / {selectedAdjudication.split}</dd></div><div><dt>状态</dt><dd>{selectedAdjudication.annotation_status}</dd></div><div><dt>既有标签</dt><dd>{JSON.stringify(selectedAdjudication.labels || {})}</dd></div></dl>
+            <dl className="kems-metadata"><div><dt>来源引用</dt><dd>{selectedAdjudication.source_ref}</dd></div><div><dt>场景 / 切分</dt><dd>{selectedAdjudication.scenario_id} / {selectedAdjudication.split}</dd></div><div><dt>状态</dt><dd>{selectedAdjudication.annotation_status}</dd></div><div><dt>独立标注数</dt><dd>{String(selectedAdjudication.annotation_count ?? 0)}</dd></div><div><dt>标注冲突</dt><dd>{selectedAdjudication.annotation_conflict ? '需要裁决' : '未发现冲突'}</dd></div><div><dt>最终标签</dt><dd>{JSON.stringify(selectedAdjudication.labels || {})}</dd></div></dl>
             <label>标注人<input className="antd-input" aria-label="人工标注人" value={annotation.annotator} onChange={event => setAnnotation({ ...annotation, annotator: event.target.value })} required /></label>
             <label>标注版本<input className="antd-input" aria-label="标注版本" value={annotation.version} onChange={event => setAnnotation({ ...annotation, version: event.target.value })} placeholder="ann-2026-08-01" required /></label>
             <button className="antd-btn" type="button" onClick={() => void claimAdjudication()} disabled={kemsAction === 'adjudication-claim' || selectedAdjudication.annotation_status === 'adjudicated'}><UserCheck size={14} /> 领取样本</button>
             <label>结构化 labels JSON<textarea className="antd-input kems-json-input" aria-label="结构化 labels JSON" value={annotation.labels} onChange={event => setAnnotation({ ...annotation, labels: event.target.value })} required /></label>
-            <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'adjudication-submit' || selectedAdjudication.annotation_status === 'adjudicated'}><CheckCircle2 size={14} /> 提交 adjudicated</button>
+            <button className="antd-btn antd-btn-primary" type="button" onClick={() => void submitIndependentAnnotation()} disabled={kemsAction === 'annotation-submit' || selectedAdjudication.annotation_status === 'adjudicated'}><CheckCircle2 size={14} /> 提交独立标注</button>
+            <label>独立裁决人<input className="antd-input" aria-label="独立裁决人" value={annotation.adjudicator} onChange={event => setAnnotation({ ...annotation, adjudicator: event.target.value })} placeholder="不能与标注人相同" required /></label>
+            <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'adjudication-submit' || selectedAdjudication.annotation_count !== 2}><CheckCircle2 size={14} /> 提交最终 adjudication</button>
           </> : <div className="kems-empty">选择一条样本开始人工裁决</div>}
         </form>
       </div>
