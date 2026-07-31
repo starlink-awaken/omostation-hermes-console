@@ -4,10 +4,13 @@ import KemsWorkbench from '../KemsWorkbench'
 
 describe('KemsWorkbench', () => {
   it('renders evidence-only queue and submits a correction', async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ items: [{ run_id: 'run-1', source_ref: 'vault://redacted/source', review_status: 'review' }] }) } as Response)
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ run_id: 'run-1', source_ref: 'vault://redacted/source', evidence_ref: 'vault://redacted/evidence', review_status: 'review', metrics: { field_accuracy: 0.91 } }) } as Response)
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'corrected' }) } as Response)
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === '/api/kems/ocr/review-queue?limit=100') return { ok: true, json: async () => ({ items: [{ run_id: 'run-1', source_ref: 'vault://redacted/source', review_status: 'review' }] }) } as Response
+      if (url === '/api/kems/ocr/runs/run-1') return { ok: true, json: async () => ({ run_id: 'run-1', source_ref: 'vault://redacted/source', evidence_ref: 'vault://redacted/evidence', review_status: 'review', metrics: { field_accuracy: 0.91 } }) } as Response
+      if (url === '/api/kems/adjudication/queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
+      return { ok: true, json: async () => ({ status: 'corrected' }) } as Response
+    })
 
     render(<KemsWorkbench />)
     await waitFor(() => expect(screen.getAllByText('run-1').length).toBeGreaterThanOrEqual(1))
@@ -17,6 +20,28 @@ describe('KemsWorkbench', () => {
     fireEvent.change(screen.getByLabelText('标注人'), { target: { value: 'reviewer-1' } })
     fireEvent.click(screen.getByRole('button', { name: /提交并进入复核/ }))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/ocr/runs/run-1/correction', expect.objectContaining({ method: 'POST', body: expect.stringContaining('correction_ref') })))
+  })
+
+  it('claims and adjudicates a redacted sample without raw content', async () => {
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url === '/api/kems/ocr/review-queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
+      if (url === '/api/kems/adjudication/queue?limit=100') return { ok: true, json: async () => ({ items: [{ sample_id: 'sample-1', source_ref: 'vault://redacted/source', scenario_id: 'oa-notice', split: 'test', annotation_status: 'pending', labels: {} }] }) } as Response
+      if (url.endsWith('/claim')) return { ok: true, json: async () => ({ item: { sample_id: 'sample-1', source_ref: 'vault://redacted/source', scenario_id: 'oa-notice', split: 'test', annotation_status: 'reviewed', labels: {} } }) } as Response
+      if (url.endsWith('/adjudicate')) return { ok: true, json: async () => ({ item: { sample_id: 'sample-1', source_ref: 'vault://redacted/source', scenario_id: 'oa-notice', split: 'test', annotation_status: 'adjudicated', labels: { category: 'notice' } } }) } as Response
+      void init
+      return { ok: true, json: async () => ({ items: [] }) } as Response
+    })
+
+    render(<KemsWorkbench />)
+    await waitFor(() => expect(screen.getAllByText('sample-1').length).toBeGreaterThanOrEqual(1))
+    fireEvent.change(screen.getByLabelText('人工标注人'), { target: { value: 'reviewer-1' } })
+    fireEvent.click(screen.getByRole('button', { name: '领取样本' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/sample-1/claim', expect.objectContaining({ method: 'POST' })))
+    fireEvent.change(screen.getByLabelText('标注版本'), { target: { value: 'ann-1' } })
+    fireEvent.change(screen.getByLabelText('结构化 labels JSON'), { target: { value: '{"category":"notice"}' } })
+    fireEvent.click(screen.getByRole('button', { name: '提交 adjudicated' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/sample-1/adjudicate', expect.objectContaining({ method: 'POST' })))
   })
 
   it('registers an adjudicated manifest and records a model evaluation run', async () => {

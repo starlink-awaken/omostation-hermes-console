@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { CheckCircle2, ClipboardCheck, FileSearch, GitBranch, Network, RefreshCw, Send, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, ClipboardCheck, ClipboardList, FileSearch, GitBranch, Network, RefreshCw, Send, ShieldCheck, UserCheck } from 'lucide-react'
 import './KemsWorkbench.css'
 
 type QueueItem = {
@@ -17,6 +17,17 @@ type RunDetail = QueueItem & {
 }
 
 type GraphEntity = { id?: string; entity_id?: string; name?: string; label?: string; canonical_name?: string }
+
+type AdjudicationItem = {
+  sample_id: string
+  source_ref: string
+  scenario_id: string
+  split: string
+  annotation_status: string
+  labels?: Record<string, unknown>
+  annotation_version?: string
+  annotator?: string
+}
 
 const api = async (url: string, init?: RequestInit) => {
   const response = await fetch(url, init)
@@ -41,6 +52,10 @@ export default function KemsWorkbench() {
   const [evaluationDataset, setEvaluationDataset] = useState({ id: '', version: '', samples: '' })
   const [evaluationRun, setEvaluationRun] = useState({ id: '', model: '', expected: '{}', actual: '' })
   const [evaluationResult, setEvaluationResult] = useState<Record<string, unknown> | null>(null)
+  const [adjudicationQueue, setAdjudicationQueue] = useState<AdjudicationItem[]>([])
+  const [selectedAdjudication, setSelectedAdjudication] = useState<AdjudicationItem | null>(null)
+  const [adjudicationImport, setAdjudicationImport] = useState('')
+  const [annotation, setAnnotation] = useState({ annotator: '', version: '', labels: '{}' })
   const [kemsAction, setKemsAction] = useState('')
 
   const loadQueue = async () => {
@@ -61,6 +76,20 @@ export default function KemsWorkbench() {
   // Initial queue hydration updates local state from an external API.
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { void loadQueue() }, [])
+
+  const loadAdjudicationQueue = async () => {
+    try {
+      const data = await api('/api/kems/adjudication/queue?limit=100')
+      setAdjudicationQueue(data.items || [])
+      if (!selectedAdjudication && data.items?.[0]) setSelectedAdjudication(data.items[0])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '无法加载人工标注队列')
+    }
+  }
+
+  // Keep the controlled human-label queue separate from OCR correction state.
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => { void loadAdjudicationQueue() }, [])
 
   const selectRun = async (item: QueueItem) => {
     try {
@@ -163,6 +192,52 @@ export default function KemsWorkbench() {
     } catch (err) { setError(err instanceof Error ? err.message : '评测运行登记失败') } finally { setKemsAction('') }
   }
 
+  const importAdjudicationQueue = async (event: FormEvent) => {
+    event.preventDefault()
+    let items: unknown
+    try { items = JSON.parse(adjudicationImport) } catch { setError('标注队列必须是合法 JSON 数组'); return }
+    if (!Array.isArray(items) || !items.length) { setError('标注队列必须是非空数组'); return }
+    setKemsAction('adjudication-import')
+    try {
+      await api('/api/kems/adjudication/queue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) })
+      setAdjudicationImport('')
+      await loadAdjudicationQueue()
+    } catch (err) { setError(err instanceof Error ? err.message : '导入标注队列失败') } finally { setKemsAction('') }
+  }
+
+  const claimAdjudication = async () => {
+    if (!selectedAdjudication || !annotation.annotator.trim()) { setError('领取样本需要标注人'); return }
+    setKemsAction('adjudication-claim')
+    try {
+      const data = await api(`/api/kems/adjudication/${encodeURIComponent(selectedAdjudication.sample_id)}/claim`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ annotator: annotation.annotator.trim() }) })
+      setSelectedAdjudication(data.item)
+      await loadAdjudicationQueue()
+    } catch (err) { setError(err instanceof Error ? err.message : '领取样本失败') } finally { setKemsAction('') }
+  }
+
+  const submitAdjudication = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!selectedAdjudication) return
+    let labels: unknown
+    try { labels = JSON.parse(annotation.labels) } catch { setError('labels 必须是合法 JSON 对象'); return }
+    if (!labels || typeof labels !== 'object' || Array.isArray(labels) || !Object.keys(labels).length || !annotation.annotator.trim() || !annotation.version.trim()) { setError('labels、标注人和标注版本均为必填'); return }
+    setKemsAction('adjudication-submit')
+    try {
+      const data = await api(`/api/kems/adjudication/${encodeURIComponent(selectedAdjudication.sample_id)}/adjudicate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ labels, annotator: annotation.annotator.trim(), annotation_version: annotation.version.trim() }) })
+      setSelectedAdjudication(data.item)
+      await loadAdjudicationQueue()
+    } catch (err) { setError(err instanceof Error ? err.message : '提交人工裁决失败') } finally { setKemsAction('') }
+  }
+
+  const buildAdjudicatedManifest = async () => {
+    if (!evaluationDataset.id.trim() || !evaluationDataset.version.trim()) { setError('数据集 ID 和版本均为必填'); return }
+    setKemsAction('adjudication-manifest')
+    try {
+      const data = await api('/api/kems/adjudication/manifest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataset_id: evaluationDataset.id.trim(), dataset_version: evaluationDataset.version.trim() }) })
+      setEvaluationResult(data)
+    } catch (err) { setError(err instanceof Error ? err.message : '生成裁决评测集失败') } finally { setKemsAction('') }
+  }
+
   return (
     <section className="kems-workbench" aria-label="KEMS OCR 质量工作台">
       <div className="kems-toolbar">
@@ -219,6 +294,29 @@ export default function KemsWorkbench() {
           {dispatchResult && <p className="kems-result-note" role="status">已交给 OMO：{String(dispatchResult.dispatch_id || '已登记')}</p>}
         </form>
       </div>
+      <div className="kems-grid kems-adjudication-grid">
+        <div className="kems-panel kems-queue-panel">
+          <div className="kems-panel-heading"><div><h3>人工标注队列</h3><span>只显示脱敏元数据</span></div><ClipboardList size={16} /></div>
+          <form className="kems-correction-form" onSubmit={importAdjudicationQueue}>
+            <label>导入脱敏队列 JSONL 转 JSON<input className="antd-input kems-json-input" aria-label="导入脱敏标注队列" value={adjudicationImport} onChange={event => setAdjudicationImport(event.target.value)} placeholder='[{"sample_id":"...","source_ref":"vault://redacted/..."}]' /></label>
+            <button className="antd-btn" disabled={kemsAction === 'adjudication-import'}><ClipboardList size={14} /> 导入队列</button>
+          </form>
+          <div className="kems-queue" role="list">
+            {!adjudicationQueue.length ? <div className="kems-empty">当前没有待标注样本</div> : adjudicationQueue.map(item => <button key={item.sample_id} className={`kems-queue-item ${selectedAdjudication?.sample_id === item.sample_id ? 'selected' : ''}`} onClick={() => setSelectedAdjudication(item)} role="listitem"><strong>{item.sample_id}</strong><span>{item.source_ref}</span><em>{item.annotation_status}</em></button>)}
+          </div>
+        </div>
+        <form className="kems-panel kems-correction-form" onSubmit={submitAdjudication}>
+          <div className="kems-panel-heading"><div><h3>裁决样本</h3><span>{selectedAdjudication?.sample_id || '先选择一条样本'}</span></div><UserCheck size={16} /></div>
+          {selectedAdjudication ? <>
+            <dl className="kems-metadata"><div><dt>来源引用</dt><dd>{selectedAdjudication.source_ref}</dd></div><div><dt>场景 / 切分</dt><dd>{selectedAdjudication.scenario_id} / {selectedAdjudication.split}</dd></div><div><dt>状态</dt><dd>{selectedAdjudication.annotation_status}</dd></div><div><dt>既有标签</dt><dd>{JSON.stringify(selectedAdjudication.labels || {})}</dd></div></dl>
+            <label>标注人<input className="antd-input" aria-label="人工标注人" value={annotation.annotator} onChange={event => setAnnotation({ ...annotation, annotator: event.target.value })} required /></label>
+            <label>标注版本<input className="antd-input" aria-label="标注版本" value={annotation.version} onChange={event => setAnnotation({ ...annotation, version: event.target.value })} placeholder="ann-2026-08-01" required /></label>
+            <button className="antd-btn" type="button" onClick={() => void claimAdjudication()} disabled={kemsAction === 'adjudication-claim' || selectedAdjudication.annotation_status === 'adjudicated'}><UserCheck size={14} /> 领取样本</button>
+            <label>结构化 labels JSON<textarea className="antd-input kems-json-input" aria-label="结构化 labels JSON" value={annotation.labels} onChange={event => setAnnotation({ ...annotation, labels: event.target.value })} required /></label>
+            <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'adjudication-submit' || selectedAdjudication.annotation_status === 'adjudicated'}><CheckCircle2 size={14} /> 提交 adjudicated</button>
+          </> : <div className="kems-empty">选择一条样本开始人工裁决</div>}
+        </form>
+      </div>
       <div className="kems-grid kems-evaluation-grid">
         <form className="kems-panel kems-correction-form" onSubmit={registerEvaluation}>
           <div className="kems-panel-heading"><div><h3>脱敏评测集登记</h3><span>仅接受 adjudicated manifest</span></div><ClipboardCheck size={16} /></div>
@@ -226,6 +324,7 @@ export default function KemsWorkbench() {
           <label>数据集版本<input className="antd-input" aria-label="评测集版本" value={evaluationDataset.version} onChange={event => setEvaluationDataset({ ...evaluationDataset, version: event.target.value })} placeholder="例如 2026-07-31" /></label>
           <label>脱敏 adjudicated 样本 JSON<input className="antd-input kems-json-input" aria-label="脱敏评测样本 JSON" value={evaluationDataset.samples} onChange={event => setEvaluationDataset({ ...evaluationDataset, samples: event.target.value })} placeholder='[{"sample_id":"...","source_ref":"vault://redacted/...","labels":{}}]' /></label>
           <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'evaluation-manifest'}><ClipboardCheck size={14} /> 登记评测集</button>
+          <button className="antd-btn" type="button" disabled={kemsAction === 'adjudication-manifest'} onClick={() => void buildAdjudicatedManifest()}><ClipboardCheck size={14} /> 从已裁决队列生成</button>
         </form>
         <form className="kems-panel kems-correction-form" onSubmit={recordEvaluation}>
           <div className="kems-panel-heading"><div><h3>模型评测运行</h3><span>结果进入 EvaluationStore</span></div><CheckCircle2 size={16} /></div>
