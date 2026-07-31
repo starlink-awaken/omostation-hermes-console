@@ -85,6 +85,10 @@ describe('KemsWorkbench', () => {
     await waitFor(() => expect(screen.getByText('当前没有待复核样本')).toBeInTheDocument())
     fireEvent.change(screen.getByLabelText('候选模型运行 ID'), { target: { value: 'model-run-1' } })
     fireEvent.change(screen.getByLabelText('候选模型 ID'), { target: { value: 'candidate-v1' } })
+    fireEvent.change(screen.getByLabelText('评测集 ID'), { target: { value: 'kems-real' } })
+    fireEvent.change(screen.getByLabelText('评测集版本'), { target: { value: 'v1' } })
+    fireEvent.change(screen.getByLabelText('评测集 Manifest SHA-256'), { target: { value: 'a'.repeat(64) } })
+    fireEvent.change(screen.getByLabelText('脱敏评测样本 JSON'), { target: { value: '[{"sample_id":"s1"}]' } })
     fireEvent.change(screen.getByLabelText('候选模型脱敏数值样本 JSON'), { target: { value: '[{"case_id":"case-1","predictions":[10],"actual":[11],"baseline_value":8}]' } })
     fireEvent.click(screen.getByRole('button', { name: '运行 Shadow 评测' }))
 
@@ -92,6 +96,7 @@ describe('KemsWorkbench', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('blocked_until_omo_approval')
     const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).includes('/api/kems/models/candidates/candidate-v1/evaluation'))
     expect(String(call?.[1]?.body)).not.toContain('raw_text')
+    expect(String(call?.[1]?.body)).toContain('evaluation_manifest_sha256')
   })
 
   it('registers an adjudicated manifest and records a model evaluation run', async () => {

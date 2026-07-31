@@ -49,7 +49,7 @@ export default function KemsWorkbench() {
   const [forecastResult, setForecastResult] = useState<Record<string, unknown> | null>(null)
   const [dispatch, setDispatch] = useState({ taskId: '', workerId: '', paths: 'projects/kairon' })
   const [dispatchResult, setDispatchResult] = useState<Record<string, unknown> | null>(null)
-  const [evaluationDataset, setEvaluationDataset] = useState({ id: '', version: '', samples: '' })
+  const [evaluationDataset, setEvaluationDataset] = useState({ id: '', version: '', manifestSha256: '', samples: '' })
   const [evaluationRun, setEvaluationRun] = useState({ id: '', model: '', expected: '{}', actual: '' })
   const [evaluationResult, setEvaluationResult] = useState<Record<string, unknown> | null>(null)
   const [modelAcceptance, setModelAcceptance] = useState({ runId: '', candidate: '', baseline: 'naive-last-v1', minCases: '1', threshold: '0', cases: '' })
@@ -197,11 +197,13 @@ export default function KemsWorkbench() {
   const evaluateCandidateModel = async (event: FormEvent) => {
     event.preventDefault()
     let cases: unknown
+    let manifestSamples: unknown
     try { cases = JSON.parse(modelAcceptance.cases) } catch { setError('候选模型样本必须是合法 JSON 数组'); return }
-    if (!modelAcceptance.runId.trim() || !modelAcceptance.candidate.trim() || !Array.isArray(cases) || !cases.length) { setError('候选模型运行 ID、模型 ID 和脱敏数值样本均为必填'); return }
+    try { manifestSamples = JSON.parse(evaluationDataset.samples) } catch { setError('请先登记合法的 adjudicated manifest'); return }
+    if (!modelAcceptance.runId.trim() || !modelAcceptance.candidate.trim() || !evaluationDataset.id.trim() || !evaluationDataset.version.trim() || !evaluationDataset.manifestSha256.trim() || !Array.isArray(manifestSamples) || !manifestSamples.length || !Array.isArray(cases) || !cases.length) { setError('候选模型运行需要模型、数据集身份、manifest SHA、样本数和脱敏数值样本'); return }
     setKemsAction('model-acceptance')
     try {
-      const data = await api(`/api/kems/models/candidates/${encodeURIComponent(modelAcceptance.candidate.trim())}/evaluation`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_id: modelAcceptance.runId.trim(), baseline_model_id: modelAcceptance.baseline.trim() || 'naive-last-v1', min_cases: Number(modelAcceptance.minCases), min_relative_improvement: Number(modelAcceptance.threshold), cases }) })
+      const data = await api(`/api/kems/models/candidates/${encodeURIComponent(modelAcceptance.candidate.trim())}/evaluation`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_id: modelAcceptance.runId.trim(), baseline_model_id: modelAcceptance.baseline.trim() || 'naive-last-v1', min_cases: Number(modelAcceptance.minCases), min_relative_improvement: Number(modelAcceptance.threshold), dataset_id: evaluationDataset.id.trim(), dataset_version: evaluationDataset.version.trim(), evaluation_manifest_sha256: evaluationDataset.manifestSha256.trim(), dataset_sample_count: manifestSamples.length, cases }) })
       setModelAcceptanceResult(data.evaluation || data)
     } catch (err) { setError(err instanceof Error ? err.message : '候选模型评测失败') } finally { setKemsAction('') }
   }
@@ -336,6 +338,7 @@ export default function KemsWorkbench() {
           <div className="kems-panel-heading"><div><h3>脱敏评测集登记</h3><span>仅接受 adjudicated manifest</span></div><ClipboardCheck size={16} /></div>
           <label>数据集 ID<input className="antd-input" aria-label="评测集 ID" value={evaluationDataset.id} onChange={event => setEvaluationDataset({ ...evaluationDataset, id: event.target.value })} placeholder="例如 kems-real" /></label>
           <label>数据集版本<input className="antd-input" aria-label="评测集版本" value={evaluationDataset.version} onChange={event => setEvaluationDataset({ ...evaluationDataset, version: event.target.value })} placeholder="例如 2026-07-31" /></label>
+          <label>Manifest SHA-256<input className="antd-input" aria-label="评测集 Manifest SHA-256" value={evaluationDataset.manifestSha256} onChange={event => setEvaluationDataset({ ...evaluationDataset, manifestSha256: event.target.value })} placeholder="64 位十六进制摘要" /></label>
           <label>脱敏 adjudicated 样本 JSON<input className="antd-input kems-json-input" aria-label="脱敏评测样本 JSON" value={evaluationDataset.samples} onChange={event => setEvaluationDataset({ ...evaluationDataset, samples: event.target.value })} placeholder='[{"sample_id":"...","source_ref":"vault://redacted/...","labels":{}}]' /></label>
           <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'evaluation-manifest'}><ClipboardCheck size={14} /> 登记评测集</button>
           <button className="antd-btn" type="button" disabled={kemsAction === 'adjudication-manifest'} onClick={() => void buildAdjudicatedManifest()}><ClipboardCheck size={14} /> 从已裁决队列生成</button>
