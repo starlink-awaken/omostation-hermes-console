@@ -32,6 +32,18 @@ type AdjudicationItem = {
   adjudicator?: string
 }
 
+type AnnotationSchemaField = {
+  name: string
+  type: 'enum' | 'boolean'
+  values?: string[]
+}
+
+type AnnotationSchema = {
+  scenario_id: string
+  schema_version: string
+  fields: AnnotationSchemaField[]
+}
+
 const PRIVATE_SOURCE_REVIEW_SCENARIO = 'private-source-review-v1'
 const PRIVATE_SOURCE_REVIEW_VERSION = 'private-source-review-v1.0'
 const PRIVATE_SOURCE_REVIEW_LABEL_TEMPLATE = JSON.stringify({
@@ -44,19 +56,12 @@ const PRIVATE_SOURCE_REVIEW_LABEL_TEMPLATE = JSON.stringify({
   requires_omo_task: false,
 }, null, 2)
 
-const PRIVATE_SOURCE_REVIEW_ENUMS: Record<string, readonly string[]> = {
-  source_kind: ['oa', 'email', 'sms'],
-  document_type: ['task', 'notice', 'request', 'alert', 'transaction', 'conversation', 'other'],
-  actionability: ['actionable', 'follow_up', 'reference', 'no_action'],
-  priority: ['urgent', 'high', 'normal', 'low', 'unknown'],
-}
-const PRIVATE_SOURCE_REVIEW_BOOLEAN_FIELDS = ['has_deadline', 'has_owner', 'requires_omo_task']
-
-const validatePrivateSourceReviewLabels = (scenarioId: string, labels: unknown): string | null => {
+const validatePrivateSourceReviewLabels = (schema: AnnotationSchema | null, scenarioId: string, labels: unknown): string | null => {
   if (scenarioId !== PRIVATE_SOURCE_REVIEW_SCENARIO) return null
+  if (!schema || schema.scenario_id !== scenarioId) return null
   if (!labels || typeof labels !== 'object' || Array.isArray(labels)) return 'labels 必须是对象'
   const record = labels as Record<string, unknown>
-  const required = [...Object.keys(PRIVATE_SOURCE_REVIEW_ENUMS), ...PRIVATE_SOURCE_REVIEW_BOOLEAN_FIELDS]
+  const required = schema.fields.map(field => field.name)
   const missing = required.filter(field => !(field in record))
   const extra = Object.keys(record).filter(field => !required.includes(field))
   if (missing.length || extra.length) {
@@ -65,13 +70,13 @@ const validatePrivateSourceReviewLabels = (scenarioId: string, labels: unknown):
     if (extra.length) details.push(`不支持字段：${extra.join('、')}`)
     return `private-source-review-v1 标签结构不匹配（${details.join('；')}）`
   }
-  for (const [field, allowed] of Object.entries(PRIVATE_SOURCE_REVIEW_ENUMS)) {
-    if (typeof record[field] !== 'string' || !allowed.includes(record[field] as string)) {
-      return `${field} 必须使用规定枚举值`
+    for (const field of schema.fields.filter(item => item.type === 'enum')) {
+      if (typeof record[field.name] !== 'string' || !field.values?.includes(record[field.name] as string)) {
+      return `${field.name} 必须使用规定枚举值`
+      }
     }
-  }
-  if (PRIVATE_SOURCE_REVIEW_BOOLEAN_FIELDS.some(field => typeof record[field] !== 'boolean')) {
-    return 'has_deadline、has_owner、requires_omo_task 必须是布尔值'
+  if (schema.fields.some(field => field.type === 'boolean' && typeof record[field.name] !== 'boolean')) {
+    return '布尔字段必须是布尔值'
   }
   return null
 }
@@ -103,6 +108,7 @@ export default function KemsWorkbench() {
   const [modelAcceptanceResult, setModelAcceptanceResult] = useState<Record<string, unknown> | null>(null)
   const [adjudicationQueue, setAdjudicationQueue] = useState<AdjudicationItem[]>([])
   const [selectedAdjudication, setSelectedAdjudication] = useState<AdjudicationItem | null>(null)
+  const [annotationSchema, setAnnotationSchema] = useState<AnnotationSchema | null>(null)
   const [adjudicationImport, setAdjudicationImport] = useState('')
   const [annotation, setAnnotation] = useState({ annotator: '', adjudicator: '', version: PRIVATE_SOURCE_REVIEW_VERSION, labels: PRIVATE_SOURCE_REVIEW_LABEL_TEMPLATE })
   const [kemsAction, setKemsAction] = useState('')
@@ -139,6 +145,32 @@ export default function KemsWorkbench() {
   // Keep the controlled human-label queue separate from OCR correction state.
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { void loadAdjudicationQueue() }, [])
+
+  // The backend owns the label contract; refresh it when the selected scenario changes.
+  useEffect(() => {
+    if (!selectedAdjudication) return
+    let cancelled = false
+    const scenarioId = selectedAdjudication.scenario_id
+    const refreshSchema = async () => {
+      if (scenarioId !== PRIVATE_SOURCE_REVIEW_SCENARIO) {
+        if (!cancelled) setAnnotationSchema(null)
+        return
+      }
+      try {
+        const data = await api(`/api/kems/adjudication/schema?scenario_id=${encodeURIComponent(scenarioId)}`)
+        if (!Array.isArray(data.fields) || typeof data.schema_version !== 'string') throw new Error('标注契约响应无效')
+        if (cancelled) return
+        setAnnotationSchema(data as AnnotationSchema)
+        setAnnotation(current => ({ ...current, version: data.schema_version }))
+      } catch (err) {
+        if (cancelled) return
+        setAnnotationSchema(null)
+        setError(err instanceof Error ? err.message : '无法加载标注契约')
+      }
+    }
+    void refreshSchema()
+    return () => { cancelled = true }
+  }, [selectedAdjudication])
 
   const selectRun = async (item: QueueItem) => {
     try {
@@ -284,7 +316,7 @@ export default function KemsWorkbench() {
     let labels: unknown
     try { labels = JSON.parse(annotation.labels) } catch { setError('labels 必须是合法 JSON 对象'); return }
     if (!labels || typeof labels !== 'object' || Array.isArray(labels) || !Object.keys(labels).length || !annotation.adjudicator.trim() || !annotation.version.trim()) { setError('labels、裁决人和裁决版本均为必填'); return }
-    const schemaError = validatePrivateSourceReviewLabels(selectedAdjudication.scenario_id, labels)
+    const schemaError = validatePrivateSourceReviewLabels(annotationSchema, selectedAdjudication.scenario_id, labels)
     if (schemaError) { setError(schemaError); return }
     setKemsAction('adjudication-submit')
     try {
@@ -299,7 +331,7 @@ export default function KemsWorkbench() {
     let labels: unknown
     try { labels = JSON.parse(annotation.labels) } catch { setError('labels 必须是合法 JSON 对象'); return }
     if (!labels || typeof labels !== 'object' || Array.isArray(labels) || !Object.keys(labels).length || !annotation.annotator.trim() || !annotation.version.trim()) { setError('labels、标注人和标注版本均为必填'); return }
-    const schemaError = validatePrivateSourceReviewLabels(selectedAdjudication.scenario_id, labels)
+    const schemaError = validatePrivateSourceReviewLabels(annotationSchema, selectedAdjudication.scenario_id, labels)
     if (schemaError) { setError(schemaError); return }
     setKemsAction('annotation-submit')
     try {
