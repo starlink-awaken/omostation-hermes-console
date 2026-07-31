@@ -46,6 +46,7 @@ import C2GStrategyView from './C2GStrategyView';
 import Wave2DashboardView from './Wave2DashboardView';
 import McpMeshView from './McpMeshView';
 import AssetsView from './AssetsView';
+import KemsWorkbench from './KemsWorkbench';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
 import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
@@ -85,6 +86,7 @@ export default function Dashboard() {
     { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => setActiveTab('Knowledge') },
     { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => setActiveTab('Engines') },
     { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => setActiveTab('Assets') },
+    { id: 'kems', label: 'KEMS 质量治理', description: '查看 OCR 复核队列与质量证据', action: () => setActiveTab('Kems') },
     { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
     { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
     { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
@@ -131,6 +133,7 @@ export default function Dashboard() {
       case 'Knowledge':
       case 'Engines':
       case 'Assets':
+      case 'Kems':
       case 'Workflows':
         items.push({ label: '智能与知识', onClick: () => setActiveTab('Knowledge') });
         break;
@@ -215,6 +218,8 @@ export default function Dashboard() {
         return { title: '引擎调度总线 (Engines)', subtitle: '管理 Kairon, Gbrain 等底层知识与智能引擎。' };
       case 'Assets':
         return { title: '技术资产资产库 (Assets)', subtitle: '集中索引自动化工作流 (Workflows)、工具管线 (Pipelines) 与智能体自定义开发技能 (Custom Skills)。' };
+      case 'Kems':
+        return { title: 'KEMS 质量治理 (KEMS)', subtitle: '以质量指标、哈希和证据引用驱动 OCR 复核与知识准入。' };
       case 'Knowledge':
         return { title: '分布式知识中枢 (Knowledge)', subtitle: '跨域检索与记忆摄取管线的状态和监控。' };
       case 'Sandbox':
@@ -368,6 +373,16 @@ export default function Dashboard() {
           >
             <Briefcase size={16} aria-hidden="true" />
             <span>技术资产库</span>
+          </button>
+          <button
+            role="menuitem"
+            aria-describedby="group-intelligence"
+            aria-selected={activeTab === 'Kems'}
+            className={`nav-item ${activeTab === 'Kems' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Kems')}
+          >
+            <FileText size={16} aria-hidden="true" />
+            <span>KEMS 质量治理</span>
           </button>
           <button 
             role="menuitem"
@@ -683,6 +698,10 @@ export default function Dashboard() {
             <AssetsView />
           )}
 
+          {activeTab === 'Kems' && (
+            <KemsWorkbench />
+          )}
+
           {activeTab === 'QuestBoard' && (
             <QuestBoard />
           )}
@@ -731,6 +750,7 @@ export default function Dashboard() {
           { id: 'wave2', label: 'Wave2 预测面板', description: '热力与治理提案', action: () => setActiveTab('Wave2') },
           { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => setActiveTab('McpMesh') },
           { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => setActiveTab('Assets') },
+          { id: 'kems', label: 'KEMS 质量治理', description: '查看 OCR 复核队列与质量证据', action: () => setActiveTab('Kems') },
           { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
           { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
           { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
