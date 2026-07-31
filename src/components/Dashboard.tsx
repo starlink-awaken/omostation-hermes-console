@@ -23,7 +23,8 @@ import {
   Command,
   Compass,
   Globe,
-  Briefcase
+  Briefcase,
+  Brain
 } from 'lucide-react';
 import SandboxTerminal from './SandboxTerminal';
 import MemoryInjector from './MemoryInjector';
@@ -33,6 +34,7 @@ import WorkflowsView from './WorkflowsView';
 import TopologyView from './TopologyView';
 import ComputeView from './ComputeView';
 import { DashboardPage as GBrainDashboard } from './GBrain/GBrainDashboard';
+import BrainChat from '../views/BrainChat';
 import DebtView from './DebtView';
 import ObservabilityView from './ObservabilityView';
 import QuestBoard from './QuestBoard';
@@ -134,6 +136,7 @@ export default function Dashboard() {
       case 'Engines':
       case 'Assets':
       case 'Kems':
+      case 'Brain':
       case 'Workflows':
         items.push({ label: '智能与知识', onClick: () => setActiveTab('Knowledge') });
         break;
@@ -220,6 +223,8 @@ export default function Dashboard() {
         return { title: '技术资产资产库 (Assets)', subtitle: '集中索引自动化工作流 (Workflows)、工具管线 (Pipelines) 与智能体自定义开发技能 (Custom Skills)。' };
       case 'Kems':
         return { title: 'KEMS 质量治理 (KEMS)', subtitle: '以质量指标、哈希和证据引用驱动 OCR 复核与知识准入。' };
+      case 'Brain':
+        return { title: '个人数字大脑 (Brain)', subtitle: '基于知识库 + 记忆 + LLM 的智能问答助手。' };
       case 'Knowledge':
         return { title: '分布式知识中枢 (Knowledge)', subtitle: '跨域检索与记忆摄取管线的状态和监控。' };
       case 'Sandbox':
@@ -384,7 +389,20 @@ export default function Dashboard() {
             <FileText size={16} aria-hidden="true" />
             <span>KEMS 质量治理</span>
           </button>
-          <button 
+
+          {/* Group 6: 个人数字大脑 */}
+          <div className="nav-group-title" id="group-brain">智能助手</div>
+          <button
+            role="menuitem"
+            aria-describedby="group-brain"
+            aria-selected={activeTab === 'Brain'}
+            className={`nav-item ${activeTab === 'Brain' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Brain')}
+          >
+            <Brain size={16} aria-hidden="true" />
+            <span>个人数字大脑</span>
+          </button>
+          <button
             role="menuitem"
             aria-describedby="group-intelligence"
             aria-selected={activeTab === 'Workflows'}
@@ -702,6 +720,12 @@ export default function Dashboard() {
             <KemsWorkbench />
           )}
 
+          {activeTab === 'Brain' && (
+            <div className="animate-fade-in h-[calc(100vh-2rem)]">
+              <BrainChat />
+            </div>
+          )}
+
           {activeTab === 'QuestBoard' && (
             <QuestBoard />
           )}
@@ -742,6 +766,7 @@ export default function Dashboard() {
           { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => setActiveTab('Topology') },
           { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => setActiveTab('Compute') },
           { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => setActiveTab('Knowledge') },
+          { id: 'brain', label: '个人数字大脑', description: '与 AI 助手对话', action: () => setActiveTab('Brain') },
           { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => setActiveTab('Engines') },
           { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
           { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
