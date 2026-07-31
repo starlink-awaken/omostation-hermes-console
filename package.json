@@ -12,6 +12,7 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.101.4",
     "lucide-react": "^1.17.0",
     "postcss": "^8.5.16",
     "react": "^19.2.6",
