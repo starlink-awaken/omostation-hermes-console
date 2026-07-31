@@ -57,6 +57,7 @@ import { SIDEBAR_NAV_SECTIONS, GROUP_ENTRY_TABS, NAV_ICON_BY_TAB, pageGroupLabel
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardTopbar } from './DashboardTopbar';
 import { DashboardViewRouter, DashboardViewErrorBoundary } from './DashboardViewRouter';
+import { getHeroContent, getBreadcrumbItems, maturityStatusText, pageContextStatusClass, pageContextChecklistStatusClass } from './dashboardHelpers';
 export { DashboardViewErrorBoundary };
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import {
@@ -635,16 +636,7 @@ interface PageAuditRow {
   secondaryLabel: string;
 }
 
-function pageContextStatusClass(status?: string): string {
-  if (status === 'ready') return 'ready';
-  if (status === 'watch') return 'watch';
-  if (status === 'gap') return 'gap';
-  return 'unknown';
-}
 
-function pageContextChecklistStatusClass(status: 'linked' | 'missing'): string {
-  return status === 'linked' ? 'linked' : 'missing';
-}
 
 function taskDraftMatchesPage(task: SearchTaskDraft, pageId: string, pageLabel: string): boolean {
   if (task.source?.id === pageId) return true;
@@ -816,12 +808,6 @@ interface SidebarProjectPortfolio {
   weakestDimensions: SidebarWeakestDimension[];
 }
 
-function maturityStatusText(status: string): string {
-  if (status === 'ready') return '就绪';
-  if (status === 'watch') return '观察';
-  if (status === 'gap') return '缺口';
-  return '未知';
-}
 
 function portfolioStatusText(status?: string): string {
   if (status === 'blocked') return '阻塞';
@@ -4191,80 +4177,11 @@ export default function Dashboard() {
   }, [searchQuery]);
 
   // 面包屑
-  const getBreadcrumbItems = () => {
-    const items = [];
-    const group = pageGroupLabel(activeTab);
-    const groupEntryTab = group ? GROUP_ENTRY_TABS[group] : null;
-    if (activeTab !== 'Home' && group && groupEntryTab) {
-      items.push({
-        label: group === '入口' ? '入口总览' : group,
-        onClick: () => setActiveTab(groupEntryTab),
-      });
-    }
-    items.push({ label: hero.title.split(' (')[0] });
-    return items;
-  };
+  
 
-  const getHeroContent = () => {
-    switch (activeTab) {
-      case 'Home':
-        return { title: '首页 (Home)', subtitle: '系统健康总览、实时告警、关键指标趋势。' };
-      case 'Guide':
-        return { title: '站内导览 (Guide)', subtitle: '把 cockpit 的页面、工作带、推荐入口和使用路径梳理成一个可上手的总览。' };
-      case 'SystemMap':
-        return { title: '系统地图 (System Map)', subtitle: '把 Cockpit 的页面、项目层级、功能域、使用路径和能力缺口串成一个可操作总图。' };
-      case 'Overview':
-        return { title: '概览中心 (Overview)', subtitle: '实时监控 eCOS v6 微服务环境，掌握集群全貌。' };
-      case 'McpMesh':
-        return { title: 'BOS URI & MCP 网格 (McpMesh)', subtitle: '分布式新实例动态注册与基于域路由的 BOS URI 在线解析调试。' };
-      case 'Topology':
-        return { title: '全局服务拓扑 (Topology)', subtitle: '可视化服务间的调用流向与网格状态。' };
-      case 'Compute':
-        return { title: '算力调配大盘 (Compute)', subtitle: '查看分布式节点 CPU/GPU 使用率与任务调度。' };
-      case 'Research':
-        return { title: '研究中枢 (Research)', subtitle: '把 cockpit research 的发起、追问、发布和后续任务承接整理成可操作入口。' };
-      case 'Engines':
-        return { title: '引擎调度总线 (Engines)', subtitle: '管理 Kairon, Gbrain 等底层知识与智能引擎。' };
-      case 'Assets':
-        return { title: '技术资产资产库 (Assets)', subtitle: '集中索引自动化工作流 (Workflows)、工具管线 (Pipelines) 与智能体自定义开发技能 (Custom Skills)。' };
-      case 'Protocol':
-        return { title: '协议工作台 (Protocol)', subtitle: '把 ecos、model-driven、workflow 和治理桥接能力拉成一张可巡检、可跳转、可复制命令的协议操作面。' };
-      case 'Knowledge':
-        return { title: '分布式知识中枢 (Knowledge)', subtitle: '跨域检索与记忆摄取管线的状态和监控。' };
-      case 'GBrainAdmin':
-        return { title: 'GBrain 管理控制面 (GBrain Admin)', subtitle: '管理智能体接入、访问凭证、模型校准与请求审计；受保护操作由 GBrain 自己的登录边界承接。' };
-      case 'Sandbox':
-        return { title: '隔离安全沙箱 (Sandbox)', subtitle: '在线执行测试或运行未校验的任务指令。' };
-      case 'Workflows':
-        return { title: 'MetaOS 工作流编排 (Workflows)', subtitle: '实时跟踪与干预自治 Agent 的运行链路。' };
-      case 'Settings':
-        return { title: '系统底层设置 (Settings)', subtitle: '配置网格路由、API Token 与治理阈值。' };
-      case 'Debt':
-        return { title: '技术债务治理舱 (Debt)', subtitle: '全自动审计技术债务评分，追踪高危风险。' };
-      case 'C2G':
-        return { title: 'C2G 战略决策中心 (C2G)', subtitle: '跟踪系统从战役目标 (Goals) 到治理卡片 (OMO CARDS) 的全生命周期，守护 SSOT 保鲜。' };
-      case 'QuestBoard':
-        return { title: '积分冒险看板 (QuestBoard)', subtitle: '让家庭充满正向激励与智慧成长，打通 Quest 生态。' };
-      case 'DomainApps':
-        return { title: '领域应用中心 (Domain Apps)', subtitle: '统一挂载家庭驾驶舱、OPC 作战台和 family-hub 服务，保持 L4 SSOT 边界。' };
-      case 'Observability':
-        return { title: '系统运行可观测 (Observability)', subtitle: '多维度链路日志与可观测性分析面板。' };
-      case 'L4Health':
-        return { title: 'L4 域健康监控 (L4 Health)', subtitle: '实时监控 L4 域健康状态、趋势分析和风险评估。' };
-      case 'AlertCenter':
-        return { title: '告警中心 (Alert Center)', subtitle: '统一告警管理、规则配置、告警历史。' };
-      case 'LogViewer':
-        return { title: '日志查看器 (Log Viewer)', subtitle: '实时日志流、搜索、过滤、导出。' };
-      case 'TaskCenter':
-        return { title: '任务中心 (Task Center)', subtitle: '任务统一管理、状态跟踪、操作控制。' };
-      case 'Performance':
-        return { title: '性能监控 (Performance)', subtitle: 'CPU/内存/磁盘/网络实时监控。' };
-      default:
-        return { title: '控制台', subtitle: 'eCOS 管理面板' };
-    }
-  };
+  
 
-  const hero = getHeroContent();
+  const hero = getHeroContent(activeTab);
 
   
   return (
@@ -4344,7 +4261,7 @@ export default function Dashboard() {
         <div className="content-area">
           {/* 面包屑导航 */}
           {activeTab !== 'Home' && (
-            <Breadcrumb items={getBreadcrumbItems()} />
+            <Breadcrumb items={getBreadcrumbItems(activeTab, activeGroupLabel, setActiveTab)} />
           )}
 
           {shellDataWarnings.length > 0 && (
