@@ -1,13 +1,17 @@
 /**
- * Custom hook for HomePage data fetching and processing.
+ * Custom hook for HomePage data fetching using React Query.
  * 
  * This replaces the manual useState + useEffect pattern in HomePage.
- * It uses React Query for data fetching and keeps the complex data processing logic.
+ * Benefits:
+ * - Automatic caching and deduplication
+ * - Background refetching
+ * - Loading/error states
+ * - Request cancellation
  */
 
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '../../api/client';
+import { apiFetch } from './client';
 
 // ── Types ──
 
