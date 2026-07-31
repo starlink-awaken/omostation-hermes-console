@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import type { CockpitNavigationTarget, RecentNavigationEntry } from './cockpitNavigation';
+import type { CockpitNavigationTarget } from './cockpitNavigation';
 
 export interface SearchTarget {
   id: string;

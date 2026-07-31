@@ -1,39 +1,16 @@
-import React, { Suspense, lazy, useState, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { 
-  Activity, 
-  Cpu, 
-  Database, 
   CheckCircle, 
   AlertTriangle, 
-  Search, 
-  Settings, 
-  Terminal, 
-  GitCommit, 
-  Network, 
-  Trophy,
-  LayoutDashboard,
-  Heart,
-  Bell,
-  FileText,
-  BarChart3,
   ClipboardList,
-  Zap,
-  Command,
   Compass,
-  Globe,
   Briefcase,
   AppWindow,
   Map,
   ArrowRight,
   Copy,
   Sparkles,
-  Menu,
-  X,
   RefreshCw,
-  Download,
-  Shield,
-  History,
-  Link2,
   ClipboardCheck,
 } from 'lucide-react';
 import Breadcrumb from './common/Breadcrumb';
@@ -42,18 +19,10 @@ import QuickActionsPanel from './common/QuickActionsPanel';
 import { useCommandPalette, useKeyboardShortcuts } from './common/useCommandPalette';
 import { useQuickActions } from './common/useQuickActions';
 import {
-  clearRecentNavigation,
-  navigationTargetLabel,
-  normalizeNavigationTarget,
-  parseNavigationHash,
-  readRecentNavigation,
-  recordRecentNavigation,
-  writeNavigationHash,
   type CockpitNavigationTarget,
-  type RecentNavigationEntry,
 } from './cockpitNavigation';
 import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
-import { SIDEBAR_NAV_SECTIONS, GROUP_ENTRY_TABS, NAV_ICON_BY_TAB, pageGroupLabel } from './dashboardConstants';
+import { NAV_ICON_BY_TAB } from './dashboardConstants';
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardTopbar } from './DashboardTopbar';
 import { DashboardViewRouter, DashboardViewErrorBoundary } from './DashboardViewRouter';
@@ -64,16 +33,12 @@ import { useDashboardState } from './useDashboardState';
 export { DashboardViewErrorBoundary };
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import {
-  findTaskDraftForTarget,
   persistTaskCenterDraft,
   readTaskCenterDraft,
-  taskDraftToIncomingDraft,
 } from './taskDraftHandoff';
 import './Dashboard.css';
 
-const ResearchHubView = lazy(() => import('./ResearchHubView'));
-const ProtocolWorkbenchView = lazy(() => import('./ProtocolWorkbenchView'));
-const CockpitGuideView = lazy(() => import('./CockpitGuideView'));
+
 
 interface SearchTarget {
   id: string;
@@ -409,11 +374,7 @@ interface DashboardOverviewTile {
   target: CockpitNavigationTarget;
 }
 
-interface ShellSourceAvailability {
-  systemMap: boolean;
-  tasks: boolean;
-  domainApps: boolean;
-}
+
 
 interface PageContextChecklistItem {
   id: string;
@@ -724,29 +685,9 @@ function domainAppActionScore(app: SearchDomainApp): number {
 }
 
 
-interface DashboardViewErrorBoundaryProps {
-  label: string;
-  children: React.ReactNode;
-}
 
-interface DashboardViewErrorBoundaryState {
-  hasError: boolean;
-}
 
-export 
-const SEARCH_ALIAS_GROUPS = [
-  ['运行态势', '运行探针', '运行健康', '运行总面', '概览中心', 'overview'],
-  ['日常体检', '体检', '巡检', '健康检查', 'daily ops', 'daily-health-check'],
-  ['页面能力', '页面成熟度', '页面补位', '页面', 'page maturity'],
-  ['能力域', '功能域', '能力地图', 'feature domain'],
-  ['验证补证', '验证证据', '补证', '验证', 'verification'],
-  ['家庭', '家庭生活', '家庭驾驶舱', 'family', 'family-hub'],
-  ['协议', '元模型', 'model-driven', 'ecos', 'workflow', '协议工作台'],
-  ['研究', '发布', 'publication', 'dossier', '研究中枢'],
-  ['任务', '草稿', '待办', '行动项', 'task'],
-  ['路线图', 'roadmap', '阶段', '车道'],
-  ['入口', '导航', '页面分组', '功能架构'],
-] as const;
+
 
 function normalizeSearchText(value: string): string {
   return value
@@ -756,54 +697,11 @@ function normalizeSearchText(value: string): string {
     .trim();
 }
 
-function tokenizeSearchText(value: string): string[] {
-  const normalized = normalizeSearchText(value);
-  if (!normalized) return [];
-  return [...new Set([normalized, ...normalized.split(' ').filter(Boolean)])];
-}
 
-function expandSearchAliases(values: string[]): string[] {
-  const seed = new Set(values.flatMap((value) => tokenizeSearchText(value)));
-  if (seed.size === 0) return [];
-  for (const aliases of SEARCH_ALIAS_GROUPS) {
-    const matched = aliases.some((alias) => {
-      const normalizedAlias = normalizeSearchText(alias);
-      return [...seed].some((term) => term.includes(normalizedAlias) || normalizedAlias.includes(term));
-    });
-    if (matched) {
-      aliases.forEach((alias) => {
-        tokenizeSearchText(alias).forEach((token) => seed.add(token));
-      });
-    }
-  }
-  return [...seed];
-}
 
-function buildSearchIndex(target: SearchTarget): string[] {
-  return expandSearchAliases([target.label, target.group, target.tab, ...target.keywords]);
-}
 
-function scoreSearchTarget(target: SearchTarget, query: string, queryTerms: string[]): number {
-  const normalizedQuery = normalizeSearchText(query);
-  const label = normalizeSearchText(target.label);
-  const group = normalizeSearchText(target.group);
-  const tab = normalizeSearchText(target.tab);
-  const index = buildSearchIndex(target);
 
-  let score = 0;
-  if (label.includes(normalizedQuery)) score += 12;
-  if (group.includes(normalizedQuery)) score += 6;
-  if (tab.includes(normalizedQuery)) score += 4;
 
-  queryTerms.forEach((term) => {
-    if (!term) return;
-    if (label.includes(term)) score += 8;
-    else if (group.includes(term)) score += 4;
-    else if (index.some((entry) => entry.includes(term) || term.includes(entry))) score += 2;
-  });
-
-  return score;
-}
 
 interface SidebarProjectPortfolio {
   summary: ProjectPortfolioSummary;
@@ -1181,19 +1079,19 @@ export default function Dashboard() {
 
   const openContextTargetRef = useRef<((target: CockpitNavigationTarget) => void) | null>(null);
   const {
-    activeTab, setActiveTab, setActiveTabState,
+    activeTab, setActiveTab,
     mobileNavOpen, setMobileNavOpen,
-    recentNavigation, setRecentNavigation,
-    focusedProjectId, setFocusedProjectId,
-    focusedUsagePathId, setFocusedUsagePathId,
-    focusedGapId, setFocusedGapId,
-    focusedCoverageDimensionId, setFocusedCoverageDimensionId,
-    focusedPageId, setFocusedPageId,
-    focusedFeatureDomainId, setFocusedFeatureDomainId,
-    taskSearchSeed, setTaskSearchSeed,
-    taskDraftKey, setTaskDraftKey,
+    recentNavigation,
+    focusedProjectId,
+    focusedUsagePathId,
+    focusedGapId,
+    focusedCoverageDimensionId,
+    focusedPageId,
+    focusedFeatureDomainId,
+    taskSearchSeed,
+    taskDraftKey,
     pageSprintFocusId, setPageSprintFocusId,
-    alertTab, setAlertTab,
+    alertTab,
     mobileNavToggleRef, mobileNavCloseRef, mobileSidebarRef,
     openContextTarget, clearRecent,
   } = useDashboardNavigation({
@@ -1203,9 +1101,8 @@ export default function Dashboard() {
 
   const {
     searchQuery, setSearchQuery,
-    searchResultIndex, setSearchResultIndex,
+    setSearchResultIndex,
     dynamicSearchTargets, setDynamicSearchTargets,
-    knowledgeSearchTargets,
     globalSearchInputRef,
     searchResults, activeSearchResultIndex,
     openSearchTarget, handleSearchKeyDown,

@@ -101,8 +101,10 @@ export function useDashboardNavigation({
     });
   }, [shellTaskDrafts]);
 
-  // Set the ref for the search hook
-  openContextTargetRef.current = openContextTarget;
+  // Set the ref for the search hook (in effect to avoid render-time ref access)
+  useEffect(() => {
+    openContextTargetRef.current = openContextTarget;
+  }, [openContextTarget, openContextTargetRef]);
 
   const clearRecent = useCallback(() => {
     clearRecentNavigation();

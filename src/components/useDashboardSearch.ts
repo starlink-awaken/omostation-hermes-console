@@ -124,10 +124,12 @@ export function useDashboardSearch({
   useEffect(() => {
     const query = searchQuery.trim();
     if (query.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setKnowledgeSearchTargets([]);
       return undefined;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setKnowledgeSearchTargets([]);
     let active = true;
     const timer = window.setTimeout(async () => {
