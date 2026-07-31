@@ -52,6 +52,8 @@ export default function KemsWorkbench() {
   const [evaluationDataset, setEvaluationDataset] = useState({ id: '', version: '', samples: '' })
   const [evaluationRun, setEvaluationRun] = useState({ id: '', model: '', expected: '{}', actual: '' })
   const [evaluationResult, setEvaluationResult] = useState<Record<string, unknown> | null>(null)
+  const [modelAcceptance, setModelAcceptance] = useState({ runId: '', candidate: '', baseline: 'naive-last-v1', minCases: '1', threshold: '0', cases: '' })
+  const [modelAcceptanceResult, setModelAcceptanceResult] = useState<Record<string, unknown> | null>(null)
   const [adjudicationQueue, setAdjudicationQueue] = useState<AdjudicationItem[]>([])
   const [selectedAdjudication, setSelectedAdjudication] = useState<AdjudicationItem | null>(null)
   const [adjudicationImport, setAdjudicationImport] = useState('')
@@ -190,6 +192,18 @@ export default function KemsWorkbench() {
       const data = await api(`/api/kems/evaluations/runs/${encodeURIComponent(evaluationRun.id.trim())}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataset_id: evaluationDataset.id.trim(), dataset_version: evaluationDataset.version.trim(), model_id: evaluationRun.model.trim(), expected, actual }) })
       setEvaluationResult(data)
     } catch (err) { setError(err instanceof Error ? err.message : '评测运行登记失败') } finally { setKemsAction('') }
+  }
+
+  const evaluateCandidateModel = async (event: FormEvent) => {
+    event.preventDefault()
+    let cases: unknown
+    try { cases = JSON.parse(modelAcceptance.cases) } catch { setError('候选模型样本必须是合法 JSON 数组'); return }
+    if (!modelAcceptance.runId.trim() || !modelAcceptance.candidate.trim() || !Array.isArray(cases) || !cases.length) { setError('候选模型运行 ID、模型 ID 和脱敏数值样本均为必填'); return }
+    setKemsAction('model-acceptance')
+    try {
+      const data = await api(`/api/kems/models/candidates/${encodeURIComponent(modelAcceptance.candidate.trim())}/evaluation`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_id: modelAcceptance.runId.trim(), baseline_model_id: modelAcceptance.baseline.trim() || 'naive-last-v1', min_cases: Number(modelAcceptance.minCases), min_relative_improvement: Number(modelAcceptance.threshold), cases }) })
+      setModelAcceptanceResult(data.evaluation || data)
+    } catch (err) { setError(err instanceof Error ? err.message : '候选模型评测失败') } finally { setKemsAction('') }
   }
 
   const importAdjudicationQueue = async (event: FormEvent) => {
@@ -334,6 +348,16 @@ export default function KemsWorkbench() {
           <label>Actual JSON<input className="antd-input kems-json-input" aria-label="Actual JSON" value={evaluationRun.actual} onChange={event => setEvaluationRun({ ...evaluationRun, actual: event.target.value })} placeholder='{"field":"prediction"}' /></label>
           <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'evaluation-run'}><CheckCircle2 size={14} /> 记录评测结果</button>
           {evaluationResult && <pre className="kems-json-result" role="status">{JSON.stringify(evaluationResult.evaluation || evaluationResult, null, 2)}</pre>}
+        </form>
+        <form className="kems-panel kems-correction-form" onSubmit={evaluateCandidateModel}>
+          <div className="kems-panel-heading"><div><h3>候选预测模型 Shadow 准入</h3><span>只接受脱敏数值，不自动上线</span></div><ShieldCheck size={16} /></div>
+          <label>运行 ID<input className="antd-input" aria-label="候选模型运行 ID" value={modelAcceptance.runId} onChange={event => setModelAcceptance({ ...modelAcceptance, runId: event.target.value })} placeholder="model-run-1" /></label>
+          <label>候选模型 ID<input className="antd-input" aria-label="候选模型 ID" value={modelAcceptance.candidate} onChange={event => setModelAcceptance({ ...modelAcceptance, candidate: event.target.value })} placeholder="candidate-v1" /></label>
+          <label>基线模型 ID<input className="antd-input" aria-label="基线模型 ID" value={modelAcceptance.baseline} onChange={event => setModelAcceptance({ ...modelAcceptance, baseline: event.target.value })} /></label>
+          <div className="kems-control-grid"><label>最少样本数<input className="antd-input" type="number" min="1" value={modelAcceptance.minCases} onChange={event => setModelAcceptance({ ...modelAcceptance, minCases: event.target.value })} /></label><label>最低相对提升<input className="antd-input" type="number" min="0" max="0.99" step="0.01" value={modelAcceptance.threshold} onChange={event => setModelAcceptance({ ...modelAcceptance, threshold: event.target.value })} /></label></div>
+          <label>脱敏数值样本 JSON<input className="antd-input kems-json-input" aria-label="候选模型脱敏数值样本 JSON" value={modelAcceptance.cases} onChange={event => setModelAcceptance({ ...modelAcceptance, cases: event.target.value })} placeholder='[{"case_id":"case-1","predictions":[10],"actual":[11],"baseline_value":8}]' /></label>
+          <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'model-acceptance'}><ShieldCheck size={14} /> 运行 Shadow 评测</button>
+          {modelAcceptanceResult && <pre className="kems-json-result" role="status">{JSON.stringify(modelAcceptanceResult, null, 2)}</pre>}
         </form>
       </div>
     </section>
