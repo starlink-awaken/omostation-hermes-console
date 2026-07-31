@@ -37,5 +37,8 @@
 .kems-result-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--antd-border-color); padding: 7px 0; font-size: 12px; }
 .kems-result-note { color: var(--antd-text-secondary); font-size: 12px; margin-top: 12px; overflow-wrap: anywhere; }
 .kems-json-result { max-height: 130px; overflow: auto; white-space: pre-wrap; font-size: 11px; color: var(--antd-text-secondary); }
+.kems-json-input { min-height: 58px; }
+.kems-evaluation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 1100px) { .kems-control-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .kems-evaluation-grid { grid-template-columns: 1fr; } }
 @media (max-width: 860px) { .kems-grid { grid-template-columns: 1fr; } .kems-toolbar { flex-direction: column; } }

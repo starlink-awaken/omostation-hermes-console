@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { CheckCircle2, FileSearch, GitBranch, Network, RefreshCw, Send, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, ClipboardCheck, FileSearch, GitBranch, Network, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import './KemsWorkbench.css'
 
 type QueueItem = {
@@ -38,6 +38,9 @@ export default function KemsWorkbench() {
   const [forecastResult, setForecastResult] = useState<Record<string, unknown> | null>(null)
   const [dispatch, setDispatch] = useState({ taskId: '', workerId: '', paths: 'projects/kairon' })
   const [dispatchResult, setDispatchResult] = useState<Record<string, unknown> | null>(null)
+  const [evaluationDataset, setEvaluationDataset] = useState({ id: '', version: '', samples: '' })
+  const [evaluationRun, setEvaluationRun] = useState({ id: '', model: '', expected: '{}', actual: '' })
+  const [evaluationResult, setEvaluationResult] = useState<Record<string, unknown> | null>(null)
   const [kemsAction, setKemsAction] = useState('')
 
   const loadQueue = async () => {
@@ -132,6 +135,34 @@ export default function KemsWorkbench() {
     } catch (err) { setError(err instanceof Error ? err.message : 'OMO 派发失败') } finally { setKemsAction('') }
   }
 
+  const registerEvaluation = async (event: FormEvent) => {
+    event.preventDefault()
+    let samples: unknown
+    try { samples = JSON.parse(evaluationDataset.samples) } catch { setError('评测样本必须是合法 JSON 数组'); return }
+    if (!evaluationDataset.id.trim() || !evaluationDataset.version.trim() || !Array.isArray(samples) || !samples.length) { setError('评测集 ID、版本和脱敏样本均为必填'); return }
+    setKemsAction('evaluation-manifest')
+    try {
+      const data = await api('/api/kems/evaluations/manifests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataset_id: evaluationDataset.id.trim(), dataset_version: evaluationDataset.version.trim(), redaction_status: 'verified', samples }) })
+      setEvaluationResult(data)
+    } catch (err) { setError(err instanceof Error ? err.message : '评测集登记失败') } finally { setKemsAction('') }
+  }
+
+  const recordEvaluation = async (event: FormEvent) => {
+    event.preventDefault()
+    let expected: unknown
+    let actual: unknown
+    try {
+      expected = JSON.parse(evaluationRun.expected)
+      actual = JSON.parse(evaluationRun.actual)
+    } catch { setError('expected 和 actual 必须是合法 JSON 对象'); return }
+    if (!evaluationRun.id.trim() || !evaluationRun.model.trim() || !evaluationDataset.id.trim() || !evaluationDataset.version.trim() || !expected || typeof expected !== 'object' || Array.isArray(expected) || !actual || typeof actual !== 'object' || Array.isArray(actual)) { setError('评测运行需要 run ID、模型、数据集和结构化结果'); return }
+    setKemsAction('evaluation-run')
+    try {
+      const data = await api(`/api/kems/evaluations/runs/${encodeURIComponent(evaluationRun.id.trim())}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataset_id: evaluationDataset.id.trim(), dataset_version: evaluationDataset.version.trim(), model_id: evaluationRun.model.trim(), expected, actual }) })
+      setEvaluationResult(data)
+    } catch (err) { setError(err instanceof Error ? err.message : '评测运行登记失败') } finally { setKemsAction('') }
+  }
+
   return (
     <section className="kems-workbench" aria-label="KEMS OCR 质量工作台">
       <div className="kems-toolbar">
@@ -186,6 +217,24 @@ export default function KemsWorkbench() {
           <label>允许写入范围<input className="antd-input" value={dispatch.paths} onChange={event => setDispatch({ ...dispatch, paths: event.target.value })} /></label>
           <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'dispatch'}><Send size={14} /> 交给 OMO 派发</button>
           {dispatchResult && <p className="kems-result-note" role="status">已交给 OMO：{String(dispatchResult.dispatch_id || '已登记')}</p>}
+        </form>
+      </div>
+      <div className="kems-grid kems-evaluation-grid">
+        <form className="kems-panel kems-correction-form" onSubmit={registerEvaluation}>
+          <div className="kems-panel-heading"><div><h3>脱敏评测集登记</h3><span>仅接受 adjudicated manifest</span></div><ClipboardCheck size={16} /></div>
+          <label>数据集 ID<input className="antd-input" aria-label="评测集 ID" value={evaluationDataset.id} onChange={event => setEvaluationDataset({ ...evaluationDataset, id: event.target.value })} placeholder="例如 kems-real" /></label>
+          <label>数据集版本<input className="antd-input" aria-label="评测集版本" value={evaluationDataset.version} onChange={event => setEvaluationDataset({ ...evaluationDataset, version: event.target.value })} placeholder="例如 2026-07-31" /></label>
+          <label>脱敏 adjudicated 样本 JSON<input className="antd-input kems-json-input" aria-label="脱敏评测样本 JSON" value={evaluationDataset.samples} onChange={event => setEvaluationDataset({ ...evaluationDataset, samples: event.target.value })} placeholder='[{"sample_id":"...","source_ref":"vault://redacted/...","labels":{}}]' /></label>
+          <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'evaluation-manifest'}><ClipboardCheck size={14} /> 登记评测集</button>
+        </form>
+        <form className="kems-panel kems-correction-form" onSubmit={recordEvaluation}>
+          <div className="kems-panel-heading"><div><h3>模型评测运行</h3><span>结果进入 EvaluationStore</span></div><CheckCircle2 size={16} /></div>
+          <label>运行 ID<input className="antd-input" aria-label="评测运行 ID" value={evaluationRun.id} onChange={event => setEvaluationRun({ ...evaluationRun, id: event.target.value })} placeholder="eval-run-1" /></label>
+          <label>模型 ID<input className="antd-input" aria-label="评测模型 ID" value={evaluationRun.model} onChange={event => setEvaluationRun({ ...evaluationRun, model: event.target.value })} placeholder="baseline-exact" /></label>
+          <label>Expected JSON<input className="antd-input kems-json-input" aria-label="Expected JSON" value={evaluationRun.expected} onChange={event => setEvaluationRun({ ...evaluationRun, expected: event.target.value })} /></label>
+          <label>Actual JSON<input className="antd-input kems-json-input" aria-label="Actual JSON" value={evaluationRun.actual} onChange={event => setEvaluationRun({ ...evaluationRun, actual: event.target.value })} placeholder='{"field":"prediction"}' /></label>
+          <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'evaluation-run'}><CheckCircle2 size={14} /> 记录评测结果</button>
+          {evaluationResult && <pre className="kems-json-result" role="status">{JSON.stringify(evaluationResult.evaluation || evaluationResult, null, 2)}</pre>}
         </form>
       </div>
     </section>
