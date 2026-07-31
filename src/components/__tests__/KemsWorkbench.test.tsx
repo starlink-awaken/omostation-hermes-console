@@ -53,6 +53,27 @@ describe('KemsWorkbench', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/sample-1/adjudicate', expect.objectContaining({ method: 'POST' })))
   })
 
+  it('preloads and validates the private-source-review label contract', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === '/api/kems/ocr/review-queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
+      if (url === '/api/kems/adjudication/queue?limit=100') return { ok: true, json: async () => ({ items: [{ sample_id: 'private-1', source_ref: 'vault://redacted/source', scenario_id: 'private-source-review-v1', split: 'shadow', annotation_status: 'pending', labels: {} }] }) } as Response
+      if (url.endsWith('/claim')) return { ok: true, json: async () => ({ item: { sample_id: 'private-1', source_ref: 'vault://redacted/source', scenario_id: 'private-source-review-v1', split: 'shadow', annotation_status: 'reviewed', labels: {} } }) } as Response
+      return { ok: true, json: async () => ({}) } as Response
+    })
+
+    render(<KemsWorkbench />)
+    await waitFor(() => expect(screen.getAllByText('private-1').length).toBeGreaterThanOrEqual(1))
+    expect(String((screen.getByLabelText('结构化 labels JSON') as HTMLTextAreaElement).value)).toContain('source_kind')
+    fireEvent.change(screen.getByLabelText('人工标注人'), { target: { value: 'reviewer-a' } })
+    fireEvent.click(screen.getByRole('button', { name: '领取样本' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/private-1/claim', expect.objectContaining({ method: 'POST' })))
+    fireEvent.change(screen.getByLabelText('结构化 labels JSON'), { target: { value: '{"source_kind":"email"}' } })
+    fireEvent.click(screen.getByRole('button', { name: '提交独立标注' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('标签结构不匹配')
+    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/private-1/annotate'))).toBe(false)
+  })
+
   it('registers an adjudicated manifest and records a model evaluation run', async () => {
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       const url = String(input)
