@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Activity, 
-  Server, 
-  Cpu, 
-  Database, 
-  CheckCircle, 
-  AlertTriangle, 
-  XCircle, 
-  Search, 
-  Settings, 
-  Terminal, 
-  GitCommit, 
-  Network, 
+import React, { useState, useEffect, Suspense } from 'react';
+import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
+import {
+  Activity,
+  Server,
+  Cpu,
+  Database,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Search,
+  Settings,
+  Terminal,
+  GitCommit,
+  Network,
   Trophy,
   LayoutDashboard,
   Heart,
@@ -26,29 +27,7 @@ import {
   Briefcase,
   Brain
 } from 'lucide-react';
-import SandboxTerminal from './SandboxTerminal';
-import MemoryInjector from './MemoryInjector';
-import EnginesView from './EnginesView';
-import SettingsView from './SettingsView';
-import WorkflowsView from './WorkflowsView';
-import TopologyView from './TopologyView';
-import ComputeView from './ComputeView';
-import { DashboardPage as GBrainDashboard } from './GBrain/GBrainDashboard';
-import BrainChat from '../views/BrainChat';
-import DebtView from './DebtView';
-import ObservabilityView from './ObservabilityView';
-import QuestBoard from './QuestBoard';
-import L4HealthView from './L4HealthView';
-import HomePage from './HomePage';
-import AlertCenterPage from './AlertCenterPage';
-import LogViewerPage from './LogViewerPage';
-import TaskCenterPage from './TaskCenterPage';
-import PerformanceMonitorPage from './PerformanceMonitorPage';
-import C2GStrategyView from './C2GStrategyView';
-import Wave2DashboardView from './Wave2DashboardView';
-import McpMeshView from './McpMeshView';
-import AssetsView from './AssetsView';
-import KemsWorkbench from './KemsWorkbench';
+import { ROUTES, getRouteById, getRouteByPath } from '../routes';
 import Breadcrumb from './common/Breadcrumb';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
 import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
@@ -72,36 +51,47 @@ const mockServices: Service[] = [
 ];
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('Home');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   /** TaskCenter search seed from Wave2 proposal handoff (ADR-0192). */
   const [taskSearchSeed, setTaskSearchSeed] = useState('');
 
+  // Derive activeTab from URL path
+  const currentRoute = getRouteByPath(location.pathname);
+  const activeTab = currentRoute?.id ?? 'Home';
+
+  // Navigate to a tab by ID
+  const goTo = (tabId: string) => {
+    const route = getRouteById(tabId);
+    navigate(route?.path ?? '/');
+  };
+
   // 命令面板
   const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette([
-    { id: 'home', label: '首页', description: '返回首页', action: () => setActiveTab('Home') },
-    { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => setActiveTab('Overview') },
-    { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => setActiveTab('McpMesh') },
-    { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => setActiveTab('Topology') },
-    { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => setActiveTab('Compute') },
-    { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => setActiveTab('Knowledge') },
-    { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => setActiveTab('Engines') },
-    { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => setActiveTab('Assets') },
-    { id: 'kems', label: 'KEMS 质量治理', description: '查看 OCR 复核队列与质量证据', action: () => setActiveTab('Kems') },
-    { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
-    { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
-    { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
-    { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => setActiveTab('C2G') },
-    { id: 'wave2', label: 'Wave2 预测面板', description: '热力与治理提案', action: () => setActiveTab('Wave2') },
-    { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
-    { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
-    { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
-    { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => setActiveTab('Sandbox') },
-    { id: 'debt', label: '债务治理', description: '查看债务', action: () => setActiveTab('Debt') },
-    { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => setActiveTab('Observability') },
-    { id: 'quest', label: '积分冒险', description: '查看积分', action: () => setActiveTab('QuestBoard') },
-    { id: 'settings', label: '系统设置', description: '系统设置', action: () => setActiveTab('Settings') },
+    { id: 'home', label: '首页', description: '返回首页', action: () => goTo('Home') },
+    { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => goTo('Overview') },
+    { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => goTo('McpMesh') },
+    { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => goTo('Topology') },
+    { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => goTo('Compute') },
+    { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => goTo('Knowledge') },
+    { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => goTo('Engines') },
+    { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => goTo('Assets') },
+    { id: 'kems', label: 'KEMS 质量治理', description: '查看 OCR 复核队列与质量证据', action: () => goTo('Kems') },
+    { id: 'workflows', label: '工作流', description: '查看工作流', action: () => goTo('Workflows') },
+    { id: 'alerts', label: '告警中心', description: '查看告警', action: () => goTo('AlertCenter') },
+    { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => goTo('L4Health') },
+    { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => goTo('C2G') },
+    { id: 'wave2', label: 'Wave2 预测面板', description: '热力与治理提案', action: () => goTo('Wave2') },
+    { id: 'logs', label: '日志查看器', description: '查看日志', action: () => goTo('LogViewer') },
+    { id: 'tasks', label: '任务中心', description: '查看任务', action: () => goTo('TaskCenter') },
+    { id: 'performance', label: '性能监控', description: '查看性能', action: () => goTo('Performance') },
+    { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => goTo('Sandbox') },
+    { id: 'debt', label: '债务治理', description: '查看债务', action: () => goTo('Debt') },
+    { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => goTo('Observability') },
+    { id: 'quest', label: '积分冒险', description: '查看积分', action: () => goTo('QuestBoard') },
+    { id: 'settings', label: '系统设置', description: '系统设置', action: () => goTo('Settings') },
   ]);
 
   // 快捷操作面板
@@ -112,11 +102,11 @@ export default function Dashboard() {
     shortcuts: [
       { key: 'k', ctrl: true, description: '打开命令面板', action: openCommandPalette },
       { key: 'j', ctrl: true, description: '打开快捷操作', action: openQuickActions },
-      { key: '1', ctrl: true, description: '首页', action: () => setActiveTab('Home') },
-      { key: '2', ctrl: true, description: '概览', action: () => setActiveTab('Overview') },
-      { key: '3', ctrl: true, description: '告警', action: () => setActiveTab('AlertCenter') },
-      { key: '4', ctrl: true, description: '日志', action: () => setActiveTab('LogViewer') },
-      { key: '5', ctrl: true, description: '任务', action: () => setActiveTab('TaskCenter') },
+      { key: '1', ctrl: true, description: '首页', action: () => goTo('Home') },
+      { key: '2', ctrl: true, description: '概览', action: () => goTo('Overview') },
+      { key: '3', ctrl: true, description: '告警', action: () => goTo('AlertCenter') },
+      { key: '4', ctrl: true, description: '日志', action: () => goTo('LogViewer') },
+      { key: '5', ctrl: true, description: '任务', action: () => goTo('TaskCenter') },
     ],
   });
 
@@ -130,7 +120,7 @@ export default function Dashboard() {
       case 'McpMesh':
       case 'Topology':
       case 'Compute':
-        items.push({ label: '运行大盘', onClick: () => setActiveTab('Overview') });
+        items.push({ label: '运行大盘', onClick: () => goTo('Overview') });
         break;
       case 'Knowledge':
       case 'Engines':
@@ -138,26 +128,26 @@ export default function Dashboard() {
       case 'Kems':
       case 'Brain':
       case 'Workflows':
-        items.push({ label: '智能与知识', onClick: () => setActiveTab('Knowledge') });
+        items.push({ label: '智能与知识', onClick: () => goTo('Knowledge') });
         break;
       case 'AlertCenter':
       case 'L4Health':
       case 'Debt':
       case 'Observability':
       case 'C2G':
-        items.push({ label: '系统治理', onClick: () => setActiveTab('AlertCenter') });
+        items.push({ label: '系统治理', onClick: () => goTo('AlertCenter') });
         break;
       case 'LogViewer':
       case 'TaskCenter':
       case 'Performance':
       case 'Sandbox':
-        items.push({ label: '开发工具', onClick: () => setActiveTab('LogViewer') });
+        items.push({ label: '开发工具', onClick: () => goTo('LogViewer') });
         break;
       case 'QuestBoard':
-        items.push({ label: '亲子冒险', onClick: () => setActiveTab('QuestBoard') });
+        items.push({ label: '亲子冒险', onClick: () => goTo('QuestBoard') });
         break;
       case 'Settings':
-        items.push({ label: '系统配置', onClick: () => setActiveTab('Settings') });
+        items.push({ label: '系统配置', onClick: () => goTo('Settings') });
         break;
     }
     items.push({ label: hero.title.split(' (')[0] });
@@ -298,7 +288,7 @@ export default function Dashboard() {
             aria-describedby="group-home"
             aria-selected={activeTab === 'Home'}
             className={`nav-item ${activeTab === 'Home' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Home')}
+            onClick={() => goTo('Home')}
           >
             <LayoutDashboard size={16} aria-hidden="true" />
             <span>首页</span>
@@ -311,7 +301,7 @@ export default function Dashboard() {
             aria-describedby="group-monitoring"
             aria-selected={activeTab === 'Overview'}
             className={`nav-item ${activeTab === 'Overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Overview')}
+            onClick={() => goTo('Overview')}
           >
             <LayoutDashboard size={16} aria-hidden="true" />
             <span>概览中心</span>
@@ -321,7 +311,7 @@ export default function Dashboard() {
             aria-describedby="group-monitoring"
             aria-selected={activeTab === 'McpMesh'}
             className={`nav-item ${activeTab === 'McpMesh' ? 'active' : ''}`}
-            onClick={() => setActiveTab('McpMesh')}
+            onClick={() => goTo('McpMesh')}
           >
             <Globe size={16} aria-hidden="true" />
             <span>网格与 MCP</span>
@@ -331,7 +321,7 @@ export default function Dashboard() {
             aria-describedby="group-monitoring"
             aria-selected={activeTab === 'Topology'}
             className={`nav-item ${activeTab === 'Topology' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Topology')}
+            onClick={() => goTo('Topology')}
           >
             <Network size={16} aria-hidden="true" />
             <span>全局拓扑</span>
@@ -341,7 +331,7 @@ export default function Dashboard() {
             aria-describedby="group-monitoring"
             aria-selected={activeTab === 'Compute'}
             className={`nav-item ${activeTab === 'Compute' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Compute')}
+            onClick={() => goTo('Compute')}
           >
             <Cpu size={16} aria-hidden="true" />
             <span>算力调配</span>
@@ -354,7 +344,7 @@ export default function Dashboard() {
             aria-describedby="group-intelligence"
             aria-selected={activeTab === 'Knowledge'}
             className={`nav-item ${activeTab === 'Knowledge' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Knowledge')}
+            onClick={() => goTo('Knowledge')}
           >
             <Database size={16} aria-hidden="true" />
             <span>知识中枢</span>
@@ -364,7 +354,7 @@ export default function Dashboard() {
             aria-describedby="group-intelligence"
             aria-selected={activeTab === 'Engines'}
             className={`nav-item ${activeTab === 'Engines' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Engines')}
+            onClick={() => goTo('Engines')}
           >
             <Cpu size={16} aria-hidden="true" />
             <span>引擎调度</span>
@@ -374,7 +364,7 @@ export default function Dashboard() {
             aria-describedby="group-intelligence"
             aria-selected={activeTab === 'Assets'}
             className={`nav-item ${activeTab === 'Assets' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Assets')}
+            onClick={() => goTo('Assets')}
           >
             <Briefcase size={16} aria-hidden="true" />
             <span>技术资产库</span>
@@ -384,7 +374,7 @@ export default function Dashboard() {
             aria-describedby="group-intelligence"
             aria-selected={activeTab === 'Kems'}
             className={`nav-item ${activeTab === 'Kems' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Kems')}
+            onClick={() => goTo('Kems')}
           >
             <FileText size={16} aria-hidden="true" />
             <span>KEMS 质量治理</span>
@@ -397,7 +387,7 @@ export default function Dashboard() {
             aria-describedby="group-brain"
             aria-selected={activeTab === 'Brain'}
             className={`nav-item ${activeTab === 'Brain' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Brain')}
+            onClick={() => goTo('Brain')}
           >
             <Brain size={16} aria-hidden="true" />
             <span>个人数字大脑</span>
@@ -407,7 +397,7 @@ export default function Dashboard() {
             aria-describedby="group-intelligence"
             aria-selected={activeTab === 'Workflows'}
             className={`nav-item ${activeTab === 'Workflows' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Workflows')}
+            onClick={() => goTo('Workflows')}
           >
             <GitCommit size={16} aria-hidden="true" />
             <span>MetaOS 工作流</span>
@@ -420,7 +410,7 @@ export default function Dashboard() {
             aria-describedby="group-governance"
             aria-selected={activeTab === 'C2G'}
             className={`nav-item ${activeTab === 'C2G' ? 'active' : ''}`}
-            onClick={() => setActiveTab('C2G')}
+            onClick={() => goTo('C2G')}
           >
             <Compass size={16} aria-hidden="true" />
             <span>C2G 战略中心</span>
@@ -430,7 +420,7 @@ export default function Dashboard() {
             aria-describedby="group-governance"
             aria-selected={activeTab === 'Wave2'}
             className={`nav-item ${activeTab === 'Wave2' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Wave2')}
+            onClick={() => goTo('Wave2')}
           >
             <BarChart3 size={16} aria-hidden="true" />
             <span>Wave2 预测面板</span>
@@ -440,7 +430,7 @@ export default function Dashboard() {
             aria-describedby="group-governance"
             aria-selected={activeTab === 'AlertCenter'}
             className={`nav-item ${activeTab === 'AlertCenter' ? 'active' : ''}`}
-            onClick={() => setActiveTab('AlertCenter')}
+            onClick={() => goTo('AlertCenter')}
           >
             <Bell size={16} aria-hidden="true" />
             <span>告警中心</span>
@@ -450,7 +440,7 @@ export default function Dashboard() {
             aria-describedby="group-governance"
             aria-selected={activeTab === 'L4Health'}
             className={`nav-item ${activeTab === 'L4Health' ? 'active' : ''}`}
-            onClick={() => setActiveTab('L4Health')}
+            onClick={() => goTo('L4Health')}
           >
             <Heart size={16} aria-hidden="true" />
             <span>L4 域健康</span>
@@ -460,7 +450,7 @@ export default function Dashboard() {
             aria-describedby="group-governance"
             aria-selected={activeTab === 'Debt'}
             className={`nav-item ${activeTab === 'Debt' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Debt')}
+            onClick={() => goTo('Debt')}
           >
             <Trophy size={16} aria-hidden="true" />
             <span>技术债务</span>
@@ -470,7 +460,7 @@ export default function Dashboard() {
             aria-describedby="group-governance"
             aria-selected={activeTab === 'Observability'}
             className={`nav-item ${activeTab === 'Observability' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Observability')}
+            onClick={() => goTo('Observability')}
           >
             <Activity size={16} aria-hidden="true" />
             <span>运行可观测</span>
@@ -482,7 +472,7 @@ export default function Dashboard() {
             aria-describedby="group-devtools"
             aria-selected={activeTab === 'LogViewer'}
             className={`nav-item ${activeTab === 'LogViewer' ? 'active' : ''}`}
-            onClick={() => setActiveTab('LogViewer')}
+            onClick={() => goTo('LogViewer')}
           >
             <FileText size={16} aria-hidden="true" />
             <span>日志查看器</span>
@@ -492,7 +482,7 @@ export default function Dashboard() {
             aria-describedby="group-devtools"
             aria-selected={activeTab === 'TaskCenter'}
             className={`nav-item ${activeTab === 'TaskCenter' ? 'active' : ''}`}
-            onClick={() => setActiveTab('TaskCenter')}
+            onClick={() => goTo('TaskCenter')}
           >
             <ClipboardList size={16} aria-hidden="true" />
             <span>任务中心</span>
@@ -502,7 +492,7 @@ export default function Dashboard() {
             aria-describedby="group-devtools"
             aria-selected={activeTab === 'Performance'}
             className={`nav-item ${activeTab === 'Performance' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Performance')}
+            onClick={() => goTo('Performance')}
           >
             <BarChart3 size={16} aria-hidden="true" />
             <span>性能监控</span>
@@ -512,7 +502,7 @@ export default function Dashboard() {
             aria-describedby="group-devtools"
             aria-selected={activeTab === 'Sandbox'}
             className={`nav-item ${activeTab === 'Sandbox' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Sandbox')}
+            onClick={() => goTo('Sandbox')}
           >
             <Terminal size={16} aria-hidden="true" />
             <span>隔离沙箱</span>
@@ -525,7 +515,7 @@ export default function Dashboard() {
             aria-describedby="group-gamification"
             aria-selected={activeTab === 'QuestBoard'}
             className={`nav-item ${activeTab === 'QuestBoard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('QuestBoard')}
+            onClick={() => goTo('QuestBoard')}
             style={{ fontWeight: '500' }}
           >
             <Trophy size={16} aria-hidden="true" className="text-warning" />
@@ -539,7 +529,7 @@ export default function Dashboard() {
             aria-describedby="group-config"
             aria-selected={activeTab === 'Settings'}
             className={`nav-item ${activeTab === 'Settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('Settings')}
+            onClick={() => goTo('Settings')}
           >
             <Settings size={16} aria-hidden="true" />
             <span>底层设置</span>
@@ -589,7 +579,7 @@ export default function Dashboard() {
           </div>
 
           {activeTab === 'Home' && (
-            <HomePage onTabChange={setActiveTab} />
+            <HomePage onTabChange={goTo} />
           )}
 
           {activeTab === 'Overview' && (
@@ -700,10 +690,10 @@ export default function Dashboard() {
 
           {activeTab === 'Wave2' && (
             <Wave2DashboardView
-              onNavigate={setActiveTab}
+              onNavigate={goTo}
               onOpenTarget={(t) => {
                 if (t.taskQuery) setTaskSearchSeed(t.taskQuery);
-                if (t.tab) setActiveTab(t.tab);
+                if (t.tab) goTo(t.tab);
               }}
             />
           )}
@@ -761,29 +751,29 @@ export default function Dashboard() {
         isOpen={isCommandPaletteOpen}
         onClose={closeCommandPalette}
         commands={[
-          { id: 'home', label: '首页', description: '返回首页', action: () => setActiveTab('Home') },
-          { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => setActiveTab('Overview') },
-          { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => setActiveTab('Topology') },
-          { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => setActiveTab('Compute') },
-          { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => setActiveTab('Knowledge') },
-          { id: 'brain', label: '个人数字大脑', description: '与 AI 助手对话', action: () => setActiveTab('Brain') },
-          { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => setActiveTab('Engines') },
-          { id: 'workflows', label: '工作流', description: '查看工作流', action: () => setActiveTab('Workflows') },
-          { id: 'alerts', label: '告警中心', description: '查看告警', action: () => setActiveTab('AlertCenter') },
-          { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => setActiveTab('L4Health') },
-          { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => setActiveTab('C2G') },
-          { id: 'wave2', label: 'Wave2 预测面板', description: '热力与治理提案', action: () => setActiveTab('Wave2') },
-          { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => setActiveTab('McpMesh') },
-          { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => setActiveTab('Assets') },
-          { id: 'kems', label: 'KEMS 质量治理', description: '查看 OCR 复核队列与质量证据', action: () => setActiveTab('Kems') },
-          { id: 'logs', label: '日志查看器', description: '查看日志', action: () => setActiveTab('LogViewer') },
-          { id: 'tasks', label: '任务中心', description: '查看任务', action: () => setActiveTab('TaskCenter') },
-          { id: 'performance', label: '性能监控', description: '查看性能', action: () => setActiveTab('Performance') },
-          { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => setActiveTab('Sandbox') },
-          { id: 'debt', label: '债务治理', description: '查看债务', action: () => setActiveTab('Debt') },
-          { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => setActiveTab('Observability') },
-          { id: 'quest', label: '积分冒险', description: '查看积分', action: () => setActiveTab('QuestBoard') },
-          { id: 'settings', label: '系统设置', description: '系统设置', action: () => setActiveTab('Settings') },
+          { id: 'home', label: '首页', description: '返回首页', action: () => goTo('Home') },
+          { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => goTo('Overview') },
+          { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => goTo('Topology') },
+          { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => goTo('Compute') },
+          { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => goTo('Knowledge') },
+          { id: 'brain', label: '个人数字大脑', description: '与 AI 助手对话', action: () => goTo('Brain') },
+          { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => goTo('Engines') },
+          { id: 'workflows', label: '工作流', description: '查看工作流', action: () => goTo('Workflows') },
+          { id: 'alerts', label: '告警中心', description: '查看告警', action: () => goTo('AlertCenter') },
+          { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => goTo('L4Health') },
+          { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => goTo('C2G') },
+          { id: 'wave2', label: 'Wave2 预测面板', description: '热力与治理提案', action: () => goTo('Wave2') },
+          { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => goTo('McpMesh') },
+          { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => goTo('Assets') },
+          { id: 'kems', label: 'KEMS 质量治理', description: '查看 OCR 复核队列与质量证据', action: () => goTo('Kems') },
+          { id: 'logs', label: '日志查看器', description: '查看日志', action: () => goTo('LogViewer') },
+          { id: 'tasks', label: '任务中心', description: '查看任务', action: () => goTo('TaskCenter') },
+          { id: 'performance', label: '性能监控', description: '查看性能', action: () => goTo('Performance') },
+          { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => goTo('Sandbox') },
+          { id: 'debt', label: '债务治理', description: '查看债务', action: () => goTo('Debt') },
+          { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => goTo('Observability') },
+          { id: 'quest', label: '积分冒险', description: '查看积分', action: () => goTo('QuestBoard') },
+          { id: 'settings', label: '系统设置', description: '系统设置', action: () => goTo('Settings') },
         ]}
       />
 
