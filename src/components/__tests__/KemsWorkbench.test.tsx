@@ -70,6 +70,30 @@ describe('KemsWorkbench', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('accuracy')
   })
 
+  it('submits a redacted candidate model evaluation and keeps promotion blocked', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === '/api/kems/ocr/review-queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
+      if (url === '/api/kems/adjudication/queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
+      if (url.includes('/api/kems/models/candidates/candidate-v1/evaluation')) {
+        return { ok: true, json: async () => ({ evaluation: { status: 'shadow_pass', promotion: 'blocked_until_omo_approval' } }) } as Response
+      }
+      return { ok: true, json: async () => ({}) } as Response
+    })
+
+    render(<KemsWorkbench />)
+    await waitFor(() => expect(screen.getByText('当前没有待复核样本')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('候选模型运行 ID'), { target: { value: 'model-run-1' } })
+    fireEvent.change(screen.getByLabelText('候选模型 ID'), { target: { value: 'candidate-v1' } })
+    fireEvent.change(screen.getByLabelText('候选模型脱敏数值样本 JSON'), { target: { value: '[{"case_id":"case-1","predictions":[10],"actual":[11],"baseline_value":8}]' } })
+    fireEvent.click(screen.getByRole('button', { name: '运行 Shadow 评测' }))
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/models/candidates/candidate-v1/evaluation', expect.objectContaining({ method: 'POST' })))
+    expect(await screen.findByRole('status')).toHaveTextContent('blocked_until_omo_approval')
+    const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).includes('/api/kems/models/candidates/candidate-v1/evaluation'))
+    expect(String(call?.[1]?.body)).not.toContain('raw_text')
+  })
+
   it('registers an adjudicated manifest and records a model evaluation run', async () => {
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       const url = String(input)
