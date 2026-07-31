@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { api } from './api';
+import { gbrain } from '../../api/gbrain';
 
 interface CalibrationProfileSummary {
   holder: string;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BarChart3, Database, Users, Settings2, FileText, Activity, ShieldAlert, Heart, Shield } from 'lucide-react';
-import { api } from './api';
+import { gbrain } from '../../api/gbrain';
 import { LoginPage } from './Login';
 import { AgentsPage } from './Agents';
 import { CalibrationPage } from './Calibration';
@@ -28,9 +28,9 @@ export function DashboardPage() {
 
   const loadStatsAndHealth = async () => {
     try {
-      const statsData = await api.stats();
+      const statsData = await gbrain.stats();
       setStats(statsData);
-      const healthData = await api.health();
+      const healthData = await gbrain.health();
       setHealth(healthData);
       setIsAuthenticated(true);
     } catch (err: any) {

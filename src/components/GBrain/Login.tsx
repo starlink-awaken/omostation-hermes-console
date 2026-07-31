@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { api } from './api';
+import { gbrain } from '../../api/gbrain';
 
 // v0.26.3 trust model (D11 + D12):
 // - The bootstrap token is NEVER stored in browser JS state. No
@@ -23,7 +23,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
     setError('');
     setLoading(true);
     try {
-      await api.login(token);
+      await gbrain.login(token);
       // Don't persist the token. The HttpOnly cookie is the only
       // session credential after this point.
       setToken('');

@@ -174,10 +174,37 @@ export const PROPOSAL_ENDPOINTS = {
 // ── GBrain ──
 
 export const GBRAIN_ENDPOINTS = {
+  /** Login */
+  login: '/admin/login',
+  /** Sign out everywhere */
+  signOutEverywhere: '/admin/api/sign-out-everywhere',
+  /** Get stats */
+  getStats: '/admin/api/stats',
+  /** Get health indicators */
+  getHealth: '/admin/api/health-indicators',
   /** List agents */
   listAgents: '/admin/api/agents',
   /** Get agent by ID */
   getAgent: (agentId: string) => `/admin/api/agents/${agentId}`,
+  /** List requests */
+  listRequests: (page: number = 1, qs: string = '') =>
+    `/admin/api/requests?page=${page}${qs}`,
+  /** List API keys */
+  listApiKeys: '/admin/api/api-keys',
+  /** Create API key */
+  createApiKey: '/admin/api/api-keys',
+  /** Revoke API key */
+  revokeApiKey: '/admin/api/api-keys/revoke',
+  /** Update client TTL */
+  updateClientTtl: '/admin/api/update-client-ttl',
+  /** Revoke client */
+  revokeClient: '/admin/api/revoke-client',
+  /** Get calibration profile */
+  getCalibrationProfile: (holder?: string) =>
+    `/admin/api/calibration/profile${holder ? `?holder=${encodeURIComponent(holder)}` : ''}`,
+  /** Get calibration chart (returns SVG text) */
+  getCalibrationChart: (type: string, holder?: string) =>
+    `/admin/api/calibration/charts/${encodeURIComponent(type)}${holder ? `?holder=${encodeURIComponent(holder)}` : ''}`,
 } as const;
 
 // ── Quests ──

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from './api';
+import { gbrain } from '../../api/gbrain';
 
 interface LogEntry {
   id: number;
@@ -25,7 +25,7 @@ export function RequestLogPage() {
 
   const loadPage = (p: number) => {
     const qs = agentFilter !== 'all' ? `&agent=${encodeURIComponent(agentFilter)}` : '';
-    api.requests(p, qs).then(setData).catch(() => {});
+    gbrain.requests(p, qs).then(setData).catch(() => {});
   };
 
   const timeAgo = (ts: string) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from './api';
+import { gbrain } from '../../api/gbrain';
 import { ALLOWED_SCOPES_LIST, type Scope } from './scope-constants';
 
 function timeAgo(date: Date): string {
@@ -45,7 +45,7 @@ export function AgentsPage() {
 
   useEffect(() => { loadAgents(); }, []);
 
-  const loadAgents = () => { api.agents().then(setAgents).catch(() => {}); };
+  const loadAgents = () => { gbrain.agents().then(setAgents).catch(() => {}); };
 
   return (
     <>
@@ -174,7 +174,7 @@ function ApiKeyCreateModal({ onClose, onCreated }: {
     if (!name.trim()) { setError('Name required'); return; }
     setLoading(true);
     try {
-      const data = await api.createApiKey(name.trim());
+      const data = await gbrain.createApiKey(name.trim());
       onCreated({ name: data.name, token: data.token });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -612,9 +612,9 @@ function AgentDrawer({ agent, onClose, onRevoked }: { agent: Agent; onClose: () 
               if (!confirm(`Revoke ${agent.name || agent.client_name}? All active tokens will be invalidated.`)) return;
               try {
                 if (agent.auth_type === 'oauth') {
-                  await api.revokeClient(agent.id || agent.client_id || '');
+                  await gbrain.revokeClient(agent.id || agent.client_id || '');
                 } else {
-                  await api.revokeApiKey(agent.name || '');
+                  await gbrain.revokeApiKey(agent.name || '');
                 }
                 onRevoked();
                 onClose();
