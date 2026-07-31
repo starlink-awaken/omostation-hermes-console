@@ -55,6 +55,7 @@ import {
 import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
 import { SIDEBAR_NAV_SECTIONS, GROUP_ENTRY_TABS, NAV_ICON_BY_TAB, pageGroupLabel } from './dashboardConstants';
 import { DashboardSidebar } from './DashboardSidebar';
+import { DashboardTopbar } from './DashboardTopbar';
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import {
   findTaskDraftForTarget,
@@ -1300,6 +1301,24 @@ export default function Dashboard() {
   const activeSearchResultIndex = searchResults.length > 0
     ? Math.min(searchResultIndex, searchResults.length - 1)
     : 0;
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' && searchResults.length > 0) {
+      event.preventDefault();
+      setSearchResultIndex((index) => Math.min(index + 1, searchResults.length - 1));
+    }
+    if (event.key === 'ArrowUp' && searchResults.length > 0) {
+      event.preventDefault();
+      setSearchResultIndex((index) => Math.max(index - 1, 0));
+    }
+    if (event.key === 'Enter' && searchResults[activeSearchResultIndex]) {
+      openSearchTarget(searchResults[activeSearchResultIndex]);
+    }
+    if (event.key === 'Escape') {
+      setSearchQuery('');
+      setSearchResultIndex(0);
+    }
+  };
 
   const shellActions = useMemo(() => {
     const items: DashboardShellAction[] = [];
@@ -4374,134 +4393,25 @@ export default function Dashboard() {
 
       {/* Main Content Area (a11y skip target) */}
       <main id="main-content" tabIndex={-1} className="main-content" style={{ outline: 'none' }}>
-        <header className="topbar">
-          <button
-            type="button"
-            className="topbar-btn mobile-nav-toggle"
-            ref={mobileNavToggleRef}
-            aria-label={mobileNavOpen ? '关闭主导航' : '打开主导航'}
-            aria-expanded={mobileNavOpen}
-            onClick={() => setMobileNavOpen((open) => !open)}
-          >
-            {mobileNavOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
-          </button>
-          <div className="topbar-search-wrap" role="search">
-            <div className="search-bar">
-              <Search size={16} className="text-muted" aria-hidden="true" />
-              <input
-                ref={globalSearchInputRef}
-                type="text"
-                placeholder="搜索页面、项目、能力..."
-                aria-label="全局搜索输入框"
-                aria-controls="cockpit-global-search-results"
-                aria-expanded={Boolean(searchQuery.trim())}
-                aria-activedescendant={searchResults[activeSearchResultIndex] ? `cockpit-search-result-${searchResults[activeSearchResultIndex].id}` : undefined}
-                value={searchQuery}
-                onChange={(event) => {
-                  setSearchQuery(event.target.value);
-                  setSearchResultIndex(0);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'ArrowDown' && searchResults.length > 0) {
-                    event.preventDefault();
-                    setSearchResultIndex((index) => Math.min(index + 1, searchResults.length - 1));
-                  }
-                  if (event.key === 'ArrowUp' && searchResults.length > 0) {
-                    event.preventDefault();
-                    setSearchResultIndex((index) => Math.max(index - 1, 0));
-                  }
-                  if (event.key === 'Enter' && searchResults[activeSearchResultIndex]) {
-                    openSearchTarget(searchResults[activeSearchResultIndex]);
-                  }
-                  if (event.key === 'Escape') {
-                    setSearchQuery('');
-                    setSearchResultIndex(0);
-                  }
-                }}
-              />
-            </div>
-            {searchQuery.trim() && (
-              <div id="cockpit-global-search-results" className="topbar-search-results" role="listbox" aria-label="全局搜索结果">
-                {searchResults.length > 0 ? searchResults.map((target) => (
-                  <button
-                    key={target.id}
-                    id={`cockpit-search-result-${target.id}`}
-                    type="button"
-                    role="option"
-                    aria-selected={searchResults[activeSearchResultIndex]?.id === target.id}
-                    className="topbar-search-result"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() => setSearchResultIndex(searchResults.findIndex((item) => item.id === target.id))}
-                    onClick={() => openSearchTarget(target)}
-                  >
-                    <span>{target.label}</span>
-                    <small>{target.group} · {target.keywords.slice(0, 3).join(' / ')}</small>
-                  </button>
-                )) : (
-                  <div className="topbar-search-empty">没有匹配入口</div>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="topbar-actions">
-            <button
-              type="button"
-              className="topbar-btn"
-              aria-label="刷新当前页面数据"
-              title="刷新当前页面数据"
-              onClick={() => setPageRefreshToken((value) => value + 1)}
-            >
-              <RefreshCw size={16} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="topbar-btn topbar-export"
-              aria-label="导出全站运行快照"
-              title="导出全站运行快照"
-              disabled={snapshotExportState === 'exporting'}
-              onClick={() => { window.dispatchEvent(new Event('cockpit:export-snapshot')); }}
-            >
-              <Download size={16} aria-hidden="true" />
-            </button>
-            {snapshotExportState !== 'idle' && (
-              <span className="text-muted" role="status" aria-live="polite">
-                {snapshotExportState === 'exporting' ? '导出中...' : snapshotExportState === 'success' ? '快照已导出' : '快照导出失败'}
-              </span>
-            )}
-            <button
-              type="button"
-              className="topbar-btn topbar-link"
-              aria-label="复制当前页面链接"
-              title="复制当前页面链接"
-              onClick={() => { void copyCurrentNavigationLink(); }}
-            >
-              <Link2 size={16} aria-hidden="true" />
-            </button>
-            {linkCopyState !== 'idle' && (
-              <span className="text-muted" role="status" aria-live="polite">
-                {linkCopyState === 'success' ? '链接已复制' : '复制失败'}
-              </span>
-            )}
-            <button
-              className="topbar-btn"
-              onClick={openCommandPalette}
-              title="命令面板 (Ctrl+K)"
-            >
-              <Command size={16} />
-            </button>
-            <button
-              className="topbar-btn"
-              onClick={openQuickActions}
-              title="快捷操作 (Ctrl+J)"
-            >
-              <Zap size={16} />
-            </button>
-          </div>
-          <div className="user-profile" role="button" aria-label="个人中心，管理员" tabIndex={0}>
-            <div className="avatar" aria-hidden="true">AD</div>
-            <span>管理员</span>
-          </div>
-        </header>
+                <DashboardTopbar
+          mobileNavToggleRef={mobileNavToggleRef}
+          mobileNavOpen={mobileNavOpen}
+          onToggleMobileNav={() => setMobileNavOpen((open) => !open)}
+          globalSearchInputRef={globalSearchInputRef}
+          searchQuery={searchQuery}
+          searchResults={searchResults}
+          activeSearchResultIndex={activeSearchResultIndex}
+          onSearchQueryChange={setSearchQuery}
+          onSearchResultIndexChange={setSearchResultIndex}
+          onSearchKeyDown={handleSearchKeyDown}
+          onSearchTargetSelect={openSearchTarget}
+          onRefresh={() => setPageRefreshToken((v) => v + 1)}
+          snapshotExportState={snapshotExportState}
+          linkCopyState={linkCopyState}
+          onCopyLink={copyCurrentNavigationLink}
+          onOpenCommandPalette={openCommandPalette}
+          onOpenQuickActions={openQuickActions}
+        />
 
         <div className="content-area">
           {/* 面包屑导航 */}
