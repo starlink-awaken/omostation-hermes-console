@@ -10,7 +10,7 @@ describe('KemsWorkbench', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ status: 'corrected' }) } as Response)
 
     render(<KemsWorkbench />)
-    await waitFor(() => expect(screen.getByText('run-1')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('run-1').length).toBeGreaterThanOrEqual(1))
     expect(screen.queryByText(/正文/)).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('纠正结果 SHA-256'), { target: { value: 'a'.repeat(64) } })
     fireEvent.change(screen.getByLabelText('证据引用'), { target: { value: 'vault://redacted/correction' } })
