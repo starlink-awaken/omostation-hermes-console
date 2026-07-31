@@ -13,10 +13,10 @@ describe('KemsWorkbench', () => {
     await waitFor(() => expect(screen.getAllByText('run-1').length).toBeGreaterThanOrEqual(1))
     expect(screen.queryByText(/正文/)).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('纠正结果 SHA-256'), { target: { value: 'a'.repeat(64) } })
-    fireEvent.change(screen.getByLabelText('证据引用'), { target: { value: 'vault://redacted/correction' } })
+    fireEvent.change(screen.getByLabelText('纠正证据引用'), { target: { value: 'vault://redacted/correction' } })
     fireEvent.change(screen.getByLabelText('标注人'), { target: { value: 'reviewer-1' } })
     fireEvent.click(screen.getByRole('button', { name: /提交并进入复核/ }))
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/ocr/runs/run-1/correction', expect.objectContaining({ method: 'POST' })))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/ocr/runs/run-1/correction', expect.objectContaining({ method: 'POST', body: expect.stringContaining('correction_ref') })))
   })
 
   it('registers an adjudicated manifest and records a model evaluation run', async () => {

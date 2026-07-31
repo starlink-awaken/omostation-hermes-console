@@ -29,7 +29,7 @@ export default function KemsWorkbench() {
   const [selected, setSelected] = useState<RunDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [correction, setCorrection] = useState({ corrected_sha256: '', evidence_ref: '', annotator: '' })
+  const [correction, setCorrection] = useState({ corrected_sha256: '', correction_ref: '', annotator: '' })
   const [saving, setSaving] = useState(false)
   const [graphQuery, setGraphQuery] = useState('')
   const [graphItems, setGraphItems] = useState<GraphEntity[]>([])
@@ -73,7 +73,7 @@ export default function KemsWorkbench() {
 
   const submitCorrection = async (event: FormEvent) => {
     event.preventDefault()
-    if (!selected || !correction.corrected_sha256 || !correction.evidence_ref || !correction.annotator) return
+    if (!selected || !correction.corrected_sha256 || !correction.correction_ref || !correction.annotator) return
     setSaving(true)
     try {
       await api(`/api/kems/ocr/runs/${selected.run_id}/correction`, {
@@ -81,7 +81,7 @@ export default function KemsWorkbench() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(correction),
       })
-      setCorrection({ corrected_sha256: '', evidence_ref: '', annotator: '' })
+      setCorrection({ corrected_sha256: '', correction_ref: '', annotator: '' })
       await loadQueue()
       setSelected(await api(`/api/kems/ocr/runs/${selected.run_id}`))
     } catch (err) {
@@ -192,7 +192,7 @@ export default function KemsWorkbench() {
             <div className="kems-panel-heading"><div><h3>运行证据</h3><span className="kems-run-id">{selected.run_id}</span></div><span className="kems-status"><CheckCircle2 size={14} /> {statusLabel(selected.review_status)}</span></div>
             <dl className="kems-metadata"><div><dt>来源引用</dt><dd>{selected.source_ref || '未提供'}</dd></div><div><dt>证据引用</dt><dd>{selected.evidence_ref || '未提供'}</dd></div><div><dt>提取器版本</dt><dd>{selected.extractor_version || '未提供'}</dd></div><div><dt>准入状态</dt><dd>{selected.admitted ? '允许进入知识摄取' : '需要人工复核'}</dd></div></dl>
             <div className="kems-metrics"><h4>质量指标</h4>{Object.entries(selected.metrics || {}).map(([key, value]) => <div key={key}><span>{key}</span><strong>{typeof value === 'number' ? value.toFixed(3) : value}</strong></div>)}</div>
-            <form className="kems-correction-form" onSubmit={submitCorrection}><h4>提交人工纠正</h4><p>仅提交纠正结果的哈希和证据引用，正文始终留在受控存储中。</p><label>纠正结果 SHA-256<input className="antd-input" value={correction.corrected_sha256} onChange={e => setCorrection({ ...correction, corrected_sha256: e.target.value })} required /></label><label>证据引用<input className="antd-input" value={correction.evidence_ref} onChange={e => setCorrection({ ...correction, evidence_ref: e.target.value })} required /></label><label>标注人<input className="antd-input" value={correction.annotator} onChange={e => setCorrection({ ...correction, annotator: e.target.value })} required /></label><button className="antd-btn antd-btn-primary" disabled={saving || selected.review_status === 'pass'}><CheckCircle2 size={15} /> {saving ? '提交中...' : '提交并进入复核'}</button></form>
+            <form className="kems-correction-form" onSubmit={submitCorrection}><h4>提交人工纠正</h4><p>仅提交纠正结果的哈希和证据引用，正文始终留在受控存储中。</p><label>纠正结果 SHA-256<input className="antd-input" value={correction.corrected_sha256} onChange={e => setCorrection({ ...correction, corrected_sha256: e.target.value })} required /></label><label>纠正证据引用<input className="antd-input" value={correction.correction_ref} onChange={e => setCorrection({ ...correction, correction_ref: e.target.value })} required /></label><label>标注人<input className="antd-input" value={correction.annotator} onChange={e => setCorrection({ ...correction, annotator: e.target.value })} required /></label><button className="antd-btn antd-btn-primary" disabled={saving || selected.review_status === 'pass'}><CheckCircle2 size={15} /> {saving ? '提交中...' : '提交并进入复核'}</button></form>
           </> : <div className="kems-empty"><FileSearch size={20} /> 选择一条复核记录查看详情</div>}
         </div>
       </div>
