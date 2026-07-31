@@ -252,7 +252,7 @@ export default function SandboxTerminal({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开沙箱焦点对象 ${focusedSandboxCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedSandboxCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -261,7 +261,7 @@ export default function SandboxTerminal({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开沙箱焦点任务 ${focusedSandboxCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedSandboxCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -289,7 +289,7 @@ export default function SandboxTerminal({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>实验状态</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>把当前沙箱实验抽成状态卡，方便立刻决定下一步。</p>
@@ -302,7 +302,7 @@ export default function SandboxTerminal({
             </div>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>实验去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>实验不是终点，结果要继续回引擎、日志或任务承接。</p>
@@ -354,7 +354,7 @@ export default function SandboxTerminal({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             <button
               type="button"
-              className="antd-btn antd-btn-primary"
+              className="cockpit-btn cockpit-btn-primary"
               aria-label={`登记沙箱补位任务 ${sandboxTaskDraft.title}`}
               disabled={isCreatingTask}
               onClick={() => void createSandboxTask()}
@@ -364,7 +364,7 @@ export default function SandboxTerminal({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`复制沙箱补位任务 ${sandboxTaskDraft.title}`}
               onClick={async () => {
                 await navigator.clipboard.writeText(sandboxTaskDraft.copyText);
@@ -376,7 +376,7 @@ export default function SandboxTerminal({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开沙箱补位引擎 ${sandboxTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(sandboxTaskDraft.engineTarget, onNavigate, onOpenTarget)}
             >
@@ -385,7 +385,7 @@ export default function SandboxTerminal({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开沙箱补位任务 ${sandboxTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(sandboxTaskDraft.taskTarget, onNavigate, onOpenTarget)}
             >
@@ -394,7 +394,7 @@ export default function SandboxTerminal({
             </button>
             <button
               type="button"
-              className="antd-btn antd-btn-primary"
+              className="cockpit-btn cockpit-btn-primary"
               aria-label="登记当前沙箱结果"
               disabled={isQueueingResult || !output}
               onClick={() => void queueSandboxResult()}
@@ -414,17 +414,17 @@ export default function SandboxTerminal({
           <Terminal size={18} aria-hidden="true" className="text-accent" />
           <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>运行时沙箱 (KEI 隔离)</h2>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--antd-warning)', fontSize: '13px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--cockpit-warning)', fontSize: '13px' }}>
           <ShieldAlert size={14} aria-hidden="true" />
           <span>AST 与进程级沙箱保护已启用</span>
         </div>
       </div>
       
-      <div className="antd-card" style={{ padding: '20px' }}>
+      <div className="cockpit-card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
           {/* Editor */}
           <div style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label htmlFor="sandbox-code-editor" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>Python 待执行代码</label>
+            <label htmlFor="sandbox-code-editor" style={{ fontSize: '13px', color: 'var(--cockpit-text-secondary)' }}>Python 待执行代码</label>
             <textarea 
               id="sandbox-code-editor"
               value={code}
@@ -433,29 +433,29 @@ export default function SandboxTerminal({
                 width: '100%',
                 height: '300px',
                 backgroundColor: 'rgba(6, 9, 19, 0.6)',
-                border: '1px solid var(--antd-border-color)',
-                borderRadius: 'var(--antd-radius-md)',
+                border: '1px solid var(--cockpit-border-color)',
+                borderRadius: 'var(--cockpit-radius-md)',
                 padding: '12px',
-                color: 'var(--antd-primary)',
+                color: 'var(--cockpit-primary)',
                 fontFamily: 'monospace',
                 fontSize: '13px',
                 resize: 'none',
                 outline: 'none',
                 transition: 'all 0.2s'
               }}
-              className="antd-textarea-focus"
+              className="cockpit-textarea-focus"
               onFocus={(e) => {
-                e.target.style.borderColor = 'var(--antd-primary)';
+                e.target.style.borderColor = 'var(--cockpit-primary)';
                 e.target.style.boxShadow = 'var(--tech-cyan-glow)';
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = 'var(--antd-border-color)';
+                e.target.style.borderColor = 'var(--cockpit-border-color)';
                 e.target.style.boxShadow = 'none';
               }}
               spellCheck="false"
             />
             <button 
-              className="antd-btn antd-btn-primary" 
+              className="cockpit-btn cockpit-btn-primary" 
               onClick={handleExecute} 
               disabled={isRunning}
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '4px', width: 'fit-content' }}
@@ -468,7 +468,7 @@ export default function SandboxTerminal({
           
           {/* Output Console */}
           <div style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label htmlFor="sandbox-output" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>控制台标准输出</label>
+            <label htmlFor="sandbox-output" style={{ fontSize: '13px', color: 'var(--cockpit-text-secondary)' }}>控制台标准输出</label>
             <pre 
               id="sandbox-output"
               role="log"
@@ -477,10 +477,10 @@ export default function SandboxTerminal({
                 flex: 1,
                 minHeight: '300px',
                 backgroundColor: 'rgba(6, 9, 19, 0.8)',
-                border: '1px solid var(--antd-border-color)',
-                borderRadius: 'var(--antd-radius-md)',
+                border: '1px solid var(--cockpit-border-color)',
+                borderRadius: 'var(--cockpit-radius-md)',
                 padding: '12px',
-                color: 'var(--antd-text-primary)',
+                color: 'var(--cockpit-text-primary)',
                 fontFamily: 'monospace',
                 fontSize: '12px',
                 whiteSpace: 'pre-wrap',

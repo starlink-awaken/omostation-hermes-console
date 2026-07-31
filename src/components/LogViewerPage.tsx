@@ -438,7 +438,7 @@ export default function LogViewerPage({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开日志焦点对象 ${focusedLogCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedLogCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -447,7 +447,7 @@ export default function LogViewerPage({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开日志焦点任务 ${focusedLogCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedLogCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -471,7 +471,7 @@ export default function LogViewerPage({
           {logClosureRows.map((row) => (
             <article
               key={`log-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -488,7 +488,7 @@ export default function LogViewerPage({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开日志闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -497,7 +497,7 @@ export default function LogViewerPage({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开日志闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -524,7 +524,7 @@ export default function LogViewerPage({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>高优先级日志源</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>优先处理出现 error/fatal 的来源，再回告警与性能页做交叉确认。</p>
@@ -554,7 +554,7 @@ export default function LogViewerPage({
             )}
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               disabled={taskPending}
               onClick={() => { void createLogTask(); }}
             >
@@ -562,7 +562,7 @@ export default function LogViewerPage({
             </button>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>追证据去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>日志本身不够，需要继续回告警、性能和系统地图收口。</p>

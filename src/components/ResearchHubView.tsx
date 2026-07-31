@@ -490,7 +490,7 @@ export default function ResearchHubView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <section className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <section className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div className="section-header" style={{ marginBottom: 0 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 18 }}>研究主旅程</h2>
@@ -498,7 +498,7 @@ export default function ResearchHubView({
               把 `cockpit research` 从 CLI 命令堆，整理成一个能看见对象、上下文、发布和后续动作的站内入口。
             </p>
           </div>
-          <button className="antd-btn" onClick={() => {
+          <button className="cockpit-btn" onClick={() => {
             setRefreshing(true);
             void load();
           }}>
@@ -514,7 +514,7 @@ export default function ResearchHubView({
               <strong>研究数据需要补证</strong>
               <span>{sourceError}，当前空状态不代表没有研究对象。</span>
             </div>
-            <button type="button" className="antd-btn" onClick={() => { setRefreshing(true); void load(); }}>重试</button>
+            <button type="button" className="cockpit-btn" onClick={() => { setRefreshing(true); void load(); }}>重试</button>
           </div>
         )}
 
@@ -536,7 +536,7 @@ export default function ResearchHubView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>
-          <article className="antd-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
+          <article className="cockpit-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
             <div className="section-header" style={{ marginBottom: 12 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>研究到执行链</h3>
@@ -561,7 +561,7 @@ export default function ResearchHubView({
             </div>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
+          <article className="cockpit-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
             <div className="section-header" style={{ marginBottom: 12 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>常用命令</h3>
@@ -580,7 +580,7 @@ export default function ResearchHubView({
                   <div>
                     <strong>{command.label}</strong>
                     <p>{command.detail}</p>
-                    <code style={{ fontSize: 12, color: 'var(--antd-primary)' }}>{command.value}</code>
+                    <code style={{ fontSize: 12, color: 'var(--cockpit-primary)' }}>{command.value}</code>
                   </div>
                   <Copy size={14} />
                 </button>
@@ -618,7 +618,7 @@ export default function ResearchHubView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开研究焦点对象 ${focusedResearchCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedResearchCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -627,7 +627,7 @@ export default function ResearchHubView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开研究焦点任务 ${focusedResearchCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedResearchCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -651,7 +651,7 @@ export default function ResearchHubView({
           {researchClosureRows.map((row) => (
             <article
               key={`research-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -668,7 +668,7 @@ export default function ResearchHubView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开研究闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -677,7 +677,7 @@ export default function ResearchHubView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开研究闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -741,7 +741,7 @@ export default function ResearchHubView({
           </select>
           <button
             type="button"
-            className="antd-btn"
+            className="cockpit-btn"
             aria-label="清除研究筛选"
             onClick={() => { setResearchQuery(''); setResearchStatusFilter('all'); }}
             disabled={!researchQuery && researchStatusFilter === 'all'}
@@ -760,11 +760,11 @@ export default function ResearchHubView({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
           {filteredResearch.length === 0 ? (
-            <div className="antd-card" style={{ padding: 20 }}>
+            <div className="cockpit-card" style={{ padding: 20 }}>
               <p className="text-muted" style={{ margin: 0 }}>{payload.recent.length === 0 ? '还没有研究对象，先从“发起研究”那条命令开始。' : '当前筛选下没有匹配的研究对象。'}</p>
             </div>
           ) : filteredResearch.map((item) => (
-            <article key={item.id} className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <article key={item.id} className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: 15 }}>{item.topic}</h3>
@@ -774,7 +774,7 @@ export default function ResearchHubView({
                   {statusText(item.status)}
                 </span>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, color: 'var(--antd-text-secondary)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, color: 'var(--cockpit-text-secondary)' }}>
                 <span>来源 {item.source_count}</span>
                 <span>追问 {item.follow_up_count}</span>
                 <span>Agent {item.agent || '未指定'}</span>
@@ -786,8 +786,8 @@ export default function ResearchHubView({
                   ))}
                 </div>
               )}
-              <div style={{ fontSize: 12, color: 'var(--antd-text-secondary)' }}>
-                <strong style={{ color: 'var(--antd-text-primary)' }}>{item.last_event?.label || '暂无事件'}</strong>
+              <div style={{ fontSize: 12, color: 'var(--cockpit-text-secondary)' }}>
+                <strong style={{ color: 'var(--cockpit-text-primary)' }}>{item.last_event?.label || '暂无事件'}</strong>
                 <span> · {shortTime(item.last_event?.created_at || item.created_at)}</span>
               </div>
               <p style={{ margin: 0, fontSize: 13 }}>{item.next_action}</p>
@@ -808,7 +808,7 @@ export default function ResearchHubView({
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="加载更多研究对象"
               onClick={() => void load(payload.recent.length, true)}
               disabled={loadingMore}
@@ -835,7 +835,7 @@ export default function ResearchHubView({
           {detailError && <p className="text-muted">{detailError}</p>}
           {researchDetail?.item && (
             <div style={{ display: 'grid', gap: 16 }}>
-              <div className="antd-card" style={{ padding: 18 }}>
+              <div className="cockpit-card" style={{ padding: 18 }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 10 }}>
                   <span className={`status-badge ${researchDetail.item.status === 'active' ? 'online' : researchDetail.item.status === 'archived' ? 'degraded' : 'offline'}`}>
                     {statusText(researchDetail.item.status)}
@@ -847,7 +847,7 @@ export default function ResearchHubView({
                   )}
                 </div>
                 <p style={{ margin: '0 0 12px', fontSize: 14 }}>{researchDetail.item.summary || '暂无摘要'}</p>
-                <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: 'var(--antd-text-secondary)', fontSize: 13 }}>
+                <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: 'var(--cockpit-text-secondary)', fontSize: 13 }}>
                   {researchDetail.item.full_text || '暂无完整正文。'}
                 </div>
                 {researchDetail.item.tags.length > 0 && (
@@ -858,12 +858,12 @@ export default function ResearchHubView({
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
-                <article className="antd-card" style={{ padding: 18 }}>
+                <article className="cockpit-card" style={{ padding: 18 }}>
                   <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>时间线</h3>
                   {researchDetail.timeline.length === 0 ? <p className="text-muted">暂无事件。</p> : (
                     <div style={{ display: 'grid', gap: 12 }}>
                       {researchDetail.timeline.map((event, index) => (
-                        <div key={`${event.created_at || 'event'}-${index}`} style={{ borderLeft: '2px solid var(--antd-primary)', paddingLeft: 12 }}>
+                        <div key={`${event.created_at || 'event'}-${index}`} style={{ borderLeft: '2px solid var(--cockpit-primary)', paddingLeft: 12 }}>
                           <strong>{event.label || event.event_type || event.type || '研究事件'}</strong>
                           <p style={{ margin: '4px 0', fontSize: 13 }}>{event.description || '暂无描述'}</p>
                           <span className="text-muted" style={{ fontSize: 12 }}>{shortTime(event.created_at)}</span>
@@ -873,7 +873,7 @@ export default function ResearchHubView({
                   )}
                 </article>
 
-                <article className="antd-card" style={{ padding: 18 }}>
+                <article className="cockpit-card" style={{ padding: 18 }}>
                   <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>发布记录</h3>
                   {researchDetail.dossier.publications.length === 0 ? <p className="text-muted">尚未发布。</p> : (
                     <div style={{ display: 'grid', gap: 10 }}>
@@ -889,7 +889,7 @@ export default function ResearchHubView({
                 </article>
               </div>
 
-              <article className="antd-card" style={{ padding: 18 }}>
+              <article className="cockpit-card" style={{ padding: 18 }}>
                 <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>追问与关系</h3>
                 <div style={{ display: 'grid', gap: 8, fontSize: 13 }}>
                   <span>追问 {researchDetail.item.follow_ups.length} 条</span>
@@ -920,11 +920,11 @@ export default function ResearchHubView({
           <div className="overview-inline-error" role="alert" aria-live="polite" style={{ marginBottom: 12 }}>
             <AlertTriangle size={16} />
             <span>研究任务承接失败：{queueError}</span>
-            <button type="button" className="antd-btn small" onClick={() => setQueueError(null)}>关闭</button>
+            <button type="button" className="cockpit-btn small" onClick={() => setQueueError(null)}>关闭</button>
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>待补上下文</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>标签、来源或负责人偏薄的对象，先补知识上下文。</p>
@@ -956,7 +956,7 @@ export default function ResearchHubView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>待落任务</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>有追问、有下一步但还没进入执行闭环的对象，直接送去任务中心。</p>
@@ -989,7 +989,7 @@ export default function ResearchHubView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>待发布与回流</h3>
@@ -997,7 +997,7 @@ export default function ResearchHubView({
               </div>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 onClick={() => openCockpitNavigationTarget({ tab: publicationTarget, taskQuery: researchObjectQuery }, onNavigate, onOpenTarget)}
               >
                 <BookOpen size={14} />

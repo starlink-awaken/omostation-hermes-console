@@ -268,12 +268,12 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
             把层健康、协议快照、E2E、OMO 报告和入口收敛放到同一个可核验入口。
           </p>
         </div>
-        <button type="button" className="antd-btn small" onClick={() => setRefreshToken((value) => value + 1)} disabled={loading}>
+        <button type="button" className="cockpit-btn small" onClick={() => setRefreshToken((value) => value + 1)} disabled={loading}>
           <RefreshCw size={13} />
           <span>{loading ? '检查中' : '重新检查'}</span>
         </button>
         {!loading && assuranceGap && (
-          <button type="button" className="antd-btn small" onClick={() => void createAssuranceTask()} disabled={taskPending} aria-label={`登记系统保证任务 ${assuranceTaskTitle}`}>
+          <button type="button" className="cockpit-btn small" onClick={() => void createAssuranceTask()} disabled={taskPending} aria-label={`登记系统保证任务 ${assuranceTaskTitle}`}>
             <ClipboardCheck size={13} />
             <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
           </button>
@@ -304,7 +304,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
             <span className={`status-badge ${layerTone}`}>{layerUnavailable ? '不可用' : `${layerSummary.healthy || 0}/${layerSummary.total_layers || 0}`}</span>
           </div>
           <p>{layerUnavailable ? state.layers.error || '层健康证据尚未返回。' : layerSummary.down ? `${layerSummary.down} 层离线` : layerSummary.degraded ? `${layerSummary.degraded} 层需要观察` : '所有已探测层均正常'}</p>
-          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Observability', taskQuery: layerContextQuery })}>
+          <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'Observability', taskQuery: layerContextQuery })}>
             <ExternalLink size={13} />
             <span>看层详情</span>
           </button>
@@ -316,7 +316,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
             <span className={`status-badge ${statusTone(state.m0.error ? 'unavailable' : state.m0.daemon?.healthy ? 'ready' : 'watch')}`}>{state.m0.error ? '不可用' : state.m0.version || '未读到快照'}</span>
           </div>
           <p>Daemon {state.m0.daemon?.healthy ? '健康' : state.m0.error ? '证据缺失' : '待确认'} · M1 节点 {state.m0.m1_node_count ?? '-'}</p>
-          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Protocol', taskQuery: protocolContextQuery })}>
+          <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'Protocol', taskQuery: protocolContextQuery })}>
             <ExternalLink size={13} />
             <span>看协议工作台</span>
           </button>
@@ -328,7 +328,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
             <span className={`status-badge ${e2eTone}`}>{statusLabel(e2eTone === 'online' ? 'passed' : e2eTone)}</span>
           </div>
           <p>{state.e2e.result || state.e2e.error || '尚未取得验证结果'}</p>
-          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'TaskCenter', taskQuery: verificationContextQuery })}>
+          <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'TaskCenter', taskQuery: verificationContextQuery })}>
             <ClipboardCheck size={13} />
             <span>承接验证任务</span>
           </button>
@@ -340,7 +340,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
             <span className={`status-badge ${omoTone}`}>{sourceUnavailable(state.omo) ? '不可用' : `${state.omo.open || 0} 开放`}</span>
           </div>
           <p>{state.omo.summary || '尚未取得 OMO 报告'}</p>
-          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Debt', taskQuery: governanceContextQuery })}>
+          <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'Debt', taskQuery: governanceContextQuery })}>
             <ExternalLink size={13} />
             <span>看治理债务</span>
           </button>
@@ -352,7 +352,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
             <span className={`status-badge ${convergenceTone}`}>{state.convergence.convergence_pct ?? '-'}%</span>
           </div>
           <p>已收敛 {state.convergence.converged_to_cockpit ?? '-'} / {state.convergence.total_entry_points ?? '-'} · 剩余 {(state.convergence.remaining || []).length}</p>
-          <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'SystemMap', taskQuery: convergenceContextQuery })}>
+          <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'SystemMap', taskQuery: convergenceContextQuery })}>
             <ExternalLink size={13} />
             <span>看系统收敛</span>
           </button>
@@ -398,7 +398,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
         <article className="overview-ops-column">
           <div className="overview-ops-head">
             <strong>层探针明细</strong>
-            <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Observability', taskQuery: layerContextQuery })}>
+            <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'Observability', taskQuery: layerContextQuery })}>
               <ExternalLink size={13} />
               <span>观测</span>
             </button>
@@ -418,7 +418,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
         <article className="overview-ops-column">
           <div className="overview-ops-head">
             <strong>M0 协议新鲜度</strong>
-            <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'Protocol', taskQuery: protocolContextQuery })}>
+            <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'Protocol', taskQuery: protocolContextQuery })}>
               <ExternalLink size={13} />
               <span>协议</span>
             </button>
@@ -438,7 +438,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
         <article className="overview-ops-column">
           <div className="overview-ops-head">
             <strong>验证承接</strong>
-            <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'TaskCenter', taskQuery: verificationContextQuery })}>
+            <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'TaskCenter', taskQuery: verificationContextQuery })}>
               <ClipboardCheck size={13} />
               <span>任务</span>
             </button>
@@ -513,11 +513,11 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
               <small>{state.context.next_guidance || state.context.error || '进入 C2G 或任务中心查看目标承接。'}</small>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'C2G', taskQuery: state.context.active_goals?.[0]?.id || 'C2G' })}>
+              <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'C2G', taskQuery: state.context.active_goals?.[0]?.id || 'C2G' })}>
                 <ExternalLink size={13} />
                 <span>看 C2G</span>
               </button>
-              <button type="button" className="antd-btn small" onClick={() => openAssuranceTarget({ tab: 'TaskCenter', taskQuery: state.context.active_goals?.[0]?.id || verificationContextQuery })}>
+              <button type="button" className="cockpit-btn small" onClick={() => openAssuranceTarget({ tab: 'TaskCenter', taskQuery: state.context.active_goals?.[0]?.id || verificationContextQuery })}>
                 <ClipboardCheck size={13} />
                 <span>看目标任务</span>
               </button>

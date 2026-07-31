@@ -438,11 +438,11 @@ export default function SettingsView({
       {loadError && (
         <div
           role="alert"
-          className="antd-card"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '12px 16px', color: 'var(--antd-error)', border: '1px solid rgba(255,71,87,0.2)' }}
+          className="cockpit-card"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '12px 16px', color: 'var(--cockpit-error)', border: '1px solid rgba(255,71,87,0.2)' }}
         >
           <span>设置页数据加载失败：{loadError}</span>
-          <button type="button" className="antd-btn" onClick={refreshSettingsData}>重试</button>
+          <button type="button" className="cockpit-btn" onClick={refreshSettingsData}>重试</button>
         </div>
       )}
 
@@ -510,7 +510,7 @@ export default function SettingsView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开控制面焦点对象 ${focusedSettingsCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedSettingsCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -519,7 +519,7 @@ export default function SettingsView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开控制面焦点任务 ${focusedSettingsCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedSettingsCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -543,7 +543,7 @@ export default function SettingsView({
             <span className={`status-badge ${doctor?.status === 'ok' ? 'online' : doctor?.status ? 'degraded' : 'offline'}`}>
               {doctorError ? '不可用' : doctor?.status === 'ok' ? '巡检正常' : doctor?.status === 'missing' || !doctorHasSnapshot ? '暂无快照' : `巡检${doctor.status}`}
             </span>
-            <button type="button" className="antd-btn" onClick={() => void fetchDoctor()} aria-label="刷新OMO doctor诊断">
+            <button type="button" className="cockpit-btn" onClick={() => void fetchDoctor()} aria-label="刷新OMO doctor诊断">
               <RefreshCw size={14} /> 刷新诊断
             </button>
           </div>
@@ -552,7 +552,7 @@ export default function SettingsView({
           <div className="error-banner" role="status" aria-live="polite">
             <ShieldAlert size={16} />
             <span>{doctorError}</span>
-            <button type="button" className="antd-btn" onClick={() => void fetchDoctor()}>重试 doctor</button>
+            <button type="button" className="cockpit-btn" onClick={() => void fetchDoctor()}>重试 doctor</button>
           </div>
         ) : (
           <>
@@ -580,7 +580,7 @@ export default function SettingsView({
               </div>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label="打开OMO doctor系统地图定位"
                 onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: 'OMO doctor' }, onNavigate, onOpenTarget)}
               >
@@ -603,7 +603,7 @@ export default function SettingsView({
             <span className={`status-badge ${versionError ? 'offline' : versionHasSnapshot ? 'online' : 'offline'}`}>
               {versionError ? '不可用' : versionHasSnapshot ? `当前 ${versionInfo?.current_version || '未知'}` : '暂无版本快照'}
             </span>
-            <button type="button" className="antd-btn" onClick={() => void fetchVersion()} aria-label="刷新运行版本与变更历史">
+            <button type="button" className="cockpit-btn" onClick={() => void fetchVersion()} aria-label="刷新运行版本与变更历史">
               <RefreshCw size={14} /> 刷新版本
             </button>
           </div>
@@ -612,7 +612,7 @@ export default function SettingsView({
           <div className="error-banner" role="status" aria-live="polite">
             <ShieldAlert size={16} />
             <span>{versionError}</span>
-            <button type="button" className="antd-btn" onClick={() => void fetchVersion()}>重试版本</button>
+            <button type="button" className="cockpit-btn" onClick={() => void fetchVersion()}>重试版本</button>
           </div>
         ) : (
           <>
@@ -684,7 +684,7 @@ export default function SettingsView({
               </div>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label="打开版本治理系统地图定位"
                 onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: '运行版本' }, onNavigate, onOpenTarget)}
               >
@@ -711,7 +711,7 @@ export default function SettingsView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>控制面焦点</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先看健康路由、延迟样本和注册状态，再决定跳去哪一面继续承接。</p>
@@ -729,7 +729,7 @@ export default function SettingsView({
             </div>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>接入去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>控制面动作完成后，继续去观测、网格、系统地图和应用中心确认真实状态。</p>
@@ -780,7 +780,7 @@ export default function SettingsView({
           style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, margin: '14px 0 16px' }}
         >
           <input
-            className="antd-input"
+            className="cockpit-input"
             aria-label="搜索领域安全门"
             placeholder="应用、检查、证据或下一步"
             value={securityQuery}
@@ -788,7 +788,7 @@ export default function SettingsView({
             style={{ minWidth: 260, flex: '1 1 280px' }}
           />
           <select
-            className="antd-input"
+            className="cockpit-input"
             aria-label="按安全门状态筛选"
             value={securityStatusFilter}
             onChange={(event) => setSecurityStatusFilter(event.target.value)}
@@ -802,7 +802,7 @@ export default function SettingsView({
           {hasSecurityFilter && (
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="清除领域安全门筛选"
               onClick={() => { setSecurityQuery(''); setSecurityStatusFilter('all'); }}
             >
@@ -814,14 +814,14 @@ export default function SettingsView({
         </div>
         <div style={{ display: 'grid', gap: 12 }}>
           {filteredSecurityRoutes.length === 0 ? (
-            <div className="antd-card" style={{ padding: 20, textAlign: 'center' }}>
+            <div className="cockpit-card" style={{ padding: 20, textAlign: 'center' }}>
               <ShieldAlert size={20} className="text-muted" style={{ marginBottom: 8 }} />
               <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的领域安全门。</p>
             </div>
           ) : filteredSecurityRoutes.map((route) => (
             <article
               key={route.id}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -839,7 +839,7 @@ export default function SettingsView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开领域安全对象 ${route.title}`}
                   onClick={() => openCockpitNavigationTarget(route.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -848,7 +848,7 @@ export default function SettingsView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开领域安全任务 ${route.title}`}
                   onClick={() => openCockpitNavigationTarget(route.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -864,7 +864,7 @@ export default function SettingsView({
       <div className="settings-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
       
       {/* Metrics History Card */}
-      <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Activity size={18} aria-hidden="true" className="text-success" />
           <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>系统运行状态指标</h2>
@@ -873,15 +873,15 @@ export default function SettingsView({
         {metrics ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px', fontSize: '13px' }}>
-              <span style={{ color: 'var(--antd-text-secondary)' }}>监控快照时间: </span> {metrics.timestamp}
+              <span style={{ color: 'var(--cockpit-text-secondary)' }}>监控快照时间: </span> {metrics.timestamp}
             </div>
             <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-              <div><span style={{ color: 'var(--antd-text-secondary)' }}>微服务总数: </span> {metrics.services}</div>
-              <div><span style={{ color: 'var(--antd-text-secondary)' }}>健康路由数: </span> <span className="text-success" style={{ fontWeight: 600 }}>{metrics.healthy}</span></div>
+              <div><span style={{ color: 'var(--cockpit-text-secondary)' }}>微服务总数: </span> {metrics.services}</div>
+              <div><span style={{ color: 'var(--cockpit-text-secondary)' }}>健康路由数: </span> <span className="text-success" style={{ fontWeight: 600 }}>{metrics.healthy}</span></div>
             </div>
             <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px' }}>
-              <span style={{ color: 'var(--antd-text-secondary)', display: 'block', marginBottom: '8px', fontSize: '13px' }}>延迟分位数分布 (Latency Metrics):</span>
-              <pre style={{ margin: 0, color: 'var(--antd-primary)', fontSize: '12px', overflowX: 'auto', fontFamily: 'monospace' }}>
+              <span style={{ color: 'var(--cockpit-text-secondary)', display: 'block', marginBottom: '8px', fontSize: '13px' }}>延迟分位数分布 (Latency Metrics):</span>
+              <pre style={{ margin: 0, color: 'var(--cockpit-primary)', fontSize: '12px', overflowX: 'auto', fontFamily: 'monospace' }}>
                 {JSON.stringify(metrics.latency, null, 2)}
               </pre>
             </div>
@@ -892,7 +892,7 @@ export default function SettingsView({
       </div>
 
       {/* Instance Registration Card */}
-      <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <GitBranch size={18} aria-hidden="true" className="text-accent" />
           <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>注册分布式新实例 (Instance)</h2>
@@ -900,12 +900,12 @@ export default function SettingsView({
         
         <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="reg-service-name" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>目标服务名称 (Service Name)</label>
+            <label htmlFor="reg-service-name" style={{ fontSize: '13px', color: 'var(--cockpit-text-secondary)' }}>目标服务名称 (Service Name)</label>
             <input 
               id="reg-service-name"
               required 
               type="text" 
-              className="antd-input" 
+              className="cockpit-input" 
               value={instanceService} 
               onChange={e => setInstanceService(e.target.value)} 
               placeholder="例如: gbrain-local" 
@@ -913,19 +913,19 @@ export default function SettingsView({
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="reg-mcp-url" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>MCP 接入点地址 (Endpoint URL)</label>
+            <label htmlFor="reg-mcp-url" style={{ fontSize: '13px', color: 'var(--cockpit-text-secondary)' }}>MCP 接入点地址 (Endpoint URL)</label>
             <input 
               id="reg-mcp-url"
               required 
               type="text" 
-              className="antd-input" 
+              className="cockpit-input" 
               value={instanceUrl} 
               onChange={e => setInstanceUrl(e.target.value)} 
               placeholder="http://127.0.0.1:7431" 
             />
           </div>
           
-          <button type="submit" className="antd-btn antd-btn-primary" style={{ width: 'fit-content' }} disabled={registering}>
+          <button type="submit" className="cockpit-btn cockpit-btn-primary" style={{ width: 'fit-content' }} disabled={registering}>
             {registering ? '注册中...' : '注册实例'}
           </button>
         </form>
@@ -935,15 +935,15 @@ export default function SettingsView({
             padding: '12px', 
             background: 'rgba(0,0,0,0.2)', 
             borderRadius: '4px', 
-            border: `1px solid ${registerResult.error ? 'var(--antd-error)' : 'var(--antd-primary)'}` 
+            border: `1px solid ${registerResult.error ? 'var(--cockpit-error)' : 'var(--cockpit-primary)'}` 
           }}>
-            <pre style={{ margin: 0, fontSize: '12px', color: registerResult.error ? 'var(--antd-error)' : 'var(--antd-success)', fontFamily: 'monospace' }}>
+            <pre style={{ margin: 0, fontSize: '12px', color: registerResult.error ? 'var(--cockpit-error)' : 'var(--cockpit-success)', fontFamily: 'monospace' }}>
               {JSON.stringify(registerResult, null, 2)}
             </pre>
             {registerResult.task_id && (
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 aria-label="打开实例验收任务"
                 onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: registerResult.task_id }, onNavigate, onOpenTarget)}

@@ -361,7 +361,7 @@ export default function EnginesView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开引擎焦点对象 ${focusedEnginesCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedEnginesCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -370,7 +370,7 @@ export default function EnginesView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开引擎焦点任务 ${focusedEnginesCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedEnginesCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -398,14 +398,14 @@ export default function EnginesView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>优先管线</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先挑最常用或当前正在看的管线，直接带入执行器。</p>
             </div>
             <div role="region" aria-label="引擎管线筛选" style={{ display: 'grid', gap: 8 }}>
               <input
-                className="antd-input"
+                className="cockpit-input"
                 type="search"
                 aria-label="搜索引擎管线"
                 placeholder="搜索管线名称"
@@ -413,7 +413,7 @@ export default function EnginesView({
                 onChange={(event) => setPipelineQuery(event.target.value)}
               />
               {pipelineQuery && (
-                <button type="button" className="antd-btn" aria-label="清除引擎管线筛选" onClick={() => setPipelineQuery('')}>
+                <button type="button" className="cockpit-btn" aria-label="清除引擎管线筛选" onClick={() => setPipelineQuery('')}>
                   清除管线筛选
                 </button>
               )}
@@ -446,14 +446,14 @@ export default function EnginesView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>执行去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>执行前后要继续回资产、工作流和沙箱三处收口。</p>
             </div>
             <div role="region" aria-label="引擎事件筛选" style={{ display: 'grid', gap: 8 }}>
               <select
-                className="antd-input"
+                className="cockpit-input"
                 aria-label="按事件类型筛选引擎事件"
                 value={eventTypeFilter}
                 onChange={(event) => setEventTypeFilter(event.target.value)}
@@ -462,7 +462,7 @@ export default function EnginesView({
                 {eventTypes.map((eventType) => <option key={eventType} value={eventType}>{eventType}</option>)}
               </select>
               {eventTypeFilter !== 'all' && (
-                <button type="button" className="antd-btn" aria-label="清除引擎事件筛选" onClick={() => setEventTypeFilter('all')}>
+                <button type="button" className="cockpit-btn" aria-label="清除引擎事件筛选" onClick={() => setEventTypeFilter('all')}>
                   清除事件筛选
                 </button>
               )}
@@ -507,9 +507,9 @@ export default function EnginesView({
 
       <div className="engines-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
       {/* Pipeline Runner */}
-      <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div className="section-header" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Cpu size={20} style={{ color: 'var(--antd-primary)' }} />
+          <Cpu size={20} style={{ color: 'var(--cockpit-primary)' }} />
           <h2 style={{ fontSize: '1.2rem', margin: 0 }}>管线编排器</h2>
         </div>
         
@@ -522,26 +522,26 @@ export default function EnginesView({
         />
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-          <label htmlFor="pipeline-select" style={{ fontSize: '0.85rem', color: 'var(--antd-text-secondary)' }}>选择执行管线</label>
+          <label htmlFor="pipeline-select" style={{ fontSize: '0.85rem', color: 'var(--cockpit-text-secondary)' }}>选择执行管线</label>
           <select 
             id="pipeline-select"
-            className="antd-input" 
+            className="cockpit-input" 
             value={selectedPipeline}
             onChange={(e) => setSelectedPipeline(e.target.value)}
             style={{ width: '100%', height: '36px' }}
           >
             {pipelines.map(p => (
-              <option key={p} value={p} style={{ background: 'var(--antd-bg-elevated)', color: 'var(--antd-text-primary)' }}>{p}</option>
+              <option key={p} value={p} style={{ background: 'var(--cockpit-bg-elevated)', color: 'var(--cockpit-text-primary)' }}>{p}</option>
             ))}
             {pipelines.length === 0 && <option>未发现可用管线</option>}
           </select>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <label htmlFor="pipeline-input" style={{ fontSize: '0.85rem', color: 'var(--antd-text-secondary)' }}>执行指令 / 目标</label>
+          <label htmlFor="pipeline-input" style={{ fontSize: '0.85rem', color: 'var(--cockpit-text-secondary)' }}>执行指令 / 目标</label>
           <textarea 
             id="pipeline-input"
-            className="antd-input" 
+            className="cockpit-input" 
             placeholder="例如：分析当前系统的性能指标..."
             value={pipelineInput}
             onChange={(e) => setPipelineInput(e.target.value)}
@@ -551,35 +551,35 @@ export default function EnginesView({
 
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button 
-            className="antd-btn" 
+            className="cockpit-btn" 
             onClick={handlePlanTask}
             disabled={planning || running || !pipelineInput}
             style={{ flex: 1, height: '36px' }}
           >
-            {planning ? <div className="spinner" style={{ width: 16, height: 16, borderTopColor: 'var(--antd-primary)' }}></div> : <Activity size={16} />}
+            {planning ? <div className="spinner" style={{ width: 16, height: 16, borderTopColor: 'var(--cockpit-primary)' }}></div> : <Activity size={16} />}
             {planning ? '规划中...' : '新任务'}
           </button>
 
           {metaosPlan && (
             <button 
-              className="antd-btn antd-btn-primary" 
+              className="cockpit-btn cockpit-btn-primary" 
               onClick={handleExecuteTask}
               disabled={running}
-              style={{ flex: 1, height: '36px', borderColor: 'var(--antd-success)', color: 'var(--antd-success)' }}
+              style={{ flex: 1, height: '36px', borderColor: 'var(--cockpit-success)', color: 'var(--cockpit-success)' }}
             >
-              {running ? <div className="spinner" style={{ width: 16, height: 16, borderTopColor: 'var(--antd-success)' }}></div> : <Play size={16} />}
+              {running ? <div className="spinner" style={{ width: 16, height: 16, borderTopColor: 'var(--cockpit-success)' }}></div> : <Play size={16} />}
               {running ? '正在承接...' : '承接计划'}
             </button>
           )}
 
           {!metaosPlan && (
             <button 
-              className="antd-btn antd-btn-primary" 
+              className="cockpit-btn cockpit-btn-primary" 
               onClick={handleRunPipeline}
               disabled={running || !selectedPipeline}
               style={{ flex: 1, height: '36px' }}
             >
-              {running ? <div className="spinner" style={{ width: 16, height: 16, borderTopColor: 'var(--antd-primary)' }}></div> : <Play size={16} />}
+              {running ? <div className="spinner" style={{ width: 16, height: 16, borderTopColor: 'var(--cockpit-primary)' }}></div> : <Play size={16} />}
               {running ? '正在承接...' : '承接管线任务'}
             </button>
           )}
@@ -590,14 +590,14 @@ export default function EnginesView({
             marginTop: '1rem', 
             padding: '1rem', 
             background: 'rgba(0,0,0,0.4)', 
-            borderRadius: 'var(--antd-radius-md)',
-            border: '1px solid var(--antd-border-color)',
+            borderRadius: 'var(--cockpit-radius-md)',
+            border: '1px solid var(--cockpit-border-color)',
             maxHeight: '200px',
             overflowY: 'auto',
             fontSize: '0.85rem',
             fontFamily: 'monospace'
           }}>
-            <pre aria-live="polite" style={{ whiteSpace: 'pre-wrap', color: runResult.error ? 'var(--antd-error)' : 'var(--antd-primary)', margin: 0 }}>
+            <pre aria-live="polite" style={{ whiteSpace: 'pre-wrap', color: runResult.error ? 'var(--cockpit-error)' : 'var(--cockpit-primary)', margin: 0 }}>
               {JSON.stringify(runResult, null, 2)}
             </pre>
           </div>
@@ -611,17 +611,17 @@ export default function EnginesView({
             style={{ 
               marginTop: '1rem', 
               padding: '1rem', 
-              background: 'var(--antd-bg-elevated)', 
-              borderRadius: 'var(--antd-radius-lg)',
-              border: '1px solid var(--antd-primary)'
+              background: 'var(--cockpit-bg-elevated)', 
+              borderRadius: 'var(--cockpit-radius-lg)',
+              border: '1px solid var(--cockpit-primary)'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--antd-text-primary)' }}>节点详情: {selectedNode.data?.label || selectedNode.id}</h3>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--cockpit-text-primary)' }}>节点详情: {selectedNode.data?.label || selectedNode.id}</h3>
               <button 
                 onClick={() => setSelectedNode(null)} 
                 aria-label="关闭详情"
-                style={{ background: 'none', border: 'none', color: 'var(--antd-text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}
+                style={{ background: 'none', border: 'none', color: 'var(--cockpit-text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}
               >
                 ✕
               </button>
@@ -645,9 +645,9 @@ export default function EnginesView({
                           <p style={{ margin: 0 }}>
                             <strong>状态:</strong>{' '}
                             <span style={{ 
-                              color: status === 'ok' ? 'var(--antd-success)' : 
-                                     status === 'error' ? 'var(--antd-error)' : 
-                                     status === 'running' ? 'var(--antd-primary)' : 'var(--antd-text-secondary)',
+                              color: status === 'ok' ? 'var(--cockpit-success)' : 
+                                     status === 'error' ? 'var(--cockpit-error)' : 
+                                     status === 'running' ? 'var(--cockpit-primary)' : 'var(--cockpit-text-secondary)',
                               fontWeight: 'bold'
                             }}>
                               {status.toUpperCase()}
@@ -657,7 +657,7 @@ export default function EnginesView({
                         
                         {nodeEvents.length > 0 && (
                             <div style={{ marginTop: '1rem' }}>
-                                <strong style={{ color: 'var(--antd-text-secondary)' }}>输出日志:</strong>
+                                <strong style={{ color: 'var(--cockpit-text-secondary)' }}>输出日志:</strong>
                                 <div 
                                   aria-live="polite"
                                   style={{ 
@@ -666,14 +666,14 @@ export default function EnginesView({
                                     overflowY: 'auto', 
                                     background: 'rgba(0,0,0,0.5)', 
                                     padding: '0.75rem', 
-                                    borderRadius: 'var(--antd-radius-md)', 
+                                    borderRadius: 'var(--cockpit-radius-md)', 
                                     fontFamily: 'monospace', 
-                                    color: 'var(--antd-text-primary)' 
+                                    color: 'var(--cockpit-text-primary)' 
                                   }}
                                 >
                                     {nodeEvents.map((e, i) => (
                                         <div key={i} style={{ marginBottom: '0.75rem', wordBreak: 'break-all', borderBottom: i < nodeEvents.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', paddingBottom: i < nodeEvents.length - 1 ? '0.75rem' : '0' }}>
-                                            <div style={{ color: 'var(--antd-text-secondary)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
+                                            <div style={{ color: 'var(--cockpit-text-secondary)', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
                                               [{new Date(e.time).toLocaleTimeString()}] {e.type}
                                             </div>
                                             <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
@@ -692,13 +692,13 @@ export default function EnginesView({
       </div>
 
       {/* Event Log */}
-      <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div className="section-header" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Activity size={20} style={{ color: 'var(--antd-warning)' }} />
+            <Activity size={20} style={{ color: 'var(--cockpit-warning)' }} />
             <h2 style={{ fontSize: '1.2rem', margin: 0 }}>消息总线追踪</h2>
           </div>
-          <List size={16} style={{ color: 'var(--antd-text-secondary)' }} />
+          <List size={16} style={{ color: 'var(--cockpit-text-secondary)' }} />
         </div>
 
         <div 
@@ -708,25 +708,25 @@ export default function EnginesView({
           style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '500px', paddingRight: '0.5rem' }}
         >
           {events.length === 0 ? (
-            <p style={{ color: 'var(--antd-text-secondary)', textAlign: 'center', marginTop: '2rem' }}>总线暂无事件流。</p>
+            <p style={{ color: 'var(--cockpit-text-secondary)', textAlign: 'center', marginTop: '2rem' }}>总线暂无事件流。</p>
           ) : (
             filteredEvents.map((ev, i) => (
               <div key={i} className="animate-fade-in" style={{ 
                 animationDelay: `${i * 0.05}s`,
                 padding: '0.75rem', 
                 background: 'rgba(255,255,255,0.01)', 
-                borderLeft: '2px solid var(--antd-warning)',
-                borderRadius: `0 var(--antd-radius-md) var(--antd-radius-md) 0`,
+                borderLeft: '2px solid var(--cockpit-warning)',
+                borderRadius: `0 var(--cockpit-radius-md) var(--cockpit-radius-md) 0`,
                 borderBottom: '1px solid rgba(0, 242, 254, 0.05)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.8rem' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--antd-text-primary)' }}>{ev.type}</span>
-                  <span style={{ color: 'var(--antd-text-secondary)' }}>{new Date(ev.time).toLocaleString()}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>{ev.type}</span>
+                  <span style={{ color: 'var(--cockpit-text-secondary)' }}>{new Date(ev.time).toLocaleString()}</span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--antd-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--cockpit-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}>
                   <GitCommit size={10} /> 来源: {ev.source}
                 </div>
-                <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--antd-text-secondary)', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: 'var(--antd-radius-md)', overflowX: 'auto' }}>
+                <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--cockpit-text-secondary)', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: 'var(--cockpit-radius-md)', overflowX: 'auto' }}>
                   <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                     {JSON.stringify(ev.payload, null, 2)}
                   </pre>

@@ -212,7 +212,7 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
           <h2 style={{ margin: 0, fontSize: 16 }}>KOS 知识证据台</h2>
           <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>直接承接知识搜索、上下文、聚类和声明校验，底层不可用时保留真实诊断。</p>
         </div>
-        <button type="button" className="antd-btn" onClick={() => void loadStatus()} disabled={loading === 'status'} aria-label="刷新KOS状态">
+        <button type="button" className="cockpit-btn" onClick={() => void loadStatus()} disabled={loading === 'status'} aria-label="刷新KOS状态">
           {loading === 'status' ? <Loader2 size={14} className="spinner" /> : <Database size={14} />} 刷新状态
         </button>
       </div>
@@ -224,16 +224,16 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
       </div>
 
       {healthChecks.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{healthChecks.map(([name, value]) => { const check = value as JsonRecord; const pass = check.status === 'pass'; return <span className={`status-badge ${pass ? 'online' : 'degraded'}`} key={name}>{pass ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />} {name}: {displayValue(check.detail ?? check.status)}</span>; })}</div>}
-      {(state.healthError || state.statsError || error) && <div className="error-banner" role="alert"><AlertTriangle size={16} /> {state.healthError || state.statsError || error}<button type="button" className="antd-btn" onClick={() => void loadStatus()}>重试</button></div>}
+      {(state.healthError || state.statsError || error) && <div className="error-banner" role="alert"><AlertTriangle size={16} /> {state.healthError || state.statsError || error}<button type="button" className="cockpit-btn" onClick={() => void loadStatus()}>重试</button></div>}
 
-      <div className="antd-card" style={{ padding: 16, display: 'grid', gap: 12 }}>
+      <div className="cockpit-card" style={{ padding: 16, display: 'grid', gap: 12 }}>
         <form onSubmit={(event) => { event.preventDefault(); void runQuery('search'); }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Search size={17} style={{ alignSelf: 'center' }} />
-          <input className="antd-input" list="kos-suggestions" aria-label="KOS搜索" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索知识、决策或上下文" style={{ flex: 1, minWidth: 220 }} />
+          <input className="cockpit-input" list="kos-suggestions" aria-label="KOS搜索" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索知识、决策或上下文" style={{ flex: 1, minWidth: 220 }} />
           <datalist id="kos-suggestions">{suggestions.map((suggestion) => <option value={suggestion} key={suggestion} />)}</datalist>
-          <button type="submit" className="antd-btn antd-btn-primary" disabled={loading === 'search'}>{loading === 'search' ? <Loader2 size={14} className="spinner" /> : <Search size={14} />} 检索</button>
-          <button type="button" className="antd-btn" onClick={() => void runQuery('context')} disabled={loading === 'context'}><Sparkles size={14} /> 构建上下文</button>
-          <button type="button" className="antd-btn" onClick={() => void runQuery('clusters')} disabled={loading === 'clusters'}><Network size={14} /> 看聚类</button>
+          <button type="submit" className="cockpit-btn cockpit-btn-primary" disabled={loading === 'search'}>{loading === 'search' ? <Loader2 size={14} className="spinner" /> : <Search size={14} />} 检索</button>
+          <button type="button" className="cockpit-btn" onClick={() => void runQuery('context')} disabled={loading === 'context'}><Sparkles size={14} /> 构建上下文</button>
+          <button type="button" className="cockpit-btn" onClick={() => void runQuery('clusters')} disabled={loading === 'clusters'}><Network size={14} /> 看聚类</button>
         </form>
         {results.length > 0 && <div style={{ display: 'grid', gap: 8 }}>{results.map((result, index) => <article className="stat-card" key={`${displayValue(result.id, 'result')}-${index}`}><strong>{displayValue(result.title ?? result.slug ?? result.name, '未命名知识')}</strong><p className="text-muted" style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{displayValue(result.chunk_text ?? result.content ?? result.text, '无摘要')}</p></article>)}</div>}
         {context && <pre style={{ margin: 0, maxHeight: 240, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{JSON.stringify(context, null, 2)}</pre>}
@@ -241,7 +241,7 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
         {!results.length && !context && !clusters && <div className="text-muted">输入关键词后选择检索、构建上下文或查看聚类。</div>}
         {hasEvidence && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <button type="button" className="antd-btn" onClick={() => void createEvidenceTask()} disabled={taskPending} aria-label="登记KOS证据任务">
+            <button type="button" className="cockpit-btn" onClick={() => void createEvidenceTask()} disabled={taskPending} aria-label="登记KOS证据任务">
               {taskPending ? <Loader2 size={14} className="spinner" /> : <ClipboardList size={14} />}
               {taskPending ? '登记中...' : '登记证据任务'}
             </button>
@@ -250,22 +250,22 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
         )}
       </div>
 
-      <form onSubmit={verifyClaim} className="antd-card" style={{ padding: 16, display: 'grid', gap: 10 }}>
+      <form onSubmit={verifyClaim} className="cockpit-card" style={{ padding: 16, display: 'grid', gap: 10 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><ShieldCheck size={17} /><strong>声明校验</strong><span className="text-muted">把结论送入 KOS 验证接口，结果保留原始响应。</span></div>
-        <textarea className="antd-input" aria-label="待校验声明" value={claim} onChange={(event) => setClaim(event.target.value)} placeholder="输入需要核验的声明" style={{ minHeight: 72, resize: 'vertical' }} />
-        <button type="submit" className="antd-btn antd-btn-primary" disabled={loading === 'verify' || !claim.trim()} style={{ width: 'fit-content' }}>{loading === 'verify' ? <Loader2 size={14} className="spinner" /> : <ShieldCheck size={14} />} 校验声明</button>
+        <textarea className="cockpit-input" aria-label="待校验声明" value={claim} onChange={(event) => setClaim(event.target.value)} placeholder="输入需要核验的声明" style={{ minHeight: 72, resize: 'vertical' }} />
+        <button type="submit" className="cockpit-btn cockpit-btn-primary" disabled={loading === 'verify' || !claim.trim()} style={{ width: 'fit-content' }}>{loading === 'verify' ? <Loader2 size={14} className="spinner" /> : <ShieldCheck size={14} />} 校验声明</button>
         {verifyResult && <pre style={{ margin: 0, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{JSON.stringify(verifyResult, null, 2)}</pre>}
       </form>
 
-      <form onSubmit={writeKnowledge} className="antd-card" style={{ padding: 16, display: 'grid', gap: 10 }} aria-label="知识注入">
+      <form onSubmit={writeKnowledge} className="cockpit-card" style={{ padding: 16, display: 'grid', gap: 10 }} aria-label="知识注入">
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><BookOpen size={17} /><strong>知识注入</strong><span className="text-muted">把经过整理的内容写入本地知识卡片。</span></div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
-          <input className="antd-input" aria-label="知识卡片标题" value={writeTitle} onChange={(event) => setWriteTitle(event.target.value)} placeholder="标题" />
-          <input className="antd-input" aria-label="知识卡片标识" value={writeSlug} onChange={(event) => setWriteSlug(event.target.value)} placeholder="slug，例如 architecture-decision" />
-          <input className="antd-input" aria-label="知识卡片标签" value={writeTags} onChange={(event) => setWriteTags(event.target.value)} placeholder="标签，用逗号分隔" />
+          <input className="cockpit-input" aria-label="知识卡片标题" value={writeTitle} onChange={(event) => setWriteTitle(event.target.value)} placeholder="标题" />
+          <input className="cockpit-input" aria-label="知识卡片标识" value={writeSlug} onChange={(event) => setWriteSlug(event.target.value)} placeholder="slug，例如 architecture-decision" />
+          <input className="cockpit-input" aria-label="知识卡片标签" value={writeTags} onChange={(event) => setWriteTags(event.target.value)} placeholder="标签，用逗号分隔" />
         </div>
-        <textarea className="antd-input" aria-label="知识卡片正文" value={writeContent} onChange={(event) => setWriteContent(event.target.value)} placeholder="输入可复用的知识、决策或操作说明" style={{ minHeight: 100, resize: 'vertical' }} />
-        <button type="submit" className="antd-btn antd-btn-primary" disabled={writing || !writeSlug.trim() || !writeTitle.trim() || !writeContent.trim()} style={{ width: 'fit-content' }}>
+        <textarea className="cockpit-input" aria-label="知识卡片正文" value={writeContent} onChange={(event) => setWriteContent(event.target.value)} placeholder="输入可复用的知识、决策或操作说明" style={{ minHeight: 100, resize: 'vertical' }} />
+        <button type="submit" className="cockpit-btn cockpit-btn-primary" disabled={writing || !writeSlug.trim() || !writeTitle.trim() || !writeContent.trim()} style={{ width: 'fit-content' }}>
           {writing ? <Loader2 size={14} className="spinner" /> : <BookOpen size={14} />} {writing ? '写入中...' : '写入知识卡片'}
         </button>
         {writeNotice && <span className="text-muted" role="status">{writeNotice}</span>}

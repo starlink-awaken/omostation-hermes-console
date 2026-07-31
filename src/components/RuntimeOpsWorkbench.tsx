@@ -273,7 +273,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
           {state.loading ? '同步中' : noRuntimeSources ? '数据不可用' : state.error ? '证据不完整' : activeAlerts.length > 0 || degradedServices.length > 0 ? '需要排查' : '运行平稳'}
         </span>
         {canRegisterRuntimeTask && (
-          <button type="button" className="antd-btn small" onClick={() => void createRuntimeTask()} disabled={taskPending} aria-label={`登记运行诊断任务 ${runtimeTaskTitle}`}>
+          <button type="button" className="cockpit-btn small" onClick={() => void createRuntimeTask()} disabled={taskPending} aria-label={`登记运行诊断任务 ${runtimeTaskTitle}`}>
             <ClipboardCheck size={13} />
             <span>{taskPending ? '登记中...' : '登记正式任务'}</span>
           </button>
@@ -334,7 +334,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
         <article className="runtime-workbench-panel">
           <div className="runtime-workbench-panel-head">
             <strong>告警热点</strong>
-            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'AlertCenter', taskQuery: activeAlerts[0]?.id || runtimeContextQuery, alertTab: 'active' }, onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'AlertCenter', taskQuery: activeAlerts[0]?.id || runtimeContextQuery, alertTab: 'active' }, onNavigate, onOpenTarget)}>
               <ShieldAlert size={13} />
               <span>去告警中心</span>
             </button>
@@ -362,7 +362,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
         <article className="runtime-workbench-panel">
           <div className="runtime-workbench-panel-head">
             <strong>服务热点</strong>
-            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Performance', taskQuery: degradedServices[0]?.name || runtimeContextQuery }, onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Performance', taskQuery: degradedServices[0]?.name || runtimeContextQuery }, onNavigate, onOpenTarget)}>
               <Search size={13} />
               <span>看性能</span>
             </button>
@@ -390,7 +390,7 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
         <article className="runtime-workbench-panel">
           <div className="runtime-workbench-panel-head">
             <strong>排查落点</strong>
-            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'LogViewer', taskQuery: runtimeContextQuery }, onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'LogViewer', taskQuery: runtimeContextQuery }, onNavigate, onOpenTarget)}>
               <FileText size={13} />
               <span>看日志</span>
             </button>

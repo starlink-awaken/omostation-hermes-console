@@ -127,10 +127,10 @@ export default function DebtView({
 
   if (error) {
     return (
-      <div className="antd-card" style={{ padding: '32px', textAlign: 'center', margin: '24px 0' }}>
-        <p style={{ color: 'var(--antd-error)', fontSize: '15px', fontWeight: 600, marginBottom: '12px' }}>⚠️ 加载债务数据失败</p>
+      <div className="cockpit-card" style={{ padding: '32px', textAlign: 'center', margin: '24px 0' }}>
+        <p style={{ color: 'var(--cockpit-error)', fontSize: '15px', fontWeight: 600, marginBottom: '12px' }}>⚠️ 加载债务数据失败</p>
         <p className="text-muted">{error}</p>
-        <button onClick={handleRefresh} className="antd-btn" style={{ marginTop: '16px' }}>重试</button>
+        <button onClick={handleRefresh} className="cockpit-btn" style={{ marginTop: '16px' }}>重试</button>
       </div>
     );
   }
@@ -338,7 +338,7 @@ export default function DebtView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开债务焦点对象 ${focusedDebtCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedDebtCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -347,7 +347,7 @@ export default function DebtView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开债务焦点任务 ${focusedDebtCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedDebtCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -374,7 +374,7 @@ export default function DebtView({
           {debtClosureRows.map((row) => (
             <article
               key={`debt-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -391,7 +391,7 @@ export default function DebtView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开债务闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -400,7 +400,7 @@ export default function DebtView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开债务闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -429,7 +429,7 @@ export default function DebtView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>优先债务</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先处理最该收口的债务项，再决定回治理、领域或系统地图。</p>
@@ -451,7 +451,7 @@ export default function DebtView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>债务去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>债务账本本身不是终点，真正处理还要回治理、系统地图和任务中心。</p>
@@ -488,16 +488,16 @@ export default function DebtView({
             <p className="stat-value" style={{ textShadow: '0 0 8px rgba(0, 242, 254, 0.2)' }}>{data.total}</p>
           </div>
         </div>
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-error)' }}>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--cockpit-error)' }}>
           <div className="stat-info">
             <h3>未解决 (Open)</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-error)', textShadow: '0 0 8px rgba(255, 71, 87, 0.2)' }}>{data.open}</p>
+            <p className="stat-value" style={{ color: 'var(--cockpit-error)', textShadow: '0 0 8px rgba(255, 71, 87, 0.2)' }}>{data.open}</p>
           </div>
         </div>
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-success)' }}>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--cockpit-success)' }}>
           <div className="stat-info">
             <h3>已消除 (Closed)</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-success)', textShadow: '0 0 8px rgba(5, 243, 162, 0.2)' }}>{data.closed}</p>
+            <p className="stat-value" style={{ color: 'var(--cockpit-success)', textShadow: '0 0 8px rgba(5, 243, 162, 0.2)' }}>{data.closed}</p>
           </div>
         </div>
       </div>
@@ -588,7 +588,7 @@ export default function DebtView({
           <button 
             onClick={handleRefresh}
             disabled={refreshing}
-            className="antd-btn" 
+            className="cockpit-btn" 
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px' }}
           >
             <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
@@ -598,7 +598,7 @@ export default function DebtView({
             type="button"
             onClick={clearFilters}
             disabled={!hasActiveFilters}
-            className="antd-btn"
+            className="cockpit-btn"
             aria-label="清除债务筛选"
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px' }}
           >
@@ -637,14 +637,14 @@ export default function DebtView({
               visibleDebtItems.map(item => (
                 <tr key={item.id} className="service-row">
                   <td className="text-muted" style={{ fontFamily: 'monospace' }}>{item.id}</td>
-                  <td style={{ fontWeight: 500, color: 'var(--antd-text-primary)' }}>{item.title}</td>
+                  <td style={{ fontWeight: 500, color: 'var(--cockpit-text-primary)' }}>{item.title}</td>
                   <td>
                     <span style={{ 
                       fontSize: '11px',
                       padding: '2px 8px',
                       borderRadius: '4px',
                       backgroundColor: 'rgba(0, 242, 254, 0.06)',
-                      color: 'var(--antd-primary)',
+                      color: 'var(--cockpit-primary)',
                       border: '1px solid rgba(0, 242, 254, 0.15)'
                     }}>
                       {item.dimension}
@@ -657,7 +657,7 @@ export default function DebtView({
                       borderRadius: '4px',
                       fontWeight: 600,
                       backgroundColor: item.severity.toLowerCase() === 'p0' ? 'rgba(255, 71, 87, 0.15)' : item.severity.toLowerCase() === 'p1' ? 'rgba(255, 184, 0, 0.15)' : 'rgba(22, 119, 255, 0.1)',
-                      color: item.severity.toLowerCase() === 'p0' ? 'var(--antd-error)' : item.severity.toLowerCase() === 'p1' ? 'var(--antd-warning)' : 'var(--antd-primary)',
+                      color: item.severity.toLowerCase() === 'p0' ? 'var(--cockpit-error)' : item.severity.toLowerCase() === 'p1' ? 'var(--cockpit-warning)' : 'var(--cockpit-primary)',
                       border: `1px solid ${item.severity.toLowerCase() === 'p0' ? 'rgba(255,71,87,0.25)' : item.severity.toLowerCase() === 'p1' ? 'rgba(255,184,0,0.25)' : 'rgba(0,242,254,0.2)'}`
                     }}>
                       {item.severity.toUpperCase()}
@@ -665,7 +665,7 @@ export default function DebtView({
                   </td>
                   <td>
                     <span className="status-badge" style={{ 
-                      color: item.lifecycle_state === 'closed' ? 'var(--antd-success)' : 'var(--antd-warning)' 
+                      color: item.lifecycle_state === 'closed' ? 'var(--cockpit-success)' : 'var(--cockpit-warning)' 
                     }}>
                       {item.lifecycle_state === 'closed' ? <CheckCircle size={12} style={{ marginRight: '4px' }} /> : <ShieldAlert size={12} style={{ marginRight: '4px' }} />}
                       {item.lifecycle_state}
@@ -675,7 +675,7 @@ export default function DebtView({
                   <td>
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`承接债务 ${item.title}`}
                       onClick={() => handleQueueDebt(item)}
                       disabled={queueingDebtId === item.id}
@@ -695,7 +695,7 @@ export default function DebtView({
             <span className="text-muted" style={{ fontSize: 12 }}>已显示 {visibleDebtItems.length} / {filteredItems.length} 条匹配债务</span>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="加载更多债务"
               onClick={() => setVisibleDebtLimit((current) => current + 50)}
             >

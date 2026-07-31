@@ -358,7 +358,7 @@ export default function GovernanceDomainWorkbench({
             : '治理与领域工作台';
 
   return (
-    <section className="governance-workbench antd-card">
+    <section className="governance-workbench cockpit-card">
       <div className="section-header" style={{ marginBottom: 0 }}>
         <div>
           <h2>{title}</h2>
@@ -375,7 +375,7 @@ export default function GovernanceDomainWorkbench({
             <strong>治理数据需要补证</strong>
             <span>{sourceErrors.join('；')}，当前治理数字可能不完整。</span>
           </div>
-          <button type="button" className="antd-btn" onClick={() => setRefreshToken((value) => value + 1)}>重试</button>
+          <button type="button" className="cockpit-btn" onClick={() => setRefreshToken((value) => value + 1)}>重试</button>
         </div>
       )}
 
@@ -431,7 +431,7 @@ export default function GovernanceDomainWorkbench({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               disabled={taskPending}
               aria-label={`登记治理任务 ${governanceTaskTitle}`}
               onClick={() => { void createGovernanceTask(); }}
@@ -564,23 +564,23 @@ export default function GovernanceDomainWorkbench({
       </div>
 
       <div className="governance-workbench-actions">
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: summary.topProject?.id || summary.topGap?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: summary.topProject?.id || summary.topGap?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <Layers size={14} />
           <span>去系统地图</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'C2G', taskQuery: summary.topRoadmap?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'C2G', taskQuery: summary.topRoadmap?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <Compass size={14} />
           <span>去 C2G</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Debt', taskQuery: summary.topDebt?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Debt', taskQuery: summary.topDebt?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <ClipboardCheck size={14} />
           <span>去债务页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps', taskQuery: summary.topAttentionApp?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps', taskQuery: summary.topAttentionApp?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <AppWindow size={14} />
           <span>去领域应用</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'L4Health', taskQuery: summary.topUnhealthyDomain?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'L4Health', taskQuery: summary.topUnhealthyDomain?.id || governanceContextQuery }, onNavigate, onOpenTarget)}>
           <ShieldCheck size={14} />
           <span>去 L4 健康</span>
         </button>

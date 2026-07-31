@@ -533,7 +533,7 @@ export default function ProtocolWorkbenchView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <section className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <section className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div className="section-header" style={{ marginBottom: 0 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 18 }}>协议与元模型操作面</h2>
@@ -541,7 +541,7 @@ export default function ProtocolWorkbenchView({
               以前这些能力散在 `Assets`、`SystemMap` 和命令行里，现在把它们拉回一个能巡检、能跳转、能复制命令的入口。
             </p>
           </div>
-          <button className="antd-btn" onClick={() => {
+          <button className="cockpit-btn" onClick={() => {
             setRefreshing(true);
             void load();
           }}>
@@ -557,7 +557,7 @@ export default function ProtocolWorkbenchView({
               <strong>协议证据不完整</strong>
               <span>{sourceError}，当前空状态不代表协议层没有能力。</span>
             </div>
-            <button type="button" className="antd-btn" onClick={() => { setRefreshing(true); void load(); }}>重试</button>
+            <button type="button" className="cockpit-btn" onClick={() => { setRefreshing(true); void load(); }}>重试</button>
           </div>
         )}
 
@@ -581,14 +581,14 @@ export default function ProtocolWorkbenchView({
         {(payload.roadmap_item || payload.playbook) && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             {payload.roadmap_item && (
-              <article className="antd-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
+              <article className="cockpit-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
                 <span className="status-badge degraded">{payload.roadmap_item.priority || 'P?'}</span>
                 <h3 style={{ margin: '10px 0 8px', fontSize: 15 }}>{payload.roadmap_item.title || '路线图项'}</h3>
                 <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>{payload.roadmap_item.problem || '协议层演进项。'}</p>
               </article>
             )}
             {payload.playbook && (
-              <article className="antd-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
+              <article className="cockpit-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
                 <span className="status-badge online">巡检清单</span>
                 <h3 style={{ margin: '10px 0 8px', fontSize: 15 }}>{payload.playbook.title || '协议层完整性检查'}</h3>
                 <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>{payload.playbook.goal || '用固定路径巡检协议层。'}</p>
@@ -617,7 +617,7 @@ export default function ProtocolWorkbenchView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开协议焦点对象 ${focusedProtocolCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedProtocolCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -626,7 +626,7 @@ export default function ProtocolWorkbenchView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开协议焦点任务 ${focusedProtocolCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedProtocolCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -656,7 +656,7 @@ export default function ProtocolWorkbenchView({
           <Search size={16} className="text-muted" aria-hidden="true" />
           <input
             type="search"
-            className="antd-input"
+            className="cockpit-input"
             aria-label="搜索协议对象"
             placeholder="层、工作流、命令或承接页面"
             value={protocolQuery}
@@ -664,7 +664,7 @@ export default function ProtocolWorkbenchView({
             style={{ minWidth: 260, flex: '1 1 280px' }}
           />
           <select
-            className="antd-input"
+            className="cockpit-input"
             aria-label="按协议状态筛选"
             value={protocolStatusFilter}
             onChange={(event) => setProtocolStatusFilter(event.target.value)}
@@ -679,7 +679,7 @@ export default function ProtocolWorkbenchView({
           {hasProtocolFilter && (
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="清除协议对象筛选"
               onClick={() => { setProtocolQuery(''); setProtocolStatusFilter('all'); }}
             >
@@ -693,19 +693,19 @@ export default function ProtocolWorkbenchView({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
           {protocolSurfaces.map((surface) => (
-            <article key={surface.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article key={surface.id} className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <small className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>{surface.id}</small>
                 <strong style={{ fontSize: 15 }}>{surface.title}</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{surface.summary}</p>
               </div>
-              <div style={{ minHeight: 54, padding: '10px 12px', borderRadius: 'var(--antd-radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ minHeight: 54, padding: '10px 12px', borderRadius: 'var(--cockpit-radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <small className="text-muted" style={{ display: 'block', marginBottom: 4 }}>怎么用</small>
                 <span style={{ fontSize: 12, lineHeight: 1.6 }}>{surface.detail}</span>
               </div>
               <button
                 type="button"
-                className="antd-btn small"
+                className="cockpit-btn small"
                 aria-label={`切换协议子面板 ${surface.title}`}
                 onClick={() => setActiveProtocolSurfaceId(surface.id)}
               >
@@ -734,7 +734,7 @@ export default function ProtocolWorkbenchView({
               <p>{activeProtocolSurface.detail}</p>
             </div>
           </article>
-          <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 10 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 10 }}>
             <div style={{ display: 'grid', gap: 4 }}>
               <strong style={{ fontSize: 15 }}>相关去向</strong>
               <small className="text-muted">这层最常见的对象承接与任务收口。</small>
@@ -742,7 +742,7 @@ export default function ProtocolWorkbenchView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开协议相关对象 ${activeProtocolSurface.title}`}
                 onClick={() => openCockpitNavigationTarget(activeProtocolSurface.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -751,7 +751,7 @@ export default function ProtocolWorkbenchView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开协议相关任务 ${activeProtocolSurface.title}`}
                 onClick={() => openCockpitNavigationTarget(activeProtocolSurface.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -775,13 +775,13 @@ export default function ProtocolWorkbenchView({
         </div>
         <div style={{ display: 'grid', gap: 12 }}>
           {filteredProtocolClosureRows.length === 0 ? (
-            <div className="antd-card" style={{ padding: 18, textAlign: 'center' }}>
+            <div className="cockpit-card" style={{ padding: 18, textAlign: 'center' }}>
               <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的协议闭环对象。</p>
             </div>
           ) : filteredProtocolClosureRows.map((row) => (
             <article
               key={`protocol-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -798,7 +798,7 @@ export default function ProtocolWorkbenchView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开协议闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -807,7 +807,7 @@ export default function ProtocolWorkbenchView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开协议闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -843,7 +843,7 @@ export default function ProtocolWorkbenchView({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               disabled={protocolTaskPending}
               aria-label={`登记协议治理任务 ${protocolTaskDraft.title}`}
               onClick={() => { void createProtocolTask(); }}
@@ -853,7 +853,7 @@ export default function ProtocolWorkbenchView({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`复制协议补位任务 ${protocolTaskDraft.title}`}
               onClick={async () => {
                 await copyText(protocolTaskDraft.copyText);
@@ -865,7 +865,7 @@ export default function ProtocolWorkbenchView({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开协议补位对象 ${protocolTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(protocolTaskDraft.objectTarget, onNavigate, onOpenTarget)}
             >
@@ -874,7 +874,7 @@ export default function ProtocolWorkbenchView({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开协议补位任务 ${protocolTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(protocolTaskDraft.taskTarget, onNavigate, onOpenTarget)}
             >
@@ -911,11 +911,11 @@ export default function ProtocolWorkbenchView({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
           {filteredProtocolLayers.length === 0 ? (
-            <div className="antd-card" style={{ padding: 18, textAlign: 'center' }}>
+            <div className="cockpit-card" style={{ padding: 18, textAlign: 'center' }}>
               <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的协议层。</p>
             </div>
           ) : filteredProtocolLayers.map((layer) => (
-            <article key={layer.id} className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <article key={layer.id} className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: 15 }}>{layer.title}</h3>
@@ -923,7 +923,7 @@ export default function ProtocolWorkbenchView({
                 </div>
                 <span className={`status-badge ${layer.status === 'ready' ? 'online' : 'degraded'}`}>{statusLabel(layer.status)}</span>
               </div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--antd-text-secondary)' }}>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--cockpit-text-secondary)' }}>
                 {layer.facts.map((fact) => (
                   <li key={`${layer.id}-${fact}`}>{fact}</li>
                 ))}
@@ -944,15 +944,15 @@ export default function ProtocolWorkbenchView({
         </div>
         <div style={{ display: 'grid', gap: 12 }}>
           {payload.recent_workflows.length === 0 ? (
-            <div className="antd-card" style={{ padding: 18 }}>
+            <div className="cockpit-card" style={{ padding: 18 }}>
               <p className="text-muted" style={{ margin: 0 }}>还没有最近 workflow 记录，先跑一条受控检查命令补证据。</p>
             </div>
           ) : filteredProtocolWorkflows.length === 0 ? (
-            <div className="antd-card" style={{ padding: 18 }}>
+            <div className="cockpit-card" style={{ padding: 18 }}>
               <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的最近编排记录。</p>
             </div>
           ) : filteredProtocolWorkflows.map((workflow) => (
-            <article key={workflow.id} className="antd-card" style={{ padding: 18, display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
+            <article key={workflow.id} className="cockpit-card" style={{ padding: 18, display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
               <div>
                 <strong>{workflow.task}</strong>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>{workflow.id} · {shortTime(workflow.updated_at)}</p>
@@ -967,7 +967,7 @@ export default function ProtocolWorkbenchView({
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="加载更多协议运行记录"
               onClick={() => void load(payload.recent_workflows.length, true)}
               disabled={loadingMore}
@@ -991,13 +991,13 @@ export default function ProtocolWorkbenchView({
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>待排查协议层</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先抓观察层，没有观察层时也给出当前最关键的一层入口。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: workflowTarget, taskQuery: focusTaskQuery || 'Protocol' }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: workflowTarget, taskQuery: focusTaskQuery || 'Protocol' }, onNavigate, onOpenTarget)}>
                 <Route size={14} />
                 <span>看工作流页</span>
               </button>
@@ -1029,7 +1029,7 @@ export default function ProtocolWorkbenchView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>待补证据</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>命令先复制，运行状态再回看，别让协议页只停在“看定义”。</p>
@@ -1048,7 +1048,7 @@ export default function ProtocolWorkbenchView({
                   <div>
                     <strong>{command.label}</strong>
                     <p>{command.detail}</p>
-                    <code style={{ fontSize: 12, color: 'var(--antd-primary)' }}>{command.value}</code>
+                    <code style={{ fontSize: 12, color: 'var(--cockpit-primary)' }}>{command.value}</code>
                   </div>
                   <Copy size={14} />
                 </button>
@@ -1069,13 +1069,13 @@ export default function ProtocolWorkbenchView({
             </div>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>承接页面与路线</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>协议层问题最后都要落到页面、路线图和治理面上。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: governanceTarget, taskQuery: focusTaskQuery || 'Protocol' }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: governanceTarget, taskQuery: focusTaskQuery || 'Protocol' }, onNavigate, onOpenTarget)}>
                 <ClipboardCheck size={14} />
                 <span>看治理面</span>
               </button>

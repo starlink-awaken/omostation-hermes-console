@@ -127,7 +127,7 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
   // If unauthorized, show inner login component
   if (!isAuthenticated) {
     return (
-      <div className="antd-card animate-fade-in" style={{ padding: '2rem', maxWidth: '500px', margin: '40px auto', border: '1px solid var(--antd-border-color)' }}>
+      <div className="cockpit-card animate-fade-in" style={{ padding: '2rem', maxWidth: '500px', margin: '40px auto', border: '1px solid var(--cockpit-border-color)' }}>
         <LoginPage onLogin={() => {
           setIsAuthenticated(true);
           loadStatsAndHealth();
@@ -138,13 +138,13 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
 
   if (loadError) {
     return (
-      <section className="antd-card animate-fade-in" role="alert" style={{ padding: '24px', border: '1px solid var(--antd-border-color)' }}>
+      <section className="cockpit-card animate-fade-in" role="alert" style={{ padding: '24px', border: '1px solid var(--cockpit-border-color)' }}>
         <h2 style={{ margin: 0, fontSize: 16 }}>GBrain 管理接口暂不可用</h2>
         <p className="text-muted" style={{ margin: '8px 0 0' }}>
           统计、凭证和访问日志没有成功读取，页面不会把空数据当成真实的 0。请确认 GBrain admin 服务已挂载后重试。
         </p>
         <p style={{ margin: '12px 0', fontSize: 13 }}>原因：{loadError}</p>
-        <button type="button" className="antd-btn" onClick={() => setLoadError(null)}>
+        <button type="button" className="cockpit-btn" onClick={() => setLoadError(null)}>
           重试
         </button>
       </section>
@@ -232,16 +232,16 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
             {/* Split layout for Live Activity and Health Metrics */}
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 320 }} className="services-list">
-                <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--antd-border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--antd-text-primary)', margin: 0 }}>
+                <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--cockpit-border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--cockpit-text-primary)', margin: 0 }}>
                     实时事件流 (Live Activity)
                   </h2>
                   <span style={{ 
                     fontSize: 11, 
                     padding: '3px 8px', 
-                    borderRadius: 'var(--antd-radius-md)', 
-                    background: sseStatus === 'connected' ? 'var(--antd-success-bg)' : 'rgba(255, 184, 0, 0.08)',
-                    color: sseStatus === 'connected' ? 'var(--antd-success)' : 'var(--antd-warning)',
+                    borderRadius: 'var(--cockpit-radius-md)', 
+                    background: sseStatus === 'connected' ? 'var(--cockpit-success-bg)' : 'rgba(255, 184, 0, 0.08)',
+                    color: sseStatus === 'connected' ? 'var(--cockpit-success)' : 'var(--cockpit-warning)',
                     border: `1px solid ${sseStatus === 'connected' ? 'rgba(5,243,162,0.15)' : 'rgba(255, 184, 0, 0.15)'}`
                   }}>
                     {sseStatus === 'connected' ? '● 正在监听' : sseStatus === 'connecting' ? '● 正在重连...' : '● 已断开'}
@@ -250,7 +250,7 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
 
                 <div style={{ overflowX: 'auto' }}>
                   {events.length === 0 ? (
-                    <div style={{ padding: 48, textAlign: 'center', color: 'var(--antd-text-secondary)' }}>
+                    <div style={{ padding: 48, textAlign: 'center', color: 'var(--cockpit-text-secondary)' }}>
                       {sseStatus === 'connected' ? '等待智能体接入中...' : '正在建立长连接...'}
                     </div>
                   ) : (
@@ -280,11 +280,11 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
                             <td className="mono">{e.latency_ms} ms</td>
                             <td>
                               <span className={`status-badge ${e.status === 'ok' ? 'online' : 'offline'}`}>
-                                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: e.status === 'ok' ? 'var(--antd-success)' : 'var(--antd-error)', display: 'inline-block' }}></span>
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: e.status === 'ok' ? 'var(--cockpit-success)' : 'var(--cockpit-error)', display: 'inline-block' }}></span>
                                 <span style={{ marginLeft: 4 }}>{e.status}</span>
                               </span>
                             </td>
-                            <td style={{ color: 'var(--antd-text-secondary)' }}>{timeAgo(e.timestamp)}</td>
+                            <td style={{ color: 'var(--cockpit-text-secondary)' }}>{timeAgo(e.timestamp)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -294,20 +294,20 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
               </div>
 
               {/* Side token health stats */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'fit-content', padding: 24, minWidth: 260, border: '1px solid var(--antd-border-color)', borderRadius: 'var(--antd-radius-lg)', background: 'var(--antd-bg-container)' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--antd-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'fit-content', padding: 24, minWidth: 260, border: '1px solid var(--cockpit-border-color)', borderRadius: 'var(--cockpit-radius-lg)', background: 'var(--cockpit-bg-container)' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--cockpit-text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Heart size={16} className="text-warning" />
                   凭证健康度
                 </h3>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 8 }}>
-                    <span style={{ color: 'var(--antd-text-secondary)' }}>即将过期凭证</span>
-                    <span className="mono" style={{ fontWeight: 600, color: health.expiring_soon > 0 ? 'var(--antd-warning)' : 'var(--antd-text-primary)' }}>{health.expiring_soon}</span>
+                    <span style={{ color: 'var(--cockpit-text-secondary)' }}>即将过期凭证</span>
+                    <span className="mono" style={{ fontWeight: 600, color: health.expiring_soon > 0 ? 'var(--cockpit-warning)' : 'var(--cockpit-text-primary)' }}>{health.expiring_soon}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
-                    <span style={{ color: 'var(--antd-text-secondary)' }}>近 24 小时错误率</span>
-                    <span className="mono" style={{ fontWeight: 600, color: health.error_rate !== '0%' ? 'var(--antd-error)' : 'var(--antd-success)' }}>{health.error_rate}</span>
+                    <span style={{ color: 'var(--cockpit-text-secondary)' }}>近 24 小时错误率</span>
+                    <span className="mono" style={{ fontWeight: 600, color: health.error_rate !== '0%' ? 'var(--cockpit-error)' : 'var(--cockpit-success)' }}>{health.error_rate}</span>
                   </div>
                 </div>
               </div>
@@ -322,19 +322,19 @@ export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: Dashb
         )}
 
         {subTab === 'agents' && (
-          <div className="animate-fade-in antd-card" style={{ padding: 24, border: '1px solid var(--antd-border-color)' }}>
+          <div className="animate-fade-in cockpit-card" style={{ padding: 24, border: '1px solid var(--cockpit-border-color)' }}>
             <AgentsPage focusQuery={initialQuery} />
           </div>
         )}
 
         {subTab === 'calibration' && (
-          <div className="animate-fade-in antd-card" style={{ padding: 24, border: '1px solid var(--antd-border-color)' }}>
+          <div className="animate-fade-in cockpit-card" style={{ padding: 24, border: '1px solid var(--cockpit-border-color)' }}>
             <CalibrationPage />
           </div>
         )}
 
         {subTab === 'logs' && (
-          <div className="animate-fade-in antd-card" style={{ padding: 24, border: '1px solid var(--antd-border-color)' }}>
+          <div className="animate-fade-in cockpit-card" style={{ padding: 24, border: '1px solid var(--cockpit-border-color)' }}>
             <RequestLogPage />
           </div>
         )}

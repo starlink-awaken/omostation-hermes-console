@@ -472,7 +472,7 @@ export default function AssetsView({
         </div>
       )}
 
-      <section className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <section className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div className="section-header" style={{ marginBottom: 0 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 18 }}>技术资产总览</h2>
@@ -483,7 +483,7 @@ export default function AssetsView({
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="antd-btn"
+            className="cockpit-btn"
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px' }}
           >
             <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
@@ -537,7 +537,7 @@ export default function AssetsView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开资产焦点对象 ${focusedAssetCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedAssetCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -546,7 +546,7 @@ export default function AssetsView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开资产焦点任务 ${focusedAssetCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedAssetCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -572,21 +572,21 @@ export default function AssetsView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>技能治理</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>本地技能先补描述、归类和协议位置，再谈复用。</p>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
-                <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Protocol', taskQuery: focusTaskQuery || filteredSkills[0]?.name || 'Assets' }, onNavigate, onOpenTarget)}>
+                <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Protocol', taskQuery: focusTaskQuery || filteredSkills[0]?.name || 'Assets' }, onNavigate, onOpenTarget)}>
                   <ShieldAlert size={14} />
                   <span>进入协议面</span>
                 </button>
                 {localSkills[0] && (
                   <button
                     type="button"
-                    className="antd-btn antd-btn-primary"
+                    className="cockpit-btn cockpit-btn-primary"
                     aria-label={`登记技能治理任务 ${localSkills[0].name}`}
                     disabled={skillTaskPending}
                     onClick={() => void handleCreateSkillTask()}
@@ -623,13 +623,13 @@ export default function AssetsView({
             {skillTaskNotice && <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{skillTaskNotice}</p>}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>管线试跑</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>别只知道管线名，至少给它一轮目标和输出，再决定是否能日用。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => setActiveSubTab('pipelines')}>
+              <button type="button" className="cockpit-btn" onClick={() => setActiveSubTab('pipelines')}>
                 <Terminal size={14} />
                 <span>打开管线面</span>
               </button>
@@ -664,13 +664,13 @@ export default function AssetsView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>工作流验收</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>资产层 workflow 试跑完以后，回到运行页看实际编排与授权链。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Workflows', taskQuery: focusTaskQuery || filteredWorkflows[0]?.name || 'Assets' }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Workflows', taskQuery: focusTaskQuery || filteredWorkflows[0]?.name || 'Assets' }, onNavigate, onOpenTarget)}>
                 <GitPullRequest size={14} />
                 <span>进入工作流页</span>
               </button>
@@ -716,7 +716,7 @@ export default function AssetsView({
           {assetClosureRows.map((row) => (
             <article
               key={`asset-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -733,7 +733,7 @@ export default function AssetsView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开资产闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -742,7 +742,7 @@ export default function AssetsView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开资产闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -767,7 +767,7 @@ export default function AssetsView({
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => setActiveSubTab('skills')}
-            className={`antd-btn ${activeSubTab === 'skills' ? 'btn-primary' : ''}`}
+            className={`cockpit-btn ${activeSubTab === 'skills' ? 'btn-primary' : ''}`}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
           >
             <Code size={14} />
@@ -776,7 +776,7 @@ export default function AssetsView({
 
           <button
             onClick={() => setActiveSubTab('pipelines')}
-            className={`antd-btn ${activeSubTab === 'pipelines' ? 'btn-primary' : ''}`}
+            className={`cockpit-btn ${activeSubTab === 'pipelines' ? 'btn-primary' : ''}`}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
           >
             <Terminal size={14} />
@@ -785,7 +785,7 @@ export default function AssetsView({
 
           <button
             onClick={() => setActiveSubTab('workflows')}
-            className={`antd-btn ${activeSubTab === 'workflows' ? 'btn-primary' : ''}`}
+            className={`cockpit-btn ${activeSubTab === 'workflows' ? 'btn-primary' : ''}`}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
           >
             <GitPullRequest size={14} />
@@ -796,7 +796,7 @@ export default function AssetsView({
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="antd-btn"
+          className="cockpit-btn"
           style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px' }}
         >
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
@@ -837,7 +837,7 @@ export default function AssetsView({
           />
           <button
             type="button"
-            className="antd-btn"
+            className="cockpit-btn"
             aria-label="清除技术资产搜索"
             onClick={() => setAssetQuery('')}
             disabled={!assetQuery}
@@ -857,7 +857,7 @@ export default function AssetsView({
             filteredSkills.map((skill) => (
               <div
                 key={skill.id}
-                className="antd-card"
+                className="cockpit-card"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -880,14 +880,14 @@ export default function AssetsView({
               >
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{skill.name}</h4>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>{skill.name}</h4>
                     <span
                       style={{
                         fontSize: '10px',
                         padding: '1px 6px',
                         borderRadius: '4px',
                         backgroundColor: skill.source.startsWith('plugin') ? 'rgba(0, 242, 254, 0.1)' : 'rgba(255,255,255,0.06)',
-                        color: skill.source.startsWith('plugin') ? 'var(--antd-primary)' : 'rgba(255,255,255,0.65)',
+                        color: skill.source.startsWith('plugin') ? 'var(--cockpit-primary)' : 'rgba(255,255,255,0.65)',
                         border: '1px solid rgba(255, 255, 255, 0.05)',
                       }}
                     >
@@ -974,13 +974,13 @@ export default function AssetsView({
               <button
                 onClick={handleRunPipeline}
                 disabled={pipelineRunning || !selectedPipeline}
-                className="antd-btn"
+                className="cockpit-btn"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   padding: '8px 16px',
-                  background: 'var(--antd-primary)',
+                  background: 'var(--cockpit-primary)',
                   color: '#fff',
                   border: 'none',
                   cursor: 'pointer',
@@ -1014,12 +1014,12 @@ export default function AssetsView({
               }}
             >
               {pipelineRunning && (
-                <div style={{ color: 'var(--antd-primary)' }} className="blink-fast">
+                <div style={{ color: 'var(--cockpit-primary)' }} className="blink-fast">
                   任务会先进入 OMO 计划队列，审批后再由任务中心派发执行。
                 </div>
               )}
               {pipelineError && (
-                <div style={{ color: 'var(--antd-error)' }}>
+                <div style={{ color: 'var(--cockpit-error)' }}>
                   ⚠️ 执行失败: {pipelineError}
                 </div>
               )}
@@ -1037,7 +1037,7 @@ export default function AssetsView({
       {activeSubTab === 'workflows' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredWorkflows.length === 0 ? (
-            <div className="antd-card" style={{ padding: '32px', textAlign: 'center' }}>
+            <div className="cockpit-card" style={{ padding: '32px', textAlign: 'center' }}>
               <p className="text-muted">{workflows.length === 0 ? '暂无已装载的自动化工作流' : '当前搜索下没有匹配的自动化工作流'}</p>
             </div>
           ) : (
@@ -1056,7 +1056,7 @@ export default function AssetsView({
                 }}
               >
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{workflow.name}</h4>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>{workflow.name}</h4>
                   <p className="text-muted" style={{ margin: '4px 0 0 0', fontSize: '12px' }}>
                     {workflow.description || '分布式网格任务自动化编排工作流'}
                   </p>
@@ -1070,7 +1070,7 @@ export default function AssetsView({
                   <button
                     onClick={() => void handleTestWorkflow(workflow.name)}
                     disabled={wfTesting[workflow.name]}
-                    className="antd-btn"
+                    className="cockpit-btn"
                     style={{
                       fontSize: '11px',
                       padding: '4px 10px',
@@ -1086,7 +1086,7 @@ export default function AssetsView({
                     <button
                       onClick={() => void handleQueueWorkflow(workflow.name)}
                       disabled={wfQueueing[workflow.name]}
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`登记工作流验收任务 ${workflow.name}`}
                       style={{
                         fontSize: '11px',

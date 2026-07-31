@@ -289,7 +289,7 @@ export default function L4HealthView({
       <div className="error-state">
         <XCircle size={24} className="text-danger" />
         <p>{error}</p>
-        <button onClick={fetchData} className="antd-btn">
+        <button onClick={fetchData} className="cockpit-btn">
           重试
         </button>
       </div>
@@ -359,7 +359,7 @@ export default function L4HealthView({
           </div>
           <button
             type="button"
-            className="antd-btn"
+            className="cockpit-btn"
             disabled={taskPending}
             aria-label="登记域健康治理任务"
             onClick={() => { void createDomainHealthTask(); }}
@@ -389,7 +389,7 @@ export default function L4HealthView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开域健康焦点对象 ${focusedL4Card.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedL4Card.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -398,7 +398,7 @@ export default function L4HealthView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开域健康焦点任务 ${focusedL4Card.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedL4Card.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -431,7 +431,7 @@ export default function L4HealthView({
           style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, margin: '14px 0 16px' }}
         >
           <input
-            className="antd-input"
+            className="cockpit-input"
             aria-label="搜索域健康对象"
             placeholder="域、能力、异常、模式或风险"
             value={healthQuery}
@@ -439,7 +439,7 @@ export default function L4HealthView({
             style={{ minWidth: 260, flex: '1 1 280px' }}
           />
           <select
-            className="antd-input"
+            className="cockpit-input"
             aria-label="按域健康状态筛选"
             value={healthStatusFilter}
             onChange={(event) => setHealthStatusFilter(event.target.value)}
@@ -452,7 +452,7 @@ export default function L4HealthView({
           {hasHealthFilter && (
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="清除域健康筛选"
               onClick={() => { setHealthQuery(''); setHealthStatusFilter('all'); }}
             >
@@ -463,7 +463,7 @@ export default function L4HealthView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>待处理域</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>优先处理 freshness 失效、问题数较多或 KEMS 不完整的域。</p>
@@ -493,7 +493,7 @@ export default function L4HealthView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>风险去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>风险和模式只负责提示，真正收口还要回领域应用、系统地图和观测页。</p>
@@ -536,14 +536,14 @@ export default function L4HealthView({
       </section>
 
       {degradedReasons.length > 0 && (
-        <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', marginBottom: 20, border: '1px solid rgba(255, 184, 0, 0.35)', borderRadius: 'var(--antd-radius-md)', background: 'rgba(255, 184, 0, 0.08)', color: 'var(--antd-warning)' }}>
+        <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', marginBottom: 20, border: '1px solid rgba(255, 184, 0, 0.35)', borderRadius: 'var(--cockpit-radius-md)', background: 'rgba(255, 184, 0, 0.08)', color: 'var(--cockpit-warning)' }}>
           <AlertTriangle size={18} aria-hidden="true" style={{ flex: '0 0 auto', marginTop: 2 }} />
           <div style={{ flex: 1 }}>
             <strong>L4 健康数据未完成读取</strong>
-            <p style={{ margin: '4px 0 0', color: 'var(--antd-text-secondary)', fontSize: 12 }}>{degradedReasons.join('；')}</p>
-            {healthData?.configuration?.next_action && <p style={{ margin: '4px 0 0', color: 'var(--antd-text-secondary)', fontSize: 12 }}>{healthData.configuration.next_action}</p>}
+            <p style={{ margin: '4px 0 0', color: 'var(--cockpit-text-secondary)', fontSize: 12 }}>{degradedReasons.join('；')}</p>
+            {healthData?.configuration?.next_action && <p style={{ margin: '4px 0 0', color: 'var(--cockpit-text-secondary)', fontSize: 12 }}>{healthData.configuration.next_action}</p>}
           </div>
-          <button onClick={fetchData} className="antd-btn" aria-label="重试 L4 健康数据">重试</button>
+          <button onClick={fetchData} className="cockpit-btn" aria-label="重试 L4 健康数据">重试</button>
         </div>
       )}
 
@@ -600,7 +600,7 @@ export default function L4HealthView({
             </span>
             <button
               onClick={fetchData}
-              className="antd-btn"
+              className="cockpit-btn"
               style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
             >
               <RefreshCw size={14} />

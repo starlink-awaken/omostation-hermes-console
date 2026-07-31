@@ -34,7 +34,7 @@ export default function ActionSurfacePanel({
   onOpenTarget,
 }: ActionSurfacePanelProps) {
   return (
-    <section className="action-surface-panel antd-card">
+    <section className="action-surface-panel cockpit-card">
       <div className="section-header" style={{ marginBottom: 12 }}>
         <div>
           <h2 style={{ fontSize: 16, margin: 0 }}>{title}</h2>
@@ -53,7 +53,7 @@ export default function ActionSurfacePanel({
             </div>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               onClick={() => {
                 if (item.actionType === 'navigate') {
                   openCockpitNavigationTarget(

@@ -849,7 +849,7 @@ export class DashboardViewErrorBoundary extends React.Component<
         <p>页面运行时出现异常，主控制台仍可继续使用。重新加载后会重新获取页面资源。</p>
         <button
           type="button"
-          className="antd-btn small"
+          className="cockpit-btn small"
           onClick={() => window.location.reload()}
         >
           重新加载页面
@@ -4383,11 +4383,11 @@ export default function Dashboard() {
         position: 'absolute',
         top: '-100px',
         left: '20px',
-        background: 'var(--antd-primary)',
+        background: 'var(--cockpit-primary)',
         color: '#fff',
         padding: '8px 16px',
         zIndex: 100,
-        borderRadius: 'var(--antd-radius-md)',
+        borderRadius: 'var(--cockpit-radius-md)',
         transition: 'top 0.2s',
         textDecoration: 'none'
       }}
@@ -4666,7 +4666,7 @@ export default function Dashboard() {
               </div>
               <button
                 type="button"
-                className="antd-btn small"
+                className="cockpit-btn small"
                 aria-label="重试全站数据源"
                 onClick={() => setPageRefreshToken((value) => value + 1)}
               >
@@ -4774,7 +4774,7 @@ export default function Dashboard() {
             <div className="dashboard-page-context-actions">
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`查看当前页面覆盖 ${currentCockpitPage?.title || currentPageTarget?.label || activeTab}`}
                 onClick={() => openContextTarget({ tab: 'SystemMap', pageId: activeTab })}
               >
@@ -4784,7 +4784,7 @@ export default function Dashboard() {
               {currentPagePrimaryPath && (
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开当前页面路径 ${currentPagePrimaryPath.title || currentPagePrimaryPath.id}`}
                   onClick={() => openContextTarget({ tab: 'SystemMap', usagePathId: currentPagePrimaryPath.id })}
                 >
@@ -4794,7 +4794,7 @@ export default function Dashboard() {
               )}
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开当前页面任务 ${currentCockpitPage?.title || currentPageTarget?.label || activeTab}`}
                 onClick={() => openContextTarget({
                   tab: 'TaskCenter',
@@ -4807,7 +4807,7 @@ export default function Dashboard() {
               {currentPageDraft?.read_only && (
                 <button
                   type="button"
-                  className="antd-btn antd-btn-primary"
+                  className="cockpit-btn cockpit-btn-primary"
                   aria-label={`承接当前页面草稿 ${currentPageDraft.title || currentPageDraft.id}`}
                   disabled={currentPageDraftPending}
                   onClick={() => { void promoteCurrentPageDraft(); }}
@@ -4818,7 +4818,7 @@ export default function Dashboard() {
               )}
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开当前工作带 ${activeGroupLabel || '未归类'}`}
                 onClick={() => openContextTarget(currentGroupEntryTarget)}
               >
@@ -4862,7 +4862,7 @@ export default function Dashboard() {
                     <div className="dashboard-page-execution-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开当前页对象 ${row.title}`}
                         onClick={() => openContextTarget(row.primaryTarget)}
                       >
@@ -4872,7 +4872,7 @@ export default function Dashboard() {
                       {row.secondaryTarget && (
                         <button
                           type="button"
-                          className="antd-btn"
+                          className="cockpit-btn"
                           aria-label={`打开当前页任务 ${row.title}`}
                           onClick={() => openContextTarget(row.secondaryTarget || { tab: 'TaskCenter' })}
                         >
@@ -4922,7 +4922,7 @@ export default function Dashboard() {
                     <div className="dashboard-page-workbench-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开页面工作台对象 ${row.title}`}
                         onClick={() => openContextTarget(row.primaryTarget)}
                       >
@@ -4932,7 +4932,7 @@ export default function Dashboard() {
                       {row.secondaryTarget && row.secondaryLabel && (
                         <button
                           type="button"
-                          className="antd-btn"
+                          className="cockpit-btn"
                           aria-label={`打开页面工作台动作 ${row.title}`}
                           onClick={() => openContextTarget(row.secondaryTarget || { tab: 'TaskCenter' })}
                         >
@@ -4969,7 +4969,7 @@ export default function Dashboard() {
                   </div>
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     aria-label={`打开总览 ${item.title}`}
                     onClick={() => openContextTarget(item.target)}
                   >
@@ -5007,7 +5007,7 @@ export default function Dashboard() {
                   <small>{row.risk}</small>
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     aria-label={`打开覆盖维度 ${row.title}`}
                     onClick={() => openContextTarget(row.target)}
                   >
@@ -5055,7 +5055,7 @@ export default function Dashboard() {
                     <div className="dashboard-architecture-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开工作带 ${row.group}`}
                         onClick={() => openContextTarget(row.target)}
                       >
@@ -5064,7 +5064,7 @@ export default function Dashboard() {
                       </button>
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={row.pathTitle ? `查看工作带路径 ${row.pathTitle}` : `查看工作带路径 ${row.group}`}
                         onClick={() => openContextTarget(row.pathTarget || { tab: 'SystemMap' })}
                       >
@@ -5118,7 +5118,7 @@ export default function Dashboard() {
                   <div className="dashboard-page-audit-actions">
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`打开页面闭环 ${row.title}`}
                       onClick={() => openContextTarget(row.target)}
                     >
@@ -5127,7 +5127,7 @@ export default function Dashboard() {
                     </button>
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`打开页面闭环动作 ${row.title}`}
                       onClick={() => openContextTarget(row.secondaryTarget)}
                     >
@@ -5142,7 +5142,7 @@ export default function Dashboard() {
               <div className="dashboard-page-audit-footer">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={pageAuditExpanded ? '收起页面闭环覆盖审计列表' : '展开全部页面闭环覆盖审计列表'}
                   onClick={() => setPageAuditExpanded((value) => !value)}
                 >
@@ -5187,7 +5187,7 @@ export default function Dashboard() {
                   <div className="dashboard-usage-mode-actions">
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`打开页面能力 ${row.title}`}
                       onClick={() => openContextTarget(row.target)}
                     >
@@ -5196,7 +5196,7 @@ export default function Dashboard() {
                     </button>
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={row.primaryPathTitle ? `查看页面能力路径 ${row.title}` : `查看页面能力任务 ${row.title}`}
                       onClick={() => openContextTarget(row.pathTarget || row.taskTarget)}
                     >
@@ -5243,7 +5243,7 @@ export default function Dashboard() {
                     <div className="dashboard-usage-mode-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`聚焦补位页面 ${row.title}`}
                         onClick={() => setPageSprintFocusId(row.pageId)}
                       >
@@ -5252,7 +5252,7 @@ export default function Dashboard() {
                       </button>
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开补位页面 ${row.title}`}
                         onClick={() => openContextTarget(row.target)}
                       >
@@ -5296,7 +5296,7 @@ export default function Dashboard() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     aria-label={`打开当前补位页面 ${activePageSprintRow.title}`}
                     onClick={() => openContextTarget(activePageSprintRow.target)}
                   >
@@ -5305,7 +5305,7 @@ export default function Dashboard() {
                   </button>
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     aria-label={activePageSprintRow.primaryPathTitle ? `打开当前补位路径 ${activePageSprintRow.title}` : `打开当前补位任务 ${activePageSprintRow.title}`}
                     onClick={() => openContextTarget(activePageSprintRow.primaryPathTarget || activePageSprintRow.taskTarget)}
                   >
@@ -5314,7 +5314,7 @@ export default function Dashboard() {
                   </button>
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     aria-label={`复制补位任务 ${activePageSprintRow.title}`}
                     onClick={() => {
                       void handleCopyPageSprintDraft();
@@ -5325,7 +5325,7 @@ export default function Dashboard() {
                   </button>
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     aria-label={`打开补位任务 ${activePageSprintRow.title}`}
                     onClick={() => {
                       const draftKey = persistTaskCenterDraft({
@@ -5387,7 +5387,7 @@ export default function Dashboard() {
                     <div className="dashboard-usage-mode-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开使用模式 ${row.title}`}
                         onClick={() => openContextTarget(row.target)}
                       >
@@ -5396,7 +5396,7 @@ export default function Dashboard() {
                       </button>
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`查看模式任务 ${row.title}`}
                         onClick={() => openContextTarget(row.taskTarget)}
                       >
@@ -5438,7 +5438,7 @@ export default function Dashboard() {
                     <div className="dashboard-priority-route-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开补位路线 ${row.title}`}
                         onClick={() => openContextTarget(row.target)}
                       >
@@ -5447,7 +5447,7 @@ export default function Dashboard() {
                       </button>
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开补位任务 ${row.title}`}
                         onClick={() => openContextTarget(row.secondaryTarget)}
                       >
@@ -5499,7 +5499,7 @@ export default function Dashboard() {
                     <div className="dashboard-execution-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开执行对象 ${row.title}`}
                         onClick={() => openContextTarget(row.primaryTarget)}
                       >
@@ -5508,7 +5508,7 @@ export default function Dashboard() {
                       </button>
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开执行任务 ${row.title}`}
                         onClick={() => openContextTarget(row.secondaryTarget)}
                       >
@@ -5570,7 +5570,7 @@ export default function Dashboard() {
                     <div className="dashboard-domain-ops-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开应用运行 ${row.title}`}
                         onClick={() => openContextTarget(row.primaryTarget)}
                       >
@@ -5579,7 +5579,7 @@ export default function Dashboard() {
                       </button>
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开应用任务 ${row.title}`}
                         onClick={() => openContextTarget(row.secondaryTarget)}
                       >
@@ -5649,7 +5649,7 @@ export default function Dashboard() {
                     </div>
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`打开闭环缺口 页面闭环：${row.title}`}
                       onClick={() => openContextTarget(row.target)}
                     >
@@ -5663,7 +5663,7 @@ export default function Dashboard() {
                 <div className="dashboard-closure-footer">
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     aria-label={siteClosureExpanded ? '收起闭环缺口列表' : '展开全部闭环缺口列表'}
                     onClick={() => setSiteClosureExpanded((value) => !value)}
                   >
@@ -5691,7 +5691,7 @@ export default function Dashboard() {
                         </div>
                         <button
                           type="button"
-                          className="antd-btn"
+                          className="cockpit-btn"
                           aria-label={`执行补位模板 ${action.title}`}
                           onClick={() => openContextTarget(action.target)}
                         >
@@ -5733,7 +5733,7 @@ export default function Dashboard() {
                   <div className="dashboard-domain-ops-actions" style={{ marginTop: 12 }}>
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`复制任务草稿 ${siteClosureTaskDraft.title}`}
                       onClick={() => {
                         void handleCopySiteClosureDraft();
@@ -5744,7 +5744,7 @@ export default function Dashboard() {
                     </button>
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`打开任务草稿 ${siteClosureTaskDraft.title}`}
                       onClick={() => {
                         const draftKey = persistTaskCenterDraft({
@@ -5766,7 +5766,7 @@ export default function Dashboard() {
                     </button>
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`查看草稿来源 ${siteClosureTaskDraft.title}`}
                       onClick={() => openContextTarget(siteClosureTaskDraft.sourceTarget)}
                     >
@@ -5814,7 +5814,7 @@ export default function Dashboard() {
           )}
 
           {shellActions.length > 0 && (
-            <section className="action-surface-panel antd-card" aria-label="全站下一步">
+            <section className="action-surface-panel cockpit-card" aria-label="全站下一步">
               <div className="section-header" style={{ marginBottom: 12 }}>
                 <div>
                   <h2 style={{ fontSize: 16, margin: 0 }}>全站下一步</h2>
@@ -5836,7 +5836,7 @@ export default function Dashboard() {
                     </div>
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`打开全站动作 ${item.title}`}
                       onClick={() => openContextTarget(item.target)}
                     >

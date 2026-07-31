@@ -495,11 +495,11 @@ export default function McpMeshView({
       <InfrastructureOpsWorkbench currentPage="McpMesh" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {dataError && (
-        <div role="alert" className="antd-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', color: 'var(--antd-error)', border: '1px solid rgba(255,71,87,0.2)' }}>
+        <div role="alert" className="cockpit-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', color: 'var(--cockpit-error)', border: '1px solid rgba(255,71,87,0.2)' }}>
           <span>网格数据加载失败：{dataError}</span>
           <button
             type="button"
-            className="antd-btn"
+            className="cockpit-btn"
             aria-label="重试网格数据"
             onClick={() => {
               setDataError(null);
@@ -522,18 +522,18 @@ export default function McpMeshView({
             </p>
           </div>
         </div>
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-success)' }}>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--cockpit-success)' }}>
           <div className="stat-info">
             <h3>网格健康度</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-success)' }}>
+            <p className="stat-value" style={{ color: 'var(--cockpit-success)' }}>
               {meshSources.health ? (health?.status === 'ok' ? 'Healthy' : 'Degraded') : 'N/A'}
             </p>
           </div>
         </div>
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-accent)' }}>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--cockpit-accent)' }}>
           <div className="stat-info">
             <h3>BOS 解析域分类</h3>
-            <p className="stat-value" style={{ fontSize: '20px', fontWeight: 600, marginTop: '8px', color: 'var(--antd-primary)' }}>
+            <p className="stat-value" style={{ fontSize: '20px', fontWeight: 600, marginTop: '8px', color: 'var(--cockpit-primary)' }}>
               Memory / Governance / Analysis / Persona / Capability
             </p>
           </div>
@@ -560,7 +560,7 @@ export default function McpMeshView({
             </div>
             <button
               type="button"
-              className="antd-btn small"
+              className="cockpit-btn small"
               aria-label="回系统地图继续定位"
               onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: focusTaskQuery || firstService?.domain || 'McpMesh' }, onNavigate, onOpenTarget)}
             >
@@ -570,7 +570,7 @@ export default function McpMeshView({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div>
                 <strong style={{ display: 'block', fontSize: 15 }}>{focusedMeshCard.title}</strong>
                 <small className="text-muted">{focusedMeshCard.meta}</small>
@@ -588,7 +588,7 @@ export default function McpMeshView({
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开网格焦点对象 ${focusedMeshCard.title}`}
                   onClick={() => openCockpitNavigationTarget(focusedMeshCard.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -597,7 +597,7 @@ export default function McpMeshView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开网格焦点任务 ${focusedMeshCard.title}`}
                   onClick={() => openCockpitNavigationTarget(focusedMeshCard.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -622,7 +622,7 @@ export default function McpMeshView({
           {meshClosureRows.map((row) => (
             <article
               key={`mesh-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -639,7 +639,7 @@ export default function McpMeshView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开网格闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -648,7 +648,7 @@ export default function McpMeshView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开网格闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -677,13 +677,13 @@ export default function McpMeshView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>热点路由域</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先筛到热点域，再回观测面或日志页看真实异常证据。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: focusTaskQuery || firstService?.domain || 'McpMesh' }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: focusTaskQuery || firstService?.domain || 'McpMesh' }, onNavigate, onOpenTarget)}>
                 <Activity size={14} />
                 <span>看观测页</span>
               </button>
@@ -709,13 +709,13 @@ export default function McpMeshView({
             </div>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>待补域与注册</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>缺失域不应该一直空着，直接转去应用中心和注册表单补位。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps', taskQuery: focusTaskQuery || firstMissingDomain?.domain || firstService?.domain || 'McpMesh' }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps', taskQuery: focusTaskQuery || firstMissingDomain?.domain || firstService?.domain || 'McpMesh' }, onNavigate, onOpenTarget)}>
                 <PlusCircle size={14} />
                 <span>看应用中心</span>
               </button>
@@ -744,7 +744,7 @@ export default function McpMeshView({
             </div>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>跨页承接</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>网格问题最后要回算力、观测和任务面上，不该只停在解析器里。</p>
@@ -836,14 +836,14 @@ export default function McpMeshView({
             <button
               onClick={handleResolve}
               disabled={resolving || !resolveUri}
-              className="antd-btn"
+              className="cockpit-btn"
               style={{
                 width: 'fit-content',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '8px 16px',
-                background: 'var(--antd-primary)',
+                background: 'var(--cockpit-primary)',
                 color: '#fff',
                 border: 'none',
                 cursor: 'pointer'
@@ -855,14 +855,14 @@ export default function McpMeshView({
 
             {/* 解析结果 */}
             {resolveError && (
-              <div style={{ color: 'var(--antd-error)', fontSize: '12px', padding: '8px', background: 'rgba(255,71,87,0.08)', borderRadius: '4px', border: '1px solid rgba(255,71,87,0.2)' }}>
+              <div style={{ color: 'var(--cockpit-error)', fontSize: '12px', padding: '8px', background: 'rgba(255,71,87,0.08)', borderRadius: '4px', border: '1px solid rgba(255,71,87,0.2)' }}>
                 ⚠️ 解析错误: {resolveError}
               </div>
             )}
 
             {resolveResult && (
               <div style={{ marginTop: '10px' }}>
-                <h4 style={{ fontSize: '12px', fontWeight: 600, color: 'var(--antd-success)', marginBottom: '8px' }}>
+                <h4 style={{ fontSize: '12px', fontWeight: 600, color: 'var(--cockpit-success)', marginBottom: '8px' }}>
                   解析成功 - 路由匹配详情:
                 </h4>
                 <pre style={{
@@ -878,12 +878,12 @@ export default function McpMeshView({
                   {JSON.stringify(resolveResult, null, 2)}
                 </pre>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                  <button type="button" className="antd-btn small" onClick={() => void createResolveTask()} disabled={resolveTaskPending} aria-label="登记解析验收任务">
+                  <button type="button" className="cockpit-btn small" onClick={() => void createResolveTask()} disabled={resolveTaskPending} aria-label="登记解析验收任务">
                     <ClipboardCheck size={13} />
                     <span>{resolveTaskPending ? '登记中...' : '登记验收任务'}</span>
                   </button>
                   {resolveTaskNotice && <span role="status" className="text-muted">{resolveTaskNotice}</span>}
-                  {resolveTaskError && <span role="alert" style={{ color: 'var(--antd-error)' }}>{resolveTaskError}</span>}
+                  {resolveTaskError && <span role="alert" style={{ color: 'var(--cockpit-error)' }}>{resolveTaskError}</span>}
                 </div>
               </div>
             )}
@@ -948,13 +948,13 @@ export default function McpMeshView({
 
             <button
               type="submit"
-              className="antd-btn"
+              className="cockpit-btn"
               disabled={registering}
               style={{
                 width: '100%',
                 padding: '8px',
                 background: 'rgba(5, 243, 162, 0.1)',
-                color: 'var(--antd-success)',
+                color: 'var(--cockpit-success)',
                 border: '1px solid rgba(5, 243, 162, 0.25)',
                 cursor: 'pointer',
                 fontWeight: 600,
@@ -965,12 +965,12 @@ export default function McpMeshView({
             </button>
 
             {registerStatus && (
-              <div style={{ color: registerTaskCreated === false ? 'var(--antd-warning)' : 'var(--antd-success)', fontSize: '12px', marginTop: '6px' }}>
+              <div style={{ color: registerTaskCreated === false ? 'var(--cockpit-warning)' : 'var(--cockpit-success)', fontSize: '12px', marginTop: '6px' }}>
                 ✓ {registerStatus}
                 {registerTaskId && registerTaskCreated !== false && (
                   <button
                     type="button"
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`打开 MCP 验收任务 ${registerTaskId}`}
                     onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: registerTaskId }, onNavigate, onOpenTarget)}
                     style={{ marginLeft: 8 }}
@@ -981,7 +981,7 @@ export default function McpMeshView({
               </div>
             )}
             {registerError && (
-              <div style={{ color: 'var(--antd-error)', fontSize: '12px', marginTop: '6px' }}>
+              <div style={{ color: 'var(--cockpit-error)', fontSize: '12px', marginTop: '6px' }}>
                 ⚠️ {registerError}
               </div>
             )}
@@ -1038,7 +1038,7 @@ export default function McpMeshView({
               {transportOptions.map((transport) => <option key={transport} value={transport}>{transport}</option>)}
             </select>
             {(meshQuery || selectedDomain !== 'all' || transportFilter !== 'all') && (
-              <button type="button" className="antd-btn small" aria-label="清除网格路由筛选" onClick={() => { setMeshQuery(''); setSelectedDomain('all'); setTransportFilter('all'); }}>
+              <button type="button" className="cockpit-btn small" aria-label="清除网格路由筛选" onClick={() => { setMeshQuery(''); setSelectedDomain('all'); setTransportFilter('all'); }}>
                 清除筛选
               </button>
             )}
@@ -1069,14 +1069,14 @@ export default function McpMeshView({
               ) : (
                 filteredServices.map((svc, i) => (
                   <tr key={i} className="service-row">
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{svc.uri}</td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>{svc.uri}</td>
                     <td>
                       <span style={{
                         fontSize: '11px',
                         padding: '2px 8px',
                         borderRadius: '4px',
                         backgroundColor: 'rgba(0, 242, 254, 0.05)',
-                        color: 'var(--antd-primary)',
+                        color: 'var(--cockpit-primary)',
                         border: '1px solid rgba(0, 242, 254, 0.15)'
                       }}>
                         {svc.domain.toUpperCase()}

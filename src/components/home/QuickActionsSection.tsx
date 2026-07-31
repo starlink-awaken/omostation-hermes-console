@@ -135,7 +135,7 @@ export default function QuickActionsSection({ onTabChange }: QuickActionsSection
             }}
           >
             <div className="quick-action-icon" style={{ 
-              color: 'var(--antd-primary)', 
+              color: 'var(--cockpit-primary)', 
               backgroundColor: 'rgba(22, 119, 255, 0.1)', 
               padding: '8px', 
               borderRadius: '6px',
@@ -146,7 +146,7 @@ export default function QuickActionsSection({ onTabChange }: QuickActionsSection
               {action.icon}
             </div>
             <div>
-              <span className="quick-action-label" style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--antd-text-primary)', display: 'block' }}>
+              <span className="quick-action-label" style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--cockpit-text-primary)', display: 'block' }}>
                 {action.label}
               </span>
               <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.45)', marginTop: '4px', display: 'block', lineHeight: '1.4' }}>

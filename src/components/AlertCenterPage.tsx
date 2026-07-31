@@ -594,7 +594,7 @@ export default function AlertCenterPage({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开告警焦点对象 ${focusedAlertCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedAlertCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -603,7 +603,7 @@ export default function AlertCenterPage({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开告警焦点任务 ${focusedAlertCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedAlertCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -628,7 +628,7 @@ export default function AlertCenterPage({
           {alertClosureRows.map((row) => (
             <article
               key={`alert-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -645,7 +645,7 @@ export default function AlertCenterPage({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开告警闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -654,7 +654,7 @@ export default function AlertCenterPage({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开告警闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -681,7 +681,7 @@ export default function AlertCenterPage({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>优先处理告警</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先处理活跃且级别更高的告警，再决定去性能还是日志面继续追。</p>
@@ -711,7 +711,7 @@ export default function AlertCenterPage({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>处理去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>性能、日志、系统地图和任务中心是最常见的后续页。</p>
@@ -980,7 +980,7 @@ export default function AlertCenterPage({
           </div>
           {ruleFormOpen && (
             <form
-              className="antd-card"
+              className="cockpit-card"
               style={{ display: 'grid', gap: 10, padding: 16, marginBottom: 16 }}
               onSubmit={(event) => { event.preventDefault(); void createRule(); }}
             >

@@ -339,7 +339,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
           <button
             type="button"
-            className="antd-btn"
+            className="cockpit-btn"
             disabled={taskPending}
             aria-label={`登记基础设施任务 ${infrastructureTaskTitle}`}
             onClick={() => { void createInfrastructureTask(); }}
@@ -374,7 +374,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
         <article className="infra-workbench-panel">
           <div className="infra-workbench-panel-head">
             <strong>网格热点</strong>
-            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'McpMesh', taskQuery: topDomains[0]?.[0] || infrastructureContextQuery }, onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'McpMesh', taskQuery: topDomains[0]?.[0] || infrastructureContextQuery }, onNavigate, onOpenTarget)}>
               <Route size={13} />
               <span>去网格页</span>
             </button>
@@ -401,7 +401,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
         <article className="infra-workbench-panel">
           <div className="infra-workbench-panel-head">
             <strong>节点与模型</strong>
-            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Compute', taskQuery: unhealthyNodes[0]?.id || unhealthyModels[0]?.model_name || infrastructureContextQuery }, onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Compute', taskQuery: unhealthyNodes[0]?.id || unhealthyModels[0]?.model_name || infrastructureContextQuery }, onNavigate, onOpenTarget)}>
               <Cpu size={13} />
               <span>去算力页</span>
             </button>
@@ -440,7 +440,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
         <article className="infra-workbench-panel">
           <div className="infra-workbench-panel-head">
             <strong>运行服务</strong>
-            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Performance', taskQuery: degradedServices[0]?.name || infrastructureContextQuery }, onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Performance', taskQuery: degradedServices[0]?.name || infrastructureContextQuery }, onNavigate, onOpenTarget)}>
               <Activity size={13} />
               <span>去性能页</span>
             </button>
@@ -467,7 +467,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
         <article className="infra-workbench-panel">
           <div className="infra-workbench-panel-head">
             <strong>链路落点</strong>
-            <button className="antd-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Topology', taskQuery: infrastructureContextQuery }, onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn small" onClick={() => openCockpitNavigationTarget({ tab: 'Topology', taskQuery: infrastructureContextQuery }, onNavigate, onOpenTarget)}>
               <Network size={13} />
               <span>去拓扑页</span>
             </button>

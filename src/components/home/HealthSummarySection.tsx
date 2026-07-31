@@ -45,7 +45,7 @@ export default function HealthSummarySection({
     <section className="health-summary-section">
       <h2 className="section-title">系统健康总览</h2>
       {dataQuality !== 'complete' && (
-        <div role="status" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12, padding: '10px 12px', border: '1px solid rgba(250, 173, 20, 0.35)', borderRadius: 'var(--antd-radius-md)', background: 'rgba(250, 173, 20, 0.08)', color: 'var(--antd-warning)', fontSize: 12 }}>
+        <div role="status" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12, padding: '10px 12px', border: '1px solid rgba(250, 173, 20, 0.35)', borderRadius: 'var(--cockpit-radius-md)', background: 'rgba(250, 173, 20, 0.08)', color: 'var(--cockpit-warning)', fontSize: 12 }}>
           <AlertTriangle size={14} style={{ flex: '0 0 auto', marginTop: 1 }} />
           <span>健康数据为{dataQuality === 'partial' ? '部分' : '不可用'}读数{degradedReasons.length > 0 ? `：${degradedReasons.join('；')}` : ''}。</span>
         </div>

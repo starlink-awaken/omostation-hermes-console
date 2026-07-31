@@ -396,7 +396,7 @@ export default function ObservabilityView({
             </select>
           </label>
           {(domainQuery || domainStatus !== 'all') && (
-            <button type="button" className="antd-btn" onClick={() => { setDomainQuery(''); setDomainStatus('all'); }}>
+            <button type="button" className="cockpit-btn" onClick={() => { setDomainQuery(''); setDomainStatus('all'); }}>
               <X size={14} aria-hidden="true" />
               <span>清除筛选</span>
             </button>
@@ -423,7 +423,7 @@ export default function ObservabilityView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开观测焦点对象 ${focusedObservabilityCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedObservabilityCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -432,7 +432,7 @@ export default function ObservabilityView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开观测焦点任务 ${focusedObservabilityCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedObservabilityCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -456,7 +456,7 @@ export default function ObservabilityView({
           {observabilityClosureRows.map((row) => (
             <article
               key={`observability-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -473,7 +473,7 @@ export default function ObservabilityView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开观测闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -482,7 +482,7 @@ export default function ObservabilityView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开观测闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -513,7 +513,7 @@ export default function ObservabilityView({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               disabled={taskPending}
               aria-label={`登记观测治理任务 ${observabilityTaskDraft.title}`}
               onClick={() => { void createObservabilityTask(); }}
@@ -523,7 +523,7 @@ export default function ObservabilityView({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开观测治理对象 ${observabilityTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(observabilityTaskDraft.objectTarget, onNavigate, onOpenTarget)}
             >
@@ -557,13 +557,13 @@ export default function ObservabilityView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>异常域追踪</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>优先处理报错或高延迟的 BOS 域，先看网格再看日志。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'McpMesh', taskQuery: observabilityContextQuery }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'McpMesh', taskQuery: observabilityContextQuery }, onNavigate, onOpenTarget)}>
                 <Activity size={14} />
                 <span>去网格页</span>
               </button>
@@ -593,7 +593,7 @@ export default function ObservabilityView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>健康与治理保鲜</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>健康度、Git 差异和治理 freshness 一旦偏离，就该回系统地图和告警中心。</p>
@@ -603,7 +603,7 @@ export default function ObservabilityView({
                 <strong>系统健康度 {observabilityBacklog.healthScore ?? 'N/A'}</strong>
                 <p>治理 {observabilityBacklog.governanceHealth} · Git {observabilityBacklog.gitDirty ? 'dirty' : 'clean'}</p>
               </div>
-              <button type="button" className="antd-btn small" aria-label="打开观测承接到告警中心" onClick={() => openCockpitNavigationTarget({ tab: 'AlertCenter', taskQuery: observabilityContextQuery }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn small" aria-label="打开观测承接到告警中心" onClick={() => openCockpitNavigationTarget({ tab: 'AlertCenter', taskQuery: observabilityContextQuery }, onNavigate, onOpenTarget)}>
                 告警中心
               </button>
             </div>
@@ -622,7 +622,7 @@ export default function ObservabilityView({
             </button>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>下一步页面</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>观测问题一般会流向性能、日志、告警和网格，不再靠脑补跳转。</p>
@@ -652,7 +652,7 @@ export default function ObservabilityView({
       </section>
 
       <div className="observability-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-        <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 600 }}>
             <Activity size={18} aria-hidden="true" className="text-accent" />
             BOS I0 网格链路流量
@@ -661,16 +661,16 @@ export default function ObservabilityView({
           {bosData && bosData.summary ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--antd-text-secondary)' }}>总调用次数</div>
-                <div style={{ fontSize: '20px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{bosData.summary.total_calls}</div>
+                <div style={{ fontSize: '11px', color: 'var(--cockpit-text-secondary)' }}>总调用次数</div>
+                <div style={{ fontSize: '20px', fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>{bosData.summary.total_calls}</div>
               </div>
               <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--antd-text-secondary)' }}>平均延迟 (ms)</div>
-                <div style={{ fontSize: '20px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{bosData.summary.avg_latency}</div>
+                <div style={{ fontSize: '11px', color: 'var(--cockpit-text-secondary)' }}>平均延迟 (ms)</div>
+                <div style={{ fontSize: '20px', fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>{bosData.summary.avg_latency}</div>
               </div>
               <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px', gridColumn: 'span 2' }}>
-                <div style={{ fontSize: '11px', color: 'var(--antd-text-secondary)', marginBottom: '2px' }}>请求成功率</div>
-                <div style={{ fontSize: '20px', fontWeight: 600, color: 'var(--antd-success)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--cockpit-text-secondary)', marginBottom: '2px' }}>请求成功率</div>
+                <div style={{ fontSize: '20px', fontWeight: 600, color: 'var(--cockpit-success)' }}>
                   {bosData.summary.total_calls ? Math.round((bosData.summary.success_count / bosData.summary.total_calls) * 100) : 0}%
                 </div>
               </div>
@@ -678,7 +678,7 @@ export default function ObservabilityView({
           ) : <p className="text-muted" style={{ fontSize: '13px' }}>暂无活跃流量数据</p>}
         </div>
 
-        <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 600 }}>
             <ShieldCheck size={18} aria-hidden="true" className="text-success" />
             系统架构健康度
@@ -687,20 +687,20 @@ export default function ObservabilityView({
           {archData ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--antd-text-secondary)' }}>系统健康度评分</div>
-                <div style={{ fontSize: '20px', fontWeight: 600, color: 'var(--antd-primary)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--cockpit-text-secondary)' }}>系统健康度评分</div>
+                <div style={{ fontSize: '20px', fontWeight: 600, color: 'var(--cockpit-primary)' }}>
                   {archData.system?.health_score || 'N/A'}
                 </div>
               </div>
               <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px' }}>
-                <div style={{ fontSize: '11px', color: 'var(--antd-text-secondary)' }}>Git (ecos) 代码状态</div>
-                <div style={{ fontSize: '20px', fontWeight: 600, color: archData.git?.status === 'clean' ? 'var(--antd-success)' : 'var(--antd-warning)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--cockpit-text-secondary)' }}>Git (ecos) 代码状态</div>
+                <div style={{ fontSize: '20px', fontWeight: 600, color: archData.git?.status === 'clean' ? 'var(--cockpit-success)' : 'var(--cockpit-warning)' }}>
                   {archData.git?.status === 'clean' ? 'Clean' : `${archData.git?.uncommitted} Diff`}
                 </div>
               </div>
               <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px', gridColumn: 'span 2' }}>
-                <div style={{ fontSize: '11px', color: 'var(--antd-text-secondary)' }}>治理审计周期保鲜</div>
-                <div style={{ fontSize: '20px', fontWeight: 600, color: archData.governance?.health === 'fresh' ? 'var(--antd-success)' : 'var(--antd-warning)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--cockpit-text-secondary)' }}>治理审计周期保鲜</div>
+                <div style={{ fontSize: '20px', fontWeight: 600, color: archData.governance?.health === 'fresh' ? 'var(--cockpit-success)' : 'var(--cockpit-warning)' }}>
                   {archData.governance?.health === 'fresh' ? 'Fresh' : archData.governance?.health || 'N/A'}
                 </div>
               </div>
@@ -731,8 +731,8 @@ export default function ObservabilityView({
                   <tr key={domain.domain} className="service-row">
                     <td style={{ fontFamily: 'monospace', fontWeight: 500 }}>{domain.domain}</td>
                     <td>{domain.total}</td>
-                    <td style={{ color: 'var(--antd-success)' }}>{domain.success}</td>
-                    <td style={{ color: domain.error > 0 ? 'var(--antd-error)' : 'inherit' }}>{domain.error}</td>
+                    <td style={{ color: 'var(--cockpit-success)' }}>{domain.success}</td>
+                    <td style={{ color: domain.error > 0 ? 'var(--cockpit-error)' : 'inherit' }}>{domain.error}</td>
                     <td>{domain.avg_latency} ms</td>
                   </tr>
                 ))}

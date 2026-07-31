@@ -192,17 +192,17 @@ export default function EcosWorkflowWorkbench({ onNavigate, onOpenTarget }: Ecos
           <h2 style={{ margin: 0, fontSize: 16 }}>eCOS 工作流验证台</h2>
           <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>把工作流定义、约束校验、模拟测试和干跑证据收进同一个协议入口。</p>
         </div>
-        <button type="button" className="antd-btn" onClick={() => void loadCatalog()} disabled={loading === 'catalog'} aria-label="刷新eCOS工作流目录">
+        <button type="button" className="cockpit-btn" onClick={() => void loadCatalog()} disabled={loading === 'catalog'} aria-label="刷新eCOS工作流目录">
           {loading === 'catalog' ? <Loader2 size={14} className="spinner" /> : <RefreshCw size={14} />} 刷新目录
         </button>
       </div>
 
-      {error && <div className="error-banner" role="alert"><ShieldAlert size={16} /> <span>{error}</span><button type="button" className="antd-btn" onClick={retryFailedAction}>{retryLabel}</button></div>}
+      {error && <div className="error-banner" role="alert"><ShieldAlert size={16} /> <span>{error}</span><button type="button" className="cockpit-btn" onClick={retryFailedAction}>{retryLabel}</button></div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 0.8fr) minmax(0, 1.8fr)', gap: 16 }}>
-        <div className="antd-card" style={{ padding: 16, display: 'grid', gap: 10, alignContent: 'start' }}>
+        <div className="cockpit-card" style={{ padding: 16, display: 'grid', gap: 10, alignContent: 'start' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><GitBranch size={16} /><strong>工作流目录</strong><span className="status-badge online">{workflows.length}</span></div>
-          <select className="antd-input" aria-label="选择eCOS工作流" value={selectedName} onChange={(event) => setSelectedName(event.target.value)}>
+          <select className="cockpit-input" aria-label="选择eCOS工作流" value={selectedName} onChange={(event) => setSelectedName(event.target.value)}>
             <option value="">请选择工作流</option>
             {workflows.map((workflow) => <option value={workflow.name} key={workflow.name}>{workflow.display || workflow.name}</option>)}
           </select>
@@ -216,18 +216,18 @@ export default function EcosWorkflowWorkbench({ onNavigate, onOpenTarget }: Ecos
 
         <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <button type="button" className="antd-btn" onClick={() => void inspectWorkflow(selectedName)} disabled={!selectedName || loading === 'inspect'}>{loading === 'inspect' ? <Loader2 size={14} className="spinner" /> : <ClipboardCheck size={14} />} 重新校验</button>
-            <button type="button" className="antd-btn antd-btn-primary" onClick={() => void testWorkflow(false)} disabled={!selectedName || loading === 'test'}>{loading === 'test' ? <Loader2 size={14} className="spinner" /> : <FlaskConical size={14} />} 模拟测试</button>
-            <button type="button" className="antd-btn" onClick={() => void testWorkflow(true)} disabled={!selectedName || loading === 'dry-run'}>{loading === 'dry-run' ? <Loader2 size={14} className="spinner" /> : <Play size={14} />} Dry-run</button>
+            <button type="button" className="cockpit-btn" onClick={() => void inspectWorkflow(selectedName)} disabled={!selectedName || loading === 'inspect'}>{loading === 'inspect' ? <Loader2 size={14} className="spinner" /> : <ClipboardCheck size={14} />} 重新校验</button>
+            <button type="button" className="cockpit-btn cockpit-btn-primary" onClick={() => void testWorkflow(false)} disabled={!selectedName || loading === 'test'}>{loading === 'test' ? <Loader2 size={14} className="spinner" /> : <FlaskConical size={14} />} 模拟测试</button>
+            <button type="button" className="cockpit-btn" onClick={() => void testWorkflow(true)} disabled={!selectedName || loading === 'dry-run'}>{loading === 'dry-run' ? <Loader2 size={14} className="spinner" /> : <Play size={14} />} Dry-run</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-            <article className="antd-card" style={{ padding: 14 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{validation?.valid === true ? <CheckCircle2 size={15} /> : <ShieldAlert size={15} />}<strong>约束校验</strong></div><pre style={{ margin: '10px 0 0', maxHeight: 180, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 11 }}>{resultText(validation || EMPTY)}</pre></article>
-            <article className="antd-card" style={{ padding: 14 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><GitBranch size={15} /><strong>工作流定义</strong></div><pre style={{ margin: '10px 0 0', maxHeight: 180, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 11 }}>{resultText(detail || EMPTY)}</pre></article>
+            <article className="cockpit-card" style={{ padding: 14 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{validation?.valid === true ? <CheckCircle2 size={15} /> : <ShieldAlert size={15} />}<strong>约束校验</strong></div><pre style={{ margin: '10px 0 0', maxHeight: 180, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 11 }}>{resultText(validation || EMPTY)}</pre></article>
+            <article className="cockpit-card" style={{ padding: 14 }}><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><GitBranch size={15} /><strong>工作流定义</strong></div><pre style={{ margin: '10px 0 0', maxHeight: 180, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 11 }}>{resultText(detail || EMPTY)}</pre></article>
           </div>
-          {runResult && <article className="antd-card" style={{ padding: 14 }}>
+          {runResult && <article className="cockpit-card" style={{ padding: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <strong>最近验证结果</strong>
-              <button type="button" className="antd-btn" onClick={() => void queueVerification()} disabled={loading === 'queue'}>
+              <button type="button" className="cockpit-btn" onClick={() => void queueVerification()} disabled={loading === 'queue'}>
                 {loading === 'queue' ? <Loader2 size={14} className="spinner" /> : <ClipboardCheck size={14} />}
                 承接到任务中心
               </button>
@@ -235,7 +235,7 @@ export default function EcosWorkflowWorkbench({ onNavigate, onOpenTarget }: Ecos
             <pre style={{ margin: '10px 0 0', maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 11 }}>{resultText(runResult)}</pre>
             {queueResult && <div className="shell-data-banner" role="status" style={{ marginTop: 10 }}>{resultText(queueResult)}</div>}
           </article>}
-          <article className="antd-card" style={{ padding: 14 }}>
+          <article className="cockpit-card" style={{ padding: 14 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><ClipboardCheck size={15} /><strong>历史运行证据</strong><span className="status-badge online">{logs.length}</span></div>
             {logs.length === 0 ? <p className="text-muted" style={{ margin: '10px 0 0' }}>暂无 eCOS 运行日志。</p> : <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>{logs.map((log, index) => <div key={`${String(log.workflow_id ?? log.name ?? 'run')}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}><span>{String(log.name ?? log.workflow_id ?? '未命名运行')}</span><span className="text-muted">{String(log.status ?? 'unknown')} · {String(log.generated_at ?? '无时间')}</span></div>)}</div>}
           </article>

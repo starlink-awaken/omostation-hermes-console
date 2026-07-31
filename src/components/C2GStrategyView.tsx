@@ -525,7 +525,7 @@ export default function C2GStrategyView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开治理焦点对象 ${focusedC2GCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedC2GCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -534,7 +534,7 @@ export default function C2GStrategyView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开治理焦点任务 ${focusedC2GCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedC2GCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -583,7 +583,7 @@ export default function C2GStrategyView({
                   <strong>{proposal.title || proposal.id}</strong>
                   <p>{proposal.priority || proposal.severity || '建议'} · {proposal.status || '待承接'}</p>
                 </div>
-                <button type="button" className="antd-btn" aria-label={`打开 Wave2 提案任务 ${proposal.id}`} onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery }, onNavigate, onOpenTarget)}>
+                <button type="button" className="cockpit-btn" aria-label={`打开 Wave2 提案任务 ${proposal.id}`} onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery }, onNavigate, onOpenTarget)}>
                   <ClipboardList size={14} /> 承接任务
                 </button>
               </div>
@@ -591,7 +591,7 @@ export default function C2GStrategyView({
           }) : <p className="text-muted" style={{ margin: 0 }}>当前没有 Wave2 建议提案，仍可查看 dry-run 规划结果。</p>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-          <button type="button" className="antd-btn" onClick={() => void handleLoadWave2Plan()} disabled={wave2PlanLoading} aria-label="加载Wave2提案规划">
+          <button type="button" className="cockpit-btn" onClick={() => void handleLoadWave2Plan()} disabled={wave2PlanLoading} aria-label="加载Wave2提案规划">
             {wave2PlanLoading ? <RefreshCw size={14} className="spinner" /> : <Sparkles size={14} />} {wave2PlanLoading ? '规划中...' : '查看 dry-run 规划'}
           </button>
           {wave2Plan && <span className="text-muted" role="status">规划 {wave2Plan.proposal_count ?? 0} 项 · {wave2Plan.task_actions?.length ?? 0} 个任务动作 · 不写入</span>}
@@ -619,7 +619,7 @@ export default function C2GStrategyView({
           style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, margin: '14px 0 16px' }}
         >
           <input
-            className="antd-input"
+            className="cockpit-input"
             aria-label="搜索治理对象"
             placeholder="卡片、提案、债务、文件或违规内容"
             value={governanceQuery}
@@ -627,7 +627,7 @@ export default function C2GStrategyView({
             style={{ minWidth: 260, flex: '1 1 280px' }}
           />
           <select
-            className="antd-input"
+            className="cockpit-input"
             aria-label="按状态筛选治理对象"
             value={governanceStatusFilter}
             onChange={(event) => setGovernanceStatusFilter(event.target.value)}
@@ -643,7 +643,7 @@ export default function C2GStrategyView({
           {hasGovernanceFilter && (
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="清除治理对象筛选"
               onClick={() => { setGovernanceQuery(''); setGovernanceStatusFilter('all'); }}
             >
@@ -654,7 +654,7 @@ export default function C2GStrategyView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>优先治理卡片</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先处理最紧的卡片，再把动作沉到任务中心或系统地图继续收口。</p>
@@ -684,7 +684,7 @@ export default function C2GStrategyView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>治理去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>提案和违规本身不是终点，后续还要回债务、系统地图和任务中心继续落地。</p>
@@ -751,7 +751,7 @@ export default function C2GStrategyView({
             <Compass size={20} className="text-primary" />
           </div>
           <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--antd-text-primary)', margin: 0 }}>C2G 战略决策与规划中枢</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--cockpit-text-primary)', margin: 0 }}>C2G 战略决策与规划中枢</h2>
             <p className="text-muted" style={{ fontSize: '12px', margin: '4px 0 0 0' }}>连接 Capability (能力) 至 Governance (治理)，跟踪 SSOT 保鲜度</p>
           </div>
         </div>
@@ -759,7 +759,7 @@ export default function C2GStrategyView({
         <button 
           onClick={handleRefresh} 
           disabled={refreshing}
-          className="antd-btn" 
+          className="cockpit-btn" 
           style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px' }}
         >
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
@@ -771,7 +771,7 @@ export default function C2GStrategyView({
         <div className="error-banner" role="alert">
           <AlertTriangle size={16} />
           <span>{error || statusError}，治理评分与任务统计不会使用默认值。</span>
-          <button type="button" className="antd-btn small" onClick={handleRefresh}>重试</button>
+          <button type="button" className="cockpit-btn small" onClick={handleRefresh}>重试</button>
         </div>
       )}
 
@@ -779,14 +779,14 @@ export default function C2GStrategyView({
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
         
         {/* 当前波次与阶段 */}
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-primary)' }}>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--cockpit-primary)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div className="stat-info">
               <h3>当前战役波次</h3>
-              <p className="stat-value" style={{ fontSize: '20px', fontWeight: 700, margin: '8px 0', color: 'var(--antd-primary)' }}>
+              <p className="stat-value" style={{ fontSize: '20px', fontWeight: 700, margin: '8px 0', color: 'var(--cockpit-primary)' }}>
                 {currentPhase || 'N/A'}
               </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--antd-success)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--cockpit-success)' }}>
                 <Flag size={12} />
                 <span>战略目标稳步执行中</span>
               </div>
@@ -798,12 +798,12 @@ export default function C2GStrategyView({
         </div>
 
         {/* 系统健康与治理评分 */}
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-success)' }}>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--cockpit-success)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div className="stat-info">
               <h3>系统治理健康分</h3>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', margin: '4px 0' }}>
-                <span className="stat-value" style={{ color: 'var(--antd-success)' }}>{govHealth ?? 'N/A'}</span>
+                <span className="stat-value" style={{ color: 'var(--cockpit-success)' }}>{govHealth ?? 'N/A'}</span>
                 <span className="text-muted" style={{ fontSize: '12px' }}>/ 100</span>
               </div>
               <p className="text-muted" style={{ fontSize: '11px', margin: 0 }}>
@@ -818,7 +818,7 @@ export default function C2GStrategyView({
 
         {/* SSOT 守门人状态 */}
         <div className="stat-card" style={{ 
-          borderLeft: `3px solid ${check?.compliant ? 'var(--antd-success)' : 'var(--antd-error)'}`,
+          borderLeft: `3px solid ${check?.compliant ? 'var(--cockpit-success)' : 'var(--cockpit-error)'}`,
           background: check?.compliant ? 'transparent' : 'rgba(255, 71, 87, 0.02)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -828,12 +828,12 @@ export default function C2GStrategyView({
                 {check?.compliant ? (
                   <>
                     <ShieldCheck size={16} className="text-success" />
-                    <span style={{ fontWeight: 600, color: 'var(--antd-success)' }}>架构完全合规</span>
+                    <span style={{ fontWeight: 600, color: 'var(--cockpit-success)' }}>架构完全合规</span>
                   </>
                 ) : (
                   <>
                     <ShieldAlert size={16} className="text-danger" />
-                    <span style={{ fontWeight: 600, color: 'var(--antd-error)' }}>检测到架构漂移</span>
+                    <span style={{ fontWeight: 600, color: 'var(--cockpit-error)' }}>检测到架构漂移</span>
                   </>
                 )}
               </div>
@@ -846,12 +846,12 @@ export default function C2GStrategyView({
               <button
                 onClick={handleFixDrift}
                 disabled={fixing}
-                className="antd-btn"
+                className="cockpit-btn"
                 style={{
                   fontSize: '11px',
                   padding: '4px 8px',
                   background: 'rgba(255, 71, 87, 0.12)',
-                  color: 'var(--antd-error)',
+                  color: 'var(--cockpit-error)',
                   border: '1px solid rgba(255, 71, 87, 0.25)',
                   cursor: 'pointer',
                   flexShrink: 0
@@ -877,7 +877,7 @@ export default function C2GStrategyView({
         }}>
           <AlertTriangle size={18} className="text-danger" style={{ marginTop: '2px', flexShrink: 0 }} />
           <div>
-            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--antd-error)' }}>架构合规拦截门异常告警 (OMO Rules Boundary)</h4>
+            <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--cockpit-error)' }}>架构合规拦截门异常告警 (OMO Rules Boundary)</h4>
             <ul style={{ margin: '6px 0 0 0', paddingLeft: '20px', fontSize: '12px', color: 'rgba(255,255,255,0.85)', lineHeight: '1.6' }}>
               {check.violations.map((v, i) => (
                 <li key={i}>{v}</li>
@@ -900,7 +900,7 @@ export default function C2GStrategyView({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FileCode size={16} className="text-danger" />
-            <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 600, color: 'var(--antd-error)' }}>
+            <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 600, color: 'var(--cockpit-error)' }}>
               Direct-IO 违规代码深度定位舱 (AST Scan Violations)
             </h4>
           </div>
@@ -920,7 +920,7 @@ export default function C2GStrategyView({
                     <span style={{
                       fontFamily: 'monospace',
                       fontSize: '11px',
-                      color: 'var(--antd-warning)',
+                      color: 'var(--cockpit-warning)',
                       backgroundColor: 'rgba(255, 184, 0, 0.1)',
                       padding: '1px 5px',
                       borderRadius: '3px'
@@ -960,13 +960,13 @@ export default function C2GStrategyView({
                   padding: '1px 6px',
                   borderRadius: '10px',
                   backgroundColor: 'rgba(0, 242, 254, 0.1)',
-                  color: 'var(--antd-primary)',
+                  color: 'var(--cockpit-primary)',
                   fontWeight: 600
                 }}>
                   {cards.length}
                 </span>
               </div>
-              <button className="antd-btn" style={{ fontSize: '11px', padding: '3px 8px' }} onClick={() => openCardTask()}>
+              <button className="cockpit-btn" style={{ fontSize: '11px', padding: '3px 8px' }} onClick={() => openCardTask()}>
                 <ClipboardList size={12} style={{ marginRight: '2px' }} />
                 进入任务中心
               </button>
@@ -1000,7 +1000,7 @@ export default function C2GStrategyView({
                           borderRadius: '3px',
                           fontWeight: 700,
                           backgroundColor: card.priority.toLowerCase() === 'p0' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(255, 184, 0, 0.15)',
-                          color: card.priority.toLowerCase() === 'p0' ? 'var(--antd-error)' : 'var(--antd-warning)',
+                          color: card.priority.toLowerCase() === 'p0' ? 'var(--cockpit-error)' : 'var(--cockpit-warning)',
                           border: `1px solid ${card.priority.toLowerCase() === 'p0' ? 'rgba(255, 71, 87, 0.25)' : 'rgba(255, 184, 0, 0.25)'}`
                         }}>
                           {card.priority.toUpperCase()}
@@ -1009,7 +1009,7 @@ export default function C2GStrategyView({
 
                       {/* Title */}
                       <div>
-                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{card.title}</h4>
+                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>{card.title}</h4>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '4px', fontSize: '11px' }}>
                           <span className="text-muted">域: {card.domain}</span>
                           <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>|</span>
@@ -1021,7 +1021,7 @@ export default function C2GStrategyView({
                       <div>
                         <span className="status-badge" style={{
                           backgroundColor: card.status === 'in_progress' ? 'rgba(22, 119, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-                          color: card.status === 'in_progress' ? 'var(--antd-primary)' : 'rgba(255, 255, 255, 0.65)',
+                          color: card.status === 'in_progress' ? 'var(--cockpit-primary)' : 'rgba(255, 255, 255, 0.65)',
                           padding: '2px 8px',
                           borderRadius: '4px',
                           fontSize: '11px'
@@ -1033,7 +1033,7 @@ export default function C2GStrategyView({
                       {/* Action buttons */}
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button
-                          className="antd-btn"
+                          className="cockpit-btn"
                           style={{ padding: '3px 8px', fontSize: '11px' }}
                           aria-label="查看相关任务"
                           title="在任务中心查看相关任务"
@@ -1060,7 +1060,7 @@ export default function C2GStrategyView({
             <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Layers size={16} className="text-primary" />
-                <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0, color: 'var(--antd-text-primary)' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0, color: 'var(--cockpit-text-primary)' }}>
                   B.D.S.K 虚拟董事会待审提案舱 (Board Proposals)
                 </h3>
                 <span style={{
@@ -1068,7 +1068,7 @@ export default function C2GStrategyView({
                   padding: '1px 6px',
                   borderRadius: '10px',
                   backgroundColor: 'rgba(22, 119, 255, 0.15)',
-                  color: 'var(--antd-primary)',
+                  color: 'var(--cockpit-primary)',
                   fontWeight: 600
                 }}>
                   {proposals.length}
@@ -1088,7 +1088,7 @@ export default function C2GStrategyView({
                 alignItems: 'center',
                 backgroundColor: proposalSuccess ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 69, 58, 0.1)',
                 border: `1px solid ${proposalSuccess ? 'rgba(52, 199, 89, 0.2)' : 'rgba(255, 69, 58, 0.2)'}`,
-                color: proposalSuccess ? 'var(--antd-success)' : 'var(--antd-error)'
+                color: proposalSuccess ? 'var(--cockpit-success)' : 'var(--cockpit-error)'
               }}>
                 <span>{proposalSuccess || proposalError}</span>
                 <button 
@@ -1127,7 +1127,7 @@ export default function C2GStrategyView({
                           borderRadius: '3px',
                           fontWeight: 700,
                           backgroundColor: 'rgba(22, 119, 255, 0.15)',
-                          color: 'var(--antd-primary)',
+                          color: 'var(--cockpit-primary)',
                           border: '1px solid rgba(22, 119, 255, 0.25)',
                           textTransform: 'uppercase'
                         }}>
@@ -1140,13 +1140,13 @@ export default function C2GStrategyView({
 
                       {/* Content Details */}
                       <div>
-                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>
+                        <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>
                           针对技术债务 <code>{prop.debt_id}</code> 的提议修复
                         </h4>
                         <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '11px', flexWrap: 'wrap' }}>
                           {prop.target_model && (
                             <span className="text-muted">
-                              目标模型: <strong style={{ color: 'var(--antd-primary)' }}>{prop.target_model}</strong>
+                              目标模型: <strong style={{ color: 'var(--cockpit-primary)' }}>{prop.target_model}</strong>
                             </span>
                           )}
                           {prop.scope && (
@@ -1167,7 +1167,7 @@ export default function C2GStrategyView({
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button
                           type="button"
-                          className="antd-btn"
+                          className="cockpit-btn"
                           aria-label={`承接提案任务 ${prop.id}`}
                           disabled={queueingProposalIds[prop.id] || approvingIds[prop.id] || rejectingIds[prop.id]}
                           style={{ padding: '4px 8px', fontSize: '11px' }}
@@ -1178,7 +1178,7 @@ export default function C2GStrategyView({
                         </button>
                         {/* Reject */}
                         <button 
-                          className="antd-btn text-danger" 
+                          className="cockpit-btn text-danger" 
                           aria-label={`拒绝提案 ${prop.id}`}
                           disabled={approvingIds[prop.id] || rejectingIds[prop.id]}
                           style={{ 
@@ -1194,7 +1194,7 @@ export default function C2GStrategyView({
                         </button>
                         {/* Approve */}
                         <button 
-                          className="antd-btn text-success" 
+                          className="cockpit-btn text-success" 
                           aria-label={`批准提案 ${prop.id}`}
                           disabled={approvingIds[prop.id] || rejectingIds[prop.id]}
                           style={{ 
@@ -1223,13 +1223,13 @@ export default function C2GStrategyView({
           
           {/* OMO 任务统计仪表 */}
           <div className="services-section" style={{ margin: 0, padding: '20px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', color: 'var(--antd-text-primary)' }}>治理效能与任务状态</h3>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', color: 'var(--cockpit-text-primary)' }}>治理效能与任务状态</h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                   <span className="text-muted">已消除技术债务与任务</span>
-                  <span style={{ fontWeight: 600, color: 'var(--antd-success)' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--cockpit-success)' }}>
                     {completedTasks ?? 'N/A'}
                   </span>
                 </div>
@@ -1237,7 +1237,7 @@ export default function C2GStrategyView({
                   <div style={{
                     height: '100%',
                     width: `${completedTasks === undefined || activeTasks === undefined ? 0 : Math.min(100, (completedTasks / Math.max(completedTasks + activeTasks, 1)) * 100)}%`,
-                    backgroundColor: 'var(--antd-success)'
+                    backgroundColor: 'var(--cockpit-success)'
                   }}></div>
                 </div>
               </div>
@@ -1245,7 +1245,7 @@ export default function C2GStrategyView({
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                   <span className="text-muted">活跃治理任务</span>
-                  <span style={{ fontWeight: 600, color: 'var(--antd-primary)' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--cockpit-primary)' }}>
                     {activeTasks ?? 'N/A'}
                   </span>
                 </div>
@@ -1253,7 +1253,7 @@ export default function C2GStrategyView({
                   <div style={{
                     height: '100%',
                     width: `${activeTasks === undefined ? 0 : Math.min(100, (activeTasks / 10) * 100)}%`,
-                    backgroundColor: 'var(--antd-primary)'
+                    backgroundColor: 'var(--cockpit-primary)'
                   }}></div>
                 </div>
               </div>
@@ -1261,7 +1261,7 @@ export default function C2GStrategyView({
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
                   <span className="text-muted">被阻塞任务</span>
-                  <span style={{ fontWeight: 600, color: 'var(--antd-error)' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--cockpit-error)' }}>
                     {blockedTasks ?? 'N/A'}
                   </span>
                 </div>
@@ -1269,7 +1269,7 @@ export default function C2GStrategyView({
                   <div style={{
                     height: '100%',
                     width: `${blockedTasks === undefined ? 0 : Math.min(100, (blockedTasks / 10) * 100)}%`,
-                    backgroundColor: 'var(--antd-error)'
+                    backgroundColor: 'var(--cockpit-error)'
                   }}></div>
                 </div>
               </div>

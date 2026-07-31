@@ -26,26 +26,26 @@ type ServiceNodeData = {
 const ServiceNode = memo(({ data }: { data: ServiceNodeData }) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'online': return <CheckCircle size={12} style={{ color: 'var(--antd-success)' }} />;
-      case 'offline': return <XCircle size={12} style={{ color: 'var(--antd-error)' }} />;
-      case 'degraded': return <AlertTriangle size={12} style={{ color: 'var(--antd-warning)' }} />;
+      case 'online': return <CheckCircle size={12} style={{ color: 'var(--cockpit-success)' }} />;
+      case 'offline': return <XCircle size={12} style={{ color: 'var(--cockpit-error)' }} />;
+      case 'degraded': return <AlertTriangle size={12} style={{ color: 'var(--cockpit-warning)' }} />;
       default: return null;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return 'var(--antd-success)';
-      case 'offline': return 'var(--antd-error)';
-      case 'degraded': return 'var(--antd-warning)';
-      default: return 'var(--antd-text-muted)';
+      case 'online': return 'var(--cockpit-success)';
+      case 'offline': return 'var(--cockpit-error)';
+      case 'degraded': return 'var(--cockpit-warning)';
+      default: return 'var(--cockpit-text-muted)';
     }
   };
 
   return (
     <div style={{ 
       padding: '12px 16px', 
-      borderRadius: 'var(--antd-radius-lg)',
+      borderRadius: 'var(--cockpit-radius-lg)',
       background: 'rgba(6, 9, 19, 0.9)',
       border: `1px solid ${getStatusColor(data.status)}`,
       color: '#fff',
@@ -65,14 +65,14 @@ const ServiceNode = memo(({ data }: { data: ServiceNodeData }) => {
       <Handle type="target" position={Position.Top} style={{ background: getStatusColor(data.status), width: 8, height: 8 }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', position: 'relative', zIndex: 1 }}>
         <Server size={14} style={{ color: getStatusColor(data.status) }} />
-        <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--antd-text-primary)' }}>{data.name}</span>
+        <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--cockpit-text-primary)' }}>{data.name}</span>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--antd-text-secondary)', position: 'relative', zIndex: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--cockpit-text-secondary)', position: 'relative', zIndex: 1 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           {getStatusIcon(data.status)} 
           <span style={{ textTransform: 'capitalize', color: getStatusColor(data.status), fontWeight: 500 }}>{data.status}</span>
         </span>
-        {data.latency && <span style={{ color: 'var(--antd-primary)', textShadow: '0 0 4px rgba(0, 242, 254, 0.3)' }}>{data.latency}</span>}
+        {data.latency && <span style={{ color: 'var(--cockpit-primary)', textShadow: '0 0 4px rgba(0, 242, 254, 0.3)' }}>{data.latency}</span>}
       </div>
       <Handle type="source" position={Position.Bottom} style={{ background: getStatusColor(data.status), width: 8, height: 8 }} />
     </div>
@@ -195,8 +195,8 @@ export function buildTopology(rawServices: TopologyService[]): { nodes: Node[]; 
         source,
         target,
         animated: dependencyStatus === 'online',
-        style: { stroke: dependencyStatus === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)', strokeWidth: 2, opacity: 0.6 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: dependencyStatus === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)' },
+        style: { stroke: dependencyStatus === 'offline' ? 'var(--cockpit-error)' : 'var(--cockpit-primary)', strokeWidth: 2, opacity: 0.6 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: dependencyStatus === 'offline' ? 'var(--cockpit-error)' : 'var(--cockpit-primary)' },
       });
     });
   });
@@ -492,7 +492,7 @@ export default function TopologyView({
           </div>
           <button
             type="button"
-            className="antd-btn"
+            className="cockpit-btn"
             disabled={taskPending}
             aria-label="登记拓扑治理任务"
             onClick={() => { void createTopologyTask(); }}
@@ -527,7 +527,7 @@ export default function TopologyView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开拓扑焦点对象 ${focusedTopologyCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedTopologyCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -536,7 +536,7 @@ export default function TopologyView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开拓扑焦点任务 ${focusedTopologyCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedTopologyCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -560,7 +560,7 @@ export default function TopologyView({
           {topologyClosureRows.map((row) => (
             <article
               key={`topology-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -577,7 +577,7 @@ export default function TopologyView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开拓扑闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -586,7 +586,7 @@ export default function TopologyView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开拓扑闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -636,7 +636,7 @@ export default function TopologyView({
           {(topologyQuery || topologyStatusFilter !== 'all') && (
             <button
               type="button"
-              className="antd-btn small"
+              className="cockpit-btn small"
               aria-label="清除拓扑节点筛选"
               onClick={() => { setTopologyQuery(''); setTopologyStatusFilter('all'); }}
             >
@@ -646,7 +646,7 @@ export default function TopologyView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>异常节点</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>离线、降级或没有依赖关系证据的节点优先处理。</p>
@@ -679,7 +679,7 @@ export default function TopologyView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>追查去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>拓扑图给出范围，真正承接还要回算力、网格和日志页继续缩小问题。</p>
@@ -711,8 +711,8 @@ export default function TopologyView({
         </div>
       </section>
 
-      <div className="antd-card" style={{ width: '100%', height: 'calc(100vh - 260px)', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--antd-border-color)' }}>
+      <div className="cockpit-card" style={{ width: '100%', height: 'calc(100vh - 260px)', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--cockpit-border-color)' }}>
         <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>全局网络拓扑地图</h2>
         <p className="text-muted" style={{ fontSize: '12px', marginTop: '4px' }}>只展示真实运行探针和服务声明的依赖关系，不根据节点名称推断调用流。</p>
         {!loading && !error && edges.length === 0 && (
@@ -745,9 +745,9 @@ export default function TopologyView({
           >
             <Background color="rgba(0, 242, 254, 0.05)" gap={24} size={1} />
             <Controls style={{ 
-              background: 'var(--antd-bg-elevated)', 
-              border: '1px solid var(--antd-border-color)', 
-              fill: 'var(--antd-text-primary)' 
+              background: 'var(--cockpit-bg-elevated)', 
+              border: '1px solid var(--cockpit-border-color)', 
+              fill: 'var(--cockpit-text-primary)' 
             }} />
           </ReactFlow>
         )}

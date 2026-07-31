@@ -1215,7 +1215,7 @@ export default function TaskCenterPage({
       {dataError && (
         <div
           role="alert"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', border: '1px solid rgba(255, 71, 87, 0.35)', borderRadius: 'var(--antd-radius-md)', background: 'rgba(255, 71, 87, 0.08)', color: 'var(--antd-error)' }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', border: '1px solid rgba(255, 71, 87, 0.35)', borderRadius: 'var(--cockpit-radius-md)', background: 'rgba(255, 71, 87, 0.08)', color: 'var(--cockpit-error)' }}
         >
           <span>任务数据加载失败：{dataError}</span>
           <button
@@ -1254,7 +1254,7 @@ export default function TaskCenterPage({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>{incomingDraft.title}</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -1268,7 +1268,7 @@ export default function TaskCenterPage({
               </div>
             </article>
 
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>建议步骤</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -1285,7 +1285,7 @@ export default function TaskCenterPage({
               </div>
             </article>
 
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>承接动作</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -1294,7 +1294,7 @@ export default function TaskCenterPage({
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`复制外部送达任务草稿 ${incomingDraft.title}`}
                   onClick={async () => {
                     await navigator.clipboard.writeText(incomingDraft.copyText);
@@ -1305,7 +1305,7 @@ export default function TaskCenterPage({
                   <span>复制草稿</span>
                 </button>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`按草稿过滤任务 ${incomingDraft.title}`}
                   onClick={() => setSearchQuery(incomingDraft.title)}
                 >
@@ -1313,7 +1313,7 @@ export default function TaskCenterPage({
                   <span>按标题过滤</span>
                 </button>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开外部草稿来源 ${incomingDraft.title}`}
                   onClick={() => {
                     if (onOpenTarget) {
@@ -1355,7 +1355,7 @@ export default function TaskCenterPage({
             { label: '来源证据', value: `${routingSummary.evidence}`, helper: '草稿里累计带上的 evidence 字段数。', tone: 'online' },
             { label: '当前筛选', value: activeLane ? activeLane.title : '全部', helper: activeLane ? activeLane.hint : '还未锁定某条处理车道。', tone: activeLane ? 'degraded' : 'online' },
           ].map((item) => (
-            <article key={item.label} className="antd-card" style={{ padding: 16, display: 'grid', gap: 6 }}>
+            <article key={item.label} className="cockpit-card" style={{ padding: 16, display: 'grid', gap: 6 }}>
               <span className="text-muted" style={{ fontSize: 12 }}>{item.label}</span>
               <strong style={{ fontSize: 20 }}>{item.value}</strong>
               <small className={`text-muted ${item.tone}`} style={{ fontSize: 12 }}>{item.helper}</small>
@@ -1365,7 +1365,7 @@ export default function TaskCenterPage({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
           {laneSummaries.map((lane) => (
-            <article key={`route-${lane.type}`} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article key={`route-${lane.type}`} className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                   <strong style={{ fontSize: 15 }}>{lane.title}</strong>
@@ -1396,7 +1396,7 @@ export default function TaskCenterPage({
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开执行路由 ${lane.title}`}
                   onClick={() => {
                     if (lane.topTask) {
@@ -1414,7 +1414,7 @@ export default function TaskCenterPage({
                   <span>看对象</span>
                 </button>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`过滤执行路由 ${lane.title}`}
                   onClick={() => {
                     setActiveSourceFilter(lane.type);
@@ -1427,7 +1427,7 @@ export default function TaskCenterPage({
                 </button>
                 {lane.topTask && (
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`查看执行路由代表任务 ${lane.title}`}
                     onClick={() => {
                       const representativeTask = lane.topTask as Task;
@@ -1461,7 +1461,7 @@ export default function TaskCenterPage({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           {sourceBandRows.map((row) => (
-            <article key={row.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article key={row.id} className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
                   <strong style={{ fontSize: 15 }}>{row.title}</strong>
@@ -1476,7 +1476,7 @@ export default function TaskCenterPage({
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开来源带 ${row.title}`}
                   onClick={() => {
                     if (onOpenTarget) {
@@ -1490,7 +1490,7 @@ export default function TaskCenterPage({
                   <span>看对象</span>
                 </button>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开来源带任务 ${row.title}`}
                   onClick={() => {
                     if (onOpenTarget) {
@@ -1528,7 +1528,7 @@ export default function TaskCenterPage({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>{focusTask.title}</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -1549,7 +1549,7 @@ export default function TaskCenterPage({
               </div>
             </article>
 
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>闭环入口</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -1559,7 +1559,7 @@ export default function TaskCenterPage({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {focusTaskTarget && (
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label="打开当前任务来源工作台入口"
                     onClick={() => openTaskSource(focusTask)}
                   >
@@ -1569,7 +1569,7 @@ export default function TaskCenterPage({
                 )}
                 {focusTask.read_only && focusTask.draft?.copy_text && (
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label="复制当前任务来源草稿"
                     onClick={() => { void copyTaskDraft(focusTask); }}
                   >
@@ -1579,7 +1579,7 @@ export default function TaskCenterPage({
                 )}
                 {focusTask.source?.type === 'system_map_domain_app' && (
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label="按领域重新过滤当前任务"
                     onClick={() => {
                       setActiveSourceFilter('system_map_domain_app');
@@ -1593,7 +1593,7 @@ export default function TaskCenterPage({
               </div>
             </article>
 
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>相关对象快照</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -1611,7 +1611,7 @@ export default function TaskCenterPage({
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     <button
-                      className="antd-btn small"
+                      className="cockpit-btn small"
                       aria-label="打开当前任务相关应用"
                       onClick={() => {
                         if (onOpenTarget) {
@@ -1626,7 +1626,7 @@ export default function TaskCenterPage({
                     </button>
                     {focusTaskRelatedApp.commands?.start && (
                       <button
-                        className="antd-btn small"
+                        className="cockpit-btn small"
                         aria-label="复制当前任务相关应用启动命令"
                         onClick={() => navigator.clipboard.writeText(focusTaskRelatedApp.commands?.start || '')}
                       >
@@ -1660,7 +1660,7 @@ export default function TaskCenterPage({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>高优先任务</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先挑最该承接的任务，再决定是直接处理、打开来源还是继续分流。</p>
@@ -1690,7 +1690,7 @@ export default function TaskCenterPage({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>回写去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>任务页只是队列，真正闭环还得继续回系统地图、应用中心和协议面。</p>
@@ -1734,7 +1734,7 @@ export default function TaskCenterPage({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
           {domainDraftHandoffs.map(({ task, target, appKey, sourceTitle, nextAction }) => (
-            <article key={`domain-handoff-${task.id}`} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article key={`domain-handoff-${task.id}`} className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>{task.title}</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>{sourceTitle}</p>
@@ -1756,7 +1756,7 @@ export default function TaskCenterPage({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {target ? (
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`打开领域承接 ${appKey}`}
                     onClick={() => openTaskSource(task)}
                   >
@@ -1765,7 +1765,7 @@ export default function TaskCenterPage({
                   </button>
                 ) : null}
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`查看领域任务 ${task.title}`}
                   onClick={() => setSelectedTask(task)}
                 >
@@ -1774,7 +1774,7 @@ export default function TaskCenterPage({
                 </button>
                 {task.read_only && task.draft?.copy_text ? (
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`复制领域草稿 ${appKey}`}
                     onClick={() => { void copyTaskDraft(task); }}
                   >
@@ -1806,7 +1806,7 @@ export default function TaskCenterPage({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           {closeLoopGroups.map((group) => (
-            <article key={group.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article key={group.id} className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>{group.title}</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>{group.description}</p>
@@ -1839,7 +1839,7 @@ export default function TaskCenterPage({
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 'auto' }}>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开闭环入口 ${group.title}`}
                   onClick={() => {
                     if (group.targetTab === 'TaskCenter') {
@@ -1853,7 +1853,7 @@ export default function TaskCenterPage({
                   <span>打开入口</span>
                 </button>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`过滤闭环任务 ${group.title}`}
                   onClick={() => {
                     setSearchQuery(group.keyword);
@@ -1880,7 +1880,7 @@ export default function TaskCenterPage({
             <div className="task-lane-focus-actions">
               {focusTask.read_only && focusTask.draft?.copy_text && (
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label="复制当前闭环草稿"
                   onClick={() => { void copyTaskDraft(focusTask); }}
                 >
@@ -1890,7 +1890,7 @@ export default function TaskCenterPage({
               )}
               {resolveTaskTarget(focusTask) && (
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label="打开当前闭环来源"
                   onClick={() => openTaskSource(focusTask)}
                 >
@@ -1955,7 +1955,7 @@ export default function TaskCenterPage({
           </div>
           {activeLane ? (
             <button
-              className="antd-btn small"
+              className="cockpit-btn small"
               aria-label="清除当前车道筛选"
               onClick={() => setActiveSourceFilter('all')}
             >
@@ -1992,7 +1992,7 @@ export default function TaskCenterPage({
             </div>
             <div className="task-lane-focus-actions">
               <button
-                className="antd-btn small"
+                className="cockpit-btn small"
                 aria-label={`打开当前车道 ${activeLane.title} 的搜索`}
                 onClick={() => setSearchQuery(activeLane.keyword)}
               >
@@ -2001,7 +2001,7 @@ export default function TaskCenterPage({
               </button>
               {activeLane.topTask && resolveTaskTarget(activeLane.topTask) && (
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开当前车道入口 ${activeLane.title}`}
                   onClick={() => openTaskSource(activeLane.topTask as Task)}
                 >
@@ -2092,7 +2092,7 @@ export default function TaskCenterPage({
       </div>
 
       {manualTaskOpen && (
-        <section className="task-manual-create antd-card" aria-label="新建正式任务">
+        <section className="task-manual-create cockpit-card" aria-label="新建正式任务">
           <div className="section-header">
             <div>
               <h3>登记现场发现</h3>
@@ -2144,13 +2144,13 @@ export default function TaskCenterPage({
       )}
 
       {actionError && (
-        <div role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', border: '1px solid rgba(255, 71, 87, 0.35)', borderRadius: 'var(--antd-radius-md)', background: 'rgba(255, 71, 87, 0.08)', color: 'var(--antd-error)' }}>
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', border: '1px solid rgba(255, 71, 87, 0.35)', borderRadius: 'var(--cockpit-radius-md)', background: 'rgba(255, 71, 87, 0.08)', color: 'var(--cockpit-error)' }}>
           <span>{actionError}</span>
           <button className="btn btn-sm btn-outline" aria-label="关闭任务操作错误" onClick={() => setActionError(null)}><X size={14} /></button>
         </div>
       )}
       {actionNotice && (
-        <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', border: '1px solid rgba(82, 196, 26, 0.35)', borderRadius: 'var(--antd-radius-md)', background: 'rgba(82, 196, 26, 0.08)', color: 'var(--antd-success)' }}>
+        <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', border: '1px solid rgba(82, 196, 26, 0.35)', borderRadius: 'var(--cockpit-radius-md)', background: 'rgba(82, 196, 26, 0.08)', color: 'var(--cockpit-success)' }}>
           <span>{actionNotice}</span>
           <button className="btn btn-sm btn-outline" aria-label="关闭任务操作提示" onClick={() => setActionNotice(null)}><X size={14} /></button>
         </div>
@@ -2406,7 +2406,7 @@ export default function TaskCenterPage({
           <span className="text-muted" style={{ fontSize: 12 }}>已加载 {tasks.length} / {taskTotal} 条任务</span>
           <button
             type="button"
-            className="antd-btn"
+            className="cockpit-btn"
             aria-label="加载更多任务"
             disabled={taskLoadingMore}
             onClick={() => { void loadMoreTasks(); }}

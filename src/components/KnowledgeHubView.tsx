@@ -345,7 +345,7 @@ export default function KnowledgeHubView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开知识焦点对象 ${focusedKnowledgeCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedKnowledgeCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -354,7 +354,7 @@ export default function KnowledgeHubView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开知识焦点任务 ${focusedKnowledgeCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedKnowledgeCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -386,26 +386,26 @@ export default function KnowledgeHubView({
             style={{ flex: '1 1 260px', minWidth: 220 }}
           />
           {knowledgeQuery && (
-            <button type="button" className="antd-btn small" aria-label="清除知识中枢筛选" onClick={() => setKnowledgeQuery('')}>
+            <button type="button" className="cockpit-btn small" aria-label="清除知识中枢筛选" onClick={() => setKnowledgeQuery('')}>
               清除筛选
             </button>
           )}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
           {filteredKnowledgeSurfaces.map((surface) => (
-            <article key={surface.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article key={surface.id} className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <small className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>{surface.id}</small>
                 <strong style={{ fontSize: 15 }}>{surface.title}</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{surface.summary}</p>
               </div>
-              <div style={{ minHeight: 54, padding: '10px 12px', borderRadius: 'var(--antd-radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ minHeight: 54, padding: '10px 12px', borderRadius: 'var(--cockpit-radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <small className="text-muted" style={{ display: 'block', marginBottom: 4 }}>怎么用</small>
                 <span style={{ fontSize: 12, lineHeight: 1.6 }}>{surface.detail}</span>
               </div>
               <button
                 type="button"
-                className="antd-btn small"
+                className="cockpit-btn small"
                 aria-label={`切换知识子面板 ${surface.title}`}
                 onClick={() => setKnowledgeSubTab(surface.id)}
               >
@@ -437,7 +437,7 @@ export default function KnowledgeHubView({
               <p>{activeKnowledgeSurface.detail}</p>
             </div>
           </article>
-          <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 10 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 10 }}>
             <div style={{ display: 'grid', gap: 4 }}>
               <strong style={{ fontSize: 15 }}>相关去向</strong>
               <small className="text-muted">这层最常见的对象承接与任务收口。</small>
@@ -445,7 +445,7 @@ export default function KnowledgeHubView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开知识相关对象 ${activeKnowledgeSurface.title}`}
                 onClick={() => openCockpitNavigationTarget(activeKnowledgeSurface.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -454,7 +454,7 @@ export default function KnowledgeHubView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开知识相关任务 ${activeKnowledgeSurface.title}`}
                 onClick={() => openCockpitNavigationTarget(activeKnowledgeSurface.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -489,7 +489,7 @@ export default function KnowledgeHubView({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               disabled={knowledgeTaskPending}
               aria-label={`登记知识治理任务 ${knowledgeTaskDraft.title}`}
               onClick={() => { void createKnowledgeTask(); }}
@@ -499,7 +499,7 @@ export default function KnowledgeHubView({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`复制知识补位任务 ${knowledgeTaskDraft.title}`}
               onClick={async () => {
                 await copyText(knowledgeTaskDraft.copyText);
@@ -511,7 +511,7 @@ export default function KnowledgeHubView({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开知识补位对象 ${knowledgeTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(knowledgeTaskDraft.objectTarget, onNavigate, onOpenTarget)}
             >
@@ -520,7 +520,7 @@ export default function KnowledgeHubView({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开知识补位任务 ${knowledgeTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(knowledgeTaskDraft.taskTarget, onNavigate, onOpenTarget)}
             >
@@ -551,7 +551,7 @@ export default function KnowledgeHubView({
           {filteredKnowledgeClosureRows.map((row) => (
             <article
               key={`knowledge-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -568,7 +568,7 @@ export default function KnowledgeHubView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开知识闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -577,7 +577,7 @@ export default function KnowledgeHubView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开知识闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >

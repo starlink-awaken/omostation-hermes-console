@@ -390,7 +390,7 @@ export default function PerformanceMonitorPage({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开性能焦点对象 ${focusedPerformanceCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedPerformanceCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -399,7 +399,7 @@ export default function PerformanceMonitorPage({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开性能焦点任务 ${focusedPerformanceCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedPerformanceCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -423,7 +423,7 @@ export default function PerformanceMonitorPage({
           {performanceClosureRows.map((row) => (
             <article
               key={`performance-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -440,7 +440,7 @@ export default function PerformanceMonitorPage({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开性能闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -449,7 +449,7 @@ export default function PerformanceMonitorPage({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开性能闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -497,7 +497,7 @@ export default function PerformanceMonitorPage({
           {(serviceQuery || serviceStatusFilter !== 'all') && (
             <button
               type="button"
-              className="antd-btn small"
+              className="cockpit-btn small"
               aria-label="清除性能服务筛选"
               onClick={() => { setServiceQuery(''); setServiceStatusFilter('all'); }}
             >
@@ -507,7 +507,7 @@ export default function PerformanceMonitorPage({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>热点服务</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>优先处理离线、降级或资源使用偏高的服务。</p>
@@ -537,7 +537,7 @@ export default function PerformanceMonitorPage({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>追证据去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>性能波动一般要继续去告警、日志和系统地图三处收口。</p>
@@ -589,7 +589,7 @@ export default function PerformanceMonitorPage({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               disabled={taskPending}
               aria-label={`登记性能治理任务 ${performanceTaskDraft.title}`}
               onClick={() => { void createPerformanceTask(); }}
@@ -599,7 +599,7 @@ export default function PerformanceMonitorPage({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`复制性能补位任务 ${performanceTaskDraft.title}`}
               onClick={async () => {
                 await navigator.clipboard.writeText(performanceTaskDraft.copyText);
@@ -611,7 +611,7 @@ export default function PerformanceMonitorPage({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开性能补位告警 ${performanceTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(performanceTaskDraft.alertTarget, onNavigate, onOpenTarget)}
             >
@@ -620,7 +620,7 @@ export default function PerformanceMonitorPage({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开性能补位日志 ${performanceTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(performanceTaskDraft.logTarget, onNavigate, onOpenTarget)}
             >
@@ -629,7 +629,7 @@ export default function PerformanceMonitorPage({
             </button>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label={`打开性能补位任务 ${performanceTaskDraft.title}`}
               onClick={() => openCockpitNavigationTarget(performanceTaskDraft.taskTarget, onNavigate, onOpenTarget)}
             >

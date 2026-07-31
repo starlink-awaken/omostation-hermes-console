@@ -326,7 +326,7 @@ export default function PlatformControlWorkbench({
             : '落地控制工作台';
 
   return (
-    <section className="platform-workbench antd-card">
+    <section className="platform-workbench cockpit-card">
       <div className="section-header" style={{ marginBottom: 0 }}>
         <div>
           <h2>{title}</h2>
@@ -344,7 +344,7 @@ export default function PlatformControlWorkbench({
             <span>{unavailableSources.join('、')}暂时不可用，不把缺失证据当成平稳状态。</span>
             {bosMetrics.next_action && <small>{bosMetrics.next_action}</small>}
           </div>
-          <button type="button" className="antd-btn" onClick={() => setRefreshToken((value) => value + 1)}>
+          <button type="button" className="cockpit-btn" onClick={() => setRefreshToken((value) => value + 1)}>
             <RefreshCw size={14} />
             <span>重试</span>
           </button>
@@ -403,7 +403,7 @@ export default function PlatformControlWorkbench({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               disabled={taskPending}
               aria-label={`登记控制面任务 ${controlTaskTitle}`}
               onClick={() => { void createControlTask(); }}
@@ -527,23 +527,23 @@ export default function PlatformControlWorkbench({
       </div>
 
       <div className="platform-workbench-actions">
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
           <Activity size={14} />
           <span>去观测页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Engines', taskQuery: pipelines[0] || platformContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Engines', taskQuery: pipelines[0] || platformContextQuery }, onNavigate, onOpenTarget)}>
           <Cpu size={14} />
           <span>去引擎页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Settings', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Settings', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
           <Settings2 size={14} />
           <span>去设置页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Sandbox', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Sandbox', taskQuery: platformContextQuery }, onNavigate, onOpenTarget)}>
           <TerminalSquare size={14} />
           <span>去沙箱</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'QuestBoard', taskQuery: summary.topQuest ? String(summary.topQuest.id) : platformContextQuery }, onNavigate, onOpenTarget)}>
+        <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'QuestBoard', taskQuery: summary.topQuest ? String(summary.topQuest.id) : platformContextQuery }, onNavigate, onOpenTarget)}>
           <Gift size={14} />
           <span>去冒险板</span>
         </button>

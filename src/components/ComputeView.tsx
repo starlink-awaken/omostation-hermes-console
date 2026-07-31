@@ -534,7 +534,7 @@ export default function ComputeView({
         <div className="overview-inline-error" role="alert">
           <AlertTriangle size={16} />
           <span>{error}</span>
-          <button className="antd-btn small" aria-label="重试算力状态" onClick={() => setRefreshToken((value) => value + 1)}>
+          <button className="cockpit-btn small" aria-label="重试算力状态" onClick={() => setRefreshToken((value) => value + 1)}>
             <RefreshCw size={13} />
             <span>重试</span>
           </button>
@@ -569,7 +569,7 @@ export default function ComputeView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开算力焦点对象 ${focusedComputeCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedComputeCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -578,7 +578,7 @@ export default function ComputeView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开算力焦点任务 ${focusedComputeCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedComputeCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -602,7 +602,7 @@ export default function ComputeView({
           {computeClosureRows.map((row) => (
             <article
               key={`compute-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -619,7 +619,7 @@ export default function ComputeView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开算力闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -628,7 +628,7 @@ export default function ComputeView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开算力闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -655,13 +655,13 @@ export default function ComputeView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>节点扩容与排障</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>CPU/GPU 压力大或节点离线时，先回观测面，再去网格核对分流。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: focusTaskQuery || nodes[0]?.id || 'Compute' }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Observability', taskQuery: focusTaskQuery || nodes[0]?.id || 'Compute' }, onNavigate, onOpenTarget)}>
                 <Activity size={14} />
                 <span>看观测页</span>
               </button>
@@ -691,7 +691,7 @@ export default function ComputeView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>预算与供应商风险</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>当余额、可用性或已用额度接近阈值时，马上形成治理动作。</p>
@@ -726,13 +726,13 @@ export default function ComputeView({
             </div>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>调度与分流热点</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>高频任务和高调用节点要回工作流页、系统地图和网格继续验收。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Workflows', taskQuery: focusTaskQuery || nodes[0]?.id || 'Compute' }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'Workflows', taskQuery: focusTaskQuery || nodes[0]?.id || 'Compute' }, onNavigate, onOpenTarget)}>
                 <Zap size={14} />
                 <span>看工作流页</span>
               </button>
@@ -763,8 +763,8 @@ export default function ComputeView({
       </section>
 
       {/* 本地算力生成 — 经 BOS compute/generate → omlx 集群 */}
-      <div className="antd-card" style={{ padding: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-primary)' }}>
+      <div className="cockpit-card" style={{ padding: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--cockpit-text-primary)' }}>
           <Zap size={16} /> 本地算力生成
         </h3>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -773,21 +773,21 @@ export default function ComputeView({
             onChange={(e) => setGenPrompt(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !genLoading) runGenerate(); }}
             placeholder="输入提示词，回车或点生成…"
-            style={{ flex: 1, minWidth: '240px', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--antd-border, #d9d9d9)', background: 'var(--antd-bg-elevated, #fff)', color: 'var(--antd-text-primary)' }}
+            style={{ flex: 1, minWidth: '240px', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--cockpit-border, #d9d9d9)', background: 'var(--cockpit-bg-elevated, #fff)', color: 'var(--cockpit-text-primary)' }}
           />
-          <select value={genModel} onChange={(e) => setGenModel(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--antd-border, #d9d9d9)' }}>
+          <select value={genModel} onChange={(e) => setGenModel(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--cockpit-border, #d9d9d9)' }}>
             <option value="coder">coder</option>
             <option value="reasoner">reasoner</option>
             <option value="mini-9b">mini-9b</option>
             <option value="mythos">mythos</option>
             <option value="vision">vision</option>
           </select>
-          <button onClick={runGenerate} disabled={genLoading || !genPrompt.trim()} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--antd-primary, #1677ff)', color: '#fff', cursor: genLoading ? 'default' : 'pointer', opacity: genLoading ? 0.6 : 1 }}>
+          <button onClick={runGenerate} disabled={genLoading || !genPrompt.trim()} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--cockpit-primary, #1677ff)', color: '#fff', cursor: genLoading ? 'default' : 'pointer', opacity: genLoading ? 0.6 : 1 }}>
             {genLoading ? '生成中…' : '生成'}
           </button>
         </div>
         {genResult && (
-          <div style={{ marginTop: '12px', padding: '12px', borderRadius: '6px', background: 'var(--antd-bg-layout, #f5f5f5)', color: 'var(--antd-text-primary)', whiteSpace: 'pre-wrap', fontSize: '13px', lineHeight: 1.6 }}>
+          <div style={{ marginTop: '12px', padding: '12px', borderRadius: '6px', background: 'var(--cockpit-bg-layout, #f5f5f5)', color: 'var(--cockpit-text-primary)', whiteSpace: 'pre-wrap', fontSize: '13px', lineHeight: 1.6 }}>
             {genResult}
           </div>
         )}
@@ -795,7 +795,7 @@ export default function ComputeView({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             <button
               type="button"
-              className="antd-btn antd-btn-primary"
+              className="cockpit-btn cockpit-btn-primary"
               aria-label="登记本地生成结果"
               disabled={genQueueLoading}
               onClick={() => void queueGenerationResult()}
@@ -806,13 +806,13 @@ export default function ComputeView({
             {genQueueMessage && <span className="text-muted" role="status">{genQueueMessage}</span>}
           </div>
         )}
-        <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--antd-text-secondary, #888)' }}>
+        <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--cockpit-text-secondary, #888)' }}>
           经网关路由到本地 omlx 集群 · 首次可能等数十秒(冷启动)
         </div>
       </div>
 
       {/* 0. 安全治理与熔断控制台 */}
-      <div className="antd-card animate-fade-in" style={{
+      <div className="cockpit-card animate-fade-in" style={{
         padding: '20px 24px',
         background: 'linear-gradient(135deg, rgba(20, 20, 35, 0.4) 0%, rgba(10, 10, 20, 0.6) 100%)',
         backdropFilter: 'blur(20px)',
@@ -840,7 +840,7 @@ export default function ComputeView({
             <Shield size={20} className={circuitBroken ? 'text-error animate-pulse' : 'text-success'} />
           </div>
           <div>
-            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-primary)' }}>
+            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--cockpit-text-primary)' }}>
               混合云智能体网格熔断闸阀
               <span className={`status-dot ${circuitBroken ? 'dot-down animate-pulse' : 'dot-ok'}`} style={{ width: '8px', height: '8px', display: 'inline-block' }}></span>
             </h3>
@@ -858,7 +858,7 @@ export default function ComputeView({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, maxWidth: '240px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
               <span className="text-muted">单日 API 消费安全阀线</span>
-              <strong style={{ color: 'var(--antd-accent)' }}>{dailyBudget === null ? '—' : `$${dailyBudget}`} / 天</strong>
+              <strong style={{ color: 'var(--cockpit-accent)' }}>{dailyBudget === null ? '—' : `$${dailyBudget}`} / 天</strong>
             </div>
             <input 
               type="range" 
@@ -872,7 +872,7 @@ export default function ComputeView({
               onTouchEnd={(e) => updateBudget(Number((e.target as HTMLInputElement).value))}
               style={{
                 width: '100%',
-                accentColor: 'var(--antd-primary)',
+                accentColor: 'var(--cockpit-primary)',
                 height: '4px',
                 borderRadius: '2px',
                 cursor: 'pointer',
@@ -892,8 +892,8 @@ export default function ComputeView({
               cursor: 'pointer',
               transition: 'all 0.3s ease',
               backgroundColor: error ? 'rgba(255, 255, 255, 0.05)' : circuitBroken ? 'rgba(255, 69, 58, 0.15)' : 'rgba(5, 243, 162, 0.1)',
-              color: error ? 'var(--antd-text-secondary)' : circuitBroken ? 'var(--antd-error)' : 'var(--antd-success)',
-              border: `1px solid ${error ? 'var(--antd-border-color)' : circuitBroken ? 'var(--antd-error)' : 'var(--antd-success)'}`,
+              color: error ? 'var(--cockpit-text-secondary)' : circuitBroken ? 'var(--cockpit-error)' : 'var(--cockpit-success)',
+              border: `1px solid ${error ? 'var(--cockpit-border-color)' : circuitBroken ? 'var(--cockpit-error)' : 'var(--cockpit-success)'}`,
               boxShadow: circuitBroken ? '0 0 10px rgba(255, 69, 58, 0.1)' : 'none'
             }}
           >
@@ -910,7 +910,7 @@ export default function ComputeView({
             padding: '10px 14px',
             borderRadius: '6px',
             border: `1px solid ${controlMessage.tone === 'success' ? 'rgba(5, 243, 162, 0.35)' : 'rgba(255, 71, 87, 0.35)'}`,
-            color: controlMessage.tone === 'success' ? 'var(--antd-success)' : 'var(--antd-error)',
+            color: controlMessage.tone === 'success' ? 'var(--cockpit-success)' : 'var(--cockpit-error)',
             background: controlMessage.tone === 'success' ? 'rgba(5, 243, 162, 0.08)' : 'rgba(255, 71, 87, 0.08)',
             fontSize: '12px',
           }}
@@ -922,10 +922,10 @@ export default function ComputeView({
       {/* 1. 算力调配核心健康指标 */}
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-primary)' }}>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--cockpit-primary)' }}>
           <div className="stat-info">
             <h3>算力网格平均延迟</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-primary)' }}>{avgLatency === null ? '—' : `${avgLatency} ms`}</p>
+            <p className="stat-value" style={{ color: 'var(--cockpit-primary)' }}>{avgLatency === null ? '—' : `${avgLatency} ms`}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>
               <Zap size={11} />
               <span>本地热启动边缘加速</span>
@@ -933,10 +933,10 @@ export default function ComputeView({
           </div>
         </div>
 
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-accent)' }}>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--cockpit-accent)' }}>
           <div className="stat-info">
             <h3>总 Token 吞吐速率</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-accent)' }}>{avgThroughput === null ? '—' : `${avgThroughput} T/s`}</p>
+            <p className="stat-value" style={{ color: 'var(--cockpit-accent)' }}>{avgThroughput === null ? '—' : `${avgThroughput} T/s`}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>
               <Activity size={11} />
               <span>智能体活跃吞吐</span>
@@ -944,10 +944,10 @@ export default function ComputeView({
           </div>
         </div>
 
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-success)' }}>
+        <div className="stat-card" style={{ borderLeft: '3px solid var(--cockpit-success)' }}>
           <div className="stat-info">
             <h3>本地大模型拦截率</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-success)' }}>{interceptionRate === null ? '—' : `${interceptionRate}%`}</p>
+            <p className="stat-value" style={{ color: 'var(--cockpit-success)' }}>{interceptionRate === null ? '—' : `${interceptionRate}%`}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px' }}>
               <TrendingUp size={11} />
               <span>节省云端 API 成本: ${costBoard.saved_vs_cloud_usd || '0.00'}</span>
@@ -965,21 +965,21 @@ export default function ComputeView({
 
         <section role="region" aria-label="算力对象筛选" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 180px auto', gap: 10, alignItems: 'center', marginBottom: 16 }}>
           <input
-            className="antd-input"
+            className="cockpit-input"
             type="search"
             aria-label="搜索算力节点"
             placeholder="节点名、模型、任务或路由"
             value={nodeQuery}
             onChange={(event) => setNodeQuery(event.target.value)}
           />
-          <select className="antd-input" aria-label="按状态筛选算力节点" value={nodeStatusFilter} onChange={(event) => setNodeStatusFilter(event.target.value as typeof nodeStatusFilter)}>
+          <select className="cockpit-input" aria-label="按状态筛选算力节点" value={nodeStatusFilter} onChange={(event) => setNodeStatusFilter(event.target.value as typeof nodeStatusFilter)}>
             <option value="all">全部节点状态</option>
             <option value="online">在线</option>
             <option value="degraded">降级</option>
             <option value="offline">离线</option>
           </select>
           {(nodeQuery || nodeStatusFilter !== 'all') && (
-            <button type="button" className="antd-btn" aria-label="清除算力对象筛选" onClick={() => { setNodeQuery(''); setNodeStatusFilter('all'); }}>
+            <button type="button" className="cockpit-btn" aria-label="清除算力对象筛选" onClick={() => { setNodeQuery(''); setNodeStatusFilter('all'); }}>
               清除筛选
             </button>
           )}
@@ -995,7 +995,7 @@ export default function ComputeView({
             return (
               <div 
                 key={node.id} 
-                className="antd-card"
+                className="cockpit-card"
                 style={{ 
                   padding: '20px', 
                   display: 'flex',
@@ -1007,7 +1007,7 @@ export default function ComputeView({
                 {/* 节点头部信息 */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{node.name}</h4>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>{node.name}</h4>
                     <span className="text-muted" style={{ fontSize: '11px', marginTop: '2px', display: 'block' }}>{node.model}</span>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -1017,7 +1017,7 @@ export default function ComputeView({
                       borderRadius: '4px',
                       fontWeight: 600,
                       backgroundColor: isOnline ? 'rgba(5, 243, 162, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                      color: isOnline ? 'var(--antd-success)' : 'rgba(255,255,255,0.45)',
+                      color: isOnline ? 'var(--cockpit-success)' : 'rgba(255,255,255,0.45)',
                       border: `1px solid ${isOnline ? 'rgba(5,243,162,0.2)' : 'rgba(255,255,255,0.1)'}`
                     }}>
                       {node.status.toUpperCase()}
@@ -1028,7 +1028,7 @@ export default function ComputeView({
                     {node.status !== 'online' && (
                       <button
                         type="button"
-                        className="antd-btn small"
+                        className="cockpit-btn small"
                         aria-label={`唤醒节点 ${node.name}`}
                         onClick={() => void wakeupNode(node)}
                         disabled={wakeupNodeId === node.id}
@@ -1047,13 +1047,13 @@ export default function ComputeView({
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
                       <span className="text-muted">CPU 占用率</span>
-                      <span style={{ color: 'var(--antd-primary)', fontWeight: 600 }}>{cpuLoad == null ? '-' : `${cpuLoad}%`}</span>
+                      <span style={{ color: 'var(--cockpit-primary)', fontWeight: 600 }}>{cpuLoad == null ? '-' : `${cpuLoad}%`}</span>
                     </div>
                     <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                       <div style={{
                         height: '100%',
                         width: `${cpuLoad ?? 0}%`,
-                        backgroundColor: cpuLoad == null ? 'var(--antd-text-muted)' : 'var(--antd-primary)',
+                        backgroundColor: cpuLoad == null ? 'var(--cockpit-text-muted)' : 'var(--cockpit-primary)',
                         transition: 'width 1.2s ease-in-out'
                       }}></div>
                     </div>
@@ -1064,13 +1064,13 @@ export default function ComputeView({
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
                         <span className="text-muted">GPU (NVIDIA/Apple M) VRAM 占用</span>
-                        <span style={{ color: 'var(--antd-accent)', fontWeight: 600 }}>{gpuLoad == null ? '-' : `${gpuLoad}%`}</span>
+                        <span style={{ color: 'var(--cockpit-accent)', fontWeight: 600 }}>{gpuLoad == null ? '-' : `${gpuLoad}%`}</span>
                       </div>
                       <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                         <div style={{
                           height: '100%',
                           width: `${gpuLoad ?? 0}%`,
-                          backgroundColor: gpuLoad == null ? 'var(--antd-text-muted)' : 'var(--antd-accent)',
+                          backgroundColor: gpuLoad == null ? 'var(--cockpit-text-muted)' : 'var(--cockpit-accent)',
                           transition: 'width 1.2s ease-in-out'
                         }}></div>
                       </div>
@@ -1119,7 +1119,7 @@ export default function ComputeView({
                           padding: '1px 5px',
                           borderRadius: '3px',
                           backgroundColor: tn.route_type === 'local' ? 'rgba(5, 243, 162, 0.08)' : 'rgba(0, 242, 254, 0.08)',
-                          color: tn.route_type === 'local' ? 'var(--antd-success)' : 'var(--antd-primary)'
+                          color: tn.route_type === 'local' ? 'var(--cockpit-success)' : 'var(--cockpit-primary)'
                         }}>
                           {tn.route_type.toUpperCase()}
                         </span>
@@ -1142,7 +1142,7 @@ export default function ComputeView({
           {/* 下部：实时任务调度追踪舱 */}
           <div style={{ marginTop: '24px' }}>
             <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <TrendingUp size={16} style={{ color: 'var(--antd-primary)' }} />
+              <TrendingUp size={16} style={{ color: 'var(--cockpit-primary)' }} />
               <span>混合云大模型任务调度追踪舱 (Task Dispatcher Status)</span>
             </h3>
             <div className="services-list">
@@ -1188,7 +1188,7 @@ export default function ComputeView({
                             borderRadius: '4px',
                             fontWeight: 600,
                             backgroundColor: task.status === 'running' ? 'rgba(22, 119, 255, 0.12)' : 'rgba(52, 199, 89, 0.1)',
-                            color: task.status === 'running' ? 'var(--antd-primary)' : 'var(--antd-success)',
+                            color: task.status === 'running' ? 'var(--cockpit-primary)' : 'var(--cockpit-success)',
                             border: `1px solid ${task.status === 'running' ? 'rgba(22, 119, 255, 0.2)' : 'rgba(52, 199, 89, 0.15)'}`
                           }}>
                             {task.status.toUpperCase()}
@@ -1200,10 +1200,10 @@ export default function ComputeView({
                               <div style={{
                                 height: '100%',
                                 width: `${task.progress}%`,
-                                backgroundColor: task.status === 'running' ? 'var(--antd-primary)' : 'var(--antd-success)'
+                                backgroundColor: task.status === 'running' ? 'var(--cockpit-primary)' : 'var(--cockpit-success)'
                               }}></div>
                             </div>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--antd-text-secondary)' }}>{task.progress}%</span>
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--cockpit-text-secondary)' }}>{task.progress}%</span>
                           </div>
                         </td>
                       </tr>
@@ -1235,16 +1235,16 @@ export default function ComputeView({
                 return (
                   <div 
                     key={i} 
-                    className="antd-card"
+                    className="cockpit-card"
                     style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--antd-text-primary)', textTransform: 'capitalize' }}>
+                      <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--cockpit-text-primary)', textTransform: 'capitalize' }}>
                         {q.provider}
                       </span>
                       <span style={{ 
                         fontSize: '11px',
-                        color: q.available ? 'var(--antd-success)' : 'var(--antd-error)',
+                        color: q.available ? 'var(--cockpit-success)' : 'var(--cockpit-error)',
                         fontWeight: 600
                       }}>
                         {q.available ? '● 额度正常' : '● KEY 失效'}
@@ -1252,7 +1252,7 @@ export default function ComputeView({
                     </div>
                     
                     {q.error ? (
-                      <div style={{ color: 'var(--antd-error)', fontSize: '11px' }}>
+                      <div style={{ color: 'var(--cockpit-error)', fontSize: '11px' }}>
                         {q.error.message || '额度同步错误'}
                       </div>
                     ) : (
@@ -1260,7 +1260,7 @@ export default function ComputeView({
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginBottom: '6px' }}>
                           <span>额度已用: <strong>{usedPercent === null ? '-' : `${usedPercent}%`}</strong></span>
                           {balance !== null && (
-                            <span>可用余额: <strong style={{ color: 'var(--antd-success)' }}>${balance.toFixed(2)}</strong></span>
+                            <span>可用余额: <strong style={{ color: 'var(--cockpit-success)' }}>${balance.toFixed(2)}</strong></span>
                           )}
                         </div>
                         <div style={{ height: '5px', borderRadius: '2.5px', backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
@@ -1268,8 +1268,8 @@ export default function ComputeView({
                             height: '100%',
                             width: `${usedPercent ?? 0}%`,
                             backgroundColor: usedPercent === null
-                              ? 'var(--antd-text-muted)'
-                              : usedPercent > 80 ? 'var(--antd-error)' : usedPercent > 50 ? 'var(--antd-warning)' : 'var(--antd-success)'
+                              ? 'var(--cockpit-text-muted)'
+                              : usedPercent > 80 ? 'var(--cockpit-error)' : usedPercent > 50 ? 'var(--cockpit-warning)' : 'var(--cockpit-success)'
                           }}></div>
                         </div>
                       </div>
@@ -1295,7 +1295,7 @@ export default function ComputeView({
             padding: '1px 6px',
             borderRadius: '10px',
             backgroundColor: 'rgba(0, 242, 254, 0.1)',
-            color: 'var(--antd-primary)',
+            color: 'var(--cockpit-primary)',
             fontWeight: 600
           }}>
             {availableModels.length} Models
@@ -1333,7 +1333,7 @@ export default function ComputeView({
                         borderRadius: '4px',
                         fontWeight: 600,
                         backgroundColor: m.status === 'healthy' ? 'rgba(52, 199, 89, 0.1)' : m.status === 'degraded' ? 'rgba(255, 184, 0, 0.1)' : 'rgba(255, 69, 58, 0.1)',
-                        color: m.status === 'healthy' ? 'var(--antd-success)' : m.status === 'degraded' ? 'var(--antd-warning)' : 'var(--antd-error)',
+                        color: m.status === 'healthy' ? 'var(--cockpit-success)' : m.status === 'degraded' ? 'var(--cockpit-warning)' : 'var(--cockpit-error)',
                         border: `1px solid ${m.status === 'healthy' ? 'rgba(52,199,89,0.2)' : m.status === 'degraded' ? 'rgba(255,184,0,0.2)' : 'rgba(255,69,58,0.2)'}`
                       }}>
                         {m.status.toUpperCase()}

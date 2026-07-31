@@ -301,13 +301,13 @@ function DomainActionButtons({
       {actions.map((action) => (
         action.kind === 'copy_command' ? (
           <React.Fragment key={action.id}>
-            <button className="antd-btn" onClick={() => void copyText(action.value)} title={action.guard}>
+            <button className="cockpit-btn" onClick={() => void copyText(action.value)} title={action.guard}>
               <Copy size={14} />
               <span>{action.label}</span>
             </button>
             {onQueueAction && action.enabled && (
               <button
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`登记领域应用动作 ${action.label}`}
                 onClick={() => onQueueAction(action)}
                 disabled={isActionPending?.(action)}
@@ -319,7 +319,7 @@ function DomainActionButtons({
             )}
             {onExecuteVerification && action.id === 'copy-verify' && action.enabled && (
               <button
-                className="antd-btn antd-btn-primary"
+                className="cockpit-btn cockpit-btn-primary"
                 aria-label={`执行领域应用验证 ${action.label}`}
                 onClick={() => onExecuteVerification(action)}
                 disabled={verificationPending}
@@ -333,7 +333,7 @@ function DomainActionButtons({
         ) : (
           <a
             key={action.id}
-            className={action.id === 'open' ? 'antd-btn antd-btn-primary' : 'antd-btn'}
+            className={action.id === 'open' ? 'cockpit-btn cockpit-btn-primary' : 'cockpit-btn'}
             href={action.value}
             target={action.value.startsWith('http') ? '_blank' : undefined}
             rel="noreferrer"
@@ -474,9 +474,9 @@ function DomainAppCard({
             marginTop: 16,
             padding: 12,
             border: '1px solid rgba(245, 158, 11, 0.35)',
-            borderRadius: 'var(--antd-radius-md)',
+            borderRadius: 'var(--cockpit-radius-md)',
             background: 'rgba(245, 158, 11, 0.08)',
-            color: 'var(--antd-warning)',
+            color: 'var(--cockpit-warning)',
             fontSize: 13,
           }}
         >
@@ -888,14 +888,14 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
           alignItems: 'center',
           padding: 16,
           border: '1px solid rgba(239, 68, 68, 0.35)',
-          borderRadius: 'var(--antd-radius-md)',
+          borderRadius: 'var(--cockpit-radius-md)',
           background: 'rgba(239, 68, 68, 0.08)',
-          color: 'var(--antd-error)',
+          color: 'var(--cockpit-error)',
         }}
       >
         <ShieldAlert size={18} />
         <span>{error || '领域应用数据不可用'}</span>
-        <button type="button" className="antd-btn" onClick={() => void load()}>
+        <button type="button" className="cockpit-btn" onClick={() => void load()}>
           <RefreshCw size={14} aria-hidden="true" />
           <span>重试领域应用</span>
         </button>
@@ -911,7 +911,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
         <div className="system-map-action-feedback error" role="alert">
           <ShieldAlert size={14} />
           <span>{error}</span>
-          <button type="button" className="antd-btn small" onClick={() => void load()}>
+          <button type="button" className="cockpit-btn small" onClick={() => void load()}>
             <RefreshCw size={13} aria-hidden="true" />
             <span>重试补充数据</span>
           </button>
@@ -995,7 +995,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                   <p>{card.subtitle}</p>
                 </div>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开领域承接 ${card.title}`}
                   onClick={card.primaryAction}
                 >
@@ -1027,7 +1027,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               <div className="domain-route-actions">
                 {card.secondaryAction ? (
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`打开领域承接任务 ${card.title}`}
                     onClick={card.secondaryAction}
                   >
@@ -1036,7 +1036,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                   </button>
                 ) : null}
                 {card.launchUrl ? (
-                  <a className="antd-btn small" href={card.launchUrl} target="_blank" rel="noreferrer">
+                  <a className="cockpit-btn small" href={card.launchUrl} target="_blank" rel="noreferrer">
                     <ExternalLink size={13} />
                     <span>打开入口</span>
                   </a>
@@ -1055,7 +1055,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
             <small>{focusedApp.id} · {focusedApp.domain.name} · {nextActionForApp(focusedApp)}</small>
           </div>
           <button
-            className="antd-btn small"
+            className="cockpit-btn small"
             onClick={() => document.getElementById(`domain-app-${focusedApp.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
           >
             <AppWindow size={13} />
@@ -1079,7 +1079,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>任务承接</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -1087,18 +1087,18 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                 </p>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                <button className="antd-btn small" aria-label="打开聚焦应用任务" onClick={() => openTaskCenter(focusedApp.id)}>
+                <button className="cockpit-btn small" aria-label="打开聚焦应用任务" onClick={() => openTaskCenter(focusedApp.id)}>
                   <AppWindow size={13} />
                   <span>按应用筛任务</span>
                 </button>
-                <button className="antd-btn small" aria-label="打开聚焦领域任务" onClick={() => openTaskCenter(focusedApp.domain.name)}>
+                <button className="cockpit-btn small" aria-label="打开聚焦领域任务" onClick={() => openTaskCenter(focusedApp.domain.name)}>
                   <FileText size={13} />
                   <span>按领域筛任务</span>
                 </button>
               </div>
             </article>
 
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>系统收口</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -1106,12 +1106,12 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                 </p>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                <button className="antd-btn small" aria-label="打开聚焦应用系统地图" onClick={openSystemMap}>
+                <button className="cockpit-btn small" aria-label="打开聚焦应用系统地图" onClick={openSystemMap}>
                   <FileText size={13} />
                   <span>回系统地图</span>
                 </button>
                 <button
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label="复制聚焦应用验证命令"
                   onClick={() => void copyText(focusVerifyCommand || focusedApp.commands.start || '')}
                   disabled={!focusVerifyCommand && !focusedApp.commands.start}
@@ -1122,7 +1122,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               </div>
             </article>
 
-            <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <strong style={{ fontSize: 15 }}>真实入口</strong>
                 <p className="text-muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.6 }}>
@@ -1133,13 +1133,13 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                 <small className="text-muted">认证 {focusedApp.auth.type || '未登记'} · 新鲜度 {String(focusedApp.freshness.status || '—')}</small>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {focusLaunchUrl && (
-                    <a className="antd-btn small" aria-label="打开聚焦应用真实入口" href={focusLaunchUrl} target="_blank" rel="noreferrer">
+                    <a className="cockpit-btn small" aria-label="打开聚焦应用真实入口" href={focusLaunchUrl} target="_blank" rel="noreferrer">
                       <ExternalLink size={13} />
                       <span>打开应用入口</span>
                     </a>
                   )}
                   {focusApiUrl && (
-                    <a className="antd-btn small" aria-label="打开聚焦应用真实接口" href={focusApiUrl} target="_blank" rel="noreferrer">
+                    <a className="cockpit-btn small" aria-label="打开聚焦应用真实接口" href={focusApiUrl} target="_blank" rel="noreferrer">
                       <ExternalLink size={13} />
                       <span>打开 API 入口</span>
                     </a>
@@ -1318,7 +1318,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
 
       <div className="section-header" style={{ marginTop: 8, marginBottom: 16 }}>
         <h2 style={{ fontSize: 16 }}>领域应用</h2>
-        <button className="antd-btn" onClick={load}>
+        <button className="cockpit-btn" onClick={load}>
           <RefreshCw size={14} />
           <span>刷新</span>
         </button>
@@ -1362,7 +1362,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
           </label>
           {(appQuery || appDomainFilter !== 'all' || appRuntimeFilter !== 'all') && (
             <button
-              className="antd-btn small"
+              className="cockpit-btn small"
               aria-label="清除领域应用筛选"
               onClick={() => {
                 setAppQuery('');
@@ -1427,11 +1427,11 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                 风险 {riskText(app.risk_level)} · 安全 {securityText(app.security_summary.posture)} · Freshness {String(app.freshness.status || '—')}
               </small>
               <div className="home-focus-actions" style={{ marginTop: 0 }}>
-                <button className="antd-btn small" onClick={() => setFocusedAppId(app.id)}>
+                <button className="cockpit-btn small" onClick={() => setFocusedAppId(app.id)}>
                   <FileText size={13} />
                   <span>查看剖面</span>
                 </button>
-                <button className="antd-btn small" onClick={() => openTaskCenter(app.id)}>
+                <button className="cockpit-btn small" onClick={() => openTaskCenter(app.id)}>
                   <AppWindow size={13} />
                   <span>跟进任务</span>
                 </button>
@@ -1571,11 +1571,11 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                     <td style={{ minWidth: 220 }}>{nextActionForApp(app)}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button className="antd-btn small" onClick={() => setFocusedAppId(app.id)}>
+                        <button className="cockpit-btn small" onClick={() => setFocusedAppId(app.id)}>
                           <FileText size={13} />
                           <span>看剖面</span>
                         </button>
-                        <button className="antd-btn small" onClick={() => openTaskCenter(app.id)}>
+                        <button className="cockpit-btn small" onClick={() => openTaskCenter(app.id)}>
                           <AppWindow size={13} />
                           <span>跟任务</span>
                         </button>
@@ -1636,7 +1636,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                   <small>{row.nextAction}</small>
                   <div className="home-architecture-lane-actions">
                     <button
-                      className="antd-btn small"
+                      className="cockpit-btn small"
                       aria-label={`打开领域建设入口 ${row.title}`}
                       onClick={() => onOpenTarget ? onOpenTarget(row.entryTarget) : onNavigate?.(row.entryTarget.tab)}
                     >
@@ -1644,7 +1644,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                       <span>入口页</span>
                     </button>
                     <button
-                      className="antd-btn small secondary"
+                      className="cockpit-btn small secondary"
                       aria-label={`打开领域建设覆盖 ${row.title}`}
                       onClick={() => onOpenTarget ? onOpenTarget(row.coverageTarget) : onNavigate?.(row.coverageTarget.tab)}
                     >
@@ -1652,7 +1652,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
                       <span>系统收口</span>
                     </button>
                     <button
-                      className="antd-btn small secondary"
+                      className="cockpit-btn small secondary"
                       aria-label={`打开领域建设任务 ${row.title}`}
                       onClick={() => onOpenTarget ? onOpenTarget(row.taskTarget) : onNavigate?.(row.taskTarget.tab)}
                     >
@@ -1682,11 +1682,11 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               verificationPending={verificationPendingFor(app)}
             />
             <div className="home-focus-actions" style={{ marginTop: 0 }}>
-              <button className="antd-btn small" onClick={() => setFocusedAppId(app.id)}>
+              <button className="cockpit-btn small" onClick={() => setFocusedAppId(app.id)}>
                 <FileText size={13} />
                 <span>查看剖面</span>
               </button>
-              <button className="antd-btn small" onClick={() => openTaskCenter(app.id)}>
+              <button className="cockpit-btn small" onClick={() => openTaskCenter(app.id)}>
                 <AppWindow size={13} />
                 <span>相关任务</span>
               </button>
@@ -1714,7 +1714,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               <div className="stat-icon-wrapper pulse-accent"><Terminal size={18} /></div>
               <div className="stat-info">
                 <h3>{item.title}</h3>
-                <p style={{ margin: '6px 0 0', color: 'var(--antd-text-secondary)', fontSize: 13 }}>{item.detail}</p>
+                <p style={{ margin: '6px 0 0', color: 'var(--cockpit-text-secondary)', fontSize: 13 }}>{item.detail}</p>
               </div>
             </div>
           )) : (
@@ -1722,7 +1722,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
               <div className="stat-icon-wrapper pulse-accent"><Terminal size={18} /></div>
               <div className="stat-info">
                 <h3>本周动作</h3>
-                <p style={{ margin: '6px 0 0', color: 'var(--antd-text-secondary)', fontSize: 13 }}>暂无明确动作</p>
+                <p style={{ margin: '6px 0 0', color: 'var(--cockpit-text-secondary)', fontSize: 13 }}>暂无明确动作</p>
               </div>
             </div>
           )}

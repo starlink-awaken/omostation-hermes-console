@@ -350,10 +350,10 @@ export default function QuestBoard({
 
   if (error) {
     return (
-      <div className="antd-card" style={{ padding: '32px', textAlign: 'center', margin: '24px 0' }}>
-        <p style={{ color: 'var(--antd-error)', fontSize: '16px', marginBottom: '16px', fontWeight: 600 }}>⚠️ 积分系统加载失败</p>
+      <div className="cockpit-card" style={{ padding: '32px', textAlign: 'center', margin: '24px 0' }}>
+        <p style={{ color: 'var(--cockpit-error)', fontSize: '16px', marginBottom: '16px', fontWeight: 600 }}>⚠️ 积分系统加载失败</p>
         <p className="text-muted" style={{ marginBottom: '24px' }}>{error}</p>
-        <button className="antd-btn antd-btn-primary" onClick={() => { setLoading(true); setError(null); fetchBoardData(); }}>
+        <button className="cockpit-btn cockpit-btn-primary" onClick={() => { setLoading(true); setError(null); fetchBoardData(); }}>
           重新连接
         </button>
       </div>
@@ -428,7 +428,7 @@ export default function QuestBoard({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开家庭焦点对象 ${focusedQuestCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedQuestCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -437,7 +437,7 @@ export default function QuestBoard({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开家庭焦点任务 ${focusedQuestCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedQuestCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -486,7 +486,7 @@ export default function QuestBoard({
           {(questQuery || questStatusFilter !== 'all') && (
             <button
               type="button"
-              className="antd-btn small"
+              className="cockpit-btn small"
               aria-label="清除家庭任务筛选"
               onClick={() => { setQuestQuery(''); setQuestStatusFilter('all'); }}
             >
@@ -496,7 +496,7 @@ export default function QuestBoard({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>活跃家庭任务</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先处理当前最重要的家庭任务，再决定是否沉到任务中心或应用中心。</p>
@@ -521,7 +521,7 @@ export default function QuestBoard({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>家庭去向</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>家庭任务不是孤立玩具，后续要回应用中心、任务中心和知识页继续沉淀。</p>
@@ -578,7 +578,7 @@ export default function QuestBoard({
           {questClosureRows.map((row) => (
             <article
               key={row.id}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -595,7 +595,7 @@ export default function QuestBoard({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开家庭闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -604,7 +604,7 @@ export default function QuestBoard({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开家庭闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -630,7 +630,7 @@ export default function QuestBoard({
         </div>
         
         <button 
-          className={`antd-btn ${showAddForm ? 'antd-btn-danger' : 'antd-btn-primary'}`}
+          className={`cockpit-btn ${showAddForm ? 'cockpit-btn-danger' : 'cockpit-btn-primary'}`}
           onClick={() => setShowAddForm(!showAddForm)}
           aria-expanded={showAddForm}
           aria-controls="quest-creation-form"
@@ -643,10 +643,10 @@ export default function QuestBoard({
         <div
           role="status"
           aria-live="polite"
-          className="antd-card"
+          className="cockpit-card"
           style={{
             padding: '0.75rem 1rem',
-            color: actionFeedback.status === 'success' ? 'var(--antd-success)' : 'var(--antd-error)',
+            color: actionFeedback.status === 'success' ? 'var(--cockpit-success)' : 'var(--cockpit-error)',
             border: `1px solid ${actionFeedback.status === 'success' ? 'rgba(5,243,162,0.2)' : 'rgba(255,71,87,0.2)'}`,
           }}
         >
@@ -659,22 +659,22 @@ export default function QuestBoard({
         <form 
           id="quest-creation-form"
           onSubmit={handleCreateQuest} 
-          className="antd-card animate-fade-in" 
+          className="cockpit-card animate-fade-in" 
           style={{ 
             padding: '20px', 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
             gap: '16px', 
             alignItems: 'end',
-            background: 'var(--antd-bg-container)'
+            background: 'var(--cockpit-bg-container)'
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="quest-title" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>冒险标题</label>
+            <label htmlFor="quest-title" style={{ fontSize: '13px', color: 'var(--cockpit-text-secondary)' }}>冒险标题</label>
             <input 
               id="quest-title"
               type="text" 
-              className="antd-input" 
+              className="cockpit-input" 
               placeholder="例如：整理书架、倒垃圾、阅读半小时" 
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -683,13 +683,13 @@ export default function QuestBoard({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="quest-type" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>冒险类型</label>
+            <label htmlFor="quest-type" style={{ fontSize: '13px', color: 'var(--cockpit-text-secondary)' }}>冒险类型</label>
             <select 
               id="quest-type"
-              className="antd-input" 
+              className="cockpit-input" 
               value={qType}
               onChange={e => setQType(e.target.value)}
-              style={{ background: 'var(--antd-bg-elevated)', cursor: 'pointer' }}
+              style={{ background: 'var(--cockpit-bg-elevated)', cursor: 'pointer' }}
             >
               <option value="responsibility">🛡️ 责任养成 (每日习惯/家务)</option>
               <option value="wisdom">🎩 智慧进阶 (学习/阅读/创意)</option>
@@ -697,11 +697,11 @@ export default function QuestBoard({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="quest-reward" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>积分奖励 (Points)</label>
+            <label htmlFor="quest-reward" style={{ fontSize: '13px', color: 'var(--cockpit-text-secondary)' }}>积分奖励 (Points)</label>
             <input 
               id="quest-reward"
               type="number" 
-              className="antd-input" 
+              className="cockpit-input" 
               min="5" 
               max="200" 
               step="5"
@@ -712,13 +712,13 @@ export default function QuestBoard({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="quest-assignee" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>冒险勇士 (Assignee)</label>
+            <label htmlFor="quest-assignee" style={{ fontSize: '13px', color: 'var(--cockpit-text-secondary)' }}>冒险勇士 (Assignee)</label>
             <select 
               id="quest-assignee"
-              className="antd-input" 
+              className="cockpit-input" 
               value={assignee}
               onChange={e => setAssignee(e.target.value)}
-              style={{ background: 'var(--antd-bg-elevated)', cursor: 'pointer' }}
+              style={{ background: 'var(--cockpit-bg-elevated)', cursor: 'pointer' }}
               required
             >
               {profiles.map(p => (
@@ -731,7 +731,7 @@ export default function QuestBoard({
 
           <button 
             type="submit" 
-            className="antd-btn antd-btn-primary" 
+            className="cockpit-btn cockpit-btn-primary" 
             disabled={submitting}
             style={{ height: '32px' }}
           >
@@ -745,7 +745,7 @@ export default function QuestBoard({
         {profiles.map((p) => (
           <div 
             key={p.role} 
-            className="antd-card" 
+            className="cockpit-card" 
             style={{ 
               padding: '20px', 
               position: 'relative', 
@@ -755,7 +755,7 @@ export default function QuestBoard({
               gap: '12px'
             }}
           >
-            <div style={{ position: 'absolute', right: '-12px', bottom: '-12px', opacity: 0.04, color: 'var(--antd-text-primary)' }} aria-hidden="true">
+            <div style={{ position: 'absolute', right: '-12px', bottom: '-12px', opacity: 0.04, color: 'var(--cockpit-text-primary)' }} aria-hidden="true">
               <Trophy size={96} />
             </div>
             
@@ -769,7 +769,7 @@ export default function QuestBoard({
                 backgroundColor: 'rgba(255,255,255,0.06)', 
                 padding: '2px 8px', 
                 borderRadius: '4px',
-                color: 'var(--antd-text-secondary)'
+                color: 'var(--cockpit-text-secondary)'
               }}>
                 Lvl {p.level || 1}
               </span>
@@ -779,16 +779,16 @@ export default function QuestBoard({
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Shield size={16} aria-hidden="true" className="text-success" />
                 <div>
-                  <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>责任积分</div>
-                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--antd-success)' }}>{p.responsibilityPoints || 0}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--cockpit-text-muted)' }}>责任积分</div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--cockpit-success)' }}>{p.responsibilityPoints || 0}</div>
                 </div>
               </div>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Lightbulb size={16} aria-hidden="true" className="text-warning" />
                 <div>
-                  <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>智慧积分</div>
-                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--antd-warning)' }}>{p.wisdomPoints || 0}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--cockpit-text-muted)' }}>智慧积分</div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--cockpit-warning)' }}>{p.wisdomPoints || 0}</div>
                 </div>
               </div>
             </div>
@@ -796,8 +796,8 @@ export default function QuestBoard({
             {p.inventory && (
               <div style={{ 
                 fontSize: '12px', 
-                color: 'var(--antd-text-secondary)', 
-                borderTop: '1px solid var(--antd-border-color)', 
+                color: 'var(--cockpit-text-secondary)', 
+                borderTop: '1px solid var(--cockpit-border-color)', 
                 paddingTop: '8px',
                 marginTop: '4px'
               }}>
@@ -813,37 +813,37 @@ export default function QuestBoard({
         
         {/* Left Column: Active Quests */}
         <section aria-label="进行中的任务" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--cockpit-text-secondary)' }}>
             <PlayCircle size={16} aria-hidden="true" className="text-accent" />
             进行中的冒险 ({activeQuests.length})
           </h3>
 
           {activeQuests.length === 0 ? (
-            <div className="antd-card" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--antd-text-secondary)' }}>
+            <div className="cockpit-card" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--cockpit-text-secondary)' }}>
               <Star size={24} className="text-muted" style={{ marginBottom: '8px', opacity: 0.4 }} aria-hidden="true" />
               <p style={{ fontSize: '14px' }}>暂无正在进行的冒险。</p>
-              <p style={{ fontSize: '12px', color: 'var(--antd-text-muted)', marginTop: '4px' }}>点击上方按钮发布一个新任务吧！</p>
+              <p style={{ fontSize: '12px', color: 'var(--cockpit-text-muted)', marginTop: '4px' }}>点击上方按钮发布一个新任务吧！</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {activeQuests.map(quest => (
                 <div 
                   key={quest.id} 
-                  className="antd-card" 
+                  className="cockpit-card" 
                   style={{ 
                     padding: '16px 20px', 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center',
-                    borderLeft: quest.type === 'responsibility' ? '3px solid var(--antd-success)' : '3px solid var(--antd-warning)'
+                    borderLeft: quest.type === 'responsibility' ? '3px solid var(--cockpit-success)' : '3px solid var(--cockpit-warning)'
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {quest.type === 'responsibility' ? (
                         <span style={{ 
-                          backgroundColor: 'var(--antd-success-bg)', 
-                          color: 'var(--antd-success)', 
+                          backgroundColor: 'var(--cockpit-success-bg)', 
+                          color: 'var(--cockpit-success)', 
                           fontSize: '11px', 
                           padding: '1px 6px',
                           borderRadius: '4px',
@@ -855,8 +855,8 @@ export default function QuestBoard({
                         </span>
                       ) : (
                         <span style={{ 
-                          backgroundColor: 'var(--antd-warning-bg)', 
-                          color: 'var(--antd-warning)', 
+                          backgroundColor: 'var(--cockpit-warning-bg)', 
+                          color: 'var(--cockpit-warning)', 
                           fontSize: '11px', 
                           padding: '1px 6px',
                           borderRadius: '4px',
@@ -868,23 +868,23 @@ export default function QuestBoard({
                         </span>
                       )}
                       
-                      <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--cockpit-text-muted)' }}>
                         专属: {profiles.find(p => p.role === quest.assignee)?.name || quest.assignee}
                       </span>
                     </div>
                     
-                    <span style={{ fontWeight: '500', fontSize: '14px', color: 'var(--antd-text-primary)' }}>
+                    <span style={{ fontWeight: '500', fontSize: '14px', color: 'var(--cockpit-text-primary)' }}>
                       {quest.title}
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>金币奖励</span>
+                      <span style={{ fontSize: '11px', color: 'var(--cockpit-text-muted)' }}>金币奖励</span>
                       <span style={{ 
                         fontWeight: '600', 
                         fontSize: '16px', 
-                        color: quest.type === 'responsibility' ? 'var(--antd-success)' : 'var(--antd-warning)'
+                        color: quest.type === 'responsibility' ? 'var(--cockpit-success)' : 'var(--cockpit-warning)'
                       }}>
                         +{quest.reward} PTS
                       </span>
@@ -893,7 +893,7 @@ export default function QuestBoard({
                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 }}>
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         disabled={queueingTaskId !== null}
                         onClick={() => void handleQueueTaskCenter(quest)}
                         aria-label={`承接家庭任务 ${quest.title}`}
@@ -907,7 +907,7 @@ export default function QuestBoard({
                       </button>
                       <button
                         type="button"
-                        className="antd-btn antd-btn-primary"
+                        className="cockpit-btn cockpit-btn-primary"
                         disabled={completingId !== null}
                         onClick={() => void handleCompleteQuest(quest.id)}
                         aria-label={`完成任务: ${quest.title}`}
@@ -932,19 +932,19 @@ export default function QuestBoard({
           
           {/* Timeline Logs Card */}
           <section aria-label="积分变动日志" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--cockpit-text-secondary)' }}>
               <Clock size={16} aria-hidden="true" className="text-muted" />
               冒险日志
             </h3>
             
-            <div className="antd-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '280px', overflowY: 'auto' }}>
+            <div className="cockpit-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '280px', overflowY: 'auto' }}>
               {logs.length === 0 ? (
                 <p className="text-muted" style={{ fontSize: '12px', textAlign: 'center', padding: '12px 0' }}>暂无积分变动日志</p>
               ) : (
                 logs.map(log => (
-                  <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '12px', borderBottom: '1px solid var(--antd-border-color)', paddingBottom: '8px' }}>
+                  <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '12px', borderBottom: '1px solid var(--cockpit-border-color)', paddingBottom: '8px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ color: 'var(--antd-text-primary)', fontWeight: '500' }}>
+                      <span style={{ color: 'var(--cockpit-text-primary)', fontWeight: '500' }}>
                         {profiles.find(p => p.role === log.user)?.name || log.user}
                       </span>
                       <span className="text-muted" style={{ fontSize: '11px' }}>
@@ -952,7 +952,7 @@ export default function QuestBoard({
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                      <span style={{ color: log.amount >= 0 ? 'var(--antd-success)' : 'var(--antd-error)', fontWeight: '600' }}>
+                      <span style={{ color: log.amount >= 0 ? 'var(--cockpit-success)' : 'var(--cockpit-error)', fontWeight: '600' }}>
                         {log.amount >= 0 ? `+${log.amount}` : log.amount}
                       </span>
                       <span className="text-muted" style={{ fontSize: '10px' }}>
@@ -967,27 +967,27 @@ export default function QuestBoard({
 
           {/* Hall of Fame Card */}
           <section aria-label="荣誉殿堂" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--cockpit-text-secondary)' }}>
               <Trophy size={16} aria-hidden="true" className="text-warning" />
               荣誉殿堂 ({completedQuests.length})
             </h3>
             
-            <div className="antd-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+            <div className="cockpit-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
               {completedQuests.length === 0 ? (
                 <p className="text-muted" style={{ fontSize: '12px', textAlign: 'center', padding: '12px 0' }}>尚无已达成的冒险荣耀</p>
               ) : (
                 completedQuests.map(quest => (
-                  <div key={quest.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--antd-border-color)', opacity: 0.8 }}>
+                  <div key={quest.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--cockpit-border-color)', opacity: 0.8 }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '12px', textDecoration: 'line-through', color: 'var(--antd-text-secondary)' }}>
+                      <span style={{ fontSize: '12px', textDecoration: 'line-through', color: 'var(--cockpit-text-secondary)' }}>
                         {quest.title}
                       </span>
-                      <span style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--cockpit-text-muted)' }}>
                         达成: {profiles.find(p => p.role === quest.assignee)?.name || quest.assignee}
                       </span>
                     </div>
                     
-                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--antd-success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--cockpit-success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       +{quest.reward} PTS <CheckCircle2 size={12} aria-hidden="true" />
                     </span>
                   </div>

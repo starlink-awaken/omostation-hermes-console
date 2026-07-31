@@ -231,13 +231,13 @@ export default function WorkflowsView({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle size={16} style={{ color: 'var(--antd-success)' }} />;
+        return <CheckCircle size={16} style={{ color: 'var(--cockpit-success)' }} />;
       case 'running':
-        return <Activity size={16} style={{ color: 'var(--antd-primary)' }} />;
+        return <Activity size={16} style={{ color: 'var(--cockpit-primary)' }} />;
       case 'awaiting_approval':
-        return <AlertTriangle size={16} style={{ color: 'var(--antd-warning)' }} />;
+        return <AlertTriangle size={16} style={{ color: 'var(--cockpit-warning)' }} />;
       default:
-        return <XCircle size={16} style={{ color: 'var(--antd-error)' }} />;
+        return <XCircle size={16} style={{ color: 'var(--cockpit-error)' }} />;
     }
   };
 
@@ -409,7 +409,7 @@ export default function WorkflowsView({
         </div>
       )}
 
-      <section className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <section className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div className="section-header" style={{ marginBottom: 0 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 18 }}>工作流运行总面</h2>
@@ -419,7 +419,7 @@ export default function WorkflowsView({
           </div>
           <button
             type="button"
-            className="antd-btn"
+            className="cockpit-btn"
             onClick={() => {
               setRefreshing(true);
               void fetchWorkflows();
@@ -476,7 +476,7 @@ export default function WorkflowsView({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开工作流焦点对象 ${focusedWorkflowCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedWorkflowCard.objectTarget, onNavigate, onOpenTarget)}
               >
@@ -485,7 +485,7 @@ export default function WorkflowsView({
               </button>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开工作流焦点任务 ${focusedWorkflowCard.title}`}
                 onClick={() => openCockpitNavigationTarget(focusedWorkflowCard.taskTarget, onNavigate, onOpenTarget)}
               >
@@ -509,7 +509,7 @@ export default function WorkflowsView({
           {workflowClosureRows.map((row) => (
             <article
               key={`workflow-closure-${row.id}`}
-              className="antd-card"
+              className="cockpit-card"
               style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
             >
               <div style={{ display: 'grid', gap: 6 }}>
@@ -526,7 +526,7 @@ export default function WorkflowsView({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开工作流闭环对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -535,7 +535,7 @@ export default function WorkflowsView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开工作流闭环任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -600,7 +600,7 @@ export default function WorkflowsView({
           </select>
           <button
             type="button"
-            className="antd-btn"
+            className="cockpit-btn"
             aria-label="清除工作流筛选"
             onClick={() => { setWorkflowQuery(''); setWorkflowStatusFilter('all'); }}
             disabled={!workflowQuery && workflowStatusFilter === 'all'}
@@ -624,7 +624,7 @@ export default function WorkflowsView({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 15 }}>待授权清单</h3>
               <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先把 RED 门控卡住的流拉出来，不让它们在历史列表里沉底。</p>
@@ -654,13 +654,13 @@ export default function WorkflowsView({
             )}
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>运行与补证</h3>
                 <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>运行中和异常流要么继续跟踪，要么回协议/系统地图补证。</p>
               </div>
-              <button type="button" className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: focusTaskQuery || selectedWf?.workflow_id || filteredWorkflows[0]?.id || 'Workflows' }, onNavigate, onOpenTarget)}>
+              <button type="button" className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', taskQuery: focusTaskQuery || selectedWf?.workflow_id || filteredWorkflows[0]?.id || 'Workflows' }, onNavigate, onOpenTarget)}>
                 <GitBranch size={14} />
                 <span>看系统地图</span>
               </button>
@@ -689,7 +689,7 @@ export default function WorkflowsView({
             </div>
           </article>
 
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <article className="cockpit-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="section-header" style={{ marginBottom: 0 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 15 }}>承接页面</h3>
@@ -724,9 +724,9 @@ export default function WorkflowsView({
       </section>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-        <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
+        <div className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
           <div className="section-header" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FileText size={20} style={{ color: 'var(--antd-primary)' }} />
+            <FileText size={20} style={{ color: 'var(--cockpit-primary)' }} />
             <h2 style={{ fontSize: '1.2rem', margin: 0 }}>MetaOS 工作流历史</h2>
           </div>
           {loading ? (
@@ -735,7 +735,7 @@ export default function WorkflowsView({
               <p>加载中...</p>
             </div>
           ) : filteredWorkflows.length === 0 ? (
-            <p style={{ color: 'var(--antd-text-secondary)', textAlign: 'center', marginTop: '2rem' }}>
+            <p style={{ color: 'var(--cockpit-text-secondary)', textAlign: 'center', marginTop: '2rem' }}>
               {workflows.length === 0 ? '暂无记录。' : '当前筛选下暂无工作流记录。'}
             </p>
           ) : (
@@ -743,7 +743,7 @@ export default function WorkflowsView({
               {filteredWorkflows.map((workflow) => (
                 <div
                   key={workflow.id}
-                  className="antd-input"
+                  className="cockpit-input"
                   role="listitem"
                   tabIndex={0}
                   style={{
@@ -753,7 +753,7 @@ export default function WorkflowsView({
                     flexDirection: 'column',
                     gap: '0.5rem',
                     height: 'auto',
-                    border: selectedWf?.workflow_id === workflow.id ? '1px solid var(--antd-primary)' : '1px solid var(--antd-border-color)',
+                    border: selectedWf?.workflow_id === workflow.id ? '1px solid var(--cockpit-primary)' : '1px solid var(--cockpit-border-color)',
                     boxShadow: selectedWf?.workflow_id === workflow.id ? 'var(--tech-cyan-glow)' : 'none',
                     background: selectedWf?.workflow_id === workflow.id ? 'rgba(0, 242, 254, 0.05)' : 'rgba(6, 9, 19, 0.6)',
                   }}
@@ -765,13 +765,13 @@ export default function WorkflowsView({
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--antd-text-primary)', fontFamily: 'monospace' }}>{workflow.id.substring(0, 12)}...</span>
+                    <span style={{ fontWeight: 600, color: 'var(--cockpit-text-primary)', fontFamily: 'monospace' }}>{workflow.id.substring(0, 12)}...</span>
                     {getStatusIcon(workflow.status)}
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--antd-text-secondary)' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--cockpit-text-secondary)' }}>
                     {workflow.task ? (workflow.task.length > 50 ? `${workflow.task.substring(0, 50)}...` : workflow.task) : '未提供目标描述 (系统自动生成的测试流)'}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--antd-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--cockpit-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Clock size={12} /> {new Date(workflow.created).toLocaleString()}
                   </div>
                 </div>
@@ -781,7 +781,7 @@ export default function WorkflowsView({
           {hasMoreWorkflows && (
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="加载更多工作流历史"
               onClick={() => void fetchWorkflows(workflows.length, true)}
               disabled={loadingMore}
@@ -791,7 +791,7 @@ export default function WorkflowsView({
           )}
         </div>
 
-        <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
+        <div className="cockpit-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
           {detailError && (
             <div className="shell-data-banner" role="alert">
               <span>{detailError}{selectedWf ? '，当前仍显示上一次成功加载的详情。' : ''}</span>
@@ -801,12 +801,12 @@ export default function WorkflowsView({
           {selectedWf ? (
             <>
               <div className="section-header" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Activity size={20} style={{ color: 'var(--antd-primary)' }} />
+                <Activity size={20} style={{ color: 'var(--cockpit-primary)' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
                   <h2 style={{ fontSize: '1.2rem', margin: 0 }}>工作流详情 & 人机协作 (HITL)</h2>
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     onClick={() => void handleQueueFollowup(selectedWf)}
                     disabled={queueingId === selectedWf.workflow_id}
                   >
@@ -822,9 +822,9 @@ export default function WorkflowsView({
                   aria-live="polite"
                   style={{
                     padding: '0.65rem 0.75rem',
-                    borderRadius: 'var(--antd-radius-md)',
+                    borderRadius: 'var(--cockpit-radius-md)',
                     border: `1px solid ${approvalMessage.tone === 'success' ? 'rgba(5, 243, 162, 0.35)' : 'rgba(255, 71, 87, 0.35)'}`,
-                    color: approvalMessage.tone === 'success' ? 'var(--antd-success)' : 'var(--antd-error)',
+                    color: approvalMessage.tone === 'success' ? 'var(--cockpit-success)' : 'var(--cockpit-error)',
                     background: approvalMessage.tone === 'success' ? 'rgba(5, 243, 162, 0.08)' : 'rgba(255, 71, 87, 0.08)',
                     fontSize: '0.8rem',
                   }}
@@ -833,47 +833,47 @@ export default function WorkflowsView({
                 </div>
               )}
 
-              <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: 'var(--antd-radius-lg)', border: '1px solid var(--antd-border-color)' }}>
-                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: 'var(--antd-text-primary)' }}>目标任务</h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--antd-text-secondary)', margin: 0 }}>{selectedWf.task_description}</p>
+              <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: 'var(--cockpit-radius-lg)', border: '1px solid var(--cockpit-border-color)' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: 'var(--cockpit-text-primary)' }}>目标任务</h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--cockpit-text-secondary)', margin: 0 }}>{selectedWf.task_description}</p>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1rem', color: 'var(--antd-text-primary)' }}>节点追踪</h3>
+                <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1rem', color: 'var(--cockpit-text-primary)' }}>节点追踪</h3>
                 {(selectedWf.nodes || []).map((node) => (
                   <div
                     key={node.id}
                     style={{
                       padding: '1rem',
                       background: 'rgba(0,0,0,0.3)',
-                      borderRadius: 'var(--antd-radius-md)',
-                      border: '1px solid var(--antd-border-color)',
-                      borderLeft: node.status === 'awaiting_approval' ? '3px solid var(--antd-warning)' : '1px solid var(--antd-border-color)',
+                      borderRadius: 'var(--cockpit-radius-md)',
+                      border: '1px solid var(--cockpit-border-color)',
+                      borderLeft: node.status === 'awaiting_approval' ? '3px solid var(--cockpit-warning)' : '1px solid var(--cockpit-border-color)',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--antd-text-primary)' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--cockpit-text-primary)' }}>
                         {node.id}
-                        <span style={{ color: 'var(--antd-text-secondary)', fontSize: '0.8rem', marginLeft: '0.5rem' }}>({node.task_type})</span>
+                        <span style={{ color: 'var(--cockpit-text-secondary)', fontSize: '0.8rem', marginLeft: '0.5rem' }}>({node.task_type})</span>
                       </span>
                       {getStatusIcon(node.status)}
                     </div>
                     {node.status === 'awaiting_approval' ? (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--antd-warning-bg)', padding: '0.75rem', borderRadius: 'var(--antd-radius-md)', border: '1px solid rgba(255, 184, 0, 0.2)' }}>
-                        <span style={{ color: 'var(--antd-warning)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--cockpit-warning-bg)', padding: '0.75rem', borderRadius: 'var(--cockpit-radius-md)', border: '1px solid rgba(255, 184, 0, 0.2)' }}>
+                        <span style={{ color: 'var(--cockpit-warning)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <AlertTriangle size={14} /> 触发 RED 门控：需人工授权执行
                         </span>
                         <button
-                          className="antd-btn antd-btn-primary"
+                          className="cockpit-btn cockpit-btn-primary"
                           disabled={approvingId === selectedWf.workflow_id}
-                          style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', height: '28px', color: 'var(--antd-warning)', borderColor: 'var(--antd-warning)' }}
+                          style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', height: '28px', color: 'var(--cockpit-warning)', borderColor: 'var(--cockpit-warning)' }}
                           onClick={() => void handleApprove(selectedWf.workflow_id)}
                         >
                           {approvingId === selectedWf.workflow_id ? '授权中...' : '授权放行'}
                         </button>
                       </div>
                     ) : node.output ? (
-                      <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--antd-text-secondary)', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: 'var(--antd-radius-md)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                      <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--cockpit-text-secondary)', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: 'var(--cockpit-radius-md)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                         {node.output}
                       </div>
                     ) : null}
@@ -882,12 +882,12 @@ export default function WorkflowsView({
               </div>
             </>
           ) : detailError ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, height: '100%', color: 'var(--antd-text-secondary)' }}>
-              <XCircle size={48} style={{ opacity: 0.45, color: 'var(--antd-error)' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, height: '100%', color: 'var(--cockpit-text-secondary)' }}>
+              <XCircle size={48} style={{ opacity: 0.45, color: 'var(--cockpit-error)' }} />
               <p style={{ margin: 0 }}>{detailError}</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--antd-text-secondary)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--cockpit-text-secondary)' }}>
               <Activity size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
               <p>请在左侧选择工作流以查看详情</p>
             </div>

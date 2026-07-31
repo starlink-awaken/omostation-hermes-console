@@ -417,7 +417,7 @@ export default function KnowledgeExecutionWorkbench({
   };
 
   return (
-    <section className="knowledge-execution-workbench antd-card">
+    <section className="knowledge-execution-workbench cockpit-card">
       <div className="section-header" style={{ marginBottom: 0 }}>
         <div>
           <h2>{workbenchTitle}</h2>
@@ -425,7 +425,7 @@ export default function KnowledgeExecutionWorkbench({
             把知识中枢、能力资产、自动化编排和任务落地串成一条日常可操作的路径。
           </p>
         </div>
-        <button type="button" className="antd-btn small" onClick={() => setRefreshToken((value) => value + 1)}>
+        <button type="button" className="cockpit-btn small" onClick={() => setRefreshToken((value) => value + 1)}>
           <RefreshCw size={13} />
           <span>重新加载</span>
         </button>
@@ -438,7 +438,7 @@ export default function KnowledgeExecutionWorkbench({
             <strong>执行闭环数据不完整</strong>
             <span>{sourceErrors.join('；')}，当前空状态不代表没有能力或任务。</span>
           </div>
-          <button type="button" className="antd-btn" onClick={() => setRefreshToken((value) => value + 1)}>重试</button>
+          <button type="button" className="cockpit-btn" onClick={() => setRefreshToken((value) => value + 1)}>重试</button>
         </div>
       )}
 
@@ -487,7 +487,7 @@ export default function KnowledgeExecutionWorkbench({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             <button
               type="button"
-              className="antd-btn"
+              className="cockpit-btn"
               disabled={taskPending}
               aria-label={`登记执行任务 ${executionTaskDraft.title}`}
               onClick={() => { void createExecutionTask(); }}
@@ -534,7 +534,7 @@ export default function KnowledgeExecutionWorkbench({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           {executionRoutes.map((route) => (
-            <article key={route.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+            <article key={route.id} className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
               <div style={{ display: 'grid', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                   <strong style={{ fontSize: 15 }}>{route.title}</strong>
@@ -561,7 +561,7 @@ export default function KnowledgeExecutionWorkbench({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 <button
                   type="button"
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开闭环对象 ${route.title}`}
                   onClick={() => openWorkbenchTarget(route.objectTab, route.id)}
                 >
@@ -570,7 +570,7 @@ export default function KnowledgeExecutionWorkbench({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开闭环任务 ${route.title}`}
                   onClick={() => openWorkbenchTarget(route.taskTab, route.id)}
                 >
@@ -732,19 +732,19 @@ export default function KnowledgeExecutionWorkbench({
       </div>
 
       <div className="knowledge-execution-actions">
-        <button type="button" className="antd-btn" onClick={() => openWorkbenchTarget('Knowledge')}>
+        <button type="button" className="cockpit-btn" onClick={() => openWorkbenchTarget('Knowledge')}>
           <BookOpen size={14} />
           <span>去知识中枢</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openWorkbenchTarget('Assets')}>
+        <button type="button" className="cockpit-btn" onClick={() => openWorkbenchTarget('Assets')}>
           <PlayCircle size={14} />
           <span>去资产页</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openWorkbenchTarget('Workflows')}>
+        <button type="button" className="cockpit-btn" onClick={() => openWorkbenchTarget('Workflows')}>
           <GitBranch size={14} />
           <span>去工作流</span>
         </button>
-        <button type="button" className="antd-btn" onClick={() => openWorkbenchTarget('TaskCenter')}>
+        <button type="button" className="cockpit-btn" onClick={() => openWorkbenchTarget('TaskCenter')}>
           <ClipboardList size={14} />
           <span>去任务中心</span>
         </button>

@@ -78,8 +78,8 @@ export default function GovernanceOverviewSection() {
   return (
     <section className="governance-overview-section animate-fade-in" style={{ marginTop: '0px', marginBottom: '24px' }}>
       <div className="section-header" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Scale size={16} style={{ color: 'var(--antd-warning)' }} />
-        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-secondary)', margin: 0 }}>
+        <Scale size={16} style={{ color: 'var(--cockpit-warning)' }} />
+        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--cockpit-text-secondary)', margin: 0 }}>
           🏛️ eCOS 架构收敛与治理面板 (Governance & SSOT)
         </h3>
       </div>
@@ -92,7 +92,7 @@ export default function GovernanceOverviewSection() {
             border: '1px solid rgba(255, 184, 0, 0.3)',
             borderRadius: '6px',
             background: 'rgba(255, 184, 0, 0.08)',
-            color: 'var(--antd-warning)',
+            color: 'var(--cockpit-warning)',
             fontSize: 12,
           }}
         >
@@ -103,7 +103,7 @@ export default function GovernanceOverviewSection() {
       <div className="governance-overview-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         
         {/* 左侧卡片：当前战役波次与状态 */}
-        <div className="antd-card" style={{ 
+        <div className="cockpit-card" style={{ 
           padding: '20px', 
           background: 'linear-gradient(135deg, rgba(22, 119, 255, 0.03) 0%, rgba(22, 119, 255, 0.01) 100%)',
           border: '1px solid rgba(22, 119, 255, 0.1)',
@@ -114,8 +114,8 @@ export default function GovernanceOverviewSection() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Target size={16} style={{ color: 'var(--antd-primary)' }} />
-                <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--antd-text-primary)' }}>
+                <Target size={16} style={{ color: 'var(--cockpit-primary)' }} />
+                <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--cockpit-text-primary)' }}>
                   当前战役波次: {govStatus?.current_wave || '—'}
                 </span>
               </div>
@@ -124,7 +124,7 @@ export default function GovernanceOverviewSection() {
               </p>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--antd-primary)', fontFamily: 'monospace' }}>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--cockpit-primary)', fontFamily: 'monospace' }}>
                 {govStatus?.current_phase ? `Phase ${govStatus.current_phase}` : 'Phase —'}
               </div>
               <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
@@ -136,14 +136,14 @@ export default function GovernanceOverviewSection() {
           <div style={{ display: 'flex', gap: '20px', padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.02)' }}>
             <div style={{ flex: 1, textAlign: 'center' }}>
               <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', display: 'block' }}>治理健康分</span>
-              <strong style={{ fontSize: '18px', color: 'var(--antd-success)', display: 'block', marginTop: '4px' }}>
+              <strong style={{ fontSize: '18px', color: 'var(--cockpit-success)', display: 'block', marginTop: '4px' }}>
                 {govStatus?.health_score === undefined ? '—' : `${govStatus.health_score} / 100`}
               </strong>
             </div>
             <div style={{ width: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }}></div>
             <div style={{ flex: 1, textAlign: 'center' }}>
               <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', display: 'block' }}>治理状态探测</span>
-              <strong style={{ fontSize: '18px', color: 'var(--antd-warning)', display: 'block', marginTop: '4px' }}>
+              <strong style={{ fontSize: '18px', color: 'var(--cockpit-warning)', display: 'block', marginTop: '4px' }}>
                 {govStatus ? '已连接' : '未知'}
               </strong>
             </div>
@@ -151,7 +151,7 @@ export default function GovernanceOverviewSection() {
         </div>
 
         {/* 中间卡片：直写拦截雷达 */}
-        <div className="antd-card" style={{ 
+        <div className="cockpit-card" style={{ 
           padding: '20px', 
           border: passed === true ? '1px solid rgba(52, 199, 89, 0.15)' : passed === false ? '1px solid rgba(255, 69, 58, 0.25)' : '1px solid rgba(255, 184, 0, 0.25)',
           background: passed === true
@@ -175,15 +175,15 @@ export default function GovernanceOverviewSection() {
               border: `1px solid ${passed === true ? 'rgba(52, 199, 89, 0.2)' : passed === false ? 'rgba(255, 69, 58, 0.2)' : 'rgba(255, 184, 0, 0.2)'}`
             }}>
               {passed === true ? (
-                <ShieldCheck size={20} style={{ color: 'var(--antd-success)' }} />
+                <ShieldCheck size={20} style={{ color: 'var(--cockpit-success)' }} />
               ) : passed === false ? (
-                <ShieldAlert size={20} style={{ color: 'var(--antd-error)' }} />
+                <ShieldAlert size={20} style={{ color: 'var(--cockpit-error)' }} />
               ) : (
-                <ShieldAlert size={20} style={{ color: 'var(--antd-warning)' }} />
+                <ShieldAlert size={20} style={{ color: 'var(--cockpit-warning)' }} />
               )}
             </div>
             <div>
-              <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--antd-text-primary)', display: 'block' }}>
+              <span style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--cockpit-text-primary)', display: 'block' }}>
                 {passed === true ? 'SSOT Guardian 物理防写校验通过' : passed === false ? '🚨 检测到直写违规 (direct-omo-io)' : 'SSOT Guardian 状态未知'}
               </span>
               <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px', display: 'block', lineHeight: '1.4' }}>
@@ -206,7 +206,7 @@ export default function GovernanceOverviewSection() {
               border: '1px solid rgba(255,69,58,0.1)'
             }}>
               {violations.slice(0, 2).map((v, i) => (
-                <div key={i} style={{ fontSize: '10px', color: 'var(--antd-error)', fontFamily: 'monospace', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', marginBottom: '4px' }}>
+                <div key={i} style={{ fontSize: '10px', color: 'var(--cockpit-error)', fontFamily: 'monospace', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', marginBottom: '4px' }}>
                   {v.file}:{v.line} - {v.message || '禁止直写'}
                 </div>
               ))}
@@ -219,7 +219,7 @@ export default function GovernanceOverviewSection() {
           )}
 
           {passed === true && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--antd-success)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--cockpit-success)' }}>
               <CheckCircle2 size={12} />
               <span>AST 防直写门禁持续监控中</span>
             </div>
@@ -227,7 +227,7 @@ export default function GovernanceOverviewSection() {
         </div>
 
         {/* 右侧卡片：eCOS 治理铁律 */}
-        <div className="antd-card" style={{ 
+        <div className="cockpit-card" style={{ 
           padding: '20px', 
           background: 'rgba(255,255,255,0.01)',
           border: '1px solid rgba(255,255,255,0.05)',
@@ -235,8 +235,8 @@ export default function GovernanceOverviewSection() {
           flexDirection: 'column', 
           gap: '12px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>
-            <Sparkles size={14} style={{ color: 'var(--antd-warning)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--cockpit-text-primary)' }}>
+            <Sparkles size={14} style={{ color: 'var(--cockpit-warning)' }} />
             <span>eCOS 核心 SSOT 治理铁律</span>
           </div>
           

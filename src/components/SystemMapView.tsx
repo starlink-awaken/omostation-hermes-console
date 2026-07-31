@@ -948,7 +948,7 @@ function PageButton({
 }) {
   return (
     <button
-      className="antd-btn"
+      className="cockpit-btn"
       onClick={() => openSystemMapTarget({ tab: page.id, pageId: page.id, taskQuery: contextQuery }, onNavigate, onOpenTarget)}
     >
       <ArrowRight size={14} />
@@ -1019,7 +1019,7 @@ function SourceInspector({
             {activeRef ? `${activeRef.label} · ${compactPath(activeRef.path)}${activeRef.line ? `:${activeRef.line}` : ''}` : '暂无来源选择'}
           </p>
         </div>
-        <button className="antd-btn" disabled={!activeRef} onClick={() => activeRef && void copySourceRef(activeRef)}>
+        <button className="cockpit-btn" disabled={!activeRef} onClick={() => activeRef && void copySourceRef(activeRef)}>
           <Copy size={14} />
           <span>复制位置</span>
         </button>
@@ -1269,7 +1269,7 @@ function ProjectDetailPanel({
         </div>
         <div className="system-map-project-detail-actions">
           {page && <PageButton page={page} onNavigate={onNavigate} onOpenTarget={onOpenTarget} contextQuery={project.id} />}
-          <button className="antd-btn" onClick={onClose}>
+          <button className="cockpit-btn" onClick={onClose}>
             <X size={14} />
             <span>关闭</span>
           </button>
@@ -2850,7 +2850,7 @@ export default function SystemMapView({
       <div className="system-map-error" role="alert">
         <ShieldAlert size={18} />
         <span>{error || '系统地图不可用'}</span>
-        <button type="button" className="antd-btn" onClick={() => void load()}>
+        <button type="button" className="cockpit-btn" onClick={() => void load()}>
           <RefreshCw size={14} />
           <span>重试系统地图</span>
         </button>
@@ -2940,7 +2940,7 @@ export default function SystemMapView({
           <p>{systemMap.architecture.model} · {systemMap.architecture.ecos_version} · {systemMap.architecture.dependency_direction}</p>
           <small className="text-muted">数据快照 {shortDate(systemMap.generated_at)} · schema {systemMap.schema_version}</small>
         </div>
-        <button className="antd-btn" onClick={load}>
+        <button className="cockpit-btn" onClick={load}>
           <RefreshCw size={14} />
           <span>刷新</span>
         </button>
@@ -2968,7 +2968,7 @@ export default function SystemMapView({
               <h2>当前聚焦能力缺口</h2>
               <p className="text-muted">从任务草稿或全局搜索带回来的缺口，会在这里先给你一个落点。</p>
             </div>
-            <button className="antd-btn" onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', gapId: selectedGap.id, taskQuery: selectedGap.id }, draftTasks), onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn" onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', gapId: selectedGap.id, taskQuery: selectedGap.id }, draftTasks), onNavigate, onOpenTarget)}>
               <ClipboardCheck size={14} />
               <span>回任务中心</span>
             </button>
@@ -3101,23 +3101,23 @@ export default function SystemMapView({
                   </strong>
                 </div>
                 <div className="dashboard-page-workbench-actions">
-                  <button type="button" className="antd-btn" onClick={() => setSelectedGapId(row.gap.id)}>
+                  <button type="button" className="cockpit-btn" onClick={() => setSelectedGapId(row.gap.id)}>
                     <span>定位缺口</span>
                   </button>
                   {row.page && (
-                    <button type="button" className="antd-btn" onClick={() => openSystemMapTarget({ tab: row.page?.page.id || 'SystemMap', gapId: row.gap.id }, onNavigate, onOpenTarget)}>
+                    <button type="button" className="cockpit-btn" onClick={() => openSystemMapTarget({ tab: row.page?.page.id || 'SystemMap', gapId: row.gap.id }, onNavigate, onOpenTarget)}>
                       <ArrowRight size={14} />
                       <span>查看页面</span>
                     </button>
                   )}
                   {row.projects[0] && (
-                    <button type="button" className="antd-btn" onClick={() => setSelectedProjectId(row.projects[0].id)}>
+                    <button type="button" className="cockpit-btn" onClick={() => setSelectedProjectId(row.projects[0].id)}>
                       <span>查看项目</span>
                     </button>
                   )}
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     onClick={() => openSystemMapTarget(withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: row.taskQuery }, draftTasks), onNavigate, onOpenTarget)}
                   >
                     <ClipboardCheck size={14} />
@@ -3187,7 +3187,7 @@ export default function SystemMapView({
                 <div className="dashboard-page-workbench-actions">
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     aria-label={`打开系统地图闭环对象 ${row.title}`}
                     onClick={() => openSystemMapTarget(withTaskDraftHandoff(row.primaryTarget, draftTasks), onNavigate, onOpenTarget)}
                   >
@@ -3197,7 +3197,7 @@ export default function SystemMapView({
                   {row.secondaryTarget && row.secondaryLabel && (
                   <button
                     type="button"
-                    className="antd-btn"
+                    className="cockpit-btn"
                     aria-label={`打开系统地图闭环动作 ${row.title}`}
                     onClick={() => openSystemMapTarget(withTaskDraftHandoff(row.secondaryTarget || { tab: 'SystemMap' }, draftTasks), onNavigate, onOpenTarget)}
                   >
@@ -3219,7 +3219,7 @@ export default function SystemMapView({
               <h2>使用路径工作台</h2>
               <p className="text-muted">先选目标，再看它覆盖哪些页面、清单、能力域和待补路线图。</p>
             </div>
-            <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', usagePathId: activeUsagePath.id, taskQuery: activeUsagePath.id }, onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', usagePathId: activeUsagePath.id, taskQuery: activeUsagePath.id }, onNavigate, onOpenTarget)}>
               <ClipboardCheck size={14} />
               <span>任务草稿</span>
             </button>
@@ -3376,7 +3376,7 @@ export default function SystemMapView({
                 <div className="system-map-usage-detail">
                   <div className="system-map-usage-detail-head">
                     <h4>任务草稿</h4>
-                    <button className="antd-btn small" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', usagePathId: activeUsagePath.id, taskQuery: activeUsagePath.id }, onNavigate, onOpenTarget)}>
+                    <button className="cockpit-btn small" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', usagePathId: activeUsagePath.id, taskQuery: activeUsagePath.id }, onNavigate, onOpenTarget)}>
                       <ClipboardCheck size={13} />
                       <span>全部草稿</span>
                     </button>
@@ -3415,7 +3415,7 @@ export default function SystemMapView({
                           {task.read_only && task.source?.type && (
                             <button
                               type="button"
-                              className="antd-btn small"
+                              className="cockpit-btn small"
                               aria-label={`承接为正式计划任务 ${task.title}`}
                               title="承接为正式计划任务"
                               disabled={pendingActionKey === `draft:${task.id}` || Boolean(pendingActionKey) || bulkTriagePending}
@@ -3661,7 +3661,7 @@ export default function SystemMapView({
               <h2>项目维度修复台</h2>
               <p className="text-muted">按最薄弱维度组织项目、下一步和排查命令，选中维度会同步过滤下方项目矩阵。</p>
             </div>
-            <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', coverageDimensionId: activeRepairDimension.id, taskQuery: activeRepairDimension.id }, onNavigate, onOpenTarget)}>
+            <button className="cockpit-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', coverageDimensionId: activeRepairDimension.id, taskQuery: activeRepairDimension.id }, onNavigate, onOpenTarget)}>
               <ClipboardCheck size={14} />
               <span>任务中心</span>
             </button>
@@ -3755,7 +3755,7 @@ export default function SystemMapView({
             <h2>统一建设控制台</h2>
             <p className="text-muted">把页面能力、领域挂载合同、验证补证和路线图优先项拉到一张桌子上，先做真正影响日用的建设动作。</p>
           </div>
-          <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: buildControlTower.priorityItems[0]?.id || buildControlTower.pageItems[0]?.page.id || '建设' }, onNavigate, onOpenTarget)}>
+          <button className="cockpit-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: buildControlTower.priorityItems[0]?.id || buildControlTower.pageItems[0]?.page.id || '建设' }, onNavigate, onOpenTarget)}>
             <ClipboardCheck size={14} />
             <span>统一承接到任务中心</span>
           </button>
@@ -3897,7 +3897,7 @@ export default function SystemMapView({
             <h2>能力建设 Backlog</h2>
             <p className="text-muted">把待补页面、待收口领域、显性能力缺口和未完成路线图收成一个建设面，不用在多个区块之间自己拼。</p>
           </div>
-          <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: capabilityBuildBacklog.pagesWithoutUsage[0]?.page.id || capabilityBuildBacklog.domainAttention[0]?.id || '能力建设' }, onNavigate, onOpenTarget)}>
+          <button className="cockpit-btn" onClick={() => openSystemMapTarget({ tab: 'TaskCenter', taskQuery: capabilityBuildBacklog.pagesWithoutUsage[0]?.page.id || capabilityBuildBacklog.domainAttention[0]?.id || '能力建设' }, onNavigate, onOpenTarget)}>
             <ClipboardCheck size={14} />
             <span>任务中心</span>
           </button>
@@ -4129,7 +4129,7 @@ export default function SystemMapView({
                 <h3>{selectedPageMaturity.page.title}</h3>
                 <p>{selectedPageMaturity.page.group} · {selectedPageMaturity.page.id} · {selectedPageMaturity.page.purpose}</p>
               </div>
-              <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: selectedPageMaturity.page.id, pageId: selectedPageMaturity.page.id }, onNavigate, onOpenTarget)}>
+              <button className="cockpit-btn" onClick={() => openSystemMapTarget({ tab: selectedPageMaturity.page.id, pageId: selectedPageMaturity.page.id }, onNavigate, onOpenTarget)}>
                 <ArrowRight size={14} />
                 <span>进入页面</span>
               </button>
@@ -4252,10 +4252,10 @@ export default function SystemMapView({
               )}
               <strong className="system-map-page-maturity-next">{item.nextAction}</strong>
               <div className="system-map-page-maturity-card-actions">
-                <button className="antd-btn" onClick={() => setSelectedPageMaturityId(item.page.id)}>
+                <button className="cockpit-btn" onClick={() => setSelectedPageMaturityId(item.page.id)}>
                   <span>查看剖面</span>
                 </button>
-                <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: item.page.id, pageId: item.page.id }, onNavigate, onOpenTarget)}>
+                <button className="cockpit-btn" onClick={() => openSystemMapTarget({ tab: item.page.id, pageId: item.page.id }, onNavigate, onOpenTarget)}>
                   <ArrowRight size={14} />
                   <span>进入页面</span>
                 </button>
@@ -4339,7 +4339,7 @@ export default function SystemMapView({
                       <small>证据：{step.evidence}</small>
                       <small>完成：{step.done_when}</small>
                     </div>
-                    <button className="antd-btn system-map-step-btn" onClick={() => openSystemMapTarget({ tab: step.page.id, taskQuery: playbook.id }, onNavigate, onOpenTarget)}>
+                    <button className="cockpit-btn system-map-step-btn" onClick={() => openSystemMapTarget({ tab: step.page.id, taskQuery: playbook.id }, onNavigate, onOpenTarget)}>
                       <span>{step.page.title}</span>
                       <ArrowRight size={13} />
                     </button>
@@ -4408,7 +4408,7 @@ export default function SystemMapView({
                 <p>{selectedFeatureDomain.english || 'Capability Domain'} · {selectedFeatureDomain.id} · 页面 {selectedFeatureDomain.cockpit_page}</p>
               </div>
               {selectedFeaturePage && (
-                <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: selectedFeaturePage.id, pageId: selectedFeaturePage.id, featureDomainId: selectedFeatureDomain.id }, onNavigate, onOpenTarget)}>
+                <button className="cockpit-btn" onClick={() => openSystemMapTarget({ tab: selectedFeaturePage.id, pageId: selectedFeaturePage.id, featureDomainId: selectedFeatureDomain.id }, onNavigate, onOpenTarget)}>
                   <ArrowRight size={14} />
                   <span>进入页面</span>
                 </button>
@@ -4528,7 +4528,7 @@ export default function SystemMapView({
                   activeTarget={activeSourceTarget}
                 />
                 <div className="system-map-page-maturity-card-actions">
-                  <button className="antd-btn" onClick={() => setSelectedFeatureDomainId(domain.id)}>
+                  <button className="cockpit-btn" onClick={() => setSelectedFeatureDomainId(domain.id)}>
                     <span>查看剖面</span>
                   </button>
                   {page && <PageButton page={page} onNavigate={onNavigate} onOpenTarget={onOpenTarget} contextQuery={domain.id} />}
@@ -4585,12 +4585,12 @@ export default function SystemMapView({
               <strong className="system-map-domain-app-next">{app.next_action}</strong>
               <div className="system-map-domain-app-actions">
                 {app.launch_url && (
-                  <a className="antd-btn" href={app.launch_url} rel="noreferrer" target="_blank">
+                  <a className="cockpit-btn" href={app.launch_url} rel="noreferrer" target="_blank">
                     <ExternalLink size={13} />
                     <span>打开</span>
                   </a>
                 )}
-                <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: 'DomainApps', taskQuery: app.id }, onNavigate, onOpenTarget)}>
+                <button className="cockpit-btn" onClick={() => openSystemMapTarget({ tab: 'DomainApps', taskQuery: app.id }, onNavigate, onOpenTarget)}>
                   <ArrowRight size={13} />
                   <span>应用中心</span>
                 </button>
@@ -4653,7 +4653,7 @@ export default function SystemMapView({
           </div>
           <div className="system-map-section-actions">
             <button
-              className="antd-btn antd-btn-primary"
+              className="cockpit-btn cockpit-btn-primary"
               aria-label="批量承接全站缺口"
               disabled={bulkTriagePending}
               onClick={() => void queueCoverageDrafts()}
@@ -4663,7 +4663,7 @@ export default function SystemMapView({
               <span>{bulkTriagePending ? '正在承接' : '承接全站缺口'}</span>
             </button>
             <button
-              className="antd-btn antd-btn-primary"
+              className="cockpit-btn cockpit-btn-primary"
               aria-label="批量承接验证缺口"
               disabled={bulkTriagePending || systemMap.project_triage.summary.verification_commands === 0}
               onClick={() => void queueVerificationTriage()}
@@ -4673,7 +4673,7 @@ export default function SystemMapView({
               <span>{bulkTriagePending ? '正在承接' : '承接验证缺口'}</span>
             </button>
             <button
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="批量承接运行探针"
               disabled={bulkTriagePending || systemMap.project_triage.summary.runtime_commands === 0}
               onClick={() => void queueRuntimeTriage()}
@@ -4683,7 +4683,7 @@ export default function SystemMapView({
               <span>{bulkTriagePending ? '正在承接' : '承接运行探针'}</span>
             </button>
             <button
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="执行待补验证"
               disabled={bulkTriagePending || (systemMap.project_triage.queues.find((queue) => queue.id === 'verification')?.queued || 0) === 0}
               onClick={() => void executeVerificationTriage()}
@@ -4693,7 +4693,7 @@ export default function SystemMapView({
               <span>{bulkTriagePending ? '正在执行' : '执行待补验证'}</span>
             </button>
             <button
-              className="antd-btn"
+              className="cockpit-btn"
               aria-label="执行已批准运行探针"
               disabled={bulkTriagePending || (systemMap.project_triage.queues.find((queue) => queue.id === 'runtime')?.queued || 0) === 0}
               onClick={() => void executeRuntimeTriage()}
@@ -4955,7 +4955,7 @@ export default function SystemMapView({
                     <td>{project.role || project.stack}</td>
                     <td>
                       {page ? (
-                        <button className="antd-btn system-map-table-btn" onClick={() => openSystemMapTarget({ tab: page.id, projectId: project.id }, onNavigate, onOpenTarget)}>
+                        <button className="cockpit-btn system-map-table-btn" onClick={() => openSystemMapTarget({ tab: page.id, projectId: project.id }, onNavigate, onOpenTarget)}>
                           {page.title}
                         </button>
                       ) : '—'}

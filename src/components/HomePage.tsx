@@ -776,16 +776,16 @@ function ThoughtStreamSection({ thoughts }: { thoughts: Thought[] }) {
   if (!thoughts || thoughts.length === 0) return null;
 
   const roleColors: Record<string, string> = {
-    builder: 'var(--antd-primary)',
-    devil: 'var(--antd-error)',
-    sage: 'var(--antd-warning)',
-    keeper: 'var(--antd-success)'
+    builder: 'var(--cockpit-primary)',
+    devil: 'var(--cockpit-error)',
+    sage: 'var(--cockpit-warning)',
+    keeper: 'var(--cockpit-success)'
   };
 
   return (
     <div className="services-section animate-fade-in" style={{ marginTop: '0px', marginBottom: '24px' }}>
       <div className="section-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)', margin: 0 }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--cockpit-text-secondary)', margin: 0 }}>
           🧠 虚拟董事会心智探针 (Thought Streams)
         </h3>
         <span style={{ fontSize: '10.5px', color: 'rgba(255,255,255,0.3)' }}>实时系统洞察与架构审查</span>
@@ -795,7 +795,7 @@ function ThoughtStreamSection({ thoughts }: { thoughts: Thought[] }) {
         {thoughts.map((t) => (
           <div 
             key={t.role} 
-            className="antd-card" 
+            className="cockpit-card" 
             style={{ 
               padding: '16px 20px', 
               borderLeft: `3px solid ${roleColors[t.role] || 'rgba(255,255,255,0.1)'}`,
@@ -806,7 +806,7 @@ function ThoughtStreamSection({ thoughts }: { thoughts: Thought[] }) {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--antd-text-primary)' }}>
+              <span style={{ fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--cockpit-text-primary)' }}>
                 <span>{t.avatar}</span>
                 <span>{t.name}</span>
               </span>
@@ -959,7 +959,7 @@ function WorkModeSection({
           <h2>按工作模式进入</h2>
           <p className="text-muted">先认今天来 cockpit 是干什么的，再进对应主入口和承接车道。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开工作模式完整地图" onClick={() => onTabChange?.('Guide')}>
+        <button className="cockpit-btn small" aria-label="打开工作模式完整地图" onClick={() => onTabChange?.('Guide')}>
           <Map size={13} />
           <span>查看导览</span>
           <ArrowRight size={13} />
@@ -968,11 +968,11 @@ function WorkModeSection({
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
         {modes.map((mode) => (
-          <article key={mode.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
+          <article key={mode.id} className="cockpit-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
             <div style={{ display: 'grid', gap: 6 }}>
-              <small style={{ color: 'var(--antd-text-secondary)', textTransform: 'uppercase', fontSize: 11 }}>{mode.id}</small>
-              <strong style={{ color: 'var(--antd-text-primary)', fontSize: 15 }}>{mode.title}</strong>
-              <p style={{ margin: 0, color: 'var(--antd-text-secondary)', fontSize: 13, lineHeight: 1.6 }}>{mode.summary}</p>
+              <small style={{ color: 'var(--cockpit-text-secondary)', textTransform: 'uppercase', fontSize: 11 }}>{mode.id}</small>
+              <strong style={{ color: 'var(--cockpit-text-primary)', fontSize: 15 }}>{mode.title}</strong>
+              <p style={{ margin: 0, color: 'var(--cockpit-text-secondary)', fontSize: 13, lineHeight: 1.6 }}>{mode.summary}</p>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {mode.focus.map((chip) => (
@@ -983,10 +983,10 @@ function WorkModeSection({
                     minHeight: 28,
                     alignItems: 'center',
                     padding: '0 10px',
-                    border: '1px solid var(--antd-border-color)',
-                    borderRadius: 'var(--antd-radius-md)',
+                    border: '1px solid var(--cockpit-border-color)',
+                    borderRadius: 'var(--cockpit-radius-md)',
                     background: 'rgba(255,255,255,0.03)',
-                    color: 'var(--antd-text-secondary)',
+                    color: 'var(--cockpit-text-secondary)',
                     fontSize: 12,
                   }}
                 >
@@ -1003,17 +1003,17 @@ function WorkModeSection({
                 gap: 10,
                 padding: '8px 10px',
                 border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 'var(--antd-radius-md)',
-                color: 'var(--antd-text-secondary)',
+                borderRadius: 'var(--cockpit-radius-md)',
+                color: 'var(--cockpit-text-secondary)',
                 fontSize: 12,
               }}
             >
               <span>当前信号</span>
-              <strong style={{ color: 'var(--antd-text-primary)', fontSize: 12 }}>{mode.signal}</strong>
+              <strong style={{ color: 'var(--cockpit-text-primary)', fontSize: 12 }}>{mode.signal}</strong>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 'auto' }}>
               <button
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开工作模式 ${mode.title}`}
                 onClick={() => openCockpitNavigationTarget(mode.entry, onTabChange, onOpenTarget)}
               >
@@ -1021,7 +1021,7 @@ function WorkModeSection({
                 <span>进入主入口</span>
               </button>
               <button
-                className="antd-btn small"
+                className="cockpit-btn small"
                 aria-label={`打开工作模式任务 ${mode.title}`}
                 onClick={() => openCockpitNavigationTarget(mode.taskTarget, onTabChange, onOpenTarget)}
               >
@@ -1156,7 +1156,7 @@ function SymptomTriageSection({
           <h2>按症状定位</h2>
           <p className="text-muted">当你只知道 cockpit 这里“不够用”时，先按症状进，不用猜该翻哪一页。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开首页症状分诊总图" onClick={() => onTabChange?.('Guide')}>
+        <button className="cockpit-btn small" aria-label="打开首页症状分诊总图" onClick={() => onTabChange?.('Guide')}>
           <Map size={13} />
           <span>看导览分诊</span>
           <ArrowRight size={13} />
@@ -1175,7 +1175,7 @@ function SymptomTriageSection({
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
               <button
-                className="antd-btn small"
+                className="cockpit-btn small"
                 aria-label={`打开首页症状对象 ${card.title}`}
                 onClick={() => openCockpitNavigationTarget(card.primaryTarget, onTabChange, onOpenTarget)}
               >
@@ -1183,7 +1183,7 @@ function SymptomTriageSection({
                 <span>{card.primaryLabel}</span>
               </button>
               <button
-                className="antd-btn small"
+                className="cockpit-btn small"
                 aria-label={`打开首页症状任务 ${card.title}`}
                 onClick={() => openCockpitNavigationTarget(card.secondaryTarget, onTabChange, onOpenTarget)}
               >
@@ -1224,7 +1224,7 @@ function UsagePathSection({
           <h2>按场景进入</h2>
           <p className="text-muted">{paths.length} 条操作路径来自 SystemMap，覆盖日常、架构、运行、治理、知识和领域作战。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开功能架构完整地图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开功能架构完整地图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>完整地图</span>
           <ArrowRight size={13} />
@@ -1287,7 +1287,7 @@ function ScenarioWorkbenchSection({
           <h2>场景作战面</h2>
           <p className="text-muted">把研究、协议、治理和领域作战这些高频闭环直接抬到首页，不用先猜该进哪个页。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开场景与协议完整地图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开场景与协议完整地图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>回总图</span>
           <ArrowRight size={13} />
@@ -1371,7 +1371,7 @@ function FunctionalArchitectureSection({
             先看 Cockpit 覆盖了哪些页面维度、能力域和路线图，再顺着场景路径进入具体工作台。
           </p>
         </div>
-        <button className="antd-btn small" aria-label="打开使用路径完整地图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开使用路径完整地图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>完整地图</span>
           <ArrowRight size={13} />
@@ -1453,7 +1453,7 @@ function FunctionalArchitectureSection({
               <strong>能力域热点</strong>
               <small>把“功能做什么”和“该进哪个页”直接连起来。</small>
             </div>
-            <button className="antd-btn small" onClick={() => onTabChange?.('SystemMap')}>
+            <button className="cockpit-btn small" onClick={() => onTabChange?.('SystemMap')}>
               <Map size={13} />
               <span>能力地图</span>
             </button>
@@ -1495,7 +1495,7 @@ function FunctionalArchitectureSection({
                 <small>{lane.nextAction}</small>
                 <div className="home-architecture-lane-actions">
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`打开工作带补位 ${lane.title}`}
                     onClick={() => openCockpitNavigationTarget(lane.objectTarget, onTabChange, onOpenTarget)}
                   >
@@ -1503,7 +1503,7 @@ function FunctionalArchitectureSection({
                     <span>看对象</span>
                   </button>
                   <button
-                    className="antd-btn small secondary"
+                    className="cockpit-btn small secondary"
                     aria-label={`打开工作带任务 ${lane.title}`}
                     onClick={() => openCockpitNavigationTarget(lane.taskTarget, onTabChange, onOpenTarget)}
                   >
@@ -1550,7 +1550,7 @@ function DimensionCoverageMatrixSection({
           <h2>全站维度覆盖矩阵</h2>
           <p className="text-muted">按工作带把地图登记、使用路径、操作清单、能力域、任务承接五条线摊开，看清是哪个维度没接上，不再只盯总分。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开全站维度覆盖总图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开全站维度覆盖总图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>回系统地图</span>
           <ArrowRight size={13} />
@@ -1591,7 +1591,7 @@ function DimensionCoverageMatrixSection({
                 <small>{row.nextAction}</small>
                 <div className="home-architecture-lane-actions">
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`打开维度矩阵对象 ${row.group}`}
                     onClick={() => openCockpitNavigationTarget(row.objectTarget, onTabChange, onOpenTarget)}
                   >
@@ -1599,7 +1599,7 @@ function DimensionCoverageMatrixSection({
                     <span>看对象</span>
                   </button>
                   <button
-                    className="antd-btn small secondary"
+                    className="cockpit-btn small secondary"
                     aria-label={`打开维度矩阵任务 ${row.group}`}
                     onClick={() => openCockpitNavigationTarget(row.taskTarget, onTabChange, onOpenTarget)}
                   >
@@ -1688,7 +1688,7 @@ function CoverageRadarSection({
           <h2>覆盖缺口雷达</h2>
           <p className="text-muted">把运行、验证、页面和领域挂载放进同一个视角，先看哪里薄，再决定从哪一页下手。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开覆盖缺口总图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开覆盖缺口总图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>总图</span>
           <ArrowRight size={13} />
@@ -1748,17 +1748,17 @@ function CoverageRadarSection({
           )}
         </div>
         <div className="home-coverage-actions">
-          <button className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: '验证' }, onTabChange, onOpenTarget)}>
+          <button className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: '验证' }, onTabChange, onOpenTarget)}>
             <ClipboardCheck size={14} />
             <span>查看验证补证</span>
             <ArrowRight size={13} />
           </button>
-          <button className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: '缺口' }, onTabChange, onOpenTarget)}>
+          <button className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: '缺口' }, onTabChange, onOpenTarget)}>
             <ShieldAlert size={14} />
             <span>查看能力缺口</span>
             <ArrowRight size={13} />
           </button>
-          <button className="antd-btn" onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps' }, onTabChange, onOpenTarget)}>
+          <button className="cockpit-btn" onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps' }, onTabChange, onOpenTarget)}>
             <Layers3 size={14} />
             <span>查看领域挂载</span>
             <ArrowRight size={13} />
@@ -1796,7 +1796,7 @@ function SiteClosureBoardSection({
           <h2>全站闭环总表</h2>
           <p className="text-muted">把每个 cockpit 页面在路径、能力域、操作清单、路线图、任务五个维度上缺哪块直接摊开，先看断链，再回对象页收口。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开全站闭环总图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开全站闭环总图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>回系统地图</span>
           <ArrowRight size={13} />
@@ -1834,7 +1834,7 @@ function SiteClosureBoardSection({
                 </div>
                 <div className="home-architecture-lane-actions">
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`打开全站闭环对象 ${row.pageId}`}
                     onClick={() => openCockpitNavigationTarget(row.objectTarget, onTabChange, onOpenTarget)}
                   >
@@ -1842,7 +1842,7 @@ function SiteClosureBoardSection({
                     <span>看对象</span>
                   </button>
                   <button
-                    className="antd-btn small secondary"
+                    className="cockpit-btn small secondary"
                     aria-label={`打开全站闭环任务 ${row.pageId}`}
                     onClick={() => openCockpitNavigationTarget(row.taskTarget, onTabChange, onOpenTarget)}
                   >
@@ -1889,7 +1889,7 @@ function NavigationCoverageSection({
           <h2>导航页面覆盖总表</h2>
           <p className="text-muted">拿真实导航页做底账，对照系统地图、使用路径、操作清单和任务承接，专门抓“页面明明在，治理面却没登记全”的盲区。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开导航页面覆盖总图" onClick={() => onTabChange?.('Guide')}>
+        <button className="cockpit-btn small" aria-label="打开导航页面覆盖总图" onClick={() => onTabChange?.('Guide')}>
           <Map size={13} />
           <span>回站内导览</span>
           <ArrowRight size={13} />
@@ -1937,7 +1937,7 @@ function NavigationCoverageSection({
                 </div>
                 <div className="home-architecture-lane-actions">
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`打开导航覆盖对象 ${row.pageId}`}
                     onClick={() => openCockpitNavigationTarget(row.objectTarget, onTabChange, onOpenTarget)}
                   >
@@ -1945,7 +1945,7 @@ function NavigationCoverageSection({
                     <span>进入页面</span>
                   </button>
                   <button
-                    className="antd-btn small secondary"
+                    className="cockpit-btn small secondary"
                     aria-label={`打开导航覆盖任务 ${row.pageId}`}
                     onClick={() => openCockpitNavigationTarget(row.taskTarget, onTabChange, onOpenTarget)}
                   >
@@ -1987,7 +1987,7 @@ function CrossLayerHotspotsSection({
           <h2>跨层作战热点</h2>
           <p className="text-muted">把维度修复、能力域热点和页面补位直接收进首页，减少先回总图再选目标的来回切换。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开跨层作战总图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开跨层作战总图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>总图</span>
           <ArrowRight size={13} />
@@ -2091,7 +2091,7 @@ function CapabilityGapInventorySection({
           <h2>能力缺失与待建设</h2>
           <p className="text-muted">把还没进入路径、还没挂到能力域、以及需要继续收口的领域/页面直接列出来，不让缺口藏在各处摘要里。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开能力缺失总图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开能力缺失总图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>总图</span>
           <ArrowRight size={13} />
@@ -2265,7 +2265,7 @@ function ConstructionControlSection({
           <h2>首页建设控制台</h2>
           <p className="text-muted">把建设补位最常用的四条主线直接抬到首页，减少先读摘要再找入口的切换成本。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开首页建设总控" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开首页建设总控" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>进入系统地图总控</span>
           <ArrowRight size={13} />
@@ -2370,7 +2370,7 @@ function ConstructionControlSection({
                 <div className="home-architecture-item-actions">
                   <button
                     type="button"
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`承接为正式计划任务 ${draft.title}`}
                     title="承接为正式计划任务"
                     disabled={Boolean(pendingDraftId)}
@@ -2520,7 +2520,7 @@ function ConstructionLoopSection({
           <h2>建设闭环承接</h2>
           <p className="text-muted">把页面、领域、验证、项目四类建设对象直接收成闭环卡片，在首页就能决定先看对象还是先接任务。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开建设闭环总图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开建设闭环总图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>回系统地图</span>
           <ArrowRight size={13} />
@@ -2536,7 +2536,7 @@ function ConstructionLoopSection({
                 <small className="overview-mode-role">{card.objectMeta}</small>
               </div>
               <button
-                className="antd-btn small"
+                className="cockpit-btn small"
                 aria-label={`打开首页建设对象 ${card.objectTitle}`}
                 onClick={() => openCockpitNavigationTarget(card.objectTarget, onTabChange, onOpenTarget)}
               >
@@ -2559,7 +2559,7 @@ function ConstructionLoopSection({
 
             <div className="overview-mode-actions">
               <button
-                className="antd-btn small"
+                className="cockpit-btn small"
                 aria-label={`打开首页建设任务 ${card.objectTitle}`}
                 onClick={() => openCockpitNavigationTarget(card.taskTarget, onTabChange, onOpenTarget)}
               >
@@ -2625,7 +2625,7 @@ function ProjectEntryInboxSection({
           <h2>重点项目入口</h2>
           <p className="text-muted">把重点项目直接翻译成 cockpit 的入口页、项目覆盖面和任务承接入口，避免项目维度只躺在矩阵里。</p>
         </div>
-        <button className="antd-btn small" aria-label="打开重点项目总图" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="打开重点项目总图" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>回系统地图</span>
           <ArrowRight size={13} />
@@ -2662,7 +2662,7 @@ function ProjectEntryInboxSection({
                 <small>{row.nextAction}</small>
                 <div className="home-architecture-lane-actions">
                   <button
-                    className="antd-btn small"
+                    className="cockpit-btn small"
                     aria-label={`打开项目入口页 ${row.id}`}
                     onClick={() => openCockpitNavigationTarget(row.entryTarget, onTabChange, onOpenTarget)}
                   >
@@ -2670,7 +2670,7 @@ function ProjectEntryInboxSection({
                     <span>入口页</span>
                   </button>
                   <button
-                    className="antd-btn small secondary"
+                    className="cockpit-btn small secondary"
                     aria-label={`打开项目覆盖页 ${row.id}`}
                     onClick={() => openCockpitNavigationTarget(row.objectTarget, onTabChange, onOpenTarget)}
                   >
@@ -2678,7 +2678,7 @@ function ProjectEntryInboxSection({
                     <span>项目面</span>
                   </button>
                   <button
-                    className="antd-btn small secondary"
+                    className="cockpit-btn small secondary"
                     aria-label={`打开项目任务 ${row.id}`}
                     onClick={() => openCockpitNavigationTarget(row.taskTarget, onTabChange, onOpenTarget)}
                   >
@@ -2777,7 +2777,7 @@ function FocusedHomeClosureSection({
           <h2>当前首页承接焦点</h2>
           <p className="text-muted">这是你刚才从系统地图带回来的聚焦对象，首页先替你把对象入口和任务承接都摆出来。</p>
         </div>
-        <button className="antd-btn small" aria-label="回系统地图继续定位" onClick={() => onTabChange?.('SystemMap')}>
+        <button className="cockpit-btn small" aria-label="回系统地图继续定位" onClick={() => onTabChange?.('SystemMap')}>
           <Map size={13} />
           <span>回系统地图</span>
           <ArrowRight size={13} />
@@ -2792,7 +2792,7 @@ function FocusedHomeClosureSection({
               <small className="overview-mode-role">{card.meta}</small>
             </div>
             <button
-              className="antd-btn small"
+              className="cockpit-btn small"
               aria-label={`打开首页焦点对象 ${card.title}`}
               onClick={() => openCockpitNavigationTarget(card.objectTarget, onTabChange, onOpenTarget)}
             >
@@ -2814,7 +2814,7 @@ function FocusedHomeClosureSection({
 
           <div className="overview-mode-actions">
             <button
-              className="antd-btn small"
+              className="cockpit-btn small"
               aria-label={`打开首页焦点任务 ${card.title}`}
               onClick={() => openCockpitNavigationTarget(card.taskTarget, onTabChange, onOpenTarget)}
             >
@@ -2878,12 +2878,12 @@ function OperatingFocusSection({
           )}
         </div>
         <div className="home-focus-actions">
-          <button className="antd-btn" onClick={() => onTabChange?.('SystemMap')}>
+          <button className="cockpit-btn" onClick={() => onTabChange?.('SystemMap')}>
             <Map size={14} />
             <span>打开系统地图</span>
             <ArrowRight size={13} />
           </button>
-          <button className="antd-btn" onClick={() => onTabChange?.('TaskCenter')}>
+          <button className="cockpit-btn" onClick={() => onTabChange?.('TaskCenter')}>
             <ClipboardCheck size={14} />
             <span>查看任务草稿</span>
             <ArrowRight size={13} />
@@ -2895,7 +2895,7 @@ function OperatingFocusSection({
               <strong>行动收件箱</strong>
               <span>TaskCenter 草稿已按项目、验证、清单、领域、缺口、页面六类汇总。</span>
             </div>
-            <button className="antd-btn small" onClick={() => onTabChange?.('TaskCenter')}>
+            <button className="cockpit-btn small" onClick={() => onTabChange?.('TaskCenter')}>
               <ClipboardCheck size={13} />
               <span>处理草稿</span>
             </button>
@@ -2938,7 +2938,7 @@ function OperatingFocusSection({
               <strong>修复车道</strong>
               <span>把最薄弱维度和需要盯的领域应用抬到首页，减少先读摘要再找入口的切换成本。</span>
             </div>
-            <button className="antd-btn small" onClick={() => onTabChange?.('SystemMap')}>
+            <button className="cockpit-btn small" onClick={() => onTabChange?.('SystemMap')}>
               <Map size={13} />
               <span>进入修复台</span>
             </button>
@@ -3222,13 +3222,13 @@ export default function HomePage({
             gap: 12,
             padding: '12px 16px',
             border: '1px solid rgba(255, 71, 87, 0.35)',
-            borderRadius: 'var(--antd-radius-md)',
+            borderRadius: 'var(--cockpit-radius-md)',
             background: 'rgba(255, 71, 87, 0.08)',
-            color: 'var(--antd-error)',
+            color: 'var(--cockpit-error)',
           }}
         >
           <span>{homeError}</span>
-          <button className="antd-btn small" aria-label="重试首页数据" onClick={() => setRefreshToken((value) => value + 1)}>
+          <button className="cockpit-btn small" aria-label="重试首页数据" onClick={() => setRefreshToken((value) => value + 1)}>
             <ArrowRight size={13} />
             <span>重试</span>
           </button>
@@ -3241,9 +3241,9 @@ export default function HomePage({
           style={{
             padding: '10px 14px',
             border: `1px solid ${draftActionError ? 'rgba(255, 71, 87, 0.35)' : 'rgba(82, 196, 26, 0.35)'}`,
-            borderRadius: 'var(--antd-radius-md)',
+            borderRadius: 'var(--cockpit-radius-md)',
             background: draftActionError ? 'rgba(255, 71, 87, 0.08)' : 'rgba(82, 196, 26, 0.08)',
-            color: draftActionError ? 'var(--antd-error)' : 'var(--antd-success)',
+            color: draftActionError ? 'var(--cockpit-error)' : 'var(--cockpit-success)',
           }}
         >
           {draftActionError || draftActionNotice}

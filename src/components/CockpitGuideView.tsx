@@ -1620,7 +1620,7 @@ export default function CockpitGuideView({
 
   return (
     <div className="cockpit-guide-page">
-      <section className="cockpit-guide-band antd-card" aria-label="Cockpit 导览总览">
+      <section className="cockpit-guide-band cockpit-card" aria-label="Cockpit 导览总览">
         <div className="cockpit-guide-band-head">
           <div>
             <small>Guide</small>
@@ -1699,7 +1699,7 @@ export default function CockpitGuideView({
               <div className="cockpit-guide-coverage-actions">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开工作带 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -1708,7 +1708,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开工作带任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -1774,7 +1774,7 @@ export default function CockpitGuideView({
               <h2>当前导览承接焦点</h2>
               <p className="text-muted">导览页先把你刚定位到的对象和任务承接摆出来，再决定往系统地图、应用中心还是任务中心继续下钻。</p>
             </div>
-            <button className="antd-btn small" onClick={() => onNavigate?.('SystemMap')} aria-label="回系统地图继续定位">
+            <button className="cockpit-btn small" onClick={() => onNavigate?.('SystemMap')} aria-label="回系统地图继续定位">
               <MapIcon size={13} />
               <span>回系统地图</span>
             </button>
@@ -1797,7 +1797,7 @@ export default function CockpitGuideView({
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
                 <button
                   type="button"
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开导览焦点对象 ${focusedGuideCard.title}`}
                   onClick={() => openCockpitNavigationTarget(focusedGuideCard.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -1806,7 +1806,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn small"
+                  className="cockpit-btn small"
                   aria-label={`打开导览焦点任务 ${focusedGuideCard.title}`}
                   onClick={() => openCockpitNavigationTarget(focusedGuideCard.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -1998,7 +1998,7 @@ export default function CockpitGuideView({
               <div className="cockpit-guide-coverage-actions">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开缺失能力对象 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -2007,7 +2007,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开缺失能力任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -2049,7 +2049,7 @@ export default function CockpitGuideView({
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开问题入口 ${card.title}`}
                   onClick={() => openCockpitNavigationTarget(card.primaryTarget, onNavigate, onOpenTarget)}
                 >
@@ -2058,7 +2058,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开问题任务 ${card.title}`}
                   onClick={() => openCockpitNavigationTarget(card.secondaryTarget, onNavigate, onOpenTarget)}
                 >
@@ -2093,7 +2093,7 @@ export default function CockpitGuideView({
               </div>
               <button
                 type="button"
-                className="antd-btn"
+                className="cockpit-btn"
                 aria-label={`打开推荐路径 ${path.title}`}
                 onClick={() => openCockpitNavigationTarget(path.target, onNavigate, onOpenTarget)}
               >
@@ -2156,7 +2156,7 @@ export default function CockpitGuideView({
               <div className="cockpit-guide-coverage-actions">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开使用链 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', usagePathId: row.id }, onNavigate, onOpenTarget)}
                 >
@@ -2165,7 +2165,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开使用任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', usagePathId: row.id, taskQuery: row.taskQuery }, onNavigate, onOpenTarget)}
                 >
@@ -2222,7 +2222,7 @@ export default function CockpitGuideView({
                   <div className="cockpit-guide-mode-context-actions">
                     <button
                       type="button"
-                      className="antd-btn secondary"
+                      className="cockpit-btn secondary"
                       aria-label={`打开角色对象 ${mode.title}`}
                       onClick={() => openCockpitNavigationTarget(workbench.objectTarget, onNavigate, onOpenTarget)}
                     >
@@ -2231,7 +2231,7 @@ export default function CockpitGuideView({
                     </button>
                     <button
                       type="button"
-                      className="antd-btn secondary"
+                      className="cockpit-btn secondary"
                       aria-label={`打开角色证据 ${mode.title}`}
                       onClick={() => openCockpitNavigationTarget(workbench.evidenceTarget, onNavigate, onOpenTarget)}
                     >
@@ -2244,7 +2244,7 @@ export default function CockpitGuideView({
               <div className="cockpit-guide-mode-actions">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开角色模式 ${mode.title}`}
                   onClick={() => openCockpitNavigationTarget(mode.entry, onNavigate, onOpenTarget)}
                 >
@@ -2253,7 +2253,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开角色任务 ${mode.title}`}
                   onClick={() => openCockpitNavigationTarget(mode.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -2345,7 +2345,7 @@ export default function CockpitGuideView({
                   <div className="cockpit-guide-task-actions">
                     <button
                       type="button"
-                      className="antd-btn small"
+                      className="cockpit-btn small"
                       aria-label={`承接为正式计划任务 ${draft.title}`}
                       title="承接为正式计划任务"
                       disabled={Boolean(pendingDraftId)}
@@ -2379,7 +2379,7 @@ export default function CockpitGuideView({
                   <div className="cockpit-guide-closure-actions">
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`打开领域对象 ${item.name}`}
                       onClick={() => openCockpitNavigationTarget({ tab: 'DomainApps', taskQuery: item.id }, onNavigate, onOpenTarget)}
                     >
@@ -2388,7 +2388,7 @@ export default function CockpitGuideView({
                     </button>
                     <button
                       type="button"
-                      className="antd-btn secondary"
+                      className="cockpit-btn secondary"
                       aria-label={`打开领域任务 ${item.name}`}
                       onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: item.taskQuery }, onNavigate, onOpenTarget)}
                     >
@@ -2430,7 +2430,7 @@ export default function CockpitGuideView({
                   <div className="cockpit-guide-closure-actions">
                     <button
                       type="button"
-                      className="antd-btn"
+                      className="cockpit-btn"
                       aria-label={`回来源页 ${item.page?.title || item.page_id}`}
                       onClick={() => openCockpitNavigationTarget({ tab: item.page_id }, onNavigate, onOpenTarget)}
                     >
@@ -2439,7 +2439,7 @@ export default function CockpitGuideView({
                     </button>
                     <button
                       type="button"
-                      className="antd-btn secondary"
+                      className="cockpit-btn secondary"
                       aria-label={`打开页面补位任务 ${item.page?.title || item.page_id}`}
                       onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: item.page_id }, onNavigate, onOpenTarget)}
                     >
@@ -2530,7 +2530,7 @@ export default function CockpitGuideView({
                 </div>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开覆盖分组 ${group.title}`}
                   onClick={() => openCockpitNavigationTarget(group.target, onNavigate, onOpenTarget)}
                 >
@@ -2582,7 +2582,7 @@ export default function CockpitGuideView({
                     <div className="cockpit-guide-coverage-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开全站覆盖页面 ${row.title}`}
                         onClick={() => openCockpitNavigationTarget({ tab: row.id }, onNavigate, onOpenTarget)}
                       >
@@ -2591,7 +2591,7 @@ export default function CockpitGuideView({
                       </button>
                       <button
                         type="button"
-                        className="antd-btn secondary"
+                        className="cockpit-btn secondary"
                         aria-label={`查看全站覆盖 ${row.title}`}
                         onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', pageId: row.id }, onNavigate, onOpenTarget)}
                       >
@@ -2600,7 +2600,7 @@ export default function CockpitGuideView({
                       </button>
                       <button
                         type="button"
-                        className="antd-btn secondary"
+                        className="cockpit-btn secondary"
                         aria-label={`打开全站覆盖任务 ${row.title}`}
                         onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: row.taskQuery }, onNavigate, onOpenTarget)}
                       >
@@ -2670,7 +2670,7 @@ export default function CockpitGuideView({
               <div className="cockpit-guide-coverage-actions">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开能力域能力 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', featureDomainId: row.id }, onNavigate, onOpenTarget)}
                 >
@@ -2679,7 +2679,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开能力域任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: row.taskQuery }, onNavigate, onOpenTarget)}
                 >
@@ -2743,7 +2743,7 @@ export default function CockpitGuideView({
               <div className="cockpit-guide-coverage-actions">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开维度覆盖 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', coverageDimensionId: row.id }, onNavigate, onOpenTarget)}
                 >
@@ -2752,7 +2752,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开维度任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: row.taskQuery }, onNavigate, onOpenTarget)}
                 >
@@ -2819,7 +2819,7 @@ export default function CockpitGuideView({
               <div className="cockpit-guide-coverage-actions">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开项目入口 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.entryTarget, onNavigate, onOpenTarget)}
                 >
@@ -2828,7 +2828,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开项目覆盖 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.coverageTarget, onNavigate, onOpenTarget)}
                 >
@@ -2837,7 +2837,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开项目任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -2887,7 +2887,7 @@ export default function CockpitGuideView({
               <div className="cockpit-guide-coverage-actions">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开对象承接 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
                 >
@@ -2896,7 +2896,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开对象任务 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
                 >
@@ -2950,7 +2950,7 @@ export default function CockpitGuideView({
               <div className="cockpit-guide-coverage-actions">
                 <button
                   type="button"
-                  className="antd-btn"
+                  className="cockpit-btn"
                   aria-label={`打开执行主链 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.primaryTarget, onNavigate, onOpenTarget)}
                 >
@@ -2959,7 +2959,7 @@ export default function CockpitGuideView({
                 </button>
                 <button
                   type="button"
-                  className="antd-btn secondary"
+                  className="cockpit-btn secondary"
                   aria-label={`打开执行证据 ${row.title}`}
                   onClick={() => openCockpitNavigationTarget(row.secondaryTarget, onNavigate, onOpenTarget)}
                 >
@@ -2990,7 +2990,7 @@ export default function CockpitGuideView({
                 </div>
                 <button
                   type="button"
-                  className="antd-btn cockpit-guide-group-btn"
+                  className="cockpit-btn cockpit-guide-group-btn"
                   aria-label={`打开分组 ${group.title}`}
                   onClick={() => openCockpitNavigationTarget(group.target, onNavigate, onOpenTarget)}
                 >
@@ -3010,7 +3010,7 @@ export default function CockpitGuideView({
                     <div className="cockpit-guide-page-actions">
                       <button
                         type="button"
-                        className="antd-btn"
+                        className="cockpit-btn"
                         aria-label={`打开页面 ${page.title}`}
                         onClick={() => openCockpitNavigationTarget({ tab: page.id }, onNavigate, onOpenTarget)}
                       >
@@ -3019,7 +3019,7 @@ export default function CockpitGuideView({
                       </button>
                       <button
                         type="button"
-                        className="antd-btn secondary"
+                        className="cockpit-btn secondary"
                         aria-label={`查看页面覆盖 ${page.title}`}
                         onClick={() => openCockpitNavigationTarget({ tab: 'SystemMap', pageId: page.id }, onNavigate, onOpenTarget)}
                       >
