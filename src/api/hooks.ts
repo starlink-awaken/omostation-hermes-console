@@ -544,6 +544,206 @@ export function useSystemHealth() {
   });
 }
 
+// ── Services ──
+
+export interface ServiceData {
+  name: string;
+  status: string;
+  port?: number;
+  health?: string;
+  latency?: number;
+}
+
+export function useServices() {
+  return useQuery({
+    queryKey: ['services'],
+    queryFn: () => apiFetch<ServiceData[]>(API_ENDPOINTS.services.listServices),
+    staleTime: 30000,
+    refetchInterval: 30000,
+  });
+}
+
+export function useServiceStatus() {
+  return useQuery({
+    queryKey: ['service-status'],
+    queryFn: () => apiFetch<Record<string, unknown>>(API_ENDPOINTS.services.getServiceStatus),
+    staleTime: 15000,
+    refetchInterval: 15000,
+  });
+}
+
+// ── BOS Extended ──
+
+export interface BosHealthData {
+  status: string;
+  services: Array<{
+    uri: string;
+    status: string;
+    latency?: number;
+  }>;
+}
+
+export function useBosHealth() {
+  return useQuery({
+    queryKey: ['bos-health'],
+    queryFn: () => apiFetch<BosHealthData>(API_ENDPOINTS.bosExtended.getHealth),
+    staleTime: 30000,
+  });
+}
+
+export function useBosMetrics() {
+  return useQuery({
+    queryKey: ['bos-metrics'],
+    queryFn: () => apiFetch<Record<string, unknown>>(API_ENDPOINTS.bosExtended.getMetrics),
+    staleTime: 30000,
+  });
+}
+
+// ── L4 Extended ──
+
+export function useL4Trend() {
+  return useQuery({
+    queryKey: ['l4-trend'],
+    queryFn: () => apiFetch<Array<{ date: string; score: number }>>(API_ENDPOINTS.l4Extended.getTrend),
+    staleTime: 60000,
+  });
+}
+
+export function useL4Signals() {
+  return useQuery({
+    queryKey: ['l4-signals'],
+    queryFn: () => apiFetch<Array<{ type: string; message: string; severity: string }>>(API_ENDPOINTS.l4Extended.getSignals),
+    staleTime: 30000,
+  });
+}
+
+// ── Sandbox ──
+
+export function useSandboxQueue() {
+  return useQuery({
+    queryKey: ['sandbox-queue'],
+    queryFn: () => apiFetch<Array<{ id: string; command: string; status: string }>>(API_ENDPOINTS.sandbox.getQueue),
+    staleTime: 10000,
+    refetchInterval: 10000,
+  });
+}
+
+// ── Wave2 ──
+
+export function useWave2Dashboard() {
+  return useQuery({
+    queryKey: ['wave2-dashboard'],
+    queryFn: () => apiFetch<Record<string, unknown>>(API_ENDPOINTS.wave2.getDashboard),
+    staleTime: 60000,
+  });
+}
+
+// ── Cards ──
+
+export function useCards() {
+  return useQuery({
+    queryKey: ['cards'],
+    queryFn: () => apiFetch<Array<{ id: string; title: string; status: string }>>(API_ENDPOINTS.cards.listCards),
+    staleTime: 30000,
+  });
+}
+
+// ── OMOs ──
+
+export function useOmoStatus() {
+  return useQuery({
+    queryKey: ['omo-status'],
+    queryFn: () => apiFetch<Record<string, unknown>>(API_ENDPOINTS.omos.getStatus),
+    staleTime: 15000,
+    refetchInterval: 15000,
+  });
+}
+
+export function useOmoViolations() {
+  return useQuery({
+    queryKey: ['omo-violations'],
+    queryFn: () => apiFetch<Array<{ id: string; rule: string; severity: string }>>(API_ENDPOINTS.omos.getViolations),
+    staleTime: 15000,
+    refetchInterval: 15000,
+  });
+}
+
+// ── Compute Extended ──
+
+export function useComputeQueue() {
+  return useQuery({
+    queryKey: ['compute-queue'],
+    queryFn: () => apiFetch<Array<{ id: string; status: string }>>(API_ENDPOINTS.computeExtended.getQueue),
+    staleTime: 10000,
+    refetchInterval: 10000,
+  });
+}
+
+// ── Triage ──
+
+export function useTriageQueue() {
+  return useQuery({
+    queryKey: ['triage-queue'],
+    queryFn: () => apiFetch<Array<{ id: string; type: string; status: string }>>(API_ENDPOINTS.triage.getQueue),
+    staleTime: 10000,
+    refetchInterval: 10000,
+  });
+}
+
+// ── Engine ──
+
+export function useEngineQueue() {
+  return useQuery({
+    queryKey: ['engine-queue'],
+    queryFn: () => apiFetch<Array<{ id: string; status: string }>>(API_ENDPOINTS.engine.getQueue),
+    staleTime: 10000,
+    refetchInterval: 10000,
+  });
+}
+
+// ── Version ──
+
+export interface VersionData {
+  version: string;
+  build?: string;
+  commit?: string;
+}
+
+export function useVersion() {
+  return useQuery({
+    queryKey: ['version'],
+    queryFn: () => apiFetch<VersionData>(API_ENDPOINTS.version.getVersion),
+    staleTime: 300000, // 5 minutes — version rarely changes
+  });
+}
+
+// ── Instance ──
+
+export interface InstanceData {
+  id: string;
+  hostname?: string;
+  uptime?: number;
+  started_at?: string;
+}
+
+export function useInstance() {
+  return useQuery({
+    queryKey: ['instance'],
+    queryFn: () => apiFetch<InstanceData>(API_ENDPOINTS.instance.getInstance),
+    staleTime: 60000,
+  });
+}
+
+// ── Arch Health ──
+
+export function useArchHealth() {
+  return useQuery({
+    queryKey: ['arch-health'],
+    queryFn: () => apiFetch<Record<string, unknown>>(API_ENDPOINTS.archHealth.getHealth),
+    staleTime: 60000,
+  });
+}
+
 // ── Mutations ──
 
 export function useUpdateTaskStatus() {
