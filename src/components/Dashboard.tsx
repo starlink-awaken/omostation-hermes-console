@@ -59,6 +59,7 @@ import { DashboardTopbar } from './DashboardTopbar';
 import { DashboardViewRouter, DashboardViewErrorBoundary } from './DashboardViewRouter';
 import { getHeroContent, getBreadcrumbItems, maturityStatusText, pageContextStatusClass, pageContextChecklistStatusClass } from './dashboardHelpers';
 import { useDashboardSearch } from './useDashboardSearch';
+import { useDashboardNavigation } from './useDashboardNavigation';
 export { DashboardViewErrorBoundary };
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import {
@@ -1150,28 +1151,36 @@ function SidebarGroupEntryPanel({
 }
 
 export default function Dashboard() {
-  const initialNavigationTarget = typeof window === 'undefined' ? null : parseNavigationHash(window.location.hash);
-  const [activeTab, setActiveTabState] = useState(initialNavigationTarget?.tab || 'Home');
   const [pageRefreshToken, setPageRefreshToken] = useState(0);
   const [shellDataWarnings, setShellDataWarnings] = useState<string[]>([]);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
-  const [focusedUsagePathId, setFocusedUsagePathId] = useState<string | null>(null);
-  const [focusedGapId, setFocusedGapId] = useState<string | null>(null);
-  const [focusedCoverageDimensionId, setFocusedCoverageDimensionId] = useState<string | null>(null);
-  const [focusedPageId, setFocusedPageId] = useState<string | null>(null);
-  const [focusedFeatureDomainId, setFocusedFeatureDomainId] = useState<string | null>(null);
-  const [taskSearchSeed, setTaskSearchSeed] = useState('');
-  const [taskDraftKey, setTaskDraftKey] = useState<string | null>(initialNavigationTarget?.draftKey || null);
-  const [pageSprintFocusId, setPageSprintFocusId] = useState('');
-  const [alertTab, setAlertTab] = useState<'active' | 'history' | 'rules' | null>(initialNavigationTarget?.alertTab || null);
-  const [recentNavigation, setRecentNavigation] = useState<RecentNavigationEntry[]>(() => readRecentNavigation());
+
   const [sidebarCoverage, setSidebarCoverage] = useState<SidebarCoverage | null>(null);
   const [sidebarProjectPortfolio, setSidebarProjectPortfolio] = useState<SidebarProjectPortfolio | null>(null);
   const [sidebarUsagePaths, setSidebarUsagePaths] = useState<SearchUsagePath[]>([]);
   const [shellTaskDrafts, setShellTaskDrafts] = useState<SearchTaskDraft[]>([]);
 
   const openContextTargetRef = useRef<((target: CockpitNavigationTarget) => void) | null>(null);
+  const {
+    activeTab, setActiveTab, setActiveTabState,
+    mobileNavOpen, setMobileNavOpen,
+    recentNavigation, setRecentNavigation,
+    focusedProjectId, setFocusedProjectId,
+    focusedUsagePathId, setFocusedUsagePathId,
+    focusedGapId, setFocusedGapId,
+    focusedCoverageDimensionId, setFocusedCoverageDimensionId,
+    focusedPageId, setFocusedPageId,
+    focusedFeatureDomainId, setFocusedFeatureDomainId,
+    taskSearchSeed, setTaskSearchSeed,
+    taskDraftKey, setTaskDraftKey,
+    pageSprintFocusId, setPageSprintFocusId,
+    alertTab, setAlertTab,
+    mobileNavToggleRef, mobileNavCloseRef, mobileSidebarRef,
+    openContextTarget, clearRecent,
+  } = useDashboardNavigation({
+    shellTaskDrafts,
+    openContextTargetRef,
+  });
+
   const {
     searchQuery, setSearchQuery,
     searchResultIndex, setSearchResultIndex,
@@ -1210,9 +1219,6 @@ export default function Dashboard() {
   const [snapshotExportState, setSnapshotExportState] = useState<'idle' | 'exporting' | 'success' | 'error'>('idle');
   const [linkCopyState, setLinkCopyState] = useState<'idle' | 'success' | 'error'>('idle');
 
-  const mobileNavToggleRef = useRef<HTMLButtonElement>(null);
-  const mobileNavCloseRef = useRef<HTMLButtonElement>(null);
-  const mobileSidebarRef = useRef<HTMLElement>(null);
   const taskCenterIncomingDraft = useMemo(() => readTaskCenterDraft(taskDraftKey), [taskDraftKey]);
 
   const shellActions = useMemo(() => {
@@ -2800,110 +2806,10 @@ export default function Dashboard() {
     },
   ], [activeGroupLabel, contextualUsagePaths, domainDraftCount, firstDomainDraft, shellDomainApps, shellSourceAvailability, shellTaskDrafts, sidebarCoverage, sidebarProjectPortfolio, sidebarUsagePaths.length]);
 
-  const setActiveTab = (tab: string) => {
-    const normalizedTarget = normalizeNavigationTarget({ tab });
-    const nextTab = normalizedTarget.tab;
-    setFocusedProjectId(null);
-    setFocusedUsagePathId(null);
-    setFocusedGapId(null);
-    setFocusedCoverageDimensionId(null);
-    setFocusedPageId(normalizedTarget.pageId || null);
-    setFocusedFeatureDomainId(null);
-    setTaskSearchSeed('');
-    setTaskDraftKey(null);
-    setAlertTab(null);
-    setMobileNavOpen(false);
-    setActiveTabState(nextTab);
-    recordRecentNavigation(normalizedTarget, navigationTargetLabel(normalizedTarget));
-    setRecentNavigation(readRecentNavigation());
-    writeNavigationHash(normalizedTarget);
-  };
 
-  const openContextTarget = (target: CockpitNavigationTarget) => {
-    const normalizedTarget = normalizeNavigationTarget(target);
-    const matchedDraft = findTaskDraftForTarget(normalizedTarget, shellTaskDrafts);
-    const incomingDraft = matchedDraft ? taskDraftToIncomingDraft(matchedDraft) : null;
-    const resolvedDraftKey = normalizedTarget.draftKey || (incomingDraft ? persistTaskCenterDraft(incomingDraft) : null);
-    setFocusedProjectId(normalizedTarget.projectId || null);
-    setFocusedUsagePathId(normalizedTarget.usagePathId || null);
-    setFocusedGapId(normalizedTarget.gapId || null);
-    setFocusedCoverageDimensionId(normalizedTarget.coverageDimensionId || null);
-    setFocusedPageId(normalizedTarget.pageId || null);
-    setFocusedFeatureDomainId(normalizedTarget.featureDomainId || null);
-    setTaskSearchSeed(normalizedTarget.taskQuery || '');
-    setTaskDraftKey(resolvedDraftKey);
-    setAlertTab(normalizedTarget.alertTab || null);
-    setMobileNavOpen(false);
-    setActiveTabState(normalizedTarget.tab);
-    recordRecentNavigation(normalizedTarget, navigationTargetLabel(normalizedTarget));
-    setRecentNavigation(readRecentNavigation());
-    writeNavigationHash({
-      ...normalizedTarget,
-      draftKey: resolvedDraftKey || undefined,
-    });
-  };
 
-  // Set the ref for the search hook
-  openContextTargetRef.current = openContextTarget;
 
-  const clearRecent = () => {
-    clearRecentNavigation();
-    setRecentNavigation([]);
-  };
 
-  useEffect(() => {
-    const handleHashChange = () => {
-      const target = parseNavigationHash(window.location.hash);
-      if (!target) return;
-      setFocusedProjectId(target.projectId || null);
-      setFocusedUsagePathId(target.usagePathId || null);
-      setFocusedGapId(target.gapId || null);
-      setFocusedCoverageDimensionId(target.coverageDimensionId || null);
-      setFocusedPageId(target.pageId || null);
-      setFocusedFeatureDomainId(target.featureDomainId || null);
-      setTaskSearchSeed(target.taskQuery || '');
-      setTaskDraftKey(target.draftKey || null);
-      setAlertTab(target.alertTab || null);
-      setActiveTabState(target.tab);
-    };
-
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-
-  useEffect(() => {
-    if (!mobileNavOpen) return undefined;
-    mobileNavCloseRef.current?.focus();
-    const sidebar = mobileSidebarRef.current;
-    if (!sidebar) return undefined;
-
-    const handleMobileNavKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        setMobileNavOpen(false);
-        mobileNavToggleRef.current?.focus();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const focusable = Array.from(sidebar.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      )).filter((element) => element.offsetParent !== null);
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleMobileNavKeyDown);
-    return () => document.removeEventListener('keydown', handleMobileNavKeyDown);
-  }, [mobileNavOpen]);
 
   useEffect(() => {
     if (pageSprintRows.length === 0) {
