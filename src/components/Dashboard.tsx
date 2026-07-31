@@ -53,6 +53,8 @@ import {
   type RecentNavigationEntry,
 } from './cockpitNavigation';
 import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
+import { SIDEBAR_NAV_SECTIONS, GROUP_ENTRY_TABS, NAV_ICON_BY_TAB, pageGroupLabel } from './dashboardConstants';
+import { DashboardSidebar } from './DashboardSidebar';
 import { COCKPIT_WORK_MODES } from './cockpitWorkModes';
 import {
   findTaskDraftForTarget,
@@ -362,64 +364,6 @@ interface SearchCockpitPage {
 }
 
 const PAGE_REGISTRY_BY_ID = new globalThis.Map(COCKPIT_PAGE_REGISTRY.map((page) => [page.id, page] as const));
-
-const SIDEBAR_GROUP_ORDER = [
-  { id: 'group-home', title: '入口' },
-  { id: 'group-monitoring', title: '运行大盘' },
-  { id: 'group-intelligence', title: '智能与知识' },
-  { id: 'group-governance', title: '系统治理' },
-  { id: 'group-devtools', title: '开发工具' },
-  { id: 'group-domain-apps', title: '领域应用' },
-  { id: 'group-config', title: '系统配置' },
-] as const;
-
-const SIDEBAR_NAV_SECTIONS = SIDEBAR_GROUP_ORDER.map((group) => ({
-  ...group,
-  tabs: COCKPIT_PAGE_REGISTRY.filter((page) => page.group === group.title).map((page) => page.id),
-}));
-
-const GROUP_ENTRY_TABS: Record<string, string> = {
-  入口: 'Home',
-  '运行大盘': 'Overview',
-  '智能与知识': 'Knowledge',
-  '系统治理': 'AlertCenter',
-  '开发工具': 'LogViewer',
-  '领域应用': 'DomainApps',
-  '系统配置': 'Settings',
-};
-
-const NAV_ICON_BY_TAB: Record<string, React.ComponentType<{ size?: number; className?: string; 'aria-hidden'?: boolean }>> = {
-  Home: LayoutDashboard,
-  Guide: Compass,
-  SystemMap: Map,
-  Overview: LayoutDashboard,
-  McpMesh: Globe,
-  Topology: Network,
-  Compute: Cpu,
-  Research: Search,
-  Knowledge: Database,
-  GBrainAdmin: Shield,
-  Engines: Cpu,
-  Assets: Briefcase,
-  Protocol: Command,
-  Workflows: GitCommit,
-  C2G: Compass,
-  AlertCenter: Bell,
-  L4Health: Heart,
-  Debt: Trophy,
-  Observability: Activity,
-  LogViewer: FileText,
-  TaskCenter: ClipboardList,
-  Performance: BarChart3,
-  Sandbox: Terminal,
-  QuestBoard: Trophy,
-  DomainApps: AppWindow,
-  Settings: Settings,
-};
-
-function pageGroupLabel(tab: string): string | null {
-  return PAGE_REGISTRY_BY_ID.get(tab)?.group || null;
-}
 
 interface PageMaturitySummary {
   total: number;
@@ -4406,119 +4350,27 @@ export default function Dashboard() {
           onClick={() => setMobileNavOpen(false)}
         />
       )}
-      <aside ref={mobileSidebarRef} role="complementary" aria-label="控制台侧边栏" className={`sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="logo-box" aria-hidden="true">
-            <Activity size={18} />
-          </div>
-          <h2>Cockpit Console</h2>
-          <button
-            type="button"
-            className="mobile-nav-close"
-            ref={mobileNavCloseRef}
-            aria-label="关闭主导航"
-            onClick={() => setMobileNavOpen(false)}
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
-        </div>
-        <SidebarCoveragePanel coverage={sidebarCoverage} onOpenTarget={openContextTarget} />
-        <SidebarProjectPortfolioPanel
-          portfolio={sidebarProjectPortfolio}
-          onOpenProject={openSidebarProject}
-          onOpenSystemMap={() => setActiveTab('SystemMap')}
-          onOpenDimension={(dimensionId) => openContextTarget({ tab: 'SystemMap', coverageDimensionId: dimensionId })}
-        />
-        <SidebarUsagePathsPanel
-          paths={contextualUsagePaths}
-          totalCount={sidebarUsagePaths.length}
-          activeGroupLabel={activeGroupLabel}
-          onOpenTarget={openContextTarget}
-        />
-        <SidebarGroupEntryPanel
-          groupLabel={activeGroupLabel}
-          description={activeGroupDescription}
-          pages={activeGroupPages}
-          activeTab={activeTab}
-          primaryUsagePath={contextualUsagePaths[0] || null}
-          onNavigate={setActiveTab}
-          onOpenTarget={openContextTarget}
-        />
-        {shellActions.length > 0 && (
-          <section className="sidebar-action-queue" aria-label="侧边推进队列">
-            <div className="sidebar-action-queue-header">
-              <strong>推进队列</strong>
-              <span>{shellActions.length} 条</span>
-            </div>
-            <div className="sidebar-action-queue-list">
-              {shellActions.map((item) => (
-                <button
-                  key={`sidebar-${item.id}`}
-                  type="button"
-                  className="sidebar-action-item"
-                  aria-label={`侧边推进 ${item.title}`}
-                  onClick={() => openContextTarget(item.target)}
-                >
-                  <div>
-                    <span>{item.title}</span>
-                    <small>{item.detail}</small>
-                  </div>
-                  <em>{item.badge}</em>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {recentNavigation.length > 0 && (
-          <section className="sidebar-recent-navigation" aria-label="最近访问">
-            <div className="sidebar-recent-navigation-header">
-              <strong><History size={14} aria-hidden="true" />最近访问</strong>
-              <button type="button" onClick={clearRecent} aria-label="清空最近访问" title="清空最近访问">清空</button>
-            </div>
-            <div className="sidebar-recent-navigation-list">
-              {recentNavigation.map((entry, index) => (
-                <button
-                  key={`${entry.target.tab}-${entry.label}-${index}`}
-                  type="button"
-                  className="sidebar-recent-navigation-item"
-                  aria-label={`重新打开最近访问 ${entry.label}`}
-                  onClick={() => openContextTarget(entry.target)}
-                >
-                  <span>{entry.label}</span>
-                  <small>{PAGE_REGISTRY_BY_ID.get(entry.target.tab)?.title || entry.target.tab}</small>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-        
-        <nav aria-label="控制台主导航" className="sidebar-nav" role="menu">
-          {SIDEBAR_NAV_SECTIONS.map((section) => (
-            <React.Fragment key={section.id}>
-              <div className="nav-group-title" id={section.id}>{section.title}</div>
-              {section.tabs.map((tab) => {
-                const pageMeta = PAGE_REGISTRY_BY_ID.get(tab);
-                const Icon = NAV_ICON_BY_TAB[tab] || LayoutDashboard;
-                return (
-                  <button
-                    key={tab}
-                    role="menuitem"
-                    aria-describedby={section.id}
-                    aria-selected={activeTab === tab}
-                    className={`nav-item ${activeTab === tab ? 'active' : ''}`}
-                    onClick={() => setActiveTab(tab)}
-                    style={tab === 'QuestBoard' ? { fontWeight: '500' } : undefined}
-                  >
-                    <Icon size={16} aria-hidden="true" className={tab === 'QuestBoard' ? 'text-warning' : undefined} />
-                    <span>{pageMeta?.title || tab}</span>
-                  </button>
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </nav>
-      </aside>
+            <DashboardSidebar
+        sidebarRef={mobileSidebarRef}
+        mobileNavOpen={mobileNavOpen}
+        mobileNavCloseRef={mobileNavCloseRef}
+        onCloseMobile={() => setMobileNavOpen(false)}
+        sidebarCoverage={sidebarCoverage}
+        sidebarProjectPortfolio={sidebarProjectPortfolio}
+        sidebarUsagePaths={sidebarUsagePaths}
+        contextualUsagePaths={contextualUsagePaths}
+        activeGroupLabel={activeGroupLabel}
+        activeGroupDescription={activeGroupDescription}
+        activeGroupPages={activeGroupPages}
+        activeTab={activeTab}
+        shellActions={shellActions}
+        recentNavigation={recentNavigation}
+        onOpenTarget={openContextTarget}
+        onOpenSidebarProject={openSidebarProject}
+        onSetActiveTab={setActiveTab}
+        onClearRecent={clearRecent}
+        navIconMap={NAV_ICON_BY_TAB}
+      />
 
       {/* Main Content Area (a11y skip target) */}
       <main id="main-content" tabIndex={-1} className="main-content" style={{ outline: 'none' }}>
