@@ -1,0 +1,33 @@
+.kems-workbench { display: flex; flex-direction: column; gap: 16px; }
+.kems-toolbar { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+.kems-eyebrow { display: flex; align-items: center; gap: 6px; color: var(--antd-success); font-size: 12px; margin-bottom: 8px; }
+.kems-toolbar h2 { font-size: 20px; margin-bottom: 5px; }
+.kems-toolbar p { font-size: 13px; }
+.kems-error { border: 1px solid var(--antd-error); color: #ff9da5; background: var(--antd-error-bg); padding: 10px 12px; border-radius: var(--antd-radius-md); }
+.kems-grid { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(420px, 1.6fr); gap: 16px; align-items: start; }
+.kems-panel { border: 1px solid var(--antd-border-color); background: var(--antd-bg-container); box-shadow: var(--antd-shadow-card); border-radius: var(--antd-radius-md); padding: 16px; min-width: 0; }
+.kems-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--antd-border-color); padding-bottom: 12px; margin-bottom: 12px; }
+.kems-panel-heading h3 { font-size: 15px; }
+.kems-panel-heading span { color: var(--antd-text-secondary); font-size: 12px; }
+.kems-run-id { display: block; margin-top: 4px; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kems-status { display: inline-flex; align-items: center; gap: 5px; color: var(--antd-success) !important; }
+.kems-queue { display: flex; flex-direction: column; gap: 8px; }
+.kems-queue-item { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; text-align: left; width: 100%; padding: 11px; border: 1px solid var(--antd-border-color); border-radius: var(--antd-radius-md); background: rgba(6, 9, 19, .35); color: var(--antd-text-primary); cursor: pointer; }
+.kems-queue-item:hover, .kems-queue-item.selected { border-color: var(--antd-primary); background: rgba(0, 242, 254, .08); }
+.kems-queue-item strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kems-queue-item span { color: var(--antd-text-secondary); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kems-queue-item em { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--antd-warning); font-size: 11px; font-style: normal; }
+.kems-empty { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 140px; color: var(--antd-text-secondary); font-size: 13px; }
+.kems-metadata { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.kems-metadata div { min-width: 0; }
+.kems-metadata dt { color: var(--antd-text-secondary); font-size: 11px; margin-bottom: 4px; }
+.kems-metadata dd { overflow-wrap: anywhere; font-size: 12px; }
+.kems-metrics { border-top: 1px solid var(--antd-border-color); border-bottom: 1px solid var(--antd-border-color); padding: 14px 0; margin-bottom: 16px; }
+.kems-metrics h4, .kems-correction-form h4 { font-size: 13px; margin-bottom: 10px; }
+.kems-metrics > div { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; }
+.kems-metrics > div span { color: var(--antd-text-secondary); }
+.kems-correction-form { display: grid; gap: 10px; }
+.kems-correction-form p { font-size: 12px; margin-bottom: 2px; }
+.kems-correction-form label { display: grid; gap: 5px; color: var(--antd-text-secondary); font-size: 11px; }
+.kems-correction-form .antd-input { width: 100%; }
+@media (max-width: 860px) { .kems-grid { grid-template-columns: 1fr; } .kems-toolbar { flex-direction: column; } }
