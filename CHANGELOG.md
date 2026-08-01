@@ -16,11 +16,16 @@
 - `src/api/gbrain.ts` — GBrain cookie auth 适配器
 - `src/api/endpoints.ts` — 30+ 端点全覆盖 (含 GBrain 14 个)
 - `src/api/hooks.ts` — 18 个 React Query hooks
+- `RouteErrorBoundary` — 路由级崩溃显示 "Try again" 友好错误
+- `useDeliveryJourney` — DeliveryJourneyView 的 React Query hook
+- `DELIVERY_JOURNEY_ENDPOINTS` — 端点常量
 
 ### 变更
 - Dashboard.tsx — useState 导航 → useNavigate/useLocation (React Router)
 - Dashboard.css — 2032 行拆分为 3 模块 (layout/components/views)
 - GBrain 5 组件迁移到共享适配器
+- DeliveryJourneyView — 手动 fetch + useState 迁移到 React Query hook，去掉 `any` 类型
+- RouteConfig — 新增 `subtitle` 字段，30 个路由填入描述
 
 ### 修复
 - vitest 4.x 兼容性 — vi.mocked polyfill + happy-dom 环境
