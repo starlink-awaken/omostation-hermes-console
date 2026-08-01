@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import {
   Activity,
@@ -17,12 +17,18 @@ import './Dashboard.css';
 
 // Lazy-loaded view components
 const HomePage = React.lazy(() => import('./HomePage'));
+const CockpitGuideView = React.lazy(() => import('./CockpitGuideView'));
+const SystemMapView = React.lazy(() => import('./SystemMapView'));
 const OverviewPage = React.lazy(() => import('./OverviewPage'));
 const McpMeshView = React.lazy(() => import('./McpMeshView'));
 const TopologyView = React.lazy(() => import('./TopologyView'));
 const ComputeView = React.lazy(() => import('./ComputeView'));
+const ResearchHubView = React.lazy(() => import('./ResearchHubView'));
+const KnowledgeHubView = React.lazy(() => import('./KnowledgeHubView'));
+const GBrainDashboard = React.lazy(() => import('./GBrain/GBrainDashboard').then(m => ({ default: m.DashboardPage })));
 const EnginesView = React.lazy(() => import('./EnginesView'));
 const AssetsView = React.lazy(() => import('./AssetsView'));
+const ProtocolWorkbenchView = React.lazy(() => import('./ProtocolWorkbenchView'));
 const KemsWorkbench = React.lazy(() => import('./KemsWorkbench'));
 const BrainChat = React.lazy(() => import('../views/BrainChat'));
 const WorkflowsView = React.lazy(() => import('./WorkflowsView'));
@@ -32,6 +38,7 @@ const DebtView = React.lazy(() => import('./DebtView'));
 const ObservabilityView = React.lazy(() => import('./ObservabilityView'));
 const C2GStrategyView = React.lazy(() => import('./C2GStrategyView'));
 const Wave2DashboardView = React.lazy(() => import('./Wave2DashboardView'));
+const DomainAppsView = React.lazy(() => import('./DomainAppsView'));
 const QuestBoard = React.lazy(() => import('./QuestBoard'));
 const KnowledgeFlow = React.lazy(() => import('./KnowledgeFlow'));
 const LogViewerPage = React.lazy(() => import('./LogViewerPage'));
@@ -61,6 +68,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ size: number; 'aria-hidden'
   Terminal: (props) => <Settings {...props} />,
   Trophy: (props) => <Activity {...props} />,
   Settings: (props) => <Settings {...props} />,
+  Search: (props) => <Search {...props} />,
 };
 
 function getIconComponent(iconName?: string): React.ComponentType<{ size: number; 'aria-hidden'?: boolean; className?: string }> {
@@ -99,6 +107,59 @@ function HomeRoute() {
     navigate(route?.path ?? '/');
   };
   return <HomePage onTabChange={goTo} />;
+}
+
+/** Shared helper: build onNavigate/onOpenTarget from React Router */
+function useCockpitNavCallbacks() {
+  const navigate = useNavigate();
+  const goTo = (tabId: string) => {
+    const route = getRouteById(tabId);
+    navigate(route?.path ?? '/');
+  };
+  const openTarget = (target: { tab: string; taskQuery?: string }) => {
+    const route = getRouteById(target.tab);
+    if (route) {
+      const qs = target.taskQuery ? `?task=${encodeURIComponent(target.taskQuery)}` : '';
+      navigate(`${route.path}${qs}`);
+    }
+  };
+  return { onNavigate: goTo, onOpenTarget: openTarget };
+}
+
+/** Wrapper: CockpitGuideView needs onNavigate + onOpenTarget */
+function GuideRoute() {
+  const { onNavigate, onOpenTarget } = useCockpitNavCallbacks();
+  return <CockpitGuideView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />;
+}
+
+/** Wrapper: SystemMapView needs onNavigate + onOpenTarget */
+function SystemMapRoute() {
+  const { onNavigate, onOpenTarget } = useCockpitNavCallbacks();
+  return <SystemMapView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />;
+}
+
+/** Wrapper: ResearchHubView needs onNavigate + onOpenTarget */
+function ResearchRoute() {
+  const { onNavigate, onOpenTarget } = useCockpitNavCallbacks();
+  return <ResearchHubView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />;
+}
+
+/** Wrapper: KnowledgeHubView needs onNavigate + onOpenTarget */
+function KnowledgeHubRoute() {
+  const { onNavigate, onOpenTarget } = useCockpitNavCallbacks();
+  return <KnowledgeHubView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />;
+}
+
+/** Wrapper: ProtocolWorkbenchView needs onNavigate + onOpenTarget */
+function ProtocolRoute() {
+  const { onNavigate, onOpenTarget } = useCockpitNavCallbacks();
+  return <ProtocolWorkbenchView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />;
+}
+
+/** Wrapper: DomainAppsView needs onNavigate + onOpenTarget */
+function DomainAppsRoute() {
+  const { onNavigate, onOpenTarget } = useCockpitNavCallbacks();
+  return <DomainAppsView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />;
 }
 
 export default function Dashboard() {
@@ -252,13 +313,18 @@ export default function Dashboard() {
             <RouteErrorBoundary>
             <Routes>
               <Route path="/" element={<HomeRoute />} />
+              <Route path="/guide" element={<GuideRoute />} />
+              <Route path="/system-map" element={<SystemMapRoute />} />
               <Route path="/overview" element={<OverviewPage />} />
               <Route path="/mesh" element={<McpMeshView />} />
               <Route path="/topology" element={<TopologyView />} />
               <Route path="/compute" element={<ComputeView />} />
-              <Route path="/knowledge" element={<HomePage onTabChange={goTo} />} />
+              <Route path="/research" element={<ResearchRoute />} />
+              <Route path="/knowledge" element={<KnowledgeHubRoute />} />
+              <Route path="/gbrain-admin" element={<GBrainDashboard />} />
               <Route path="/engines" element={<EnginesView />} />
               <Route path="/assets" element={<AssetsView />} />
+              <Route path="/protocol" element={<ProtocolRoute />} />
               <Route path="/kems" element={<KemsWorkbench />} />
               <Route path="/brain" element={
                 <div className="animate-fade-in h-[calc(100vh-2rem)]">
@@ -278,6 +344,7 @@ export default function Dashboard() {
               <Route path="/performance" element={<PerformanceMonitorPage />} />
               <Route path="/sandbox" element={<SandboxTerminal />} />
               <Route path="/quests" element={<QuestBoard />} />
+              <Route path="/domain-apps" element={<DomainAppsRoute />} />
               <Route path="/settings" element={<SettingsView />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

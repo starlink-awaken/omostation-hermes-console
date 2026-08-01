@@ -12,6 +12,10 @@ import { lazy } from 'react';
 // eslint-disable-next-line react-refresh/only-export-components
 const HomePage = lazy(() => import('./components/HomePage'));
 // eslint-disable-next-line react-refresh/only-export-components
+const CockpitGuideView = lazy(() => import('./components/CockpitGuideView'));
+// eslint-disable-next-line react-refresh/only-export-components
+const SystemMapView = lazy(() => import('./components/SystemMapView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const OverviewPage = lazy(() => import('./components/OverviewPage'));
 // eslint-disable-next-line react-refresh/only-export-components
 const McpMeshView = lazy(() => import('./components/McpMeshView'));
@@ -20,9 +24,17 @@ const TopologyView = lazy(() => import('./components/TopologyView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const ComputeView = lazy(() => import('./components/ComputeView'));
 // eslint-disable-next-line react-refresh/only-export-components
+const ResearchHubView = lazy(() => import('./components/ResearchHubView'));
+// eslint-disable-next-line react-refresh/only-export-components
+const KnowledgeHubView = lazy(() => import('./components/KnowledgeHubView'));
+// eslint-disable-next-line react-refresh/only-export-components
+const GBrainDashboard = lazy(() => import('./components/GBrain/GBrainDashboard'));
+// eslint-disable-next-line react-refresh/only-export-components
 const EnginesView = lazy(() => import('./components/EnginesView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const AssetsView = lazy(() => import('./components/AssetsView'));
+// eslint-disable-next-line react-refresh/only-export-components
+const ProtocolWorkbenchView = lazy(() => import('./components/ProtocolWorkbenchView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const KemsWorkbench = lazy(() => import('./components/KemsWorkbench'));
 // eslint-disable-next-line react-refresh/only-export-components
@@ -41,6 +53,8 @@ const ObservabilityView = lazy(() => import('./components/ObservabilityView'));
 const C2GStrategyView = lazy(() => import('./components/C2GStrategyView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const Wave2DashboardView = lazy(() => import('./components/Wave2DashboardView'));
+// eslint-disable-next-line react-refresh/only-export-components
+const DomainAppsView = lazy(() => import('./components/DomainAppsView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const QuestBoard = lazy(() => import('./components/QuestBoard'));
 // eslint-disable-next-line react-refresh/only-export-components
@@ -68,6 +82,8 @@ export interface RouteConfig {
 export const ROUTES: RouteConfig[] = [
   // 首页
   { id: 'Home', path: '/', label: '首页', group: '首页', component: HomePage, icon: 'LayoutDashboard' },
+  { id: 'Guide', path: '/guide', label: '驾驶舱指南', group: '首页', component: CockpitGuideView, icon: 'Compass' },
+  { id: 'SystemMap', path: '/system-map', label: '系统地图', group: '首页', component: SystemMapView, icon: 'Network' },
 
   // 运行大盘
   { id: 'Overview', path: '/overview', label: '概览中心', group: '运行大盘', component: OverviewPage, icon: 'LayoutDashboard' },
@@ -76,9 +92,11 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Compute', path: '/compute', label: '算力调配', group: '运行大盘', component: ComputeView, icon: 'Cpu' },
 
   // 智能与知识
-  { id: 'Knowledge', path: '/knowledge', label: '知识中枢', group: '智能与知识', component: HomePage, icon: 'Database' },
+  { id: 'Research', path: '/research', label: '研究中心', group: '智能与知识', component: ResearchHubView, icon: 'Search' },
+  { id: 'Knowledge', path: '/knowledge', label: '知识中枢', group: '智能与知识', component: KnowledgeHubView, icon: 'Database' },
   { id: 'Engines', path: '/engines', label: '引擎调度', group: '智能与知识', component: EnginesView, icon: 'Cpu' },
   { id: 'Assets', path: '/assets', label: '技术资产库', group: '智能与知识', component: AssetsView, icon: 'Briefcase' },
+  { id: 'Protocol', path: '/protocol', label: '协议工作台', group: '智能与知识', component: ProtocolWorkbenchView, icon: 'FileText' },
   { id: 'Kems', path: '/kems', label: 'KEMS 质量治理', group: '智能与知识', component: KemsWorkbench, icon: 'FileText' },
   { id: 'Brain', path: '/brain', label: '个人数字大脑', group: '智能助手', component: BrainChat, icon: 'Brain' },
   { id: 'KnowledgeFlow', path: '/knowledge-flow', label: '知识流动', group: '智能与知识', component: KnowledgeFlow, icon: 'BookOpen' },
@@ -91,6 +109,7 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Observability', path: '/observability', label: '可观测性', group: '系统治理', component: ObservabilityView, icon: 'BarChart3' },
   { id: 'C2G', path: '/c2g', label: 'C2G 战略中心', group: '系统治理', component: C2GStrategyView, icon: 'Compass' },
   { id: 'Wave2', path: '/wave2', label: 'Wave2 预测面板', group: '系统治理', component: Wave2DashboardView, icon: 'Zap' },
+  { id: 'GBrainAdmin', path: '/gbrain-admin', label: 'GBrain 管理', group: '系统治理', component: GBrainDashboard, icon: 'Brain' },
 
   // 开发工具
   { id: 'LogViewer', path: '/logs', label: '日志查看器', group: '开发工具', component: LogViewerPage, icon: 'FileText' },
@@ -100,6 +119,7 @@ export const ROUTES: RouteConfig[] = [
 
   // 领域应用
   { id: 'QuestBoard', path: '/quests', label: '积分冒险', group: '领域应用', component: QuestBoard, icon: 'Trophy' },
+  { id: 'DomainApps', path: '/domain-apps', label: '领域应用', group: '领域应用', component: DomainAppsView, icon: 'LayoutDashboard' },
 
   // 系统配置
   { id: 'Settings', path: '/settings', label: '系统设置', group: '系统配置', component: SettingsView, icon: 'Settings' },
