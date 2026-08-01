@@ -58,7 +58,7 @@ const PRIVATE_SOURCE_REVIEW_LABEL_TEMPLATE = JSON.stringify({
 
 const validatePrivateSourceReviewLabels = (schema: AnnotationSchema | null, scenarioId: string, labels: unknown): string | null => {
   if (scenarioId !== PRIVATE_SOURCE_REVIEW_SCENARIO) return null
-  if (!schema || schema.scenario_id !== scenarioId) return null
+  if (!schema || schema.scenario_id !== scenarioId) return '标注契约尚未加载，暂不能提交'
   if (!labels || typeof labels !== 'object' || Array.isArray(labels)) return 'labels 必须是对象'
   const record = labels as Record<string, unknown>
   const required = schema.fields.map(field => field.name)
@@ -112,6 +112,22 @@ export default function KemsWorkbench() {
   const [adjudicationImport, setAdjudicationImport] = useState('')
   const [annotation, setAnnotation] = useState({ annotator: '', adjudicator: '', version: PRIVATE_SOURCE_REVIEW_VERSION, labels: PRIVATE_SOURCE_REVIEW_LABEL_TEMPLATE })
   const [kemsAction, setKemsAction] = useState('')
+
+  const annotationLabelValues = (() => {
+    try {
+      const parsed = JSON.parse(annotation.labels)
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {}
+    } catch {
+      return {}
+    }
+  })()
+
+  const updateStructuredLabel = (field: AnnotationSchemaField, value: string | boolean) => {
+    setAnnotation(current => ({
+      ...current,
+      labels: JSON.stringify({ ...annotationLabelValues, [field.name]: value }, null, 2),
+    }))
+  }
 
   const loadQueue = async () => {
     setLoading(true)
@@ -435,7 +451,16 @@ export default function KemsWorkbench() {
             <label>标注人<input className="antd-input" aria-label="人工标注人" value={annotation.annotator} onChange={event => setAnnotation({ ...annotation, annotator: event.target.value })} required /></label>
             <label>标注版本<input className="antd-input" aria-label="标注版本" value={annotation.version} onChange={event => setAnnotation({ ...annotation, version: event.target.value })} placeholder="ann-2026-08-01" required /></label>
             <button className="antd-btn" type="button" onClick={() => void claimAdjudication()} disabled={kemsAction === 'adjudication-claim' || selectedAdjudication.annotation_status === 'adjudicated'}><UserCheck size={14} /> 领取样本</button>
-            <label>结构化 labels JSON<textarea className="antd-input kems-json-input" aria-label="结构化 labels JSON" value={annotation.labels} onChange={event => setAnnotation({ ...annotation, labels: event.target.value })} required /><small>private-source-review-v1 使用固定字段契约；后端会再次校验。</small></label>
+            {selectedAdjudication.scenario_id === PRIVATE_SOURCE_REVIEW_SCENARIO && annotationSchema ? <div className="kems-label-grid" aria-label="私有来源结构化标签">
+              {annotationSchema.fields.map(field => {
+                const value = annotationLabelValues[field.name]
+                if (field.type === 'boolean') {
+                  return <label className="kems-label-field kems-checkbox-field" key={field.name}><span>{field.name}</span><input type="checkbox" aria-label={`标注字段 ${field.name}`} checked={value === true} onChange={event => updateStructuredLabel(field, event.target.checked)} /></label>
+                }
+                return <label className="kems-label-field" key={field.name}>{field.name}<select className="antd-input" aria-label={`标注字段 ${field.name}`} value={typeof value === 'string' ? value : ''} onChange={event => updateStructuredLabel(field, event.target.value)} required><option value="">请选择</option>{(field.values || []).map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+              })}
+              <small>字段与枚举由 Kairon 标注契约提供；提交前后端都会再次校验。</small>
+            </div> : selectedAdjudication.scenario_id === PRIVATE_SOURCE_REVIEW_SCENARIO ? <div className="kems-empty kems-schema-loading">加载标注契约中...</div> : <label>结构化 labels JSON<textarea className="antd-input kems-json-input" aria-label="结构化 labels JSON" value={annotation.labels} onChange={event => setAnnotation({ ...annotation, labels: event.target.value })} required /><small>通用场景使用结构化 JSON；后端会再次校验。</small></label>}
             <button className="antd-btn antd-btn-primary" type="button" onClick={() => void submitIndependentAnnotation()} disabled={kemsAction === 'annotation-submit' || selectedAdjudication.annotation_status === 'adjudicated'}><CheckCircle2 size={14} /> 提交独立标注</button>
             <label>独立裁决人<input className="antd-input" aria-label="独立裁决人" value={annotation.adjudicator} onChange={event => setAnnotation({ ...annotation, adjudicator: event.target.value })} placeholder="不能与标注人相同" required /></label>
             <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'adjudication-submit' || selectedAdjudication.annotation_count !== 2}><CheckCircle2 size={14} /> 提交最终 adjudication</button>

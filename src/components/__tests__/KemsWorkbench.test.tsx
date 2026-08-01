@@ -65,14 +65,18 @@ describe('KemsWorkbench', () => {
 
     render(<KemsWorkbench />)
     await waitFor(() => expect(screen.getAllByText('private-1').length).toBeGreaterThanOrEqual(1))
-    expect(String((screen.getByLabelText('结构化 labels JSON') as HTMLTextAreaElement).value)).toContain('source_kind')
+    expect(screen.getByLabelText('标注字段 source_kind')).toHaveValue('email')
+    expect(screen.getByLabelText('标注字段 document_type')).toHaveValue('request')
     fireEvent.change(screen.getByLabelText('人工标注人'), { target: { value: 'reviewer-a' } })
     fireEvent.click(screen.getByRole('button', { name: '领取样本' }))
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/private-1/claim', expect.objectContaining({ method: 'POST' })))
-    fireEvent.change(screen.getByLabelText('结构化 labels JSON'), { target: { value: '{"source_kind":"email"}' } })
+    fireEvent.change(screen.getByLabelText('标注字段 source_kind'), { target: { value: 'sms' } })
+    fireEvent.click(screen.getByLabelText('标注字段 has_deadline'))
     fireEvent.click(screen.getByRole('button', { name: '提交独立标注' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('标签结构不匹配')
-    expect(vi.mocked(fetch).mock.calls.some(([input]) => String(input).endsWith('/private-1/annotate'))).toBe(false)
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/adjudication/private-1/annotate', expect.objectContaining({ method: 'POST' })))
+    const call = vi.mocked(fetch).mock.calls.find(([input]) => String(input).endsWith('/private-1/annotate'))
+    expect(String(call?.[1]?.body)).toContain('"source_kind":"sms"')
+    expect(String(call?.[1]?.body)).toContain('"has_deadline":true')
   })
 
   it('registers an adjudicated manifest and records a model evaluation run', async () => {

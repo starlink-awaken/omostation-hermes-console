@@ -30,6 +30,12 @@
 .kems-correction-form p { font-size: 12px; margin-bottom: 2px; }
 .kems-correction-form label { display: grid; gap: 5px; color: var(--antd-text-secondary); font-size: 11px; }
 .kems-correction-form .antd-input { width: 100%; }
+.kems-label-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.kems-label-grid > small { grid-column: 1 / -1; color: var(--antd-text-secondary); }
+.kems-label-field { display: grid; gap: 5px; color: var(--antd-text-secondary); font-size: 11px; }
+.kems-checkbox-field { grid-template-columns: 1fr auto; align-items: center; min-height: 36px; }
+.kems-checkbox-field input { width: 16px; height: 16px; accent-color: var(--antd-primary); }
+.kems-schema-loading { min-height: 80px; grid-column: 1 / -1; }
 .kems-control-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .kems-inline-form { display: flex; gap: 8px; }
 .kems-inline-form .antd-input { min-width: 0; flex: 1; }
@@ -43,4 +49,5 @@
 @media (max-width: 1100px) { .kems-control-grid { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .kems-adjudication-grid, .kems-evaluation-grid { grid-template-columns: 1fr; } }
 @media (max-width: 1100px) { .kems-evaluation-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .kems-label-grid { grid-template-columns: 1fr; } .kems-label-grid > small { grid-column: auto; } }
 @media (max-width: 860px) { .kems-grid { grid-template-columns: 1fr; } .kems-toolbar { flex-direction: column; } }
