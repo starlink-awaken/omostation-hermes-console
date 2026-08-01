@@ -155,4 +155,35 @@ describe('KemsWorkbench', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/evaluations/runs/eval-1', expect.objectContaining({ method: 'POST' })))
     expect(await screen.findByRole('status')).toHaveTextContent('accuracy')
   })
+
+  it('autofills canonical manifest evidence from persisted adjudication', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === '/api/kems/ocr/review-queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
+      if (url === '/api/kems/adjudication/queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
+      if (url === '/api/kems/adjudication/manifest') {
+        return {
+          ok: true,
+          json: async () => ({
+            dataset_id: 'kems-real',
+            dataset_version: 'v1',
+            manifest_sha256: 'b'.repeat(64),
+            samples: [{ sample_id: 'sample-1', source_ref: 'vault://redacted/sample-1', labels: { category: 'notice' } }],
+          }),
+        } as Response
+      }
+      return { ok: true, json: async () => ({}) } as Response
+    })
+
+    render(<KemsWorkbench />)
+    await waitFor(() => expect(screen.getByText('当前没有待复核样本')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('评测集 ID'), { target: { value: 'kems-real' } })
+    fireEvent.change(screen.getByLabelText('评测集版本'), { target: { value: 'v1' } })
+    fireEvent.click(screen.getByRole('button', { name: '从已裁决队列生成' }))
+
+    await waitFor(() => expect(screen.getByLabelText('评测集 Manifest SHA-256')).toHaveValue('b'.repeat(64)))
+    const samplesField = screen.getByLabelText('脱敏评测样本 JSON') as HTMLTextAreaElement
+    expect(samplesField.value).toContain('sample-1')
+    expect(samplesField.value).not.toContain('"text"')
+  })
 })

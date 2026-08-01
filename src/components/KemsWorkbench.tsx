@@ -346,6 +346,17 @@ export default function KemsWorkbench() {
     setKemsAction('adjudication-manifest')
     try {
       const data = await api('/api/kems/adjudication/manifest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataset_id: evaluationDataset.id.trim(), dataset_version: evaluationDataset.version.trim() }) })
+      if (!data.manifest_sha256 || !Array.isArray(data.samples) || !data.samples.length) {
+        setError('后端未返回完整的脱敏 Manifest 证据')
+        return
+      }
+      setEvaluationDataset(current => ({
+        ...current,
+        id: String(data.dataset_id || current.id),
+        version: String(data.dataset_version || current.version),
+        manifestSha256: String(data.manifest_sha256),
+        samples: JSON.stringify(data.samples, null, 2),
+      }))
       setEvaluationResult(data)
     } catch (err) { setError(err instanceof Error ? err.message : '生成裁决评测集失败') } finally { setKemsAction('') }
   }
