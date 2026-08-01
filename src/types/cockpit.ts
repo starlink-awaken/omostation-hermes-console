@@ -164,6 +164,48 @@ export interface FeatureDomain {
   providers?: string[];
 }
 
+/** 使用路径页面 */
+export interface UsagePathPage {
+  id: string;
+  title: string;
+  group?: string;
+  purpose?: string;
+  dimensions?: string[];
+}
+
+/** 使用路径 (页面序列 + 意图) */
+export interface UsagePath {
+  id: string;
+  title: string;
+  intent?: string;
+  steps?: string[];
+  pages?: UsagePathPage[];
+}
+
+/** 操作手册步骤 */
+export interface PlaybookStep {
+  id?: string;
+  page_id?: string;
+  action?: string;
+  done_when?: string;
+  page?: {
+    id?: string;
+    title?: string;
+    group?: string;
+  };
+}
+
+/** 操作手册 (operational playbook) */
+export interface OperatingPlaybook {
+  id: string;
+  title: string;
+  goal?: string;
+  frequency?: string;
+  owner?: string;
+  risk?: string;
+  steps?: PlaybookStep[];
+}
+
 /** 页面分组汇总 */
 export interface PageGroupSummary {
   group: string;
@@ -335,9 +377,11 @@ export interface TaskExecutionSnapshot {
 /** 任务状态筛选 */
 export type TaskStatusFilter = 'all' | 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
 
-/** 草稿来源类型 (6 种 system_map 来源) */
+/** 草稿来源类型 (所有 system_map + cockpit 来源) */
 export type DraftSourceType =
   | 'system_map_project_portfolio'
+  | 'system_map_verification_ready'
+  | 'system_map_playbook'
   | 'system_map_domain_app'
   | 'system_map_capability_gap'
   | 'system_map_page_maturity'

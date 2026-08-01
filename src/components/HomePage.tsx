@@ -5,37 +5,7 @@ import MetricsTrendSection from './home/MetricsTrendSection';
 import RecentTasksSection from './home/RecentTasksSection';
 import GovernanceOverviewSection from './home/GovernanceOverviewSection';
 import { openCockpitNavigationTarget } from './cockpitNavigation';
-
-interface HealthSummary {
-  health_score: number;
-  health_score_change: number;
-  active_services: number;
-  total_services: number;
-  active_tasks: number;
-  today_requests: number;
-  today_requests_change: number;
-}
-
-interface Alert {
-  id: string;
-  level: 'critical' | 'error' | 'warning' | 'info';
-  source: string;
-  message: string;
-  timestamp: string;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
-  progress: number;
-  updated_at: string;
-}
-
-interface DataPoint {
-  timestamp: string;
-  value: number;
-}
+import type { HealthSummary, CockpitAlert, CockpitTask, DataPoint } from '../types/cockpit';
 
 // 默认数据
 const DEFAULT_HEALTH_SUMMARY: HealthSummary = {
@@ -194,8 +164,8 @@ function ThoughtStreamSection({ thoughts }: { thoughts: Thought[] }) {
 
 export default function HomePage({ onTabChange }: HomePageProps) {
   const [healthSummary, setHealthSummary] = useState<HealthSummary>(DEFAULT_HEALTH_SUMMARY);
-  const [alerts, setAlerts] = useState<Alert[]>(DEFAULT_ALERTS);
-  const [tasks, setTasks] = useState<Task[]>(DEFAULT_TASKS);
+  const [alerts, setAlerts] = useState<CockpitAlert[]>(DEFAULT_ALERTS);
+  const [tasks, setTasks] = useState<CockpitTask[]>(DEFAULT_TASKS);
   const [healthScoreData, setHealthScoreData] = useState<DataPoint[]>(DEFAULT_HEALTH_SCORE_DATA);
   const [requestsData, setRequestsData] = useState<DataPoint[]>(DEFAULT_REQUESTS_DATA);
   const [errorRateData, setErrorRateData] = useState<DataPoint[]>(DEFAULT_ERROR_RATE_DATA);

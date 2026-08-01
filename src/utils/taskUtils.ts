@@ -103,6 +103,32 @@ export function sourceActionLabel(task: TaskDetail): string {
   return sourceTypeLabel(task.source.type).replace('系统地图', '查看').replace('cockpit.', '回 ') || '打开来源';
 }
 
+/** 来源类型 → 完成指导提示映射表 */
+const COMPLETION_HINTS: Record<string, string> = {
+  system_map_project_portfolio: '目标是把项目从组合阻塞里移出，并补齐最近状态证据。',
+  system_map_verification_ready: '目标是把已有验证命令跑成正式 workflow / closeout 证据。',
+  system_map_domain_app: '目标是把领域挂载的运行态、安全门和入口状态收口。',
+  system_map_capability_gap: '目标是让缺口回到页面、命令、探针和入口都可见。',
+  system_map_page_maturity: '目标是把页面从 gap/watch 推到可日用。',
+  system_map_playbook: '目标是让执行路径、证据和 done_when 形成完整闭环。',
+  'cockpit.runtime-workbench': '目标是完成运行告警、性能、日志或拓扑证据收口。',
+  'cockpit.system-assurance-workbench': '目标是补齐横向系统保证证据并完成 closeout。',
+  'cockpit.mcp-mesh-resolver': '目标是核对 BOS 解析、路由和实例验收证据。',
+  'cockpit.task-center': '目标是把手工发现登记为可追踪的正式任务。',
+  'cockpit.assets-skill': '目标是补齐技能资产的描述、边界和可复用入口。',
+  'cockpit.governance-domain-workbench': '目标是完成治理对象的跨域证据收口。',
+  'cockpit.infrastructure-workbench': '目标是完成基础设施状态、证据和处理结果收口。',
+  'cockpit.knowledge-hub': '目标是把知识上下文带入验证、执行和 closeout。',
+  'cockpit.l4-health': '目标是完成 L4 域健康、信号和关联应用收口。',
+  'cockpit.log-viewer': '目标是从日志异常追到根因、告警恢复和 closeout。',
+  'cockpit.performance-monitor': '目标是把性能热点追到告警、日志和持续治理。',
+  'cockpit.platform-control-workbench': '目标是完成控制面状态、验证和处理结果收口。',
+  'cockpit.protocol-workbench': '目标是核对协议、工作流、桥接和治理证据。',
+  'cockpit.quest-board': '目标是把家庭积分任务的完成记录纳入长期跟踪。',
+  'cockpit.sandbox-terminal': '目标是保留沙箱实验输出、结论和后续动作。',
+  'cockpit.topology-view': '目标是核对拓扑依赖、节点健康和下游影响。',
+};
+
 /** 任务 → 完成指导提示文案 */
 export function sourceCompletionHint(task: TaskDetail): string {
   if (task.task_type === 'page_operator_action') {
@@ -117,32 +143,7 @@ export function sourceCompletionHint(task: TaskDetail): string {
     return `回到 ${page} 对照"${roadmap}"的动作和验收项，完成证据留存后进入 closeout。`;
   }
   if (!task.source?.type) return '确认任务完成定义，再继续承接。';
-
-  const hints: Record<string, string> = {
-    system_map_project_portfolio: '目标是把项目从组合阻塞里移出，并补齐最近状态证据。',
-    system_map_verification_ready: '目标是把已有验证命令跑成正式 workflow / closeout 证据。',
-    system_map_domain_app: '目标是把领域挂载的运行态、安全门和入口状态收口。',
-    system_map_capability_gap: '目标是让缺口回到页面、命令、探针和入口都可见。',
-    system_map_page_maturity: '目标是把页面从 gap/watch 推到可日用。',
-    system_map_playbook: '目标是让执行路径、证据和 done_when 形成完整闭环。',
-    'cockpit.runtime-workbench': '目标是完成运行告警、性能、日志或拓扑证据收口。',
-    'cockpit.system-assurance-workbench': '目标是补齐横向系统保证证据并完成 closeout。',
-    'cockpit.mcp-mesh-resolver': '目标是核对 BOS 解析、路由和实例验收证据。',
-    'cockpit.task-center': '目标是把手工发现登记为可追踪的正式任务。',
-    'cockpit.assets-skill': '目标是补齐技能资产的描述、边界和可复用入口。',
-    'cockpit.governance-domain-workbench': '目标是完成治理对象的跨域证据收口。',
-    'cockpit.infrastructure-workbench': '目标是完成基础设施状态、证据和处理结果收口。',
-    'cockpit.knowledge-hub': '目标是把知识上下文带入验证、执行和 closeout。',
-    'cockpit.l4-health': '目标是完成 L4 域健康、信号和关联应用收口。',
-    'cockpit.log-viewer': '目标是从日志异常追到根因、告警恢复和 closeout。',
-    'cockpit.performance-monitor': '目标是把性能热点追到告警、日志和持续治理。',
-    'cockpit.platform-control-workbench': '目标是完成控制面状态、验证和处理结果收口。',
-    'cockpit.protocol-workbench': '目标是核对协议、工作流、桥接和治理证据。',
-    'cockpit.quest-board': '目标是把家庭积分任务的完成记录纳入长期跟踪。',
-    'cockpit.sandbox-terminal': '目标是保留沙箱实验输出、结论和后续动作。',
-    'cockpit.topology-view': '目标是核对拓扑依赖、节点健康和下游影响。',
-  };
-  return hints[task.source.type] || '回来源面继续完成闭环。';
+  return COMPLETION_HINTS[task.source.type] || '回来源面继续完成闭环。';
 }
 
 /** 任务 → 来源标签文本 */

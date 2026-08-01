@@ -3,73 +3,86 @@
  *
  * 从 fullsite OverviewPage.tsx / HomePage.tsx 提取的纯逻辑:
  *   - normalizeStatus — 任意状态字符串 → 'online' | 'offline' | 'degraded'
- *   - badgeClass — 状态 → CSS 类名 (与 normalizeStatus 同形)
  *   - statusText — 状态 → 中文标签
- *   - summaryStatusText — 汇总状态 (blocked/at_risk/healthy/watch) → 中文
- *   - focusStatusText — 焦点状态 (healthy/watch/at_risk/blocked) → 中文
- *   - maturityStatusText — 成熟度 (ready/watch/gap) → 中文
- *   - portfolioStatusText — 项目组合状态 → 中文
+ *   - focusStatusText / maturityStatusText — 域状态 → 中文
  *   - coverageTone — 分数 + 失败/警告计数 → 状态色调
  *   - actionLoadTone — 操作负载 → 状态色调
  *
  * 零依赖，所有 cockpit 视图的状态显示都可复用.
  */
 
+// ─── 状态常量 ───
+
+const ONLINE_STATES = new Set(['online', 'running', 'active', 'healthy', 'configured', 'ready']);
+const OFFLINE_STATES = new Set(['offline', 'stopped', 'missing', 'unreachable']);
+
+// ─── 基础归一化 ───
+
 /** 归一化状态值 — 将各种上游状态字符串统一为三种基础状态 */
 export function normalizeStatus(value: string): 'online' | 'offline' | 'degraded' {
-  if (['online', 'running', 'active', 'healthy', 'configured', 'ready'].includes(value)) return 'online';
-  if (['offline', 'stopped', 'missing', 'unreachable'].includes(value)) return 'offline';
+  if (ONLINE_STATES.has(value)) return 'online';
+  if (OFFLINE_STATES.has(value)) return 'offline';
   return 'degraded';
 }
 
-/** 状态 → CSS 类名 (与 normalizeStatus 输出同形) */
-export function badgeClass(value: string): string {
-  return normalizeStatus(value);
-}
+/** 状态 → CSS 类名 (与 normalizeStatus 同形) */
+export const badgeClass = normalizeStatus;
+
+// ─── 状态文本 ───
+
+const STATUS_TEXT_MAP: Record<string, string> = {
+  online: '在线',
+  running: '在线',
+  active: '在线',
+  healthy: '在线',
+  configured: '在线',
+  ready: '在线',
+  offline: '离线',
+  stopped: '离线',
+  missing: '离线',
+  unreachable: '离线',
+  degraded: '降级',
+  idle: '空闲',
+};
 
 /** 状态 → 中文标签 */
 export function statusText(value: string): string {
-  if (['online', 'running', 'active', 'healthy', 'configured', 'ready'].includes(value)) return '在线';
-  if (['offline', 'stopped', 'missing', 'unreachable'].includes(value)) return '离线';
-  if (value === 'degraded') return '降级';
-  if (value === 'idle') return '空闲';
-  return value || '未知';
+  return STATUS_TEXT_MAP[value] || value || '未知';
 }
+
+// ─── 域状态文本 (通用 lookup) ───
+
+function lookupStatus(map: Record<string, string>, value?: string, fallback = '未知'): string {
+  if (!value) return fallback;
+  return map[value] || fallback;
+}
+
+const OPERATING_STATUS_MAP: Record<string, string> = {
+  blocked: '阻塞',
+  at_risk: '风险',
+  watch: '观察',
+  healthy: '健康',
+};
 
 /** 汇总状态 → 中文 */
-export function summaryStatusText(value?: string): string {
-  if (value === 'blocked') return '阻塞';
-  if (value === 'at_risk') return '风险';
-  if (value === 'healthy') return '健康';
-  if (value === 'watch') return '观察';
-  return '未知';
-}
+export const summaryStatusText = (value?: string) => lookupStatus(OPERATING_STATUS_MAP, value);
 
-/** 焦点状态 → 中文 */
-export function focusStatusText(status: string): string {
-  if (status === 'healthy') return '健康';
-  if (status === 'watch') return '观察';
-  if (status === 'at_risk') return '风险';
-  if (status === 'blocked') return '阻塞';
-  return '未知';
-}
+/** 焦点状态 → 中文 (与汇总状态同形) */
+export const focusStatusText = (value?: string) => lookupStatus(OPERATING_STATUS_MAP, value);
+
+const MATURITY_STATUS_MAP: Record<string, string> = {
+  ready: '就绪',
+  watch: '观察',
+  gap: '缺口',
+};
 
 /** 成熟度状态 → 中文 */
-export function maturityStatusText(status: string): string {
-  if (status === 'ready') return '就绪';
-  if (status === 'watch') return '观察';
-  if (status === 'gap') return '缺口';
-  return '未知';
-}
+export const maturityStatusText = (value?: string) => lookupStatus(MATURITY_STATUS_MAP, value);
 
-/** 项目组合状态 → 中文 */
-export function portfolioStatusText(status?: string): string {
-  if (status === 'blocked') return '阻塞';
-  if (status === 'at_risk') return '风险';
-  if (status === 'watch') return '观察';
-  if (status === 'healthy') return '健康';
-  return '未知';
-}
+/** 项目组合状态 → 中文 (与汇总/焦点状态同形) */
+export const portfolioStatusText = (value?: string) => lookupStatus(OPERATING_STATUS_MAP, value);
+
+// ─── 覆盖率色调 ───
 
 /**
  * 覆盖率分数 → 状态色调.
@@ -83,6 +96,8 @@ export function coverageTone(score: number, failureCount = 0, warningCount = 0):
   if (warningCount > 0 || score < 85) return 'degraded';
   return 'online';
 }
+
+// ─── 操作负载 ───
 
 /** 操作负载计数器接口 (用于 actionLoadTone) */
 export interface ActionLoadCounters {
@@ -109,3 +124,4 @@ export function actionLoadTone(focus: ActionLoadCounters): 'online' | 'offline' 
   ) return 'degraded';
   return 'online';
 }
+

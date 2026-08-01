@@ -87,10 +87,11 @@ export function tokenizeSearchText(value: string): string[] {
 export function expandSearchAliases(values: string[]): string[] {
   const seed = new Set(values.flatMap((value) => tokenizeSearchText(value)));
   if (seed.size === 0) return [];
+  const seedArray = [...seed]; // 复用，避免每次迭代重新展开
   for (const aliases of SEARCH_ALIAS_GROUPS) {
     const matched = aliases.some((alias) => {
       const normalizedAlias = normalizeSearchText(alias);
-      return [...seed].some((term) => term.includes(normalizedAlias) || normalizedAlias.includes(term));
+      return seedArray.some((term) => term.includes(normalizedAlias) || normalizedAlias.includes(term));
     });
     if (matched) {
       aliases.forEach((alias) => {
