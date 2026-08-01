@@ -4,6 +4,7 @@ import AlertFeedSection from './home/AlertFeedSection';
 import MetricsTrendSection from './home/MetricsTrendSection';
 import RecentTasksSection from './home/RecentTasksSection';
 import GovernanceOverviewSection from './home/GovernanceOverviewSection';
+import { openCockpitNavigationTarget } from './cockpitNavigation';
 
 interface HealthSummary {
   health_score: number;
@@ -282,8 +283,8 @@ export default function HomePage({ onTabChange }: HomePageProps) {
       <AlertFeedSection
         alerts={alerts}
         limit={3}
-        onViewAll={() => window.location.hash = '#alerts'}
-        onConfigureRules={() => window.location.hash = '#alerts/rules'}
+        onViewAll={() => openCockpitNavigationTarget({ tab: 'AlertCenter' })}
+        onConfigureRules={() => openCockpitNavigationTarget({ tab: 'AlertCenter', alertTab: 'rules' })}
       />
 
       {/* 关键指标趋势 */}
@@ -297,7 +298,7 @@ export default function HomePage({ onTabChange }: HomePageProps) {
       <RecentTasksSection
         tasks={tasks}
         limit={3}
-        onViewAll={() => window.location.hash = '#tasks'}
+        onViewAll={() => openCockpitNavigationTarget({ tab: 'TaskCenter' })}
       />
 
       {/* 核心治理与战役大盘 */}

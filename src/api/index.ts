@@ -92,32 +92,13 @@ export type {
   SystemHealthData,
 } from './hooks';
 
-// ── HomePage Hooks ──
-export {
-  useHealthSummary,
-  useRecentAlerts,
-  useRecentTasks,
-  useMetricsTrend,
-  useThoughts,
-  useHomeSystemMap,
-  useDraftTasks,
-  useHomePageData,
-} from './homePageHooks';
-
-export type {
-  HealthSummary,
-  Alert,
-  AlertListResponse as HomePageAlertListResponse,
-  Task,
-  TaskListResponse as HomePageTaskListResponse,
-  MetricsTrend,
-  Thought,
-  ThoughtsResponse,
-  HomeSystemMap,
-  DraftTaskSummary,
-  DraftTasksResponse,
-  HomePageData,
-} from './homePageHooks';
-
 // ── Provider ──
 export { ApiProvider, useQueryClientInstance } from './provider';
+
+// ── Fetch 包装器 (带超时/错误处理) ──
+export {
+  fetchWithTimeout,
+  readFetchResult,
+  DEFAULT_FETCH_TIMEOUT_MS,
+} from './fetch';
+export type { FetchResult } from './fetch';
