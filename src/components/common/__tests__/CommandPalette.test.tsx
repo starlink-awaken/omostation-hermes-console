@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { CommandPalette, useKeyboardShortcuts } from '../CommandPalette'
+import { CommandPalette } from '../CommandPalette'
+import { useKeyboardShortcuts } from '../CommandPalette'
 
 describe('CommandPalette', () => {
   it('does not render when closed', () => {
@@ -117,6 +118,29 @@ describe('useKeyboardShortcuts', () => {
     render(<TestComponent />)
     const input = screen.getByTestId('input')
     fireEvent.keyDown(input, { key: 'k', ctrlKey: true })
+
+    expect(action).not.toHaveBeenCalled()
+  })
+
+  it('ignores shortcuts when target is a button or select control', () => {
+    const action = vi.fn()
+    function TestComponent() {
+      useKeyboardShortcuts({
+        shortcuts: [{ key: 'k', ctrl: true, description: 'Open', action }],
+      })
+      return (
+        <>
+          <button data-testid="button" type="button">按钮</button>
+          <select data-testid="select" defaultValue="one" aria-label="选择">
+            <option value="one">一</option>
+          </select>
+        </>
+      )
+    }
+
+    render(<TestComponent />)
+    fireEvent.keyDown(screen.getByTestId('button'), { key: 'k', ctrlKey: true })
+    fireEvent.keyDown(screen.getByTestId('select'), { key: 'k', ctrlKey: true })
 
     expect(action).not.toHaveBeenCalled()
   })
