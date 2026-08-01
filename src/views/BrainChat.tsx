@@ -14,13 +14,22 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   sources?: Array<{ id: string; title: string; score?: number }>;
+  suggestions?: KnowledgeSuggestion[];
   timestamp: string;
+}
+
+interface KnowledgeSuggestion {
+  title: string;
+  score?: number;
+  snippet?: string;
 }
 
 interface AskResponse {
   answer: string;
   sources: Array<{ id: string; title: string; score?: number }>;
   fallback: boolean;
+  knowledge_suggestions?: KnowledgeSuggestion[];
+  memory_used?: { preferences: number; history: number };
 }
 
 const BRAIN_API = '/api/brain';
@@ -83,6 +92,7 @@ export const BrainChat: React.FC = () => {
         role: 'assistant',
         content: data.answer || '抱歉，暂时无法回答。',
         sources: data.sources,
+        suggestions: data.knowledge_suggestions,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
@@ -192,9 +202,26 @@ const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
               <p key={i} className="text-xs text-gray-400">
                 • {s.title}
                 {s.score !== undefined && typeof s.score === 'number'
-                  ? ` (${s.score.toFixed(2)})`
+                  ? ` (${(s.score * 100).toFixed(0)}%)`
                   : ''}
               </p>
+            ))}
+          </div>
+        )}
+        {/* 知识推荐 (Phase 49 T2) */}
+        {message.suggestions && message.suggestions.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-[#2a2a4e]">
+            <p className="text-xs text-blue-400 mb-1">💡 相关知识推荐:</p>
+            {message.suggestions.slice(0, 3).map((s, i) => (
+              <div key={i} className="text-xs text-gray-400 mb-1">
+                <span className="text-blue-300">• {s.title}</span>
+                {s.score !== undefined && typeof s.score === 'number' && (
+                  <span className="text-gray-500 ml-1">{(s.score * 100).toFixed(0)}%</span>
+                )}
+                {s.snippet && (
+                  <p className="text-gray-500 ml-3 truncate">{s.snippet}</p>
+                )}
+              </div>
             ))}
           </div>
         )}

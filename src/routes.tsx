@@ -27,6 +27,7 @@ const ObservabilityView = lazy(() => import('./components/ObservabilityView'));
 const C2GStrategyView = lazy(() => import('./components/C2GStrategyView'));
 const Wave2DashboardView = lazy(() => import('./components/Wave2DashboardView'));
 const QuestBoard = lazy(() => import('./components/QuestBoard'));
+const KnowledgeFlow = lazy(() => import('./components/KnowledgeFlow'));
 const LogViewerPage = lazy(() => import('./components/LogViewerPage'));
 const TaskCenterPage = lazy(() => import('./components/TaskCenterPage'));
 const PerformanceMonitorPage = lazy(() => import('./components/PerformanceMonitorPage'));
@@ -58,6 +59,7 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Assets', path: '/assets', label: '技术资产库', group: '智能与知识', component: AssetsView, icon: 'Briefcase' },
   { id: 'Kems', path: '/kems', label: 'KEMS 质量治理', group: '智能与知识', component: KemsWorkbench, icon: 'FileText' },
   { id: 'Brain', path: '/brain', label: '个人数字大脑', group: '智能助手', component: BrainChat, icon: 'Brain' },
+  { id: 'KnowledgeFlow', path: '/knowledge-flow', label: '知识流动', group: '智能与知识', component: KnowledgeFlow, icon: 'BookOpen' },
   { id: 'Workflows', path: '/workflows', label: '工作流', group: '智能与知识', component: WorkflowsView, icon: 'GitCommit' },
 
   // 系统治理
