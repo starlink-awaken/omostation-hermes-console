@@ -26,14 +26,6 @@ interface Agent {
   status: 'active' | 'revoked';
 }
 
-interface ApiKey {
-  id: string;
-  name: string;
-  created_at: string;
-  last_used_at: string | null;
-  status: 'active' | 'revoked';
-}
-
 export function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [hideRevoked, setHideRevoked] = useState(true);
@@ -43,9 +35,9 @@ export function AgentsPage() {
   const [showApiKeyToken, setShowApiKeyToken] = useState<{ name: string; token: string } | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
 
-  useEffect(() => { loadAgents(); }, []);
-
   const loadAgents = () => { gbrain.agents().then(setAgents).catch(() => {}); };
+
+  useEffect(() => { loadAgents(); }, []);
 
   return (
     <>

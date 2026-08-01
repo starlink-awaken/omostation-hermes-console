@@ -1,8 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ApiProvider } from './api/provider';
 import Dashboard from './components/Dashboard';
-import { ROUTES } from './routes';
 import './index.css';
 
 function App() {

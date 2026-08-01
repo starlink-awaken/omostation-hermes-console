@@ -21,12 +21,12 @@ export function RequestLogPage() {
   const [agentFilter, setAgentFilter] = useState('all');
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
-  useEffect(() => { loadPage(page); }, [page, agentFilter]);
-
   const loadPage = (p: number) => {
     const qs = agentFilter !== 'all' ? `&agent=${encodeURIComponent(agentFilter)}` : '';
     gbrain.requests(p, qs).then(setData).catch(() => {});
   };
+
+  useEffect(() => { loadPage(page); }, [page, agentFilter]);
 
   const timeAgo = (ts: string) => {
     const diff = Date.now() - new Date(ts).getTime();

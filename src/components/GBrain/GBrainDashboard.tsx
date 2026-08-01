@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BarChart3, Database, Users, Settings2, FileText, Activity, ShieldAlert, Heart, Shield } from 'lucide-react';
+import { BarChart3, Database, Users, Settings2, FileText, Activity, Heart, Shield } from 'lucide-react';
 import { gbrain } from '../../api/gbrain';
 import { LoginPage } from './Login';
 import { AgentsPage } from './Agents';

@@ -9,28 +9,51 @@ import React from 'react';
 import { lazy } from 'react';
 
 // Lazy-loaded view components
+// eslint-disable-next-line react-refresh/only-export-components
 const HomePage = lazy(() => import('./components/HomePage'));
+// eslint-disable-next-line react-refresh/only-export-components
 const OverviewPage = lazy(() => import('./components/OverviewPage'));
+// eslint-disable-next-line react-refresh/only-export-components
 const McpMeshView = lazy(() => import('./components/McpMeshView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const TopologyView = lazy(() => import('./components/TopologyView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const ComputeView = lazy(() => import('./components/ComputeView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const EnginesView = lazy(() => import('./components/EnginesView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const AssetsView = lazy(() => import('./components/AssetsView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const KemsWorkbench = lazy(() => import('./components/KemsWorkbench'));
+// eslint-disable-next-line react-refresh/only-export-components
 const BrainChat = lazy(() => import('./views/BrainChat'));
+// eslint-disable-next-line react-refresh/only-export-components
 const WorkflowsView = lazy(() => import('./components/WorkflowsView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const AlertCenterPage = lazy(() => import('./components/AlertCenterPage'));
+// eslint-disable-next-line react-refresh/only-export-components
 const L4HealthView = lazy(() => import('./components/L4HealthView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const DebtView = lazy(() => import('./components/DebtView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const ObservabilityView = lazy(() => import('./components/ObservabilityView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const C2GStrategyView = lazy(() => import('./components/C2GStrategyView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const Wave2DashboardView = lazy(() => import('./components/Wave2DashboardView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const QuestBoard = lazy(() => import('./components/QuestBoard'));
+// eslint-disable-next-line react-refresh/only-export-components
 const KnowledgeFlow = lazy(() => import('./components/KnowledgeFlow'));
+// eslint-disable-next-line react-refresh/only-export-components
 const LogViewerPage = lazy(() => import('./components/LogViewerPage'));
+// eslint-disable-next-line react-refresh/only-export-components
 const TaskCenterPage = lazy(() => import('./components/TaskCenterPage'));
+// eslint-disable-next-line react-refresh/only-export-components
 const PerformanceMonitorPage = lazy(() => import('./components/PerformanceMonitorPage'));
+// eslint-disable-next-line react-refresh/only-export-components
 const SandboxTerminal = lazy(() => import('./components/SandboxTerminal'));
+// eslint-disable-next-line react-refresh/only-export-components
 const SettingsView = lazy(() => import('./components/SettingsView'));
 
 export interface RouteConfig {
