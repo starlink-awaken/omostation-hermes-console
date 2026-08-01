@@ -6,25 +6,47 @@ import ReactFlow, {
   useEdgesState,
   addEdge,
 } from 'reactflow';
+import type { Connection, Edge, Node, NodeMouseHandler } from 'reactflow';
 import 'reactflow/dist/style.css';
+
+type WorkflowNodeInput = {
+  id: string;
+  index?: number;
+  label?: string;
+};
+
+type WorkflowEdgeInput = {
+  source: string;
+  target: string;
+};
+
+type WorkflowNodeData = {
+  label: string;
+};
+
+type WorkflowPayload = {
+  status?: string;
+  nodes?: WorkflowNodeInput[];
+  edges?: WorkflowEdgeInput[];
+};
 
 interface WorkflowGraphProps {
   pipelineName?: string;
   activeSteps?: string[];
-  onNodeClick?: (event: React.MouseEvent, node: any) => void;
-  initialNodes?: any[];
-  initialEdges?: any[];
+  onNodeClick?: NodeMouseHandler;
+  initialNodes?: WorkflowNodeInput[];
+  initialEdges?: WorkflowEdgeInput[];
 }
 
 export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeClick, initialNodes, initialEdges }: WorkflowGraphProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<WorkflowNodeData>>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   useEffect(() => {
     if (initialNodes && initialEdges) {
-      const newNodes = initialNodes.map((n: any) => ({
+      const newNodes: Node<WorkflowNodeData>[] = initialNodes.map((n) => ({
         id: n.id,
-        position: { x: 50 + n.index * 250, y: 100 + (n.index % 2 === 0 ? -50 : 50) },
+        position: { x: 50 + (n.index || 0) * 250, y: 100 + ((n.index || 0) % 2 === 0 ? -50 : 50) },
         data: { label: n.label || n.id },
         style: { 
           background: 'var(--antd-bg-elevated)', 
@@ -35,7 +57,7 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
           boxShadow: activeSteps.includes(n.id) ? 'var(--tech-glow-intense)' : 'none'
         }
       }));
-      const newEdges = initialEdges.map((e: any, i: number) => ({
+      const newEdges: Edge[] = initialEdges.map((e, i) => ({
         id: `e-${i}`,
         source: e.source,
         target: e.target,
@@ -50,11 +72,11 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
     if (!pipelineName) return;
     fetch(`/api/pipeline/${pipelineName}/dag`)
       .then(res => res.json())
-      .then(data => {
+      .then((data: WorkflowPayload) => {
         if (data.status === 'error') return;
-        const newNodes = (data.nodes || []).map((n: any) => ({
+        const newNodes: Node<WorkflowNodeData>[] = (data.nodes || []).map((n) => ({
           id: n.id,
-          position: { x: 50 + n.index * 250, y: 100 + (n.index % 2 === 0 ? -50 : 50) },
+          position: { x: 50 + (n.index || 0) * 250, y: 100 + ((n.index || 0) % 2 === 0 ? -50 : 50) },
           data: { label: n.label },
           style: { 
             background: 'var(--antd-bg-elevated)', 
@@ -66,7 +88,7 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
             cursor: onNodeClick ? 'pointer' : 'default'
           }
         }));
-        const newEdges = (data.edges || []).map((e: any, i: number) => ({
+        const newEdges: Edge[] = (data.edges || []).map((e, i) => ({
           id: `e-${i}`,
           source: e.source,
           target: e.target,
@@ -79,7 +101,7 @@ export default function WorkflowGraph({ pipelineName, activeSteps = [], onNodeCl
   }, [pipelineName, activeSteps, setNodes, setEdges, initialNodes, initialEdges, onNodeClick]);
 
   const onConnect = useCallback(
-    (params: any) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'var(--antd-primary)', strokeWidth: 2 } }, eds)),
+    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'var(--antd-primary)', strokeWidth: 2 } }, eds)),
     [setEdges]
   );
 

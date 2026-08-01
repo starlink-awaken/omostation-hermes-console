@@ -11,6 +11,8 @@ interface MetricsTrendSectionProps {
   healthScoreData: DataPoint[];
   requestsData: DataPoint[];
   errorRateData: DataPoint[];
+  dataQuality?: string;
+  degradedReasons?: string[];
   onTimeRangeChange?: (range: TimeRange) => void;
 }
 
@@ -33,6 +35,8 @@ export default function MetricsTrendSection({
   healthScoreData,
   requestsData,
   errorRateData,
+  dataQuality = 'unavailable',
+  degradedReasons = [],
   onTimeRangeChange,
 }: MetricsTrendSectionProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
@@ -69,6 +73,13 @@ export default function MetricsTrendSection({
           ))}
         </div>
       </div>
+
+      {dataQuality !== 'complete' && (
+        <div className="shell-data-banner" role="status">
+          <strong>指标数据：{dataQuality === 'partial' ? '部分可用' : '不可用'}</strong>
+          <span>{degradedReasons.length > 0 ? degradedReasons.join('；') : '当前没有足够的可信历史样本。'}</span>
+        </div>
+      )}
 
       <div className="metrics-charts-grid">
         <div className="chart-card">

@@ -13,6 +13,11 @@ interface LogEntry {
   created_at: string;
 }
 
+interface AgentFilterOption {
+  value: string;
+  label: string;
+}
+
 export function RequestLogPage() {
   const [data, setData] = useState<{ rows: LogEntry[]; total: number; page: number; pages: number }>({
     rows: [], total: 0, page: 1, pages: 1,
@@ -20,16 +25,49 @@ export function RequestLogPage() {
   const [page, setPage] = useState(1);
   const [agentFilter, setAgentFilter] = useState('all');
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [agentOptions, setAgentOptions] = useState<AgentFilterOption[]>([]);
+  const [agentOptionsError, setAgentOptionsError] = useState<string | null>(null);
+  const [clockNow] = useState(() => Date.now());
 
-  const loadPage = (p: number) => {
+  function loadPage(p: number) {
     const qs = agentFilter !== 'all' ? `&agent=${encodeURIComponent(agentFilter)}` : '';
-    gbrain.requests(p, qs).then(setData).catch(() => {});
-  };
+    setLoading(true);
+    setError(null);
+    gbrain.requests(p, qs)
+      .then(setData)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Failed to load request log'))
+      .finally(() => setLoading(false));
+  }
 
-  useEffect(() => { loadPage(page); }, [page, agentFilter]);
+  useEffect(() => {
+    // 分页或过滤条件变化时刷新请求日志。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadPage(page);
+    // loadPage closes over the current filter and owns this fetch lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, agentFilter]);
+
+  useEffect(() => {
+    gbrain.agents()
+      .then((payload) => {
+        const agents = Array.isArray(payload) ? payload : payload?.items || payload?.agents || [];
+        setAgentOptions(
+          agents
+            .map((agent: { id?: string; name?: string; client_id?: string; client_name?: string; auth_type?: string }) => ({
+              value: agent.auth_type === 'api_key' ? agent.name || agent.id || '' : agent.id || agent.client_id || '',
+              label: agent.name || agent.client_name || agent.id || agent.client_id || 'unknown',
+            }))
+            .filter((agent: AgentFilterOption) => agent.value),
+        );
+        setAgentOptionsError(null);
+      })
+      .catch((reason) => setAgentOptionsError(reason instanceof Error ? reason.message : 'Failed to load agents'));
+  }, []);
 
   const timeAgo = (ts: string) => {
-    const diff = Date.now() - new Date(ts).getTime();
+    const diff = clockNow - new Date(ts).getTime();
     if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
     if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -40,7 +78,7 @@ export function RequestLogPage() {
 
   const formatParams = (params: Record<string, unknown> | null) => {
     if (!params) return null;
-    const { query, slug, partial, limit, ...rest } = params as any;
+    const { query, slug, partial, limit, ...rest } = params;
     const parts: string[] = [];
     if (query) parts.push(`"${query}"`);
     if (slug) parts.push(slug);
@@ -51,7 +89,7 @@ export function RequestLogPage() {
   };
 
   // Collect unique agents for filter (use name for display, token_name for value)
-  const agentMap = new Map<string, string>();
+  const agentMap = new Map<string, string>(agentOptions.map((agent) => [agent.value, agent.label]));
   data.rows.forEach(r => { if (r.token_name) agentMap.set(r.token_name, r.agent_name || r.token_name); });
 
   return (
@@ -65,7 +103,22 @@ export function RequestLogPage() {
         </select>
       </div>
 
-      {data.rows.length === 0 ? (
+      {agentOptionsError && (
+        <div role="status" style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12 }}>
+          Agent filter list unavailable; showing agents found in the current page.
+        </div>
+      )}
+
+      {loading ? (
+        <div role="status" style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+          Loading request log...
+        </div>
+      ) : error ? (
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '12px 16px', color: 'var(--text-danger, #ff4757)', border: '1px solid rgba(255,71,87,0.2)', borderRadius: 8 }}>
+          <span>Unable to load request log: {error}</span>
+          <button className="btn btn-secondary" onClick={() => loadPage(page)}>Retry</button>
+        </div>
+      ) : data.rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
           No requests yet.
         </div>

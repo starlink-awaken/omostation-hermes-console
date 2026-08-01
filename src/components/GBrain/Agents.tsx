@@ -26,7 +26,7 @@ interface Agent {
   status: 'active' | 'revoked';
 }
 
-export function AgentsPage() {
+export function AgentsPage({ focusQuery }: { focusQuery?: string }) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [hideRevoked, setHideRevoked] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
@@ -34,10 +34,35 @@ export function AgentsPage() {
   const [showApiKeyCreate, setShowApiKeyCreate] = useState(false);
   const [showApiKeyToken, setShowApiKeyToken] = useState<{ name: string; token: string } | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadAgents = () => { gbrain.agents().then(setAgents).catch(() => {}); };
+  function loadAgents() {
+    setLoadError(null);
+    gbrain.agents()
+      .then(setAgents)
+      .catch((error) => setLoadError(error instanceof Error ? error.message : 'Failed to load agents'));
+  }
 
-  useEffect(() => { loadAgents(); }, []);
+  useEffect(() => {
+    // 首次挂载时读取智能体目录。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadAgents();
+  }, []);
+
+  useEffect(() => {
+    const query = focusQuery?.replace(/^agent\s+/i, '').trim().toLowerCase();
+    if (!query) return;
+    const matched = agents.find((agent) =>
+      [agent.id, agent.name, agent.client_id, agent.client_name]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase() === query),
+    );
+    if (matched) {
+      // 外部导航查询命中智能体时同步详情选择。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedAgent(matched);
+    }
+  }, [agents, focusQuery]);
 
   return (
     <>
@@ -51,6 +76,16 @@ export function AgentsPage() {
           <button className="btn btn-primary" onClick={() => setShowRegister(true)}>+ OAuth Client</button>
         </div>
       </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '12px 16px', marginBottom: 16, color: 'var(--text-danger, #ff4757)', border: '1px solid rgba(255,71,87,0.2)', borderRadius: 8 }}
+        >
+          <span>Unable to load agents: {loadError}</span>
+          <button className="btn btn-secondary" onClick={loadAgents}>Retry</button>
+        </div>
+      )}
 
       {(() => {
         // Filter once and reuse, so the empty-state guard sees the same
@@ -375,6 +410,7 @@ function CredentialsModal({ credentials, onClose }: {
 
 function AgentDrawer({ agent, onClose, onRevoked }: { agent: Agent; onClose: () => void; onRevoked: () => void }) {
   const [tab, setTab] = useState<'claude-code' | 'chatgpt' | 'claude-cowork' | 'perplexity' | 'cursor' | 'json'>('claude-code');
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const copy = (text: string) => navigator.clipboard.writeText(text);
   const serverUrl = window.location.origin;
 
@@ -602,6 +638,7 @@ function AgentDrawer({ agent, onClose, onRevoked }: { agent: Agent; onClose: () 
           {agent.status === 'active' && (
             <button className="btn btn-danger" onClick={async () => {
               if (!confirm(`Revoke ${agent.name || agent.client_name}? All active tokens will be invalidated.`)) return;
+              setRevokeError(null);
               try {
                 if (agent.auth_type === 'oauth') {
                   await gbrain.revokeClient(agent.id || agent.client_id || '');
@@ -611,9 +648,14 @@ function AgentDrawer({ agent, onClose, onRevoked }: { agent: Agent; onClose: () 
                 onRevoked();
                 onClose();
               } catch (e) {
-                alert('Revoke failed: ' + (e instanceof Error ? e.message : 'unknown error'));
+                setRevokeError(`Revoke failed: ${e instanceof Error ? e.message : 'unknown error'}`);
               }
             }}>Revoke Agent</button>
+          )}
+          {revokeError && (
+            <div role="alert" style={{ color: 'var(--text-danger, #ff4757)', fontSize: 13, marginTop: 10 }}>
+              {revokeError}
+            </div>
           )}
           {agent.status === 'revoked' && (
             <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>This agent has been revoked.</span>

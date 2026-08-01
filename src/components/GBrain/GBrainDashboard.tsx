@@ -16,66 +16,109 @@ interface FeedEvent {
   timestamp: string;
 }
 
-export function DashboardPage() {
+type KnowledgeDashboardSubTab = 'monitor' | 'memory' | 'agents' | 'calibration' | 'logs';
+
+interface DashboardPageProps {
+  initialSubTab?: KnowledgeDashboardSubTab;
+  initialQuery?: string;
+}
+
+export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: DashboardPageProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [subTab, setSubTab] = useState<'monitor' | 'memory' | 'agents' | 'calibration' | 'logs'>('monitor');
+  const [subTab, setSubTab] = useState<KnowledgeDashboardSubTab>(initialSubTab);
   
   const [stats, setStats] = useState({ connected_agents: 0, requests_today: 0, active_tokens: 0 });
   const [health, setHealth] = useState({ expiring_soon: 0, error_rate: '0%' });
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [sseStatus, setSseStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [loadError, setLoadError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const [clockNow] = useState(() => Date.now());
 
-  const loadStatsAndHealth = async () => {
+  useEffect(() => {
+    // 外部导航切换 GBrain 子页面时同步当前工作区。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSubTab(initialSubTab);
+  }, [initialSubTab]);
+
+  const loadStatsAndHealth = async (): Promise<boolean> => {
     try {
       const statsData = await gbrain.stats();
       setStats(statsData);
       const healthData = await gbrain.health();
       setHealth(healthData);
+      setLoadError(null);
       setIsAuthenticated(true);
-    } catch (err: any) {
-      if (err.message === 'Unauthorized' || err.message === 'HTTP 401') {
+      return true;
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.message === 'Unauthorized' || err.message === 'HTTP 401')) {
         setIsAuthenticated(false);
+        setLoadError(null);
+      } else {
+        setLoadError(err instanceof Error ? err.message : 'GBrain 管理接口不可用');
       }
+      return false;
     }
   };
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || loadError) return;
 
-    loadStatsAndHealth();
+    let cancelled = false;
+    let es: EventSource | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    const reconnectDelay = 5000;
 
-    const es = new EventSource('/admin/events');
-    eventSourceRef.current = es;
-    es.onopen = () => setSseStatus('connected');
-    es.onmessage = (e) => {
-      try {
-        const event = JSON.parse(e.data) as FeedEvent;
-        setEvents(prev => [event, ...prev].slice(0, 50));
-      } catch {}
+    const connectEvents = () => {
+      if (cancelled) return;
+      setSseStatus('connecting');
+      es = new EventSource('/admin/events');
+      eventSourceRef.current = es;
+      es.onopen = () => setSseStatus('connected');
+      es.onmessage = (e) => {
+        try {
+          const event = JSON.parse(e.data) as FeedEvent;
+          setEvents(prev => [event, ...prev].slice(0, 50));
+        } catch {
+          // 忽略无法解析的 keep-alive 或损坏事件，不中断事件流。
+        }
+      };
+      es.onerror = () => {
+        es?.close();
+        eventSourceRef.current = null;
+        if (cancelled) return;
+        setSseStatus('disconnected');
+        // Re-check auth before retrying, then keep the live feed recoverable.
+        void loadStatsAndHealth().then((available) => {
+          if (!available || cancelled) return;
+          reconnectTimer = setTimeout(connectEvents, reconnectDelay);
+        });
+      };
     };
-    es.onerror = () => {
-      setSseStatus('disconnected');
-      // On connection error, check if auth has expired
-      loadStatsAndHealth();
-      setTimeout(() => {
-        setSseStatus('connecting');
-        es.close();
-      }, 5000);
-    };
 
-    const interval = setInterval(() => {
-      loadStatsAndHealth();
-    }, 15000);
+    const start = async () => {
+      const available = await loadStatsAndHealth();
+      if (!available || cancelled) return;
+
+      connectEvents();
+
+      interval = setInterval(() => {
+        void loadStatsAndHealth();
+      }, 15000);
+    };
+    void start();
 
     return () => {
-      es.close();
-      clearInterval(interval);
+      cancelled = true;
+      es?.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (interval) clearInterval(interval);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadError]);
 
   const timeAgo = (ts: string) => {
-    const diff = Date.now() - new Date(ts).getTime();
+    const diff = clockNow - new Date(ts).getTime();
     if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     return `${Math.floor(diff / 3600000)}h ago`;
@@ -90,6 +133,21 @@ export function DashboardPage() {
           loadStatsAndHealth();
         }} />
       </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <section className="antd-card animate-fade-in" role="alert" style={{ padding: '24px', border: '1px solid var(--antd-border-color)' }}>
+        <h2 style={{ margin: 0, fontSize: 16 }}>GBrain 管理接口暂不可用</h2>
+        <p className="text-muted" style={{ margin: '8px 0 0' }}>
+          统计、凭证和访问日志没有成功读取，页面不会把空数据当成真实的 0。请确认 GBrain admin 服务已挂载后重试。
+        </p>
+        <p style={{ margin: '12px 0', fontSize: 13 }}>原因：{loadError}</p>
+        <button type="button" className="antd-btn" onClick={() => setLoadError(null)}>
+          重试
+        </button>
+      </section>
     );
   }
 
@@ -265,7 +323,7 @@ export function DashboardPage() {
 
         {subTab === 'agents' && (
           <div className="animate-fade-in antd-card" style={{ padding: 24, border: '1px solid var(--antd-border-color)' }}>
-            <AgentsPage />
+            <AgentsPage focusQuery={initialQuery} />
           </div>
         )}
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, FileText, Search, Terminal, Network, Settings, Compass, Cpu } from 'lucide-react';
+import { AppWindow, BookOpen, FileText, Map, Network, Plus, Search, Settings, Terminal, Compass, Cpu, Command } from 'lucide-react';
 
 interface QuickAction {
   id: string;
@@ -14,6 +14,20 @@ interface QuickActionsSectionProps {
 }
 
 const ACTIONS: QuickAction[] = [
+  {
+    id: 'system-map',
+    label: '系统地图',
+    icon: <Map size={20} />,
+    tabKey: 'SystemMap',
+    description: '按层级、项目、能力域和路径理解整个 Cockpit',
+  },
+  {
+    id: 'domain-apps',
+    label: '领域应用中心',
+    icon: <AppWindow size={20} />,
+    tabKey: 'DomainApps',
+    description: '进入家庭驾驶舱、OPC 作战台与 family-hub',
+  },
   {
     id: 'c2g-center',
     label: 'C2G 战略决策',
@@ -48,6 +62,20 @@ const ACTIONS: QuickAction[] = [
     icon: <Search size={20} />,
     tabKey: 'Knowledge',
     description: '分布式跨域知识检索与记忆摄取',
+  },
+  {
+    id: 'research-hub',
+    label: '研究中枢',
+    icon: <BookOpen size={20} />,
+    tabKey: 'Research',
+    description: '发起研究、追问、发布与后续动作承接',
+  },
+  {
+    id: 'protocol-workbench',
+    label: '协议工作台',
+    icon: <Command size={20} />,
+    tabKey: 'Protocol',
+    description: '巡检 ecos、model-driven 与协议层桥接',
   },
   {
     id: 'open-terminal',
