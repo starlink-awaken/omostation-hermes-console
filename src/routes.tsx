@@ -10,11 +10,10 @@ import { lazy } from 'react';
 
 // Lazy-loaded view components
 const HomePage = lazy(() => import('./components/HomePage'));
-const OverviewPage = lazy(() => import('./components/HomePage'));
+const OverviewPage = lazy(() => import('./components/OverviewPage'));
 const McpMeshView = lazy(() => import('./components/McpMeshView'));
 const TopologyView = lazy(() => import('./components/TopologyView'));
 const ComputeView = lazy(() => import('./components/ComputeView'));
-const KnowledgeHubView = lazy(() => import('./components/HomePage'));
 const EnginesView = lazy(() => import('./components/EnginesView'));
 const AssetsView = lazy(() => import('./components/AssetsView'));
 const KemsWorkbench = lazy(() => import('./components/KemsWorkbench'));
@@ -54,7 +53,7 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Compute', path: '/compute', label: '算力调配', group: '运行大盘', component: ComputeView, icon: 'Cpu' },
 
   // 智能与知识
-  { id: 'Knowledge', path: '/knowledge', label: '知识中枢', group: '智能与知识', component: KnowledgeHubView, icon: 'Database' },
+  { id: 'Knowledge', path: '/knowledge', label: '知识中枢', group: '智能与知识', component: HomePage, icon: 'Database' },
   { id: 'Engines', path: '/engines', label: '引擎调度', group: '智能与知识', component: EnginesView, icon: 'Cpu' },
   { id: 'Assets', path: '/assets', label: '技术资产库', group: '智能与知识', component: AssetsView, icon: 'Briefcase' },
   { id: 'Kems', path: '/kems', label: 'KEMS 质量治理', group: '智能与知识', component: KemsWorkbench, icon: 'FileText' },

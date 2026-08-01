@@ -1,31 +1,11 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import {
   Activity,
-  Server,
-  Cpu,
-  Database,
-  CheckCircle,
-  AlertTriangle,
-  XCircle,
   Search,
   Settings,
-  Terminal,
-  GitCommit,
-  Network,
-  Trophy,
-  LayoutDashboard,
-  Heart,
-  Bell,
-  FileText,
-  BarChart3,
-  ClipboardList,
-  Zap,
   Command,
-  Compass,
-  Globe,
-  Briefcase,
-  Brain
+  Zap,
 } from 'lucide-react';
 import { ROUTES, getRouteById, getRouteByPath } from '../routes';
 import Breadcrumb from './common/Breadcrumb';
@@ -34,29 +14,95 @@ import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
 import { useKeyboardShortcuts } from './common/CommandPalette';
 import './Dashboard.css';
 
-interface Service {
-  id: string;
-  name: string;
-  status: 'online' | 'offline' | 'degraded';
-  uptime: string;
-  latency: string;
+// Lazy-loaded view components
+const HomePage = React.lazy(() => import('./HomePage'));
+const OverviewPage = React.lazy(() => import('./OverviewPage'));
+const McpMeshView = React.lazy(() => import('./McpMeshView'));
+const TopologyView = React.lazy(() => import('./TopologyView'));
+const ComputeView = React.lazy(() => import('./ComputeView'));
+const EnginesView = React.lazy(() => import('./EnginesView'));
+const AssetsView = React.lazy(() => import('./AssetsView'));
+const KemsWorkbench = React.lazy(() => import('./KemsWorkbench'));
+const BrainChat = React.lazy(() => import('../views/BrainChat'));
+const WorkflowsView = React.lazy(() => import('./WorkflowsView'));
+const AlertCenterPage = React.lazy(() => import('./AlertCenterPage'));
+const L4HealthView = React.lazy(() => import('./L4HealthView'));
+const DebtView = React.lazy(() => import('./DebtView'));
+const ObservabilityView = React.lazy(() => import('./ObservabilityView'));
+const C2GStrategyView = React.lazy(() => import('./C2GStrategyView'));
+const Wave2DashboardView = React.lazy(() => import('./Wave2DashboardView'));
+const QuestBoard = React.lazy(() => import('./QuestBoard'));
+const KnowledgeFlow = React.lazy(() => import('./KnowledgeFlow'));
+const LogViewerPage = React.lazy(() => import('./LogViewerPage'));
+const TaskCenterPage = React.lazy(() => import('./TaskCenterPage'));
+const PerformanceMonitorPage = React.lazy(() => import('./PerformanceMonitorPage'));
+const SandboxTerminal = React.lazy(() => import('./SandboxTerminal'));
+const SettingsView = React.lazy(() => import('./SettingsView'));
+
+// Icon mapping for dynamic sidebar generation
+const ICON_MAP: Record<string, React.ComponentType<{ size: number; 'aria-hidden'?: boolean; className?: string }>> = {
+  LayoutDashboard: (props) => <Activity {...props} />,
+  Globe: (props) => <Activity {...props} />,
+  Network: (props) => <Activity {...props} />,
+  Cpu: (props) => <Activity {...props} />,
+  Database: (props) => <Activity {...props} />,
+  Briefcase: (props) => <Activity {...props} />,
+  FileText: (props) => <Activity {...props} />,
+  Brain: (props) => <Activity {...props} />,
+  BookOpen: (props) => <Activity {...props} />,
+  GitCommit: (props) => <Activity {...props} />,
+  Bell: (props) => <Activity {...props} />,
+  Heart: (props) => <Activity {...props} />,
+  BarChart3: (props) => <Activity {...props} />,
+  Compass: (props) => <Activity {...props} />,
+  Zap: (props) => <Activity {...props} />,
+  ClipboardList: (props) => <Activity {...props} />,
+  Terminal: (props) => <Settings {...props} />,
+  Trophy: (props) => <Activity {...props} />,
+  Settings: (props) => <Settings {...props} />,
+};
+
+function getIconComponent(iconName?: string): React.ComponentType<{ size: number; 'aria-hidden'?: boolean; className?: string }> {
+  return ICON_MAP[iconName || 'LayoutDashboard'] || (() => <Activity size={16} aria-hidden="true" />);
 }
 
-const mockServices: Service[] = [
-  { id: '1', name: 'Agora Mesh', status: 'online', uptime: '99.9%', latency: '12ms' },
-  { id: '2', name: 'Minerva Research', status: 'online', uptime: '99.5%', latency: '45ms' },
-  { id: '3', name: 'SharedBrain Bridge', status: 'offline', uptime: '0%', latency: '-' },
-  { id: '4', name: 'LLM Gateway', status: 'degraded', uptime: '98.2%', latency: '850ms' },
-  { id: '5', name: 'KOS Substrate', status: 'online', uptime: '100%', latency: '2ms' },
-];
+/** Wrapper: Wave2DashboardView needs onNavigate + onOpenTarget */
+function Wave2Route() {
+  const navigate = useNavigate();
+  const goTo = (tabId: string) => {
+    const route = getRouteById(tabId);
+    navigate(route?.path ?? '/');
+  };
+  const [taskSearchSeed, setTaskSearchSeed] = useState('');
+  return (
+    <Wave2DashboardView
+      onNavigate={goTo}
+      onOpenTarget={(t) => {
+        if (t.taskQuery) setTaskSearchSeed(t.taskQuery);
+        if (t.tab) goTo(t.tab);
+      }}
+    />
+  );
+}
+
+/** Wrapper: TaskCenterPage needs initialSearchQuery */
+function TaskCenterRoute() {
+  return <TaskCenterPage />;
+}
+
+/** Wrapper: HomePage needs onTabChange */
+function HomeRoute() {
+  const navigate = useNavigate();
+  const goTo = (tabId: string) => {
+    const route = getRouteById(tabId);
+    navigate(route?.path ?? '/');
+  };
+  return <HomePage onTabChange={goTo} />;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
-  /** TaskCenter search seed from Wave2 proposal handoff (ADR-0192). */
-  const [taskSearchSeed, setTaskSearchSeed] = useState('');
 
   // Derive activeTab from URL path
   const currentRoute = getRouteByPath(location.pathname);
@@ -68,36 +114,15 @@ export default function Dashboard() {
     navigate(route?.path ?? '/');
   };
 
-  // 命令面板
-  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette([
-    { id: 'home', label: '首页', description: '返回首页', action: () => goTo('Home') },
-    { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => goTo('Overview') },
-    { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => goTo('McpMesh') },
-    { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => goTo('Topology') },
-    { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => goTo('Compute') },
-    { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => goTo('Knowledge') },
-    { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => goTo('Engines') },
-    { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => goTo('Assets') },
-    { id: 'kems', label: 'KEMS 质量治理', description: '查看 OCR 复核队列与质量证据', action: () => goTo('Kems') },
-    { id: 'workflows', label: '工作流', description: '查看工作流', action: () => goTo('Workflows') },
-    { id: 'alerts', label: '告警中心', description: '查看告警', action: () => goTo('AlertCenter') },
-    { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => goTo('L4Health') },
-    { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => goTo('C2G') },
-    { id: 'wave2', label: 'Wave2 预测面板', description: '热力与治理提案', action: () => goTo('Wave2') },
-    { id: 'logs', label: '日志查看器', description: '查看日志', action: () => goTo('LogViewer') },
-    { id: 'tasks', label: '任务中心', description: '查看任务', action: () => goTo('TaskCenter') },
-    { id: 'performance', label: '性能监控', description: '查看性能', action: () => goTo('Performance') },
-    { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => goTo('Sandbox') },
-    { id: 'debt', label: '债务治理', description: '查看债务', action: () => goTo('Debt') },
-    { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => goTo('Observability') },
-    { id: 'quest', label: '积分冒险', description: '查看积分', action: () => goTo('QuestBoard') },
-    { id: 'settings', label: '系统设置', description: '系统设置', action: () => goTo('Settings') },
-  ]);
+  // Command palette
+  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette(
+    ROUTES.map(r => ({ id: r.id, label: r.label, description: r.label, action: () => goTo(r.id) })),
+  );
 
-  // 快捷操作面板
+  // Quick actions panel
   const { isOpen: isQuickActionsOpen, open: openQuickActions, close: closeQuickActions } = useQuickActions();
 
-  // 键盘快捷键
+  // Keyboard shortcuts
   useKeyboardShortcuts({
     shortcuts: [
       { key: 'k', ctrl: true, description: '打开命令面板', action: openCommandPalette },
@@ -110,145 +135,28 @@ export default function Dashboard() {
     ],
   });
 
-  // 面包屑
+  // Breadcrumb
   const getBreadcrumbItems = () => {
     const items = [];
-    switch (activeTab) {
-      case 'Home':
-        break;
-      case 'Overview':
-      case 'McpMesh':
-      case 'Topology':
-      case 'Compute':
-        items.push({ label: '运行大盘', onClick: () => goTo('Overview') });
-        break;
-      case 'Knowledge':
-      case 'Engines':
-      case 'Assets':
-      case 'Kems':
-      case 'Brain':
-      case 'Workflows':
-        items.push({ label: '智能与知识', onClick: () => goTo('Knowledge') });
-        break;
-      case 'AlertCenter':
-      case 'L4Health':
-      case 'Debt':
-      case 'Observability':
-      case 'C2G':
-        items.push({ label: '系统治理', onClick: () => goTo('AlertCenter') });
-        break;
-      case 'LogViewer':
-      case 'TaskCenter':
-      case 'Performance':
-      case 'Sandbox':
-        items.push({ label: '开发工具', onClick: () => goTo('LogViewer') });
-        break;
-      case 'QuestBoard':
-        items.push({ label: '亲子冒险', onClick: () => goTo('QuestBoard') });
-        break;
-      case 'Settings':
-        items.push({ label: '系统配置', onClick: () => goTo('Settings') });
-        break;
+    const route = getRouteByPath(location.pathname);
+    if (route && route.group !== '首页') {
+      items.push({ label: route.group, onClick: () => goTo(ROUTES.find(r => r.group === route.group)?.id ?? 'Home') });
     }
-    items.push({ label: hero.title.split(' (')[0] });
+    items.push({ label: route?.label ?? '控制台' });
     return items;
   };
 
-  useEffect(() => {
-    // Fetch real data from Agora API
-    const fetchServices = async () => {
-      try {
-        const response = await fetch('/api/services');
-        if (response.ok) {
-          const data = await response.json();
-          // Transform data format to match UI expected props
-          const formattedServices: Service[] = data.map((item: any) => ({
-            id: item.name,
-            name: item.name,
-            status: item.circuit === '断路' ? 'offline' : item.circuit === '半开' ? 'degraded' : 'online',
-            uptime: item.uptime || 'N/A',
-            latency: item.latency || '-',
-          }));
-          setServices(formattedServices.length > 0 ? formattedServices : mockServices);
-        } else {
-          setServices(mockServices);
-        }
-      } catch (error) {
-        console.error('Failed to fetch services:', error);
-        setServices(mockServices);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchServices();
-    const interval = setInterval(fetchServices, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  // Hero content from route config
+  const hero = currentRoute
+    ? { title: currentRoute.label, subtitle: '' }
+    : { title: '控制台', subtitle: 'eCOS 管理面板' };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'online': return <CheckCircle size={14} aria-hidden="true" className="text-success" />;
-      case 'offline': return <XCircle size={14} aria-hidden="true" className="text-danger" />;
-      case 'degraded': return <AlertTriangle size={14} aria-hidden="true" className="text-warning" />;
-      default: return null;
-    }
-  };
-
-  const getHeroContent = () => {
-    switch (activeTab) {
-      case 'Home':
-        return { title: '首页 (Home)', subtitle: '系统健康总览、实时告警、关键指标趋势。' };
-      case 'Overview':
-        return { title: '概览中心 (Overview)', subtitle: '实时监控 eCOS v6 微服务环境，掌握集群全貌。' };
-      case 'McpMesh':
-        return { title: 'BOS URI & MCP 网格 (McpMesh)', subtitle: '分布式新实例动态注册与基于域路由的 BOS URI 在线解析调试。' };
-      case 'Topology':
-        return { title: '全局服务拓扑 (Topology)', subtitle: '可视化服务间的调用流向与网格状态。' };
-      case 'Compute':
-        return { title: '算力调配大盘 (Compute)', subtitle: '查看分布式节点 CPU/GPU 使用率与任务调度。' };
-      case 'Engines':
-        return { title: '引擎调度总线 (Engines)', subtitle: '管理 Kairon, Gbrain 等底层知识与智能引擎。' };
-      case 'Assets':
-        return { title: '技术资产资产库 (Assets)', subtitle: '集中索引自动化工作流 (Workflows)、工具管线 (Pipelines) 与智能体自定义开发技能 (Custom Skills)。' };
-      case 'Kems':
-        return { title: 'KEMS 质量治理 (KEMS)', subtitle: '以质量指标、哈希和证据引用驱动 OCR 复核与知识准入。' };
-      case 'Brain':
-        return { title: '个人数字大脑 (Brain)', subtitle: '基于知识库 + 记忆 + LLM 的智能问答助手。' };
-      case 'Knowledge':
-        return { title: '分布式知识中枢 (Knowledge)', subtitle: '跨域检索与记忆摄取管线的状态和监控。' };
-      case 'Sandbox':
-        return { title: '隔离安全沙箱 (Sandbox)', subtitle: '在线执行测试或运行未校验的任务指令。' };
-      case 'Workflows':
-        return { title: 'MetaOS 工作流编排 (Workflows)', subtitle: '实时跟踪与干预自治 Agent 的运行链路。' };
-      case 'Settings':
-        return { title: '系统底层设置 (Settings)', subtitle: '配置网格路由、API Token 与治理阈值。' };
-      case 'Debt':
-        return { title: '技术债务治理舱 (Debt)', subtitle: '全自动审计技术债务评分，追踪高危风险。' };
-      case 'C2G':
-        return { title: 'C2G 战略决策中心 (C2G)', subtitle: '跟踪系统从战役目标 (Goals) 到治理卡片 (OMO CARDS) 的全生命周期，守护 SSOT 保鲜。' };
-      case 'Wave2':
-        return { title: 'Wave2 预测治理面板 (Wave2)', subtitle: '热力、预测序列与 C2G→OMO 治理提案（c2g.wave2.dashboard.v1）。' };
-      case 'QuestBoard':
-        return { title: '积分冒险看板 (QuestBoard)', subtitle: '让家庭充满正向激励与智慧成长，打通 Quest 生态。' };
-      case 'Observability':
-        return { title: '系统运行可观测 (Observability)', subtitle: '多维度链路日志与可观测性分析面板。' };
-      case 'L4Health':
-        return { title: 'L4 域健康监控 (L4 Health)', subtitle: '实时监控 L4 域健康状态、趋势分析和风险评估。' };
-      case 'AlertCenter':
-        return { title: '告警中心 (Alert Center)', subtitle: '统一告警管理、规则配置、告警历史。' };
-      case 'LogViewer':
-        return { title: '日志查看器 (Log Viewer)', subtitle: '实时日志流、搜索、过滤、导出。' };
-      case 'TaskCenter':
-        return { title: '任务中心 (Task Center)', subtitle: '任务统一管理、状态跟踪、操作控制。' };
-      case 'Performance':
-        return { title: '性能监控 (Performance)', subtitle: 'CPU/内存/磁盘/网络实时监控。' };
-      default:
-        return { title: '控制台', subtitle: 'eCOS 管理面板' };
-    }
-  };
-
-  const hero = getHeroContent();
+  // Group routes by group for sidebar
+  const groupedRoutes = ROUTES.reduce<Record<string, typeof ROUTES>>((acc, route) => {
+    if (!acc[route.group]) acc[route.group] = [];
+    acc[route.group].push(route);
+    return acc;
+  }, {});
 
   return (
     <div className="dashboard-container">
@@ -271,7 +179,7 @@ export default function Dashboard() {
         跳过导航，直接进入主要内容
       </a>
 
-      {/* Sider Navigation Sidebar (AntD Style) */}
+      {/* Sidebar Navigation — generated from ROUTES config */}
       <aside role="complementary" aria-label="控制台侧边栏" className="sidebar">
         <div className="sidebar-header">
           <div className="logo-box" aria-hidden="true">
@@ -279,265 +187,33 @@ export default function Dashboard() {
           </div>
           <h2>Cockpit Console</h2>
         </div>
-        
+
         <nav aria-label="控制台主导航" className="sidebar-nav" role="menu">
-          {/* Group 1: 首页 */}
-          <div className="nav-group-title" id="group-home">首页</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-home"
-            aria-selected={activeTab === 'Home'}
-            className={`nav-item ${activeTab === 'Home' ? 'active' : ''}`}
-            onClick={() => goTo('Home')}
-          >
-            <LayoutDashboard size={16} aria-hidden="true" />
-            <span>首页</span>
-          </button>
-
-          {/* Group 2: 运行大盘 */}
-          <div className="nav-group-title" id="group-monitoring">运行大盘</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-monitoring"
-            aria-selected={activeTab === 'Overview'}
-            className={`nav-item ${activeTab === 'Overview' ? 'active' : ''}`}
-            onClick={() => goTo('Overview')}
-          >
-            <LayoutDashboard size={16} aria-hidden="true" />
-            <span>概览中心</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-monitoring"
-            aria-selected={activeTab === 'McpMesh'}
-            className={`nav-item ${activeTab === 'McpMesh' ? 'active' : ''}`}
-            onClick={() => goTo('McpMesh')}
-          >
-            <Globe size={16} aria-hidden="true" />
-            <span>网格与 MCP</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-monitoring"
-            aria-selected={activeTab === 'Topology'}
-            className={`nav-item ${activeTab === 'Topology' ? 'active' : ''}`}
-            onClick={() => goTo('Topology')}
-          >
-            <Network size={16} aria-hidden="true" />
-            <span>全局拓扑</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-monitoring"
-            aria-selected={activeTab === 'Compute'}
-            className={`nav-item ${activeTab === 'Compute' ? 'active' : ''}`}
-            onClick={() => goTo('Compute')}
-          >
-            <Cpu size={16} aria-hidden="true" />
-            <span>算力调配</span>
-          </button>
-
-          {/* Group 2: 知识与引擎 */}
-          <div className="nav-group-title" id="group-intelligence">智能与知识</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Knowledge'}
-            className={`nav-item ${activeTab === 'Knowledge' ? 'active' : ''}`}
-            onClick={() => goTo('Knowledge')}
-          >
-            <Database size={16} aria-hidden="true" />
-            <span>知识中枢</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Engines'}
-            className={`nav-item ${activeTab === 'Engines' ? 'active' : ''}`}
-            onClick={() => goTo('Engines')}
-          >
-            <Cpu size={16} aria-hidden="true" />
-            <span>引擎调度</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Assets'}
-            className={`nav-item ${activeTab === 'Assets' ? 'active' : ''}`}
-            onClick={() => goTo('Assets')}
-          >
-            <Briefcase size={16} aria-hidden="true" />
-            <span>技术资产库</span>
-          </button>
-          <button
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Kems'}
-            className={`nav-item ${activeTab === 'Kems' ? 'active' : ''}`}
-            onClick={() => goTo('Kems')}
-          >
-            <FileText size={16} aria-hidden="true" />
-            <span>KEMS 质量治理</span>
-          </button>
-
-          {/* Group 6: 个人数字大脑 */}
-          <div className="nav-group-title" id="group-brain">智能助手</div>
-          <button
-            role="menuitem"
-            aria-describedby="group-brain"
-            aria-selected={activeTab === 'Brain'}
-            className={`nav-item ${activeTab === 'Brain' ? 'active' : ''}`}
-            onClick={() => goTo('Brain')}
-          >
-            <Brain size={16} aria-hidden="true" />
-            <span>个人数字大脑</span>
-          </button>
-          <button
-            role="menuitem"
-            aria-describedby="group-intelligence"
-            aria-selected={activeTab === 'Workflows'}
-            className={`nav-item ${activeTab === 'Workflows' ? 'active' : ''}`}
-            onClick={() => goTo('Workflows')}
-          >
-            <GitCommit size={16} aria-hidden="true" />
-            <span>MetaOS 工作流</span>
-          </button>
-
-          {/* Group 3: 治理与可观测 */}
-          <div className="nav-group-title" id="group-governance">系统治理</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'C2G'}
-            className={`nav-item ${activeTab === 'C2G' ? 'active' : ''}`}
-            onClick={() => goTo('C2G')}
-          >
-            <Compass size={16} aria-hidden="true" />
-            <span>C2G 战略中心</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'Wave2'}
-            className={`nav-item ${activeTab === 'Wave2' ? 'active' : ''}`}
-            onClick={() => goTo('Wave2')}
-          >
-            <BarChart3 size={16} aria-hidden="true" />
-            <span>Wave2 预测面板</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'AlertCenter'}
-            className={`nav-item ${activeTab === 'AlertCenter' ? 'active' : ''}`}
-            onClick={() => goTo('AlertCenter')}
-          >
-            <Bell size={16} aria-hidden="true" />
-            <span>告警中心</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'L4Health'}
-            className={`nav-item ${activeTab === 'L4Health' ? 'active' : ''}`}
-            onClick={() => goTo('L4Health')}
-          >
-            <Heart size={16} aria-hidden="true" />
-            <span>L4 域健康</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'Debt'}
-            className={`nav-item ${activeTab === 'Debt' ? 'active' : ''}`}
-            onClick={() => goTo('Debt')}
-          >
-            <Trophy size={16} aria-hidden="true" />
-            <span>技术债务</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-governance"
-            aria-selected={activeTab === 'Observability'}
-            className={`nav-item ${activeTab === 'Observability' ? 'active' : ''}`}
-            onClick={() => goTo('Observability')}
-          >
-            <Activity size={16} aria-hidden="true" />
-            <span>运行可观测</span>
-          </button>
-          {/* Group 4: 开发工具 */}
-          <div className="nav-group-title" id="group-devtools">开发工具</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-devtools"
-            aria-selected={activeTab === 'LogViewer'}
-            className={`nav-item ${activeTab === 'LogViewer' ? 'active' : ''}`}
-            onClick={() => goTo('LogViewer')}
-          >
-            <FileText size={16} aria-hidden="true" />
-            <span>日志查看器</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-devtools"
-            aria-selected={activeTab === 'TaskCenter'}
-            className={`nav-item ${activeTab === 'TaskCenter' ? 'active' : ''}`}
-            onClick={() => goTo('TaskCenter')}
-          >
-            <ClipboardList size={16} aria-hidden="true" />
-            <span>任务中心</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-devtools"
-            aria-selected={activeTab === 'Performance'}
-            className={`nav-item ${activeTab === 'Performance' ? 'active' : ''}`}
-            onClick={() => goTo('Performance')}
-          >
-            <BarChart3 size={16} aria-hidden="true" />
-            <span>性能监控</span>
-          </button>
-          <button 
-            role="menuitem"
-            aria-describedby="group-devtools"
-            aria-selected={activeTab === 'Sandbox'}
-            className={`nav-item ${activeTab === 'Sandbox' ? 'active' : ''}`}
-            onClick={() => goTo('Sandbox')}
-          >
-            <Terminal size={16} aria-hidden="true" />
-            <span>隔离沙箱</span>
-          </button>
-
-          {/* Group 5: 亲子冒险 */}
-          <div className="nav-group-title" id="group-gamification">亲子冒险</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-gamification"
-            aria-selected={activeTab === 'QuestBoard'}
-            className={`nav-item ${activeTab === 'QuestBoard' ? 'active' : ''}`}
-            onClick={() => goTo('QuestBoard')}
-            style={{ fontWeight: '500' }}
-          >
-            <Trophy size={16} aria-hidden="true" className="text-warning" />
-            <span>积分冒险 (Quest)</span>
-          </button>
-
-          {/* Group 5: 系统配置 */}
-          <div className="nav-group-title" id="group-config">系统配置</div>
-          <button 
-            role="menuitem"
-            aria-describedby="group-config"
-            aria-selected={activeTab === 'Settings'}
-            className={`nav-item ${activeTab === 'Settings' ? 'active' : ''}`}
-            onClick={() => goTo('Settings')}
-          >
-            <Settings size={16} aria-hidden="true" />
-            <span>底层设置</span>
-          </button>
+          {Object.entries(groupedRoutes).map(([group, routes]) => (
+            <React.Fragment key={group}>
+              <div className="nav-group-title" id={`group-${group}`}>{group}</div>
+              {routes.map(route => {
+                const IconComp = getIconComponent(route.icon);
+                return (
+                  <button
+                    key={route.id}
+                    role="menuitem"
+                    aria-describedby={`group-${group}`}
+                    aria-selected={activeTab === route.id}
+                    className={`nav-item ${activeTab === route.id ? 'active' : ''}`}
+                    onClick={() => goTo(route.id)}
+                  >
+                    <IconComp size={16} aria-hidden="true" />
+                    <span>{route.label}</span>
+                  </button>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </nav>
       </aside>
 
-      {/* Main Content Area (a11y skip target) */}
+      {/* Main Content Area */}
       <main id="main-content" tabIndex={-1} className="main-content" style={{ outline: 'none' }}>
         <header className="topbar">
           <div className="search-bar" role="search">
@@ -545,18 +221,10 @@ export default function Dashboard() {
             <input type="text" placeholder="搜索服务、模型、智能体..." aria-label="全局搜索输入框" />
           </div>
           <div className="topbar-actions">
-            <button
-              className="topbar-btn"
-              onClick={openCommandPalette}
-              title="命令面板 (Ctrl+K)"
-            >
+            <button className="topbar-btn" onClick={openCommandPalette} title="命令面板 (Ctrl+K)">
               <Command size={16} />
             </button>
-            <button
-              className="topbar-btn"
-              onClick={openQuickActions}
-              title="快捷操作 (Ctrl+J)"
-            >
+            <button className="topbar-btn" onClick={openQuickActions} title="快捷操作 (Ctrl+J)">
               <Zap size={16} />
             </button>
           </div>
@@ -567,221 +235,68 @@ export default function Dashboard() {
         </header>
 
         <div className="content-area">
-          {/* 面包屑导航 */}
+          {/* Breadcrumb */}
           {activeTab !== 'Home' && (
             <Breadcrumb items={getBreadcrumbItems()} />
           )}
 
-          {/* Keyed hero section triggers smooth fade transition upon menu selection */}
+          {/* Hero section */}
           <div key={activeTab} className="hero-section animate-fade-in">
             <h1 className="hero-title">{hero.title}</h1>
             <p className="hero-subtitle">{hero.subtitle}</p>
           </div>
 
-          {activeTab === 'Home' && (
-            <HomePage onTabChange={goTo} />
-          )}
-
-          {activeTab === 'Overview' && (
-            <>
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-icon-wrapper pulse-success" aria-hidden="true">
-                    <Server size={20} />
-                  </div>
-                  <div className="stat-info">
-                    <h3>活跃服务数</h3>
-                    <p className="stat-value">24 / 28</p>
-                  </div>
+          {/* Route content — lazy loaded with Suspense */}
+          <Suspense fallback={<div style={{ padding: 24, color: 'var(--text-muted)' }}>Loading...</div>}>
+            <Routes>
+              <Route path="/" element={<HomeRoute />} />
+              <Route path="/overview" element={<OverviewPage />} />
+              <Route path="/mesh" element={<McpMeshView />} />
+              <Route path="/topology" element={<TopologyView />} />
+              <Route path="/compute" element={<ComputeView />} />
+              <Route path="/knowledge" element={<HomePage onTabChange={goTo} />} />
+              <Route path="/engines" element={<EnginesView />} />
+              <Route path="/assets" element={<AssetsView />} />
+              <Route path="/kems" element={<KemsWorkbench />} />
+              <Route path="/brain" element={
+                <div className="animate-fade-in h-[calc(100vh-2rem)]">
+                  <BrainChat />
                 </div>
-                
-                <div className="stat-card">
-                  <div className="stat-icon-wrapper pulse-accent" aria-hidden="true">
-                    <Cpu size={20} />
-                  </div>
-                  <div className="stat-info">
-                    <h3>大模型请求数</h3>
-                    <p className="stat-value">12.4k</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="services-section">
-                <div className="section-header" style={{ marginBottom: '16px' }}>
-                  <h2 style={{ fontSize: '16px' }}>核心服务节点</h2>
-                  <button className="antd-btn">查看全部</button>
-                </div>
-                
-                <div className="services-list">
-                  {loading ? (
-                    <div className="loading-state">
-                      <div className="spinner" aria-hidden="true"></div>
-                      <p>正在连接 Agora 服务网格...</p>
-                    </div>
-                  ) : (
-                    <table className="services-table">
-                      <thead>
-                        <tr>
-                          <th scope="col">服务名称</th>
-                          <th scope="col">运行状态</th>
-                          <th scope="col">正常运行时间</th>
-                          <th scope="col">响应延迟</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {services.map(svc => (
-                          <tr key={svc.id} className="service-row">
-                            <td className="font-medium" style={{ fontWeight: 500 }}>{svc.name}</td>
-                            <td>
-                              <span className={`status-badge ${svc.status}`}>
-                                {getStatusIcon(svc.status)}
-                                <span style={{ marginLeft: '4px' }}>{svc.status}</span>
-                              </span>
-                            </td>
-                            <td className="text-muted">{svc.uptime}</td>
-                            <td className="text-muted">{svc.latency}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'Topology' && (
-            <TopologyView />
-          )}
-
-          {activeTab === 'Compute' && (
-            <ComputeView />
-          )}
-
-          {activeTab === 'Engines' && (
-            <EnginesView />
-          )}
-
-          {activeTab === 'Knowledge' && (
-            <div className="gbrain-wrapper animate-fade-in">
-              <GBrainDashboard />
-            </div>
-          )}
-
-          {activeTab === 'Workflows' && (
-            <WorkflowsView />
-          )}
-
-          {activeTab === 'Sandbox' && (
-            <SandboxTerminal />
-          )}
-
-          {activeTab === 'Settings' && (
-            <SettingsView />
-          )}
-
-          {activeTab === 'Debt' && (
-            <DebtView />
-          )}
-
-          {activeTab === 'C2G' && (
-            <C2GStrategyView />
-          )}
-
-          {activeTab === 'Wave2' && (
-            <Wave2DashboardView
-              onNavigate={goTo}
-              onOpenTarget={(t) => {
-                if (t.taskQuery) setTaskSearchSeed(t.taskQuery);
-                if (t.tab) goTo(t.tab);
-              }}
-            />
-          )}
-
-          {activeTab === 'McpMesh' && (
-            <McpMeshView />
-          )}
-
-          {activeTab === 'Assets' && (
-            <AssetsView />
-          )}
-
-          {activeTab === 'Kems' && (
-            <KemsWorkbench />
-          )}
-
-          {activeTab === 'Brain' && (
-            <div className="animate-fade-in h-[calc(100vh-2rem)]">
-              <BrainChat />
-            </div>
-          )}
-
-          {activeTab === 'QuestBoard' && (
-            <QuestBoard />
-          )}
-
-          {activeTab === 'Observability' && (
-            <ObservabilityView />
-          )}
-
-          {activeTab === 'L4Health' && (
-            <L4HealthView />
-          )}
-
-          {activeTab === 'AlertCenter' && (
-            <AlertCenterPage />
-          )}
-
-          {activeTab === 'LogViewer' && (
-            <LogViewerPage />
-          )}
-
-          {activeTab === 'TaskCenter' && (
-            <TaskCenterPage initialSearchQuery={taskSearchSeed} />
-          )}
-
-          {activeTab === 'Performance' && (
-            <PerformanceMonitorPage />
-          )}
+              } />
+              <Route path="/knowledge-flow" element={<KnowledgeFlow />} />
+              <Route path="/workflows" element={<WorkflowsView />} />
+              <Route path="/alerts" element={<AlertCenterPage />} />
+              <Route path="/l4-health" element={<L4HealthView />} />
+              <Route path="/debt" element={<DebtView />} />
+              <Route path="/observability" element={<ObservabilityView />} />
+              <Route path="/c2g" element={<C2GStrategyView />} />
+              <Route path="/wave2" element={<Wave2Route />} />
+              <Route path="/logs" element={<LogViewerPage />} />
+              <Route path="/tasks" element={<TaskCenterRoute />} />
+              <Route path="/performance" element={<PerformanceMonitorPage />} />
+              <Route path="/sandbox" element={<SandboxTerminal />} />
+              <Route path="/quests" element={<QuestBoard />} />
+              <Route path="/settings" element={<SettingsView />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </div>
       </main>
 
-      {/* 命令面板 */}
+      {/* Command palette */}
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onClose={closeCommandPalette}
-        commands={[
-          { id: 'home', label: '首页', description: '返回首页', action: () => goTo('Home') },
-          { id: 'overview', label: '概览中心', description: '查看系统概览', action: () => goTo('Overview') },
-          { id: 'topology', label: '全局拓扑', description: '查看服务拓扑', action: () => goTo('Topology') },
-          { id: 'compute', label: '算力调配', description: '查看算力状态', action: () => goTo('Compute') },
-          { id: 'knowledge', label: '知识中枢', description: '查看知识库', action: () => goTo('Knowledge') },
-          { id: 'brain', label: '个人数字大脑', description: '与 AI 助手对话', action: () => goTo('Brain') },
-          { id: 'engines', label: '引擎调度', description: '查看引擎状态', action: () => goTo('Engines') },
-          { id: 'workflows', label: '工作流', description: '查看工作流', action: () => goTo('Workflows') },
-          { id: 'alerts', label: '告警中心', description: '查看告警', action: () => goTo('AlertCenter') },
-          { id: 'l4health', label: 'L4 域健康', description: '查看 L4 域健康', action: () => goTo('L4Health') },
-          { id: 'c2g', label: 'C2G 战略中心', description: '查看战略治理', action: () => goTo('C2G') },
-          { id: 'wave2', label: 'Wave2 预测面板', description: '热力与治理提案', action: () => goTo('Wave2') },
-          { id: 'mcpmesh', label: '网格与 MCP', description: '查看 MCP 实例与 BOS 路由', action: () => goTo('McpMesh') },
-          { id: 'assets', label: '技术资产库', description: '查看技能、管线与工作流', action: () => goTo('Assets') },
-          { id: 'kems', label: 'KEMS 质量治理', description: '查看 OCR 复核队列与质量证据', action: () => goTo('Kems') },
-          { id: 'logs', label: '日志查看器', description: '查看日志', action: () => goTo('LogViewer') },
-          { id: 'tasks', label: '任务中心', description: '查看任务', action: () => goTo('TaskCenter') },
-          { id: 'performance', label: '性能监控', description: '查看性能', action: () => goTo('Performance') },
-          { id: 'sandbox', label: '隔离沙箱', description: '打开终端', action: () => goTo('Sandbox') },
-          { id: 'debt', label: '债务治理', description: '查看债务', action: () => goTo('Debt') },
-          { id: 'observability', label: '可观测性', description: '查看可观测性', action: () => goTo('Observability') },
-          { id: 'quest', label: '积分冒险', description: '查看积分', action: () => goTo('QuestBoard') },
-          { id: 'settings', label: '系统设置', description: '系统设置', action: () => goTo('Settings') },
-        ]}
+        commands={ROUTES.map(r => ({
+          id: r.id,
+          label: r.label,
+          description: r.label,
+          action: () => goTo(r.id),
+        }))}
       />
 
-      {/* 快捷操作面板 */}
-      <QuickActionsPanel
-        isOpen={isQuickActionsOpen}
-        onClose={closeQuickActions}
-      />
+      {/* Quick actions panel */}
+      <QuickActionsPanel isOpen={isQuickActionsOpen} onClose={closeQuickActions} />
     </div>
   );
 }

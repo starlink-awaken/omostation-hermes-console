@@ -53,7 +53,7 @@ function ChartSvg({ type, ariaLabel }: ChartSvgProps) {
 
   useEffect(() => {
     let cancelled = false;
-    api
+    gbrain
       .calibrationChart(type)
       .then(svg => {
         if (!cancelled) setMarkup(svg);
@@ -85,10 +85,10 @@ export function CalibrationPage() {
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    api
+    gbrain
       .calibrationProfile()
       .then(p => {
-        setProfile(p);
+        setProfile(p as CalibrationProfileSummary);
         setLoading(false);
       })
       .catch(err => {

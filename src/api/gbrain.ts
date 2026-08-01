@@ -6,63 +6,44 @@
  * the same interface as the shared client but with GBrain-specific
  * auth semantics.
  *
+ * Returns raw response data directly; throws on error (consistent
+ * with component try/catch patterns).
+ *
  * Replaces: src/components/GBrain/api.ts (deleted after migration)
  */
 
 import { GBRAIN_ENDPOINTS } from './endpoints';
 
-export interface GBrainApiResponse<T> {
-  data: T | null;
-  error: string | null;
-  ok: boolean;
-}
-
 async function gbrainFetch<T>(
   path: string,
   options?: RequestInit,
-): Promise<GBrainApiResponse<T>> {
-  try {
-    const res = await fetch(path, {
-      ...options,
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
+): Promise<T> {
+  const res = await fetch(path, {
+    ...options,
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
 
-    if (res.status === 401) {
-      return { data: null, error: 'Unauthorized', ok: false };
-    }
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      return {
-        data: null,
-        error: (body as { error?: string }).error || `HTTP ${res.status}`,
-        ok: false,
-      };
-    }
-
-    const data = await res.json();
-    return { data, error: null, ok: true };
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    return { data: null, error: message, ok: false };
+  if (res.status === 401) {
+    throw new Error('Unauthorized');
   }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error || `HTTP ${res.status}`);
+  }
+
+  return res.json();
 }
 
-async function gbrainFetchText(path: string): Promise<GBrainApiResponse<string>> {
-  try {
-    const res = await fetch(path, { credentials: 'same-origin' });
-    if (res.status === 401) return { data: null, error: 'Unauthorized', ok: false };
-    if (!res.ok) return { data: null, error: `HTTP ${res.status}`, ok: false };
-    const text = await res.text();
-    return { data: text, error: null, ok: true };
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    return { data: null, error: message, ok: false };
-  }
+async function gbrainFetchText(path: string): Promise<string> {
+  const res = await fetch(path, { credentials: 'same-origin' });
+  if (res.status === 401) throw new Error('Unauthorized');
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
 }
 
 export const gbrain = {
@@ -88,12 +69,41 @@ export const gbrain = {
     ),
 
   agents: () =>
-    gbrainFetch<Array<{ id: string; name: string; status: string }>>(
+    gbrainFetch<Array<{
+      id: string;
+      name: string;
+      auth_type: 'oauth' | 'api_key';
+      client_id?: string;
+      client_name?: string;
+      grant_types: string[];
+      scope: string;
+      created_at: string;
+      last_used_at: string | null;
+      total_requests: number;
+      requests_today: number;
+      token_ttl: number | null;
+      status: 'active' | 'revoked';
+    }>>(
       GBRAIN_ENDPOINTS.listAgents,
     ),
 
   requests: (page: number = 1, qs: string = '') =>
-    gbrainFetch<{ requests: unknown[]; total: number }>(
+    gbrainFetch<{
+      rows: Array<{
+        id: number;
+        token_name: string;
+        agent_name: string;
+        operation: string;
+        latency_ms: number;
+        status: string;
+        params: Record<string, unknown> | null;
+        error_message: string | null;
+        created_at: string;
+      }>;
+      total: number;
+      page: number;
+      pages: number;
+    }>(
       GBRAIN_ENDPOINTS.listRequests(page, qs),
     ),
 
@@ -103,7 +113,7 @@ export const gbrain = {
     ),
 
   createApiKey: (name: string) =>
-    gbrainFetch<{ key: string }>(GBRAIN_ENDPOINTS.createApiKey, {
+    gbrainFetch<{ name: string; token: string }>(GBRAIN_ENDPOINTS.createApiKey, {
       method: 'POST',
       body: JSON.stringify({ name }),
     }),
