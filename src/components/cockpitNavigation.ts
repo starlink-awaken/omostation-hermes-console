@@ -53,7 +53,9 @@ export const TAB_TO_ROUTE: Record<string, string> = {
   L4Health: '/l4-health',
   Debt: '/debt',
   Observability: '/observability',
+  DeliveryJourney: '/delivery-journey',
   LogViewer: '/logs',
+
   TaskCenter: '/tasks',
   Performance: '/performance',
   Sandbox: '/sandbox',

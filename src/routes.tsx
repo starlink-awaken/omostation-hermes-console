@@ -69,6 +69,9 @@ const PerformanceMonitorPage = lazy(() => import('./components/PerformanceMonito
 const SandboxTerminal = lazy(() => import('./components/SandboxTerminal'));
 // eslint-disable-next-line react-refresh/only-export-components
 const SettingsView = lazy(() => import('./components/SettingsView'));
+// eslint-disable-next-line react-refresh/only-export-components
+const DeliveryJourneyView = lazy(() => import('./components/DeliveryJourneyView'));
+
 
 export interface RouteConfig {
   id: string;
@@ -107,6 +110,8 @@ export const ROUTES: RouteConfig[] = [
   { id: 'L4Health', path: '/l4-health', label: 'L4 域健康', group: '系统治理', component: L4HealthView, icon: 'Heart' },
   { id: 'Debt', path: '/debt', label: '债务治理', group: '系统治理', component: DebtView, icon: 'FileText' },
   { id: 'Observability', path: '/observability', label: '可观测性', group: '系统治理', component: ObservabilityView, icon: 'BarChart3' },
+  { id: 'DeliveryJourney', path: '/delivery-journey', label: '工程交付旅程', group: '系统治理', component: DeliveryJourneyView, icon: 'Compass' },
+
   { id: 'C2G', path: '/c2g', label: 'C2G 战略中心', group: '系统治理', component: C2GStrategyView, icon: 'Compass' },
   { id: 'Wave2', path: '/wave2', label: 'Wave2 预测面板', group: '系统治理', component: Wave2DashboardView, icon: 'Zap' },
   { id: 'GBrainAdmin', path: '/gbrain-admin', label: 'GBrain 管理', group: '系统治理', component: GBrainDashboard, icon: 'Brain' },

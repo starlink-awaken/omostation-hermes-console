@@ -27,6 +27,8 @@ export const COCKPIT_PAGE_REGISTRY: CockpitPageRegistryItem[] = [
   { id: 'L4Health', title: 'L4 域健康', group: '系统治理', purpose: '查看 L4 域健康状态与风险。', whenToUse: '比单页看得更全时。', dimensions: ['域健康', '风险', '趋势'] },
   { id: 'Debt', title: '技术债务', group: '系统治理', purpose: '追踪高风险技术债务与治理优先级。', whenToUse: '规划补位和治理投入时。', dimensions: ['技术债', '风险', '优先级'] },
   { id: 'Observability', title: '运行可观测', group: '系统治理', purpose: '查看链路日志与可观测信号。', whenToUse: '需要证据而不是直觉时。', dimensions: ['可观测', '指标', '链路'] },
+  { id: 'DeliveryJourney', title: '工程交付旅程', group: '系统治理', purpose: '查看工程交付与验证 7 阶段实时客观流。', whenToUse: '验证开发落地是否有闭环事实证据时。', dimensions: ['工程', '交付', '验证'] },
+
   { id: 'LogViewer', title: '日志查看器', group: '开发工具', purpose: '实时日志流、搜索、过滤和导出。', whenToUse: '看错误细节时。', dimensions: ['日志', '检索', '证据'] },
   { id: 'TaskCenter', title: '任务中心', group: '开发工具', purpose: '统一管理任务、草稿和承接动作。', whenToUse: '需要把发现变成任务时。', dimensions: ['任务', '草稿', '承接'] },
   { id: 'Performance', title: '性能监控', group: '开发工具', purpose: '查看 CPU、内存、网络与系统性能。', whenToUse: '系统慢、负载高时。', dimensions: ['性能', '资源', '服务'] },
