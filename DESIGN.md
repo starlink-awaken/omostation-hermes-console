@@ -1,7 +1,7 @@
 # DESIGN.md
 
-Hermes Console — operator-facing React SPA for monitoring and managing OMO swarm
-workers and their brain state. Phase A (infrastructure) is complete; Phase B
+Cockpit UI — operator-facing React SPA for monitoring and managing the eCOS multi-agent
+system and its governance state. Phase A (infrastructure) is complete; Phase B
 (verification + test coverage) is pending per the team-plan worker decomposition.
 
 ## Purpose
