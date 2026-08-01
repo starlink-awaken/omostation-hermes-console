@@ -793,3 +793,42 @@ export function useCreateAlertRule() {
     },
   });
 }
+
+// ── Delivery Journey ──
+
+export interface DeliveryStage {
+  name: string;
+  status: 'verified' | 'running' | 'pending' | 'failed' | 'unavailable' | 'merged' | 'open';
+  title: string;
+  details: Record<string, unknown>;
+  last_updated: string;
+}
+
+export interface DeliveryJourneyData {
+  id: string;
+  title: string;
+  status: 'live' | 'stale' | 'failed' | 'unavailable';
+  source: string[];
+  freshness: number;
+  last_updated: string;
+  stages: Record<string, DeliveryStage>;
+}
+
+export interface DeliveryJourneyResponse {
+  journey: DeliveryJourneyData;
+}
+
+export function useDeliveryJourney(fixture?: string) {
+  return useQuery({
+    queryKey: ['delivery-journey', fixture ?? 'LIVE'],
+    queryFn: async () => {
+      const res = await apiFetch<DeliveryJourneyResponse>(API_ENDPOINTS.deliveryJourney.getJourney(fixture));
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load delivery journey');
+      }
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+  });
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Navigation,
   CheckCircle,
@@ -14,76 +14,27 @@ import {
   AlertTriangle,
   ExternalLink,
 } from 'lucide-react';
+import { useDeliveryJourney, type DeliveryJourneyData } from '../api/hooks';
 
 interface DeliveryStage {
   name: string;
   status: 'verified' | 'running' | 'pending' | 'failed' | 'unavailable' | 'merged' | 'open';
   title: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   last_updated: string;
-}
-
-interface DeliveryJourneyData {
-  id: string;
-  title: string;
-  status: 'live' | 'stale' | 'failed' | 'unavailable';
-  source: string[];
-  freshness: number;
-  last_updated: string;
-  stages: Record<string, DeliveryStage>;
 }
 
 export default function DeliveryJourneyView() {
-  const [journey, setJourney] = useState<DeliveryJourneyData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedFixture, setSelectedFixture] = useState<string>('LIVE');
+  const fixtureParam = selectedFixture === 'LIVE' ? undefined : selectedFixture;
+  const { data, isLoading, error, refetch } = useDeliveryJourney(fixtureParam);
 
-  const fetchJourney = async (fixture?: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const param = fixture && fixture !== 'LIVE' ? `?fixture=${fixture}` : '';
-      const response = await fetch(`/api/delivery-journey${param}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.journey) {
-          setJourney(data.journey);
-        } else {
-          setError('Invalid projection payload received.');
-        }
-      } else {
-        setError(`Failed to load journey: HTTP ${response.status}`);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Unable to reach Cockpit Governance API');
-      setJourney({
-        id: 'unavailable-fallback',
-        title: 'Governance Projection Unavailable',
-        status: 'unavailable',
-        source: [],
-        freshness: 0,
-        last_updated: new Date().toISOString(),
-        stages: {},
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchJourney(selectedFixture);
-    const interval = setInterval(() => {
-      if (selectedFixture === 'LIVE') {
-        fetchJourney('LIVE');
-      }
-    }, 15000);
-    return () => clearInterval(interval);
-  }, [selectedFixture]);
+  const journey: DeliveryJourneyData | null = data?.journey ?? null;
+  const loading = isLoading && !journey;
+  const errorMessage: string | null = error instanceof Error ? error.message : null;
 
   const handleFixtureChange = (fixture: string) => {
     setSelectedFixture(fixture);
-    fetchJourney(fixture);
   };
 
   const getStatusBadge = (status: string) => {
@@ -227,7 +178,7 @@ export default function DeliveryJourneyView() {
           </div>
 
           <button
-            onClick={() => fetchJourney(selectedFixture)}
+            onClick={() => { void refetch(); }}
             className="antd-btn"
             style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
             title="手动刷新当前投影"
@@ -268,8 +219,8 @@ export default function DeliveryJourneyView() {
         </div>
       )}
 
-      {/* Unavailable Warning Box */}
-      {(!journey || journey.status === 'unavailable' || error) && (
+      {/* Unavailable Warning Box — only when not loading */}
+      {!loading && (!journey || journey.status === 'unavailable' || errorMessage) && (
         <div style={{
           padding: '1.5rem',
           borderRadius: '8px',
@@ -284,13 +235,13 @@ export default function DeliveryJourneyView() {
         }}>
           <AlertTriangle size={32} />
           <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
-            {error || '当前控制台治理引擎投影服务不可用 (Status: Unavailable)'}
+            {errorMessage || '当前控制台治理引擎投影服务不可用 (Status: Unavailable)'}
           </h3>
           <p style={{ margin: 0, fontSize: '0.9rem', maxWidth: '600px' }}>
             合规守则提示：控制台绝不在没有可验证或真实数据时伪造“绿色通过”默认图表。所有未取到或系统连接断开的数据统一显式降级为不可用。
           </p>
           <button
-            onClick={() => fetchJourney('LIVE')}
+            onClick={() => { void refetch(); }}
             style={{
               padding: '6px 16px',
               borderRadius: '6px',

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DeliveryJourneyView from '../DeliveryJourneyView';
 
 const mockLiveJourney = {
@@ -67,6 +68,15 @@ const mockLiveJourney = {
   },
 };
 
+function withQueryClient(children: React.ReactNode) {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: 0, gcTime: 0, refetchInterval: false, refetchOnWindowFocus: false },
+    },
+  });
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+
 describe('DeliveryJourneyView', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -82,7 +92,7 @@ describe('DeliveryJourneyView', () => {
       json: async () => mockLiveJourney,
     }));
 
-    render(<DeliveryJourneyView />);
+    render(withQueryClient(<DeliveryJourneyView />));
 
     await waitFor(() => {
       expect(screen.getByText('工程交付黄金旅程 (Delivery Journey)')).toBeInTheDocument();
@@ -95,7 +105,7 @@ describe('DeliveryJourneyView', () => {
   it('degrades to unavailable error state when API fails instead of showing fake green', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network offline')));
 
-    render(<DeliveryJourneyView />);
+    render(withQueryClient(<DeliveryJourneyView />));
 
     await waitFor(() => {
       expect(screen.getByText('Network offline')).toBeInTheDocument();
@@ -129,7 +139,7 @@ describe('DeliveryJourneyView', () => {
       };
     }));
 
-    render(<DeliveryJourneyView />);
+    render(withQueryClient(<DeliveryJourneyView />));
 
     await waitFor(() => {
       expect(screen.getByText('意图已确认')).toBeInTheDocument();

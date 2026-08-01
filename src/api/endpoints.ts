@@ -414,6 +414,14 @@ export const ARCH_HEALTH_ENDPOINTS = {
   getHealth: '/api/v1/arch-health',
 } as const;
 
+// ── Delivery Journey ──
+
+export const DELIVERY_JOURNEY_ENDPOINTS = {
+  /** Get delivery journey projection */
+  getJourney: (fixture?: string) =>
+    `/api/delivery-journey${fixture ? `?fixture=${encodeURIComponent(fixture)}` : ''}`,
+} as const;
+
 // ── Export all endpoints ──
 
 export const API_ENDPOINTS = {
@@ -455,4 +463,5 @@ export const API_ENDPOINTS = {
   instance: INSTANCE_ENDPOINTS,
   knowledgeExtended: KNOWLEDGE_EXTENDED_ENDPOINTS,
   archHealth: ARCH_HEALTH_ENDPOINTS,
+  deliveryJourney: DELIVERY_JOURNEY_ENDPOINTS,
 } as const;
