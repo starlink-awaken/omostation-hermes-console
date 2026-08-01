@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { ROUTES, getRouteById, getRouteByPath } from '../routes';
 import Breadcrumb from './common/Breadcrumb';
+import { RouteErrorBoundary } from './common/RouteErrorBoundary';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
 import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
 import { useKeyboardShortcuts } from './common/CommandPalette';
@@ -246,8 +247,9 @@ export default function Dashboard() {
             <p className="hero-subtitle">{hero.subtitle}</p>
           </div>
 
-          {/* Route content — lazy loaded with Suspense */}
+          {/* Route content — lazy loaded with Suspense + Error Boundary */}
           <Suspense fallback={<div style={{ padding: 24, color: 'var(--text-muted)' }}>Loading...</div>}>
+            <RouteErrorBoundary>
             <Routes>
               <Route path="/" element={<HomeRoute />} />
               <Route path="/overview" element={<OverviewPage />} />
@@ -279,6 +281,7 @@ export default function Dashboard() {
               <Route path="/settings" element={<SettingsView />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+          </RouteErrorBoundary>
           </Suspense>
         </div>
       </main>
