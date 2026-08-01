@@ -1,198 +1,240 @@
-import { useState, useEffect, memo } from 'react';
-import ReactFlow, { 
-  Background, 
-  Controls, 
-  MarkerType,
-  useNodesState,
-  useEdgesState,
-  Handle,
-  Position
-} from 'reactflow';
-import type { Node, Edge } from 'reactflow';
-import 'reactflow/dist/style.css';
-import { Server, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
-import './Dashboard.css';
+/**
+ * TopologyView with React Query integration.
+ */
 
-const ServiceNode = memo(({ data }: any) => {
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'online': return <CheckCircle size={12} style={{ color: 'var(--antd-success)' }} />;
-      case 'offline': return <XCircle size={12} style={{ color: 'var(--antd-error)' }} />;
-      case 'degraded': return <AlertTriangle size={12} style={{ color: 'var(--antd-warning)' }} />;
-      default: return null;
-    }
-  };
+import React, { useState } from 'react';
+import { Network, Globe, Server, Activity, RefreshCw } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '../api/client';
+
+// ── Types ──
+
+interface Service {
+  id: string;
+  name: string;
+  status: string;
+  type: string;
+  port?: number;
+  dependencies?: string[];
+}
+
+interface ServiceListResponse {
+  services: Service[];
+}
+
+// ── Hook ──
+
+function useServices() {
+  return useQuery({
+    queryKey: ['services'],
+    queryFn: async () => {
+      const response = await apiFetch<ServiceListResponse>('/api/services');
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to fetch services');
+      }
+      return response.data?.services || [];
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 3,
+  });
+}
+
+// ── Component ──
+
+export default function TopologyView() {
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+
+  const { data: services, isLoading, error } = useServices();
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return 'var(--antd-success)';
-      case 'offline': return 'var(--antd-error)';
-      case 'degraded': return 'var(--antd-warning)';
-      default: return 'var(--antd-text-muted)';
+      case 'healthy':
+      case 'running':
+        return 'var(--antd-success)';
+      case 'degraded':
+      case 'warning':
+        return 'var(--antd-warning)';
+      case 'unhealthy':
+      case 'error':
+      case 'stopped':
+        return 'var(--antd-error)';
+      default:
+        return 'var(--antd-text-muted)';
     }
   };
 
-  return (
-    <div style={{ 
-      padding: '12px 16px', 
-      borderRadius: 'var(--antd-radius-lg)',
-      background: 'rgba(6, 9, 19, 0.9)',
-      border: `1px solid ${getStatusColor(data.status)}`,
-      color: '#fff',
-      minWidth: '160px',
-      boxShadow: `0 0 15px rgba(0, 242, 254, 0.05), inset 0 0 10px rgba(0,0,0,0.8)`,
-      backdropFilter: 'blur(8px)',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      {/* Cybertech grid background effect inside node */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: '100%',
-        background: 'linear-gradient(rgba(0, 242, 254, 0.015) 50%, rgba(0,0,0,0.2) 50%)',
-        backgroundSize: '100% 4px', pointerEvents: 'none', zIndex: 0, opacity: 0.5
-      }} />
-      
-      <Handle type="target" position={Position.Top} style={{ background: getStatusColor(data.status), width: 8, height: 8 }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', position: 'relative', zIndex: 1 }}>
-        <Server size={14} style={{ color: getStatusColor(data.status) }} />
-        <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--antd-text-primary)' }}>{data.name}</span>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--antd-text-secondary)', position: 'relative', zIndex: 1 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {getStatusIcon(data.status)} 
-          <span style={{ textTransform: 'capitalize', color: getStatusColor(data.status), fontWeight: 500 }}>{data.status}</span>
-        </span>
-        {data.latency && <span style={{ color: 'var(--antd-primary)', textShadow: '0 0 4px rgba(0, 242, 254, 0.3)' }}>{data.latency}</span>}
-      </div>
-      <Handle type="source" position={Position.Bottom} style={{ background: getStatusColor(data.status), width: 8, height: 8 }} />
-    </div>
-  );
-});
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'healthy':
+      case 'running':
+        return '健康';
+      case 'degraded':
+      case 'warning':
+        return '降级';
+      case 'unhealthy':
+      case 'error':
+      case 'stopped':
+        return '异常';
+      default:
+        return '未知';
+    }
+  };
 
-const nodeTypes = {
-  serviceNode: ServiceNode,
-};
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'api':
+        return <Server size={16} className="text-primary" />;
+      case 'service':
+        return <Globe size={16} className="text-info" />;
+      case 'database':
+        return <Activity size={16} className="text-warning" />;
+      default:
+        return <Network size={16} className="text-muted" />;
+    }
+  };
 
-export default function TopologyView() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const response = await fetch('/api/services');
-        let rawServices = [];
-        if (response.ok) {
-          rawServices = await response.json();
-        } else {
-          // Fallback mock data
-          rawServices = [
-            { name: 'Agora Mesh', circuit: '闭合', uptime: '99.9%', latency: '12ms' },
-            { name: 'Minerva Research', circuit: '闭合', uptime: '99.5%', latency: '45ms' },
-            { name: 'SharedBrain Bridge', circuit: '断路', uptime: '0%', latency: '-' },
-            { name: 'LLM Gateway', circuit: '半开', uptime: '98.2%', latency: '850ms' },
-            { name: 'KOS Substrate', circuit: '闭合', uptime: '100%', latency: '2ms' },
-          ];
-        }
-
-        const newNodes: Node[] = [];
-        const newEdges: Edge[] = [];
-        
-        const centerX = 350;
-        const centerY = 200;
-        const radius = 180;
-
-        const meshNode = rawServices.find((s: any) => s.name.includes('Agora')) || rawServices[0];
-        const otherNodes = rawServices.filter((s: any) => s !== meshNode);
-
-        // Add Mesh (Central Node)
-        if (meshNode) {
-          const status = meshNode.circuit === '断路' ? 'offline' : meshNode.circuit === '半开' ? 'degraded' : 'online';
-          newNodes.push({
-            id: meshNode.name,
-            type: 'serviceNode',
-            position: { x: centerX, y: centerY },
-            data: { name: meshNode.name, status, latency: meshNode.latency, uptime: meshNode.uptime }
-          });
-        }
-
-        // Add Others
-        otherNodes.forEach((svc: any, index: number) => {
-          const angle = (index / otherNodes.length) * 2 * Math.PI - Math.PI / 2; // Start from top
-          const x = centerX + radius * Math.cos(angle);
-          const y = centerY + radius * Math.sin(angle);
-          const status = svc.circuit === '断路' ? 'offline' : svc.circuit === '半开' ? 'degraded' : 'online';
-
-          newNodes.push({
-            id: svc.name,
-            type: 'serviceNode',
-            position: { x, y },
-            data: { name: svc.name, status, latency: svc.latency, uptime: svc.uptime }
-          });
-
-          // Connect to mesh
-          if (meshNode) {
-            newEdges.push({
-              id: `edge-${meshNode.name}-${svc.name}`,
-              source: meshNode.name,
-              target: svc.name,
-              animated: status === 'online', // animate flow if online
-              style: { stroke: status === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)', strokeWidth: 2, opacity: 0.6 },
-              markerEnd: { 
-                type: MarkerType.ArrowClosed, 
-                color: status === 'offline' ? 'var(--antd-error)' : 'var(--antd-primary)' 
-              }
-            });
-          }
-        });
-
-        setNodes(newNodes);
-        setEdges(newEdges);
-      } catch (error) {
-        console.error('Failed to load topology:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchServices();
-    const interval = setInterval(fetchServices, 5000);
-    return () => clearInterval(interval);
-  }, [setNodes, setEdges]);
+  const displayServices = services || [];
 
   return (
-    <div className="antd-card animate-fade-in" style={{ width: '100%', height: 'calc(100vh - 200px)', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--antd-border-color)' }}>
-        <h2 style={{ fontSize: '15px', fontWeight: 600, margin: 0 }}>全局网络拓扑地图 (Sage View)</h2>
-        <p className="text-muted" style={{ fontSize: '12px', marginTop: '4px' }}>上帝视角：实时服务网格拓扑调用流、心跳响应与熔断状态</p>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Network size={20} aria-hidden="true" className="text-primary" />
+          <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 600 }}>全局服务拓扑</h1>
+        </div>
       </div>
-      
-      <div style={{ flex: 1, position: 'relative' }}>
-        {loading ? (
-          <div className="loading-state" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-            <div className="spinner" aria-hidden="true" style={{ marginBottom: '16px' }}></div>
-            <p className="text-muted">正在探测微服务网格拓扑...</p>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
+          <div className="spinner" style={{ marginBottom: '8px' }} />
+          <div>加载中...</div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div role="alert" style={{ 
+          padding: '16px', 
+          border: '1px solid rgba(255, 71, 87, 0.35)',
+          borderRadius: 'var(--antd-radius-md)',
+          background: 'rgba(255, 71, 87, 0.08)',
+          color: 'var(--antd-error)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Activity size={16} />
+            <strong>服务数据加载失败</strong>
           </div>
-        ) : (
-          <ReactFlow 
-            nodes={nodes} 
-            edges={edges} 
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            nodeTypes={nodeTypes}
-            fitView
-            attributionPosition="bottom-right"
-          >
-            <Background color="rgba(0, 242, 254, 0.05)" gap={24} size={1} />
-            <Controls style={{ 
-              background: 'var(--antd-bg-elevated)', 
-              border: '1px solid var(--antd-border-color)', 
-              fill: 'var(--antd-text-primary)' 
-            }} />
-          </ReactFlow>
-        )}
-      </div>
+          <div style={{ fontSize: '14px' }}>{error.message}</div>
+        </div>
+      )}
+
+      {/* Service Grid */}
+      {displayServices.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+          {displayServices.map((service) => (
+            <div
+              key={service.id}
+              className="antd-card"
+              style={{ 
+                cursor: 'pointer',
+                borderLeft: `4px solid ${getStatusColor(service.status)}`,
+              }}
+              onClick={() => setSelectedService(selectedService?.id === service.id ? null : service)}
+              role="button"
+              tabIndex={0}
+              aria-label={`查看服务 ${service.name}`}
+              onKeyDown={(e) => e.key === 'Enter' && setSelectedService(selectedService?.id === service.id ? null : service)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                {getTypeIcon(service.type)}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>{service.name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+                    类型: {service.type}
+                    {service.port && <span> · 端口: {service.port}</span>}
+                  </div>
+                </div>
+                <span style={{ 
+                  fontSize: '12px', 
+                  fontWeight: 500,
+                  color: getStatusColor(service.status),
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  background: `${getStatusColor(service.status)}15`,
+                }}>
+                  {getStatusText(service.status)}
+                </span>
+              </div>
+              
+              {service.dependencies && service.dependencies.length > 0 && (
+                <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+                  依赖: {service.dependencies.join(', ')}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Service Detail */}
+      {selectedService && (
+        <div className="antd-card">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>服务详情</h2>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>名称</div>
+              <div style={{ fontWeight: 500 }}>{selectedService.name}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>类型</div>
+              <div>{selectedService.type}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>状态</div>
+              <span style={{ 
+                color: getStatusColor(selectedService.status),
+                fontWeight: 500,
+              }}>
+                {getStatusText(selectedService.status)}
+              </span>
+            </div>
+            {selectedService.port && (
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>端口</div>
+                <div>{selectedService.port}</div>
+              </div>
+            )}
+          </div>
+          
+          {selectedService.dependencies && selectedService.dependencies.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '8px' }}>依赖服务</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {selectedService.dependencies.map((dep) => (
+                  <span
+                    key={dep}
+                    style={{
+                      fontSize: '12px',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      background: 'rgba(0, 242, 254, 0.1)',
+                      color: 'var(--antd-primary)',
+                    }}
+                  >
+                    {dep}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,37 +1,91 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * SettingsView with React Query integration.
+ * 
+ * This component uses React Query for data fetching,
+ * replacing the manual useState + useEffect pattern.
+ */
+
+import React, { useState } from 'react';
 import { Activity, GitBranch } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, apiPost } from '../api/client';
 import './Dashboard.css';
 
+// ── Types ──
+
+interface MetricsHistory {
+  timestamp: string;
+  services: number;
+  healthy: number;
+  latency: Record<string, number>;
+}
+
+interface InstanceRegistration {
+  service: string;
+  mcp_endpoint: string;
+}
+
+interface RegisterResult {
+  success?: boolean;
+  error?: string;
+  message?: string;
+}
+
+// ── Hooks ──
+
+function useMetricsHistory() {
+  return useQuery({
+    queryKey: ['metrics-history'],
+    queryFn: async () => {
+      const response = await apiFetch<MetricsHistory>('/api/metrics/history');
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to fetch metrics');
+      }
+      return response.data;
+    },
+    staleTime: 10000, // 10 seconds
+    refetchInterval: 10000,
+    retry: 3,
+  });
+}
+
+function useRegisterInstance() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: InstanceRegistration) => {
+      const formData = new FormData();
+      formData.append('service', data.service);
+      formData.append('mcp_endpoint', data.mcp_endpoint);
+      
+      const response = await apiPost<RegisterResult>('/api/instance', formData);
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to register instance');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      // Invalidate metrics to refresh after registration
+      queryClient.invalidateQueries({ queryKey: ['metrics-history'] });
+    },
+  });
+}
+
+// ── Component ──
+
 export default function SettingsView() {
-  const [metrics, setMetrics] = useState<any>(null);
   const [instanceUrl, setInstanceUrl] = useState('');
   const [instanceService, setInstanceService] = useState('');
-  const [registerResult, setRegisterResult] = useState<any>(null);
+  
+  const { data: metrics, isLoading, error } = useMetricsHistory();
+  const registerMutation = useRegisterInstance();
 
-  const fetchMetrics = async () => {
-    try {
-      const res = await fetch('/api/metrics/history');
-      if (res.ok) setMetrics(await res.json());
-    } catch (e) {}
-  };
-
-  useEffect(() => {
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const fd = new FormData();
-      fd.append('service', instanceService);
-      fd.append('mcp_endpoint', instanceUrl);
-      const res = await fetch('/api/instance', { method: 'POST', body: fd });
-      setRegisterResult(await res.json());
-    } catch (e: any) {
-      setRegisterResult({ error: e.message });
-    }
+    registerMutation.mutate({
+      service: instanceService,
+      mcp_endpoint: instanceUrl,
+    });
   };
 
   return (
@@ -44,7 +98,22 @@ export default function SettingsView() {
           <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>系统运行状态指标</h2>
         </div>
         
-        {metrics ? (
+        {isLoading ? (
+          <div style={{ padding: '12px', textAlign: 'center', color: 'var(--antd-text-secondary)' }}>
+            加载中...
+          </div>
+        ) : error ? (
+          <div role="alert" style={{ 
+            padding: '12px', 
+            border: '1px solid rgba(255, 71, 87, 0.35)',
+            borderRadius: 'var(--antd-radius-md)',
+            background: 'rgba(255, 71, 87, 0.08)',
+            color: 'var(--antd-error)',
+            fontSize: 14,
+          }}>
+            指标加载失败: {error.message}
+          </div>
+        ) : metrics ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ padding: '12px', background: 'rgba(0, 242, 254, 0.03)', border: '1px solid rgba(0, 242, 254, 0.08)', borderRadius: '4px', fontSize: '13px' }}>
               <span style={{ color: 'var(--antd-text-secondary)' }}>监控快照时间: </span> {metrics.timestamp}
@@ -61,61 +130,84 @@ export default function SettingsView() {
             </div>
           </div>
         ) : (
-          <p className="text-muted" style={{ fontSize: '13px' }}>正在加载并同步系统指标数据...</p>
+          <div style={{ padding: '12px', textAlign: 'center', color: 'var(--antd-text-secondary)' }}>
+            暂无指标数据
+          </div>
         )}
       </div>
 
       {/* Instance Registration Card */}
       <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <GitBranch size={18} aria-hidden="true" className="text-accent" />
-          <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>注册分布式新实例 (Instance)</h2>
+          <GitBranch size={18} aria-hidden="true" className="text-primary" />
+          <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>实例注册</h2>
         </div>
         
-        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="reg-service-name" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>目标服务名称 (Service Name)</label>
-            <input 
-              id="reg-service-name"
-              required 
-              type="text" 
-              className="antd-input" 
-              value={instanceService} 
-              onChange={e => setInstanceService(e.target.value)} 
-              placeholder="例如: gbrain-local" 
+        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+              服务名称
+            </label>
+            <input
+              type="text"
+              value={instanceService}
+              onChange={(e) => setInstanceService(e.target.value)}
+              placeholder="例如: my-service"
+              className="antd-input"
+              style={{ width: '100%' }}
             />
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="reg-mcp-url" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>MCP 接入点地址 (Endpoint URL)</label>
-            <input 
-              id="reg-mcp-url"
-              required 
-              type="text" 
-              className="antd-input" 
-              value={instanceUrl} 
-              onChange={e => setInstanceUrl(e.target.value)} 
-              placeholder="http://127.0.0.1:7431" 
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+              MCP 端点
+            </label>
+            <input
+              type="text"
+              value={instanceUrl}
+              onChange={(e) => setInstanceUrl(e.target.value)}
+              placeholder="例如: http://localhost:8080/mcp"
+              className="antd-input"
+              style={{ width: '100%' }}
             />
           </div>
           
-          <button type="submit" className="antd-btn antd-btn-primary" style={{ width: 'fit-content' }}>注册实例</button>
+          <button
+            type="submit"
+            className="antd-btn antd-btn-primary"
+            disabled={registerMutation.isPending || !instanceService || !instanceUrl}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            {registerMutation.isPending ? '注册中...' : '注册实例'}
+          </button>
         </form>
 
-        {registerResult && (
-          <div style={{ 
+        {registerMutation.isSuccess && (
+          <div role="status" style={{ 
             padding: '12px', 
-            background: 'rgba(0,0,0,0.2)', 
-            borderRadius: '4px', 
-            border: `1px solid ${registerResult.error ? 'var(--antd-error)' : 'var(--antd-primary)'}` 
+            border: '1px solid rgba(82, 196, 26, 0.35)',
+            borderRadius: 'var(--antd-radius-md)',
+            background: 'rgba(82, 196, 26, 0.08)',
+            color: 'var(--antd-success)',
+            fontSize: 14,
           }}>
-            <pre style={{ margin: 0, fontSize: '12px', color: registerResult.error ? 'var(--antd-error)' : 'var(--antd-success)', fontFamily: 'monospace' }}>
-              {JSON.stringify(registerResult, null, 2)}
-            </pre>
+            实例注册成功
+          </div>
+        )}
+
+        {registerMutation.isError && (
+          <div role="alert" style={{ 
+            padding: '12px', 
+            border: '1px solid rgba(255, 71, 87, 0.35)',
+            borderRadius: 'var(--antd-radius-md)',
+            background: 'rgba(255, 71, 87, 0.08)',
+            color: 'var(--antd-error)',
+            fontSize: 14,
+          }}>
+            注册失败: {registerMutation.error.message}
           </div>
         )}
       </div>
-
     </div>
   );
 }

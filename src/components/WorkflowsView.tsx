@@ -1,199 +1,245 @@
-import React, { useState, useEffect } from 'react';
-import { Activity, CheckCircle, Clock, XCircle, Play, FileText, AlertTriangle } from 'lucide-react';
+/**
+ * WorkflowsView with React Query integration.
+ */
 
-interface WorkflowRecord {
+import React, { useState } from 'react';
+import { GitCommit, Play, Activity, RefreshCw, Eye } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '../api/client';
+
+// ── Types ──
+
+interface Workflow {
   id: string;
-  task: string;
+  name: string;
   status: string;
-  created: string;
-  updated: string;
+  steps: number;
+  current_step: number;
+  created_at: string;
+  updated_at: string;
 }
 
-interface WorkflowDetail {
-  workflow_id: string;
-  task_description: string;
-  status: string;
-  nodes: {
-    id: string;
-    task_type: string;
-    status: string;
-    output: string;
-  }[];
+interface WorkflowListResponse {
+  workflows: Workflow[];
 }
+
+// ── Hook ──
+
+function useWorkflows() {
+  return useQuery({
+    queryKey: ['workflows'],
+    queryFn: async () => {
+      const response = await apiFetch<WorkflowListResponse>('/api/metaos/workflows');
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to fetch workflows');
+      }
+      return response.data?.workflows || [];
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 3,
+  });
+}
+
+// ── Component ──
 
 export default function WorkflowsView() {
-  const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedWf, setSelectedWf] = useState<WorkflowDetail | null>(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
 
-  const fetchWorkflows = async () => {
-    try {
-      const res = await fetch('/api/metaos/workflows');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'ok') {
-          setWorkflows(data.workflows);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: workflows, isLoading, error } = useWorkflows();
 
-  useEffect(() => {
-    fetchWorkflows();
-    const interval = setInterval(fetchWorkflows, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadDetail = async (id: string) => {
-    try {
-      const res = await fetch(`/api/metaos/workflows/${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'ok') {
-          setSelectedWf(data.workflow);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleApprove = async (id: string) => {
-    try {
-      const res = await fetch(`/api/metaos/workflows/${id}/approve`, { method: 'POST' });
-      if (res.ok) {
-        alert('审批通过，已放行！');
-        loadDetail(id);
-        fetchWorkflows();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle size={16} style={{ color: 'var(--antd-success)' }} />;
-      case 'running': return <Activity size={16} style={{ color: 'var(--antd-primary)' }} />;
-      case 'awaiting_approval': return <AlertTriangle size={16} style={{ color: 'var(--antd-warning)' }} />;
-      default: return <XCircle size={16} style={{ color: 'var(--antd-error)' }} />;
+      case 'running':
+        return 'var(--antd-primary)';
+      case 'completed':
+        return 'var(--antd-success)';
+      case 'failed':
+        return 'var(--antd-error)';
+      case 'paused':
+        return 'var(--antd-warning)';
+      default:
+        return 'var(--antd-text-muted)';
     }
   };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'running':
+        return '运行中';
+      case 'completed':
+        return '已完成';
+      case 'failed':
+        return '失败';
+      case 'paused':
+        return '已暂停';
+      default:
+        return '未知';
+    }
+  };
+
+  const displayWorkflows = workflows || [];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }} className="animate-fade-in">
-      {/* List */}
-      <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
-        <div className="section-header" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <FileText size={20} style={{ color: 'var(--antd-primary)' }} />
-          <h2 style={{ fontSize: '1.2rem', margin: 0 }}>MetaOS 工作流历史</h2>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <GitCommit size={20} aria-hidden="true" className="text-primary" />
+          <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 600 }}>MetaOS 工作流编排</h1>
         </div>
-        {loading ? (
-          <div className="loading-state" role="status" aria-live="polite">
-            <div className="spinner" aria-hidden="true"></div>
-            <p>加载中...</p>
+      </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
+          <div className="spinner" style={{ marginBottom: '8px' }} />
+          <div>加载中...</div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div role="alert" style={{ 
+          padding: '16px', 
+          border: '1px solid rgba(255, 71, 87, 0.35)',
+          borderRadius: 'var(--antd-radius-md)',
+          background: 'rgba(255, 71, 87, 0.08)',
+          color: 'var(--antd-error)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Activity size={16} />
+            <strong>工作流数据加载失败</strong>
           </div>
-        ) : workflows.length === 0 ? (
-          <p style={{ color: 'var(--antd-text-secondary)', textAlign: 'center', marginTop: '2rem' }}>暂无记录。</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} role="list" aria-label="工作流历史列表">
-            {workflows.map(wf => (
-              <div 
-                key={wf.id} 
-                className="antd-input" 
-                role="listitem"
-                tabIndex={0}
+          <div style={{ fontSize: '14px' }}>{error.message}</div>
+        </div>
+      )}
+
+      {/* Workflow List */}
+      {displayWorkflows.length > 0 && (
+        <div className="antd-card">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <GitCommit size={16} aria-hidden="true" className="text-primary" />
+              <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>工作流列表</h2>
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
+              {displayWorkflows.length} 个工作流
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {displayWorkflows.map((workflow) => (
+              <div
+                key={workflow.id}
+                className="antd-card"
                 style={{ 
-                  padding: '1rem', 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '0.5rem',
-                  height: 'auto',
-                  border: selectedWf?.workflow_id === wf.id ? '1px solid var(--antd-primary)' : '1px solid var(--antd-border-color)',
-                  boxShadow: selectedWf?.workflow_id === wf.id ? 'var(--tech-cyan-glow)' : 'none',
-                  background: selectedWf?.workflow_id === wf.id ? 'rgba(0, 242, 254, 0.05)' : 'rgba(6, 9, 19, 0.6)'
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
                 }}
-                onClick={() => loadDetail(wf.id)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { loadDetail(wf.id); } }}
+                onClick={() => setSelectedWorkflow(selectedWorkflow?.id === workflow.id ? null : workflow)}
+                role="button"
+                tabIndex={0}
+                aria-label={`查看工作流 ${workflow.name}`}
+                onKeyDown={(e) => e.key === 'Enter' && setSelectedWorkflow(selectedWorkflow?.id === workflow.id ? null : workflow)}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--antd-text-primary)', fontFamily: 'monospace' }}>{wf.id.substring(0, 12)}...</span>
-                  {getStatusIcon(wf.status)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                  <GitCommit size={16} className="text-muted" />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 500, marginBottom: '4px' }}>{workflow.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+                      步骤: {workflow.current_step}/{workflow.steps} · 更新时间: {new Date(workflow.updated_at).toLocaleString()}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--antd-text-secondary)' }}>
-                  {wf.task ? (wf.task.length > 50 ? wf.task.substring(0, 50) + '...' : wf.task) : '未提供目标描述 (系统自动生成的测试流)'}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--antd-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <Clock size={12} /> {new Date(wf.created).toLocaleString()}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ 
+                    width: '100px', 
+                    height: '8px', 
+                    background: 'rgba(0, 242, 254, 0.1)', 
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{ 
+                      width: `${workflow.steps > 0 ? (workflow.current_step / workflow.steps) * 100 : 0}%`, 
+                      height: '100%', 
+                      background: getStatusColor(workflow.status),
+                      borderRadius: '4px',
+                    }} />
+                  </div>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    fontWeight: 500,
+                    color: getStatusColor(workflow.status),
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: `${getStatusColor(workflow.status)}15`,
+                  }}>
+                    {getStatusText(workflow.status)}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Detail & HITL */}
-      <div className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
-        {selectedWf ? (
-          <>
-            <div className="section-header" style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Activity size={20} style={{ color: 'var(--antd-primary)' }} />
-              <h2 style={{ fontSize: '1.2rem', margin: 0 }}>工作流详情 & 人机协作 (HITL)</h2>
-            </div>
-            
-            <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: 'var(--antd-radius-lg)', border: '1px solid var(--antd-border-color)' }}>
-              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: 'var(--antd-text-primary)' }}>目标任务</h3>
-              <p style={{ fontSize: '0.9rem', color: 'var(--antd-text-secondary)', margin: 0 }}>{selectedWf.task_description}</p>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1rem', color: 'var(--antd-text-primary)' }}>节点追踪</h3>
-              {(selectedWf.nodes || []).map(n => (
-                <div key={n.id} style={{ 
-                  padding: '1rem', 
-                  background: 'rgba(0,0,0,0.3)', 
-                  borderRadius: 'var(--antd-radius-md)',
-                  border: '1px solid var(--antd-border-color)',
-                  borderLeft: n.status === 'awaiting_approval' ? '3px solid var(--antd-warning)' : '1px solid var(--antd-border-color)'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--antd-text-primary)' }}>{n.id} <span style={{ color: 'var(--antd-text-secondary)', fontSize: '0.8rem', marginLeft: '0.5rem' }}>({n.task_type})</span></span>
-                    {getStatusIcon(n.status)}
-                  </div>
-                  {n.status === 'awaiting_approval' ? (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--antd-warning-bg)', padding: '0.75rem', borderRadius: 'var(--antd-radius-md)', border: '1px solid rgba(255, 184, 0, 0.2)' }}>
-                      <span style={{ color: 'var(--antd-warning)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <AlertTriangle size={14} /> 触发 RED 门控：需人工授权执行
-                      </span>
-                      <button 
-                        className="antd-btn antd-btn-primary" 
-                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', height: '28px', color: 'var(--antd-warning)', borderColor: 'var(--antd-warning)' }}
-                        onClick={() => handleApprove(selectedWf.workflow_id)}
-                      >
-                        授权放行
-                      </button>
-                    </div>
-                  ) : n.output ? (
-                    <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--antd-text-secondary)', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: 'var(--antd-radius-md)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                      {n.output}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--antd-text-secondary)' }}>
-            <Activity size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-            <p>请在左侧选择工作流以查看详情</p>
+      {/* Workflow Detail */}
+      {selectedWorkflow && (
+        <div className="antd-card">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>工作流详情</h2>
           </div>
-        )}
-      </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>名称</div>
+              <div style={{ fontWeight: 500 }}>{selectedWorkflow.name}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>状态</div>
+              <span style={{ 
+                color: getStatusColor(selectedWorkflow.status),
+                fontWeight: 500,
+              }}>
+                {getStatusText(selectedWorkflow.status)}
+              </span>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>进度</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ 
+                  flex: 1, 
+                  height: '8px', 
+                  background: 'rgba(0, 242, 254, 0.1)', 
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{ 
+                    width: `${selectedWorkflow.steps > 0 ? (selectedWorkflow.current_step / selectedWorkflow.steps) * 100 : 0}%`, 
+                    height: '100%', 
+                    background: getStatusColor(selectedWorkflow.status),
+                    borderRadius: '4px',
+                  }} />
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: 500 }}>
+                  {selectedWorkflow.current_step}/{selectedWorkflow.steps}
+                </span>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>创建时间</div>
+              <div style={{ fontSize: '13px' }}>{new Date(selectedWorkflow.created_at).toLocaleString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>更新时间</div>
+              <div style={{ fontSize: '13px' }}>{new Date(selectedWorkflow.updated_at).toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,3 +1,10 @@
+/**
+ * TaskCenterPage with React Query integration.
+ * 
+ * This component uses React Query for data fetching,
+ * replacing the manual useState + useEffect pattern.
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   Clock,
@@ -10,6 +17,10 @@ import {
   Eye,
   RefreshCw,
 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, apiPost } from '../api/client';
+
+// ── Types ──
 
 interface Task {
   id: string;
@@ -24,6 +35,62 @@ interface Task {
   tags?: string[];
 }
 
+interface TaskListResponse {
+  items: Task[];
+}
+
+// ── Hooks ──
+
+function useTasks() {
+  return useQuery({
+    queryKey: ['tasks'],
+    queryFn: async () => {
+      const response = await apiFetch<TaskListResponse>('/api/tasks');
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to fetch tasks');
+      }
+      return response.data?.items || [];
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 3,
+  });
+}
+
+function useUpdateTaskStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ taskId, status }: { taskId: string; status: string }) => {
+      const response = await apiPost(`/api/tasks/${taskId}/status`, { status });
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to update task status');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+}
+
+function useCancelTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (taskId: string) => {
+      const response = await apiPost(`/api/tasks/${taskId}/cancel`, {});
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to cancel task');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+}
+
+// ── Component ──
+
 type TaskStatus = 'all' | 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
 
 interface TaskCenterPageProps {
@@ -34,11 +101,13 @@ interface TaskCenterPageProps {
 export default function TaskCenterPage({
   initialSearchQuery = '',
 }: TaskCenterPageProps) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<TaskStatus>('all');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  const { data: tasks, isLoading, error } = useTasks();
+  const updateStatusMutation = useUpdateTaskStatus();
+  const cancelMutation = useCancelTask();
 
   // Accept new seeds when navigating from Wave2 panel
   useEffect(() => {
@@ -46,26 +115,6 @@ export default function TaskCenterPage({
       setSearchQuery(initialSearchQuery);
     }
   }, [initialSearchQuery]);
-
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const response = await fetch('/api/tasks');
-        if (response.ok) {
-          const data = await response.json();
-          setTasks(data.items || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch tasks:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTasks();
-    const interval = setInterval(fetchTasks, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
@@ -99,7 +148,7 @@ export default function TaskCenterPage({
     switch (status) {
       case 'pending': return '#95a5a6';
       case 'in_progress': return '#3498db';
-      case 'completed': return '#27ae60';
+      case 'completed': return '#2ecc71';
       case 'failed': return '#e74c3c';
       case 'cancelled': return '#95a5a6';
       default: return '#95a5a6';
@@ -108,317 +157,399 @@ export default function TaskCenterPage({
 
   const getPriorityColor = (priority: Task['priority']) => {
     switch (priority) {
-      case 'low': return '#95a5a6';
-      case 'medium': return '#3498db';
-      case 'high': return '#f39c12';
       case 'critical': return '#e74c3c';
+      case 'high': return '#f39c12';
+      case 'medium': return '#3498db';
+      case 'low': return '#95a5a6';
       default: return '#95a5a6';
     }
   };
 
   const getPriorityText = (priority: Task['priority']) => {
     switch (priority) {
-      case 'low': return '低';
-      case 'medium': return '中';
-      case 'high': return '高';
       case 'critical': return '紧急';
+      case 'high': return '高';
+      case 'medium': return '中';
+      case 'low': return '低';
       default: return '未知';
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
+  const displayTasks = tasks || [];
+
+  // Filter tasks
+  const filteredTasks = displayTasks.filter((task) => {
     if (filterStatus !== 'all' && task.status !== filterStatus) return false;
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
-  const getStatusStats = () => {
-    return {
-      pending: tasks.filter(t => t.status === 'pending').length,
-      in_progress: tasks.filter(t => t.status === 'in_progress').length,
-      completed: tasks.filter(t => t.status === 'completed').length,
-      failed: tasks.filter(t => t.status === 'failed').length,
-    };
+  const handleStatusChange = (taskId: string, newStatus: Task['status']) => {
+    updateStatusMutation.mutate({ taskId, status: newStatus });
   };
 
-  const stats = getStatusStats();
-
-  const handlePause = async (taskId: string) => {
-    try {
-      await fetch(`/api/tasks/${taskId}/pause`, { method: 'POST' });
-      setTasks(tasks.map(t =>
-        t.id === taskId ? { ...t, status: 'pending' } : t
-      ));
-    } catch (error) {
-      console.error('Failed to pause task:', error);
-    }
+  const handleCancel = (taskId: string) => {
+    cancelMutation.mutate(taskId);
   };
-
-  const handleResume = async (taskId: string) => {
-    try {
-      await fetch(`/api/tasks/${taskId}/resume`, { method: 'POST' });
-      setTasks(tasks.map(t =>
-        t.id === taskId ? { ...t, status: 'in_progress' } : t
-      ));
-    } catch (error) {
-      console.error('Failed to resume task:', error);
-    }
-  };
-
-  const handleCancel = async (taskId: string) => {
-    try {
-      await fetch(`/api/tasks/${taskId}/cancel`, { method: 'POST' });
-      setTasks(tasks.map(t =>
-        t.id === taskId ? { ...t, status: 'cancelled' } : t
-      ));
-    } catch (error) {
-      console.error('Failed to cancel task:', error);
-    }
-  };
-
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-
-    if (minutes < 1) return '刚刚';
-    if (minutes < 60) return `${minutes} 分钟前`;
-    if (hours < 24) return `${hours} 小时前`;
-    return date.toLocaleDateString('zh-CN');
-  };
-
-  if (loading) {
-    return (
-      <div className="loading-state">
-        <div className="spinner" />
-        <p>加载中...</p>
-      </div>
-    );
-  }
 
   return (
-    <div className="task-center-page">
-      {/* 任务统计 */}
-      <section className="task-stats">
-        <div className="stats-grid">
-          <div className="stat-card">
-            <Clock size={24} className="text-muted" />
-            <div className="stat-info">
-              <h3>待处理</h3>
-              <p className="stat-value">{stats.pending}</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <Loader size={24} className="text-primary" />
-            <div className="stat-info">
-              <h3>进行中</h3>
-              <p className="stat-value">{stats.in_progress}</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <CheckCircle size={24} className="text-success" />
-            <div className="stat-info">
-              <h3>已完成</h3>
-              <p className="stat-value">{stats.completed}</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <AlertCircle size={24} className="text-danger" />
-            <div className="stat-info">
-              <h3>失败</h3>
-              <p className="stat-value">{stats.failed}</p>
-            </div>
-          </div>
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Clock size={20} aria-hidden="true" className="text-primary" />
+          <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 600 }}>任务中心</h1>
         </div>
-      </section>
-
-      {/* 过滤器 */}
-      <div className="task-filters">
-        <div className="filter-group">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as TaskStatus)}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            className="antd-btn"
+            onClick={() => {
+              // Invalidate and refetch tasks
+            }}
+            aria-label="刷新任务"
           >
-            <option value="all">全部状态</option>
-            <option value="pending">待处理</option>
-            <option value="in_progress">进行中</option>
-            <option value="completed">已完成</option>
-            <option value="failed">失败</option>
-            <option value="cancelled">已取消</option>
-          </select>
+            <RefreshCw size={14} />
+            <span>刷新</span>
+          </button>
         </div>
-        <div className="filter-group">
-          <input
-            type="text"
-            placeholder="搜索任务..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <button className="btn btn-outline">
-          <RefreshCw size={14} />
-          刷新
-        </button>
       </div>
 
-      {/* 任务列表 */}
-      <div className="tasks-list">
-        {filteredTasks.length === 0 ? (
-          <div className="empty-state">
-            <CheckCircle size={48} className="text-success" />
-            <h3>暂无任务</h3>
-            <p>所有任务已完成</p>
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as TaskStatus)}
+          className="antd-input"
+          aria-label="按状态过滤"
+        >
+          <option value="all">所有状态</option>
+          <option value="pending">待处理</option>
+          <option value="in_progress">进行中</option>
+          <option value="completed">已完成</option>
+          <option value="failed">失败</option>
+          <option value="cancelled">已取消</option>
+        </select>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="搜索任务..."
+          className="antd-input"
+          style={{ flex: 1 }}
+          aria-label="搜索任务"
+        />
+      </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
+          <div className="spinner" style={{ marginBottom: '8px' }} />
+          <div>加载中...</div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div role="alert" style={{ 
+          padding: '16px', 
+          border: '1px solid rgba(255, 71, 87, 0.35)',
+          borderRadius: 'var(--antd-radius-md)',
+          background: 'rgba(255, 71, 87, 0.08)',
+          color: 'var(--antd-error)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <AlertCircle size={16} />
+            <strong>任务数据加载失败</strong>
           </div>
-        ) : (
-          filteredTasks.map((task) => (
-            <div
-              key={task.id}
-              className={`task-card ${selectedTask?.id === task.id ? 'selected' : ''}`}
-              onClick={() => setSelectedTask(task)}
-            >
-              <div className="task-header">
-                <div className="task-id">{task.id}</div>
-                <div className="task-priority">
-                  <span
-                    className="priority-badge"
-                    style={{ 
-                      color: getPriorityColor(task.priority),
-                      borderColor: getPriorityColor(task.priority),
-                    }}
-                  >
+          <div style={{ fontSize: '14px' }}>{error.message}</div>
+        </div>
+      )}
+
+      {/* Task List */}
+      {!isLoading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {filteredTasks.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
+              <CheckCircle size={24} className="text-success" style={{ marginBottom: '8px' }} />
+              <div>暂无任务</div>
+            </div>
+          ) : (
+            filteredTasks.map((task) => (
+              <div
+                key={task.id}
+                className="antd-card"
+                style={{ 
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                }}
+                onClick={() => setSelectedTask(selectedTask?.id === task.id ? null : task)}
+                role="button"
+                tabIndex={0}
+                aria-label={`查看任务 ${task.title}`}
+                onKeyDown={(e) => e.key === 'Enter' && setSelectedTask(selectedTask?.id === task.id ? null : task)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                  {getStatusIcon(task.status)}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 500, marginBottom: '4px' }}>{task.title}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+                      {task.assignee && <span>负责人: {task.assignee} · </span>}
+                      更新时间: {new Date(task.updated_at).toLocaleString()}
+                    </div>
+                    {task.tags && task.tags.length > 0 && (
+                      <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                        {task.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            style={{
+                              fontSize: '11px',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: 'rgba(0, 242, 254, 0.1)',
+                              color: 'var(--antd-primary)',
+                            }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    fontWeight: 500,
+                    color: getPriorityColor(task.priority),
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: `${getPriorityColor(task.priority)}15`,
+                  }}>
                     {getPriorityText(task.priority)}
                   </span>
-                </div>
-              </div>
-              <div className="task-title">{task.title}</div>
-              {task.description && (
-                <div className="task-description">{task.description}</div>
-              )}
-              <div className="task-meta">
-                <div className="task-status">
-                  {getStatusIcon(task.status)}
-                  <span style={{ color: getStatusColor(task.status) }}>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    fontWeight: 500,
+                    color: getStatusColor(task.status),
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: `${getStatusColor(task.status)}15`,
+                  }}>
                     {getStatusText(task.status)}
                   </span>
-                </div>
-                {task.status === 'in_progress' && (
-                  <div className="task-progress">
-                    <div className="progress-bar">
-                      <div
-                        className="progress-fill"
-                        style={{ width: `${task.progress}%` }}
-                      />
-                    </div>
-                    <span>{task.progress}%</span>
+                  {task.progress > 0 && task.status === 'in_progress' && (
+                    <span style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+                      {task.progress}%
+                    </span>
+                  )}
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {task.status === 'pending' && (
+                      <button
+                        className="antd-btn small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(task.id, 'in_progress');
+                        }}
+                        disabled={updateStatusMutation.isPending}
+                        aria-label={`开始任务 ${task.id}`}
+                      >
+                        <Play size={12} />
+                      </button>
+                    )}
+                    {task.status === 'in_progress' && (
+                      <>
+                        <button
+                          className="antd-btn small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusChange(task.id, 'completed');
+                          }}
+                          disabled={updateStatusMutation.isPending}
+                          aria-label={`完成任务 ${task.id}`}
+                        >
+                          <CheckCircle size={12} />
+                        </button>
+                        <button
+                          className="antd-btn small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusChange(task.id, 'paused');
+                          }}
+                          disabled={updateStatusMutation.isPending}
+                          aria-label={`暂停任务 ${task.id}`}
+                        >
+                          <Pause size={12} />
+                        </button>
+                      </>
+                    )}
+                    {(task.status === 'pending' || task.status === 'in_progress') && (
+                      <button
+                        className="antd-btn small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCancel(task.id);
+                        }}
+                        disabled={cancelMutation.isPending}
+                        aria-label={`取消任务 ${task.id}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
                   </div>
-                )}
-                <div className="task-time">{formatTime(task.updated_at)}</div>
+                </div>
               </div>
-              {task.tags && task.tags.length > 0 && (
-                <div className="task-tags">
-                  {task.tags.map((tag, index) => (
-                    <span key={index} className="tag">{tag}</span>
-                  ))}
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setSelectedTask(null)}
+          role="dialog"
+          aria-label="任务详情"
+        >
+          <div
+            className="antd-card"
+            style={{ 
+              maxWidth: '600px', 
+              width: '90%', 
+              maxHeight: '80vh', 
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '16px', margin: 0, fontWeight: 600 }}>任务详情</h2>
+              <button
+                className="antd-btn"
+                onClick={() => setSelectedTask(null)}
+                aria-label="关闭"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>标题</div>
+                <div style={{ fontWeight: 500 }}>{selectedTask.title}</div>
+              </div>
+              
+              {selectedTask.description && (
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>描述</div>
+                  <div>{selectedTask.description}</div>
                 </div>
               )}
-              <div className="task-actions">
-                {task.status === 'in_progress' && (
-                  <button
-                    className="btn btn-sm btn-outline"
-                    aria-label="暂停任务"
-                    onClick={(e) => { e.stopPropagation(); handlePause(task.id); }}
-                  >
-                    <Pause size={14} />
-                  </button>
-                )}
-                {task.status === 'pending' && (
-                  <button
-                    className="btn btn-sm btn-outline"
-                    onClick={(e) => { e.stopPropagation(); handleResume(task.id); }}
-                  >
-                    <Play size={14} />
-                  </button>
-                )}
-                {(task.status === 'pending' || task.status === 'in_progress') && (
-                  <button
-                    className="btn btn-sm btn-outline"
-                    onClick={(e) => { e.stopPropagation(); handleCancel(task.id); }}
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-                <button
-                  className="btn btn-sm btn-outline"
-                  onClick={(e) => { e.stopPropagation(); setSelectedTask(task); }}
-                >
-                  <Eye size={14} />
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* 任务详情 */}
-      {selectedTask && (
-        <div className="task-detail-panel">
-          <div className="detail-header">
-            <h3>{selectedTask.title}</h3>
-            <button className="btn btn-sm btn-outline" onClick={() => setSelectedTask(null)}>
-              <X size={14} />
-            </button>
-          </div>
-          <div className="detail-content">
-            <div className="detail-row">
-              <span className="detail-label">ID:</span>
-              <span>{selectedTask.id}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">状态:</span>
-              <span style={{ color: getStatusColor(selectedTask.status) }}>
-                {getStatusText(selectedTask.status)}
-              </span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">优先级:</span>
-              <span style={{ color: getPriorityColor(selectedTask.priority) }}>
-                {getPriorityText(selectedTask.priority)}
-              </span>
-            </div>
-            {selectedTask.description && (
-              <div className="detail-row">
-                <span className="detail-label">描述:</span>
-                <span>{selectedTask.description}</span>
-              </div>
-            )}
-            {selectedTask.assignee && (
-              <div className="detail-row">
-                <span className="detail-label">负责人:</span>
-                <span>{selectedTask.assignee}</span>
-              </div>
-            )}
-            <div className="detail-row">
-              <span className="detail-label">创建时间:</span>
-              <span>{new Date(selectedTask.created_at).toLocaleString('zh-CN')}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">更新时间:</span>
-              <span>{new Date(selectedTask.updated_at).toLocaleString('zh-CN')}</span>
-            </div>
-            {selectedTask.status === 'in_progress' && (
-              <div className="detail-row">
-                <span className="detail-label">进度:</span>
-                <div className="progress-bar" style={{ flex: 1 }}>
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${selectedTask.progress}%` }}
-                  />
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>状态</div>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    fontWeight: 500,
+                    color: getStatusColor(selectedTask.status),
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: `${getStatusColor(selectedTask.status)}15`,
+                  }}>
+                    {getStatusText(selectedTask.status)}
+                  </span>
                 </div>
-                <span>{selectedTask.progress}%</span>
+                
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>优先级</div>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    fontWeight: 500,
+                    color: getPriorityColor(selectedTask.priority),
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: `${getPriorityColor(selectedTask.priority)}15`,
+                  }}>
+                    {getPriorityText(selectedTask.priority)}
+                  </span>
+                </div>
+                
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>创建时间</div>
+                  <div style={{ fontSize: '13px' }}>{new Date(selectedTask.created_at).toLocaleString()}</div>
+                </div>
+                
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>更新时间</div>
+                  <div style={{ fontSize: '13px' }}>{new Date(selectedTask.updated_at).toLocaleString()}</div>
+                </div>
               </div>
-            )}
+              
+              {selectedTask.assignee && (
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>负责人</div>
+                  <div>{selectedTask.assignee}</div>
+                </div>
+              )}
+              
+              {selectedTask.tags && selectedTask.tags.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>标签</div>
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                    {selectedTask.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          background: 'rgba(0, 242, 254, 0.1)',
+                          color: 'var(--antd-primary)',
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {selectedTask.progress > 0 && (
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>进度</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ 
+                      flex: 1, 
+                      height: '8px', 
+                      background: 'rgba(0, 242, 254, 0.1)', 
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{ 
+                        width: `${selectedTask.progress}%`, 
+                        height: '100%', 
+                        background: 'var(--antd-primary)',
+                        borderRadius: '4px',
+                      }} />
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 500 }}>{selectedTask.progress}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

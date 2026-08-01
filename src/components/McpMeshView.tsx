@@ -1,6 +1,17 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * McpMeshView with React Query integration.
+ * 
+ * This component uses React Query for data fetching,
+ * replacing the manual useState + useEffect pattern.
+ */
+
+import React, { useState } from 'react';
 import { Network, Globe, Play, Send, PlusCircle, Activity, Search, ShieldCheck } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, apiPost } from '../api/client';
 import './Dashboard.css';
+
+// ── Types ──
 
 interface BosService {
   uri: string;
@@ -16,13 +27,75 @@ interface BosHealth {
   metrics: any;
 }
 
+interface ServiceListResponse {
+  services: BosService[];
+}
+
+interface RegisterResult {
+  status: string;
+  message?: string;
+  error?: string;
+}
+
+// ── Hooks ──
+
+function useBosServices() {
+  return useQuery({
+    queryKey: ['bos-services'],
+    queryFn: async () => {
+      const response = await apiFetch<ServiceListResponse>('/api/bos/services');
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to fetch BOS services');
+      }
+      return response.data?.services || [];
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 3,
+  });
+}
+
+function useBosHealth() {
+  return useQuery({
+    queryKey: ['bos-health'],
+    queryFn: async () => {
+      const response = await apiFetch<BosHealth>('/api/bos/health');
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to fetch BOS health');
+      }
+      return response.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 3,
+  });
+}
+
+function useRegisterInstance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, endpoint }: { name: string; endpoint: string }) => {
+      const formData = new FormData();
+      formData.append('service', name);
+      formData.append('mcp_endpoint', endpoint);
+      
+      const response = await apiPost<RegisterResult>('/api/instance', formData);
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to register instance');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bos-services'] });
+      queryClient.invalidateQueries({ queryKey: ['bos-health'] });
+    },
+  });
+}
+
+// ── Component ──
+
 export default function McpMeshView() {
-  const [services, setServices] = useState<BosService[]>([]);
-  const [health, setHealth] = useState<BosHealth | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedDomain, setSelectedDomain] = useState('all');
-  
-  // 实例注册表单
   const [registerName, setRegisterName] = useState('');
   const [registerEndpoint, setRegisterEndpoint] = useState('');
   const [registerStatus, setRegisterStatus] = useState<string | null>(null);
@@ -35,412 +108,354 @@ export default function McpMeshView() {
   const [resolving, setResolving] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    try {
-      const [servicesRes, healthRes] = await Promise.all([
-        fetch('/api/bos/services'),
-        fetch('/api/bos/health')
-      ]);
+  const { data: services, isLoading: servicesLoading, error: servicesError } = useBosServices();
+  const { data: health, isLoading: healthLoading } = useBosHealth();
+  const registerMutation = useRegisterInstance();
 
-      if (servicesRes.ok) {
-        const data = await servicesRes.json();
-        setServices(data.services || []);
-      }
-      if (healthRes.ok) {
-        const data = await healthRes.json();
-        setHealth(data);
-      }
-    } catch (e) {
-      console.error('Failed to fetch McpMesh data:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isLoading = servicesLoading || healthLoading;
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!registerName || !registerEndpoint) return;
+    
     setRegisterStatus(null);
     setRegisterError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('service', registerName);
-      formData.append('mcp_endpoint', registerEndpoint);
-
-      const res = await fetch('/api/instance', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await res.json();
-      if (res.ok && data.status === 'ok') {
-        setRegisterStatus(data.msg || '注册成功！');
-        setRegisterName('');
-        setRegisterEndpoint('');
-        fetchData(); // 刷新网格
-      } else {
-        setRegisterError(data.error || '注册失败');
+    
+    registerMutation.mutate(
+      { name: registerName, endpoint: registerEndpoint },
+      {
+        onSuccess: (data) => {
+          if (data?.status === 'ok') {
+            setRegisterStatus('注册成功');
+            setRegisterName('');
+            setRegisterEndpoint('');
+          } else {
+            setRegisterError(data?.error || '注册失败');
+          }
+        },
+        onError: (error) => {
+          setRegisterError(error.message);
+        },
       }
-    } catch (err: any) {
-      setRegisterError(err.message || '注册发生错误');
-    }
+    );
   };
 
   const handleResolve = async () => {
-    if (!resolveUri) return;
+    if (!resolveUri.trim()) return;
+    
     setResolving(true);
-    setResolveError(null);
     setResolveResult(null);
-
+    setResolveError(null);
+    
     try {
-      // 校验 JSON
-      let parsedArgs = '{}';
+      let args = {};
       try {
-        if (resolveArgs.trim()) {
-          JSON.parse(resolveArgs);
-          parsedArgs = resolveArgs;
-        }
-      } catch (je) {
-        throw new Error('参数 Arguments 必须是合法的 JSON 格式');
+        args = JSON.parse(resolveArgs);
+      } catch (e) {
+        // Use empty args if JSON is invalid
       }
-
-      const res = await fetch(`/api/bos/resolve?uri=${encodeURIComponent(resolveUri)}&arguments=${encodeURIComponent(parsedArgs)}`);
-      const data = await res.json();
-      if (res.ok) {
-        setResolveResult(data);
-      } else {
-        setResolveError(data.error || '解析调用失败');
+      
+      const response = await apiFetch(`/api/bos/resolve?uri=${encodeURIComponent(resolveUri)}&args=${encodeURIComponent(JSON.stringify(args))}`);
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to resolve URI');
       }
-    } catch (err: any) {
-      setResolveError(err.message || '网络或服务端异常');
+      setResolveResult(response.data);
+    } catch (error: any) {
+      setResolveError(error.message);
     } finally {
       setResolving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="loading-state">
-        <div className="spinner" aria-hidden="true"></div>
-        <p>正在读取 Agora 网格拓扑与 BOS 路由注册表...</p>
-      </div>
-    );
-  }
+  const displayServices = services || [];
+  const domains = [...new Set(displayServices.map((s) => s.domain))];
 
-  // 域过滤
-  const filteredServices = services.filter(s => selectedDomain === 'all' || s.domain === selectedDomain);
-  const domains = ['all', 'memory', 'governance', 'analysis', 'persona', 'capability'];
+  // Filter services by domain
+  const filteredServices = selectedDomain === 'all' 
+    ? displayServices 
+    : displayServices.filter((s) => s.domain === selectedDomain);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* 顶部统计面板 */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-info">
-            <h3>网格已注册 BOS 路由</h3>
-            <p className="stat-value">{health?.total_routes || services.length}</p>
-          </div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-success)' }}>
-          <div className="stat-info">
-            <h3>网格健康度</h3>
-            <p className="stat-value" style={{ color: 'var(--antd-success)' }}>
-              {health?.status === 'ok' ? 'Healthy' : 'Degraded'}
-            </p>
-          </div>
-        </div>
-        <div className="stat-card" style={{ borderLeft: '3px solid var(--antd-accent)' }}>
-          <div className="stat-info">
-            <h3>BOS 解析域分类</h3>
-            <p className="stat-value" style={{ fontSize: '20px', fontWeight: 600, marginTop: '8px', color: 'var(--antd-primary)' }}>
-              Memory / Governance / Analysis / Persona / Capability
-            </p>
-          </div>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Network size={20} aria-hidden="true" className="text-primary" />
+          <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 600 }}>BOS URI & MCP 网格</h1>
         </div>
       </div>
 
-      {/* 在线解析与实例注册双栏分区 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px' }}>
-        
-        {/* 左栏：BOS URI 在线解析调用面板 */}
-        <div className="services-section" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div className="section-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Globe size={16} className="text-primary" />
-              <span>BOS URI 路由解析调试器</span>
-            </h3>
+      {/* Loading State */}
+      {isLoading && (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
+          <div className="spinner" style={{ marginBottom: '8px' }} />
+          <div>加载中...</div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {servicesError && (
+        <div role="alert" style={{ 
+          padding: '16px', 
+          border: '1px solid rgba(255, 71, 87, 0.35)',
+          borderRadius: 'var(--antd-radius-md)',
+          background: 'rgba(255, 71, 87, 0.08)',
+          color: 'var(--antd-error)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Activity size={16} />
+            <strong>服务数据加载失败</strong>
           </div>
+          <div style={{ fontSize: '14px' }}>{servicesError.message}</div>
+        </div>
+      )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', display: 'block', marginBottom: '6px' }}>
-                目标 BOS URI
-              </label>
-              <input
-                type="text"
-                placeholder="bos://domain/action..."
-                value={resolveUri}
-                onChange={(e) => setResolveUri(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  fontSize: '13px',
-                  fontFamily: 'monospace',
-                  outline: 'none'
-                }}
-              />
-            </div>
+      {/* Health Summary */}
+      {health && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          <div className="antd-card" style={{ textAlign: 'center' }}>
+            <ShieldCheck size={24} className="text-success" style={{ marginBottom: '8px' }} />
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{health.status}</div>
+            <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>状态</div>
+          </div>
+          <div className="antd-card" style={{ textAlign: 'center' }}>
+            <Network size={24} className="text-primary" style={{ marginBottom: '8px' }} />
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{health.total_routes}</div>
+            <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>总路由数</div>
+          </div>
+          <div className="antd-card" style={{ textAlign: 'center' }}>
+            <Globe size={24} className="text-info" style={{ marginBottom: '8px' }} />
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{Object.keys(health.domains).length}</div>
+            <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>域数量</div>
+          </div>
+        </div>
+      )}
 
-            <div>
-              <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', display: 'block', marginBottom: '6px' }}>
-                调用参数 (JSON)
-              </label>
-              <textarea
-                rows={4}
-                placeholder="{}"
-                value={resolveArgs}
-                onChange={(e) => setResolveArgs(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#a9d1d9',
-                  fontSize: '13px',
-                  fontFamily: 'monospace',
-                  outline: 'none',
-                  resize: 'vertical'
-                }}
-              />
-            </div>
-
+      {/* Domain Filter */}
+      {domains.length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            className={`antd-btn ${selectedDomain === 'all' ? 'antd-btn-primary' : ''}`}
+            onClick={() => setSelectedDomain('all')}
+            aria-label="显示所有域"
+          >
+            全部
+          </button>
+          {domains.map((domain) => (
             <button
-              onClick={handleResolve}
-              disabled={resolving || !resolveUri}
-              className="antd-btn"
-              style={{
-                width: 'fit-content',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                background: 'var(--antd-primary)',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              key={domain}
+              className={`antd-btn ${selectedDomain === domain ? 'antd-btn-primary' : ''}`}
+              onClick={() => setSelectedDomain(domain)}
+              aria-label={`筛选域 ${domain}`}
             >
-              <Send size={14} />
-              <span>{resolving ? '正在解析' : '开始解析'}</span>
+              {domain}
             </button>
+          ))}
+        </div>
+      )}
 
-            {/* 解析结果 */}
-            {resolveError && (
-              <div style={{ color: 'var(--antd-error)', fontSize: '12px', padding: '8px', background: 'rgba(255,71,87,0.08)', borderRadius: '4px', border: '1px solid rgba(255,71,87,0.2)' }}>
-                ⚠️ 解析错误: {resolveError}
-              </div>
-            )}
-
-            {resolveResult && (
-              <div style={{ marginTop: '10px' }}>
-                <h4 style={{ fontSize: '12px', fontWeight: 600, color: 'var(--antd-success)', marginBottom: '8px' }}>
-                  解析成功 - 路由匹配详情:
-                </h4>
-                <pre style={{
+      {/* Service List */}
+      {filteredServices.length > 0 && (
+        <div className="antd-card">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Network size={16} aria-hidden="true" className="text-primary" />
+              <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>服务列表</h2>
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
+              {filteredServices.length} 个服务
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {filteredServices.map((service, index) => (
+              <div
+                key={`${service.uri}-${index}`}
+                style={{
                   padding: '12px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: '#00f2fe',
-                  fontSize: '12px',
-                  overflowX: 'auto',
-                  maxHeight: '260px'
-                }}>
-                  {JSON.stringify(resolveResult, null, 2)}
-                </pre>
+                  background: 'rgba(0, 242, 254, 0.03)',
+                  border: '1px solid rgba(0, 242, 254, 0.08)',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 500, marginBottom: '4px', fontFamily: 'monospace', fontSize: '13px' }}>
+                    {service.uri}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+                    域: {service.domain} · 动作: {service.action} · 传输: {service.transport}
+                  </div>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
+      )}
 
-        {/* 右栏：分布式 MCP 实例注册表单 */}
-        <div className="services-section" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div className="section-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <PlusCircle size={16} className="text-success" />
-              <span>动态注册 MCP 新实例</span>
-            </h3>
+      {/* URI Resolver */}
+      <div className="antd-card">
+        <div className="section-header" style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Search size={16} aria-hidden="true" className="text-info" />
+            <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>URI 解析器</h2>
           </div>
-
-          <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', display: 'block', marginBottom: '6px' }}>
-                服务标识 (Service Identifier)
-              </label>
-              <input
-                type="text"
-                placeholder="例如: family-hub"
-                value={registerName}
-                onChange={(e) => setRegisterName(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  fontSize: '13px',
-                  outline: 'none'
-                }}
-              />
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+              BOS URI
+            </label>
+            <input
+              type="text"
+              value={resolveUri}
+              onChange={(e) => setResolveUri(e.target.value)}
+              placeholder="bos://memory/kos/search"
+              className="antd-input"
+              style={{ width: '100%', fontFamily: 'monospace' }}
+              aria-label="BOS URI"
+            />
+          </div>
+          
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+              参数 (JSON)
+            </label>
+            <textarea
+              value={resolveArgs}
+              onChange={(e) => setResolveArgs(e.target.value)}
+              placeholder='{"query": "SSOT"}'
+              className="antd-input"
+              style={{ width: '100%', minHeight: '80px', fontFamily: 'monospace', resize: 'vertical' }}
+              aria-label="解析参数"
+            />
+          </div>
+          
+          <button
+            className="antd-btn antd-btn-primary"
+            onClick={handleResolve}
+            disabled={resolving || !resolveUri.trim()}
+            aria-label="解析 URI"
+            style={{ alignSelf: 'flex-start' }}
+          >
+            <Search size={14} />
+            <span>{resolving ? '解析中...' : '解析'}</span>
+          </button>
+          
+          {resolveResult && (
+            <div style={{ 
+              padding: '12px', 
+              background: 'rgba(0, 242, 254, 0.03)',
+              border: '1px solid rgba(0, 242, 254, 0.08)',
+              borderRadius: '4px',
+              fontFamily: 'monospace',
+              fontSize: '13px',
+              whiteSpace: 'pre-wrap',
+              maxHeight: '300px',
+              overflow: 'auto',
+            }}>
+              {JSON.stringify(resolveResult, null, 2)}
             </div>
-
-            <div>
-              <label style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', display: 'block', marginBottom: '6px' }}>
-                MCP Endpoint (Stdio / HTTP 挂载路径)
-              </label>
-              <input
-                type="text"
-                placeholder="例如: http://localhost:8000/mcp"
-                value={registerEndpoint}
-                onChange={(e) => setRegisterEndpoint(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#fff',
-                  fontSize: '13px',
-                  outline: 'none'
-                }}
-              />
+          )}
+          
+          {resolveError && (
+            <div style={{ 
+              padding: '12px', 
+              background: 'rgba(255, 71, 87, 0.08)',
+              border: '1px solid rgba(255, 71, 87, 0.35)',
+              borderRadius: '4px',
+              color: 'var(--antd-error)',
+              fontSize: '13px',
+            }}>
+              {resolveError}
             </div>
-
-            <button
-              type="submit"
-              className="antd-btn"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'rgba(5, 243, 162, 0.1)',
-                color: 'var(--antd-success)',
-                border: '1px solid rgba(5, 243, 162, 0.25)',
-                cursor: 'pointer',
-                fontWeight: 600,
-                marginTop: '10px'
-              }}
-            >
-              提交实例注册
-            </button>
-
-            {registerStatus && (
-              <div style={{ color: 'var(--antd-success)', fontSize: '12px', marginTop: '6px' }}>
-                ✓ {registerStatus}
-              </div>
-            )}
-            {registerError && (
-              <div style={{ color: 'var(--antd-error)', fontSize: '12px', marginTop: '6px' }}>
-                ⚠️ {registerError}
-              </div>
-            )}
-          </form>
+          )}
         </div>
       </div>
 
-      {/* 下方：BOS URI 全量路由注册表 */}
-      <div className="services-section" style={{ marginTop: '0' }}>
-        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      {/* Instance Registration */}
+      <div className="antd-card">
+        <div className="section-header" style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Network size={16} className="text-primary" />
-            <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>BOS URI 网格路由明细</h3>
-          </div>
-
-          {/* 筛选域 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)' }}>过滤域:</span>
-            <select
-              value={selectedDomain}
-              onChange={(e) => setSelectedDomain(e.target.value)}
-              style={{
-                padding: '4px 8px',
-                borderRadius: '4px',
-                backgroundColor: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff',
-                fontSize: '12px',
-                cursor: 'pointer'
-              }}
-            >
-              {domains.map(d => (
-                <option key={d} value={d}>
-                  {d === 'all' ? '全部' : d.toUpperCase()}
-                </option>
-              ))}
-            </select>
+            <PlusCircle size={16} aria-hidden="true" className="text-success" />
+            <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>实例注册</h2>
           </div>
         </div>
+        
+        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+              服务名称
+            </label>
+            <input
+              type="text"
+              value={registerName}
+              onChange={(e) => setRegisterName(e.target.value)}
+              placeholder="例如: my-service"
+              className="antd-input"
+              style={{ width: '100%' }}
+              aria-label="服务名称"
+            />
+          </div>
+          
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+              MCP 端点
+            </label>
+            <input
+              type="text"
+              value={registerEndpoint}
+              onChange={(e) => setRegisterEndpoint(e.target.value)}
+              placeholder="例如: http://localhost:8080/mcp"
+              className="antd-input"
+              style={{ width: '100%' }}
+              aria-label="MCP 端点"
+            />
+          </div>
+          
+          <button
+            type="submit"
+            className="antd-btn antd-btn-primary"
+            disabled={registerMutation.isPending || !registerName || !registerEndpoint}
+            aria-label="注册实例"
+            style={{ alignSelf: 'flex-start' }}
+          >
+            <PlusCircle size={14} />
+            <span>{registerMutation.isPending ? '注册中...' : '注册'}</span>
+          </button>
+        </form>
 
-        <div className="services-list">
-          <table className="services-table" aria-label="BOS 网格路由清单">
-            <thead>
-              <tr>
-                <th scope="col">BOS 协议 URI</th>
-                <th scope="col">解析所属域</th>
-                <th scope="col">绑定的 Action</th>
-                <th scope="col">传输通道 (Transport)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredServices.length === 0 ? (
-                <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: 'rgba(255,255,255,0.45)' }}>
-                    暂无对应域的路由定义
-                  </td>
-                </tr>
-              ) : (
-                filteredServices.map((svc, i) => (
-                  <tr key={i} className="service-row">
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--antd-text-primary)' }}>{svc.uri}</td>
-                    <td>
-                      <span style={{
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        backgroundColor: 'rgba(0, 242, 254, 0.05)',
-                        color: 'var(--antd-primary)',
-                        border: '1px solid rgba(0, 242, 254, 0.15)'
-                      }}>
-                        {svc.domain.toUpperCase()}
-                      </span>
-                    </td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }} className="text-muted">{svc.action}</td>
-                    <td>
-                      <span className="status-badge" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                        {svc.transport}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {registerStatus && (
+          <div role="status" style={{ 
+            marginTop: '12px',
+            padding: '12px', 
+            border: '1px solid rgba(82, 196, 26, 0.35)',
+            borderRadius: 'var(--antd-radius-md)',
+            background: 'rgba(82, 196, 26, 0.08)',
+            color: 'var(--antd-success)',
+            fontSize: 14,
+          }}>
+            {registerStatus}
+          </div>
+        )}
+
+        {registerError && (
+          <div role="alert" style={{ 
+            marginTop: '12px',
+            padding: '12px', 
+            border: '1px solid rgba(255, 71, 87, 0.35)',
+            borderRadius: 'var(--antd-radius-md)',
+            background: 'rgba(255, 71, 87, 0.08)',
+            color: 'var(--antd-error)',
+            fontSize: 14,
+          }}>
+            {registerError}
+          </div>
+        )}
       </div>
-
     </div>
   );
 }

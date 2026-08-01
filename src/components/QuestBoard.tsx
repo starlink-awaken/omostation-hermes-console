@@ -1,6 +1,14 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * QuestBoard with React Query integration.
+ */
+
+import React, { useState } from 'react';
 import { Trophy, Shield, Lightbulb, CheckCircle2, Plus, Sparkles, Clock, Star, PlayCircle, Loader2, Award } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, apiPost } from '../api/client';
 import './Dashboard.css';
+
+// ── Types ──
 
 interface Quest {
   id: number;
@@ -28,487 +36,397 @@ interface PointLog {
   timestamp: string;
 }
 
-export default function QuestBoard() {
-  const [quests, setQuests] = useState<Quest[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [logs, setLogs] = useState<PointLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface QuestBoardData {
+  quests: Quest[];
+  profiles: Profile[];
+  logs: PointLog[];
+}
 
-  // Form states
+// ── Hook ──
+
+function useQuestBoard() {
+  return useQuery({
+    queryKey: ['quest-board'],
+    queryFn: async () => {
+      const response = await apiFetch<QuestBoardData>('/api/omos/quests');
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to fetch quest board');
+      }
+      return response.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 3,
+  });
+}
+
+function useCompleteQuest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (questId: number) => {
+      const response = await apiPost(`/api/omos/quests/${questId}/complete`, {});
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to complete quest');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quest-board'] });
+    },
+  });
+}
+
+function useAddQuest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { title: string; type: string; reward: number; assignee: string }) => {
+      const response = await apiPost('/api/omos/quests', data);
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to add quest');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quest-board'] });
+    },
+  });
+}
+
+// ── Component ──
+
+export default function QuestBoard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [title, setTitle] = useState('');
   const [qType, setQType] = useState('responsibility');
   const [reward, setReward] = useState(10);
   const [assignee, setAssignee] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [completingId, setCompletingId] = useState<number | null>(null);
 
-  const fetchBoardData = async () => {
-    try {
-      const response = await fetch('/api/omos/quests');
-      if (!response.ok) {
-        throw new Error(`HTTP 异常 ${response.status}`);
-      }
-      const data = await response.json();
-      if (data.status === 'ok') {
-        setQuests(data.quests || []);
-        setProfiles(data.profiles || []);
-        setLogs(data.logs || []);
-        if (data.profiles && data.profiles.length > 0 && !assignee) {
-          setAssignee(data.profiles[0].role);
-        }
-      } else {
-        throw new Error(data.error || '获取数据失败');
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, error } = useQuestBoard();
+  const completeMutation = useCompleteQuest();
+  const addMutation = useAddQuest();
 
-  useEffect(() => {
-    fetchBoardData();
-    const interval = setInterval(fetchBoardData, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const quests = data?.quests || [];
+  const profiles = data?.profiles || [];
+  const logs = data?.logs || [];
 
-  const handleCreateQuest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !assignee) return;
-
-    setSubmitting(true);
-    try {
-      const params = new URLSearchParams({
-        title: title.trim(),
-        q_type: qType,
-        reward: reward.toString(),
-        assignee: assignee
-      });
-      const response = await fetch(`/api/omos/quests?${params.toString()}`, {
-        method: 'POST'
-      });
-      if (!response.ok) {
-        throw new Error('创建任务接口异常');
+  const handleAddQuest = () => {
+    if (!title.trim() || !assignee.trim()) return;
+    
+    addMutation.mutate(
+      { title, type: qType, reward, assignee },
+      {
+        onSuccess: () => {
+          setTitle('');
+          setQType('responsibility');
+          setReward(10);
+          setAssignee('');
+          setShowAddForm(false);
+        },
       }
-      const res = await response.json();
-      if (res.status === 'ok') {
-        setTitle('');
-        setReward(10);
-        setShowAddForm(false);
-        await fetchBoardData();
-      } else {
-        alert(`创建失败: ${res.error}`);
-      }
-    } catch (err: any) {
-      alert(`创建任务发生错误: ${err.message}`);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleCompleteQuest = async (questId: number) => {
-    setCompletingId(questId);
-    try {
-      const response = await fetch(`/api/omos/quests/${questId}/complete`, {
-        method: 'POST'
-      });
-      if (!response.ok) {
-        throw new Error('完成任务接口异常');
-      }
-      const res = await response.json();
-      if (res.status === 'ok') {
-        await fetchBoardData();
-      } else {
-        alert(`标记完成失败: ${res.error}`);
-      }
-    } catch (err: any) {
-      alert(`操作错误: ${err.message}`);
-    } finally {
-      setCompletingId(null);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="loading-state" role="status" aria-live="polite">
-        <div className="spinner" aria-hidden="true"></div>
-        <p>正在读取 QuestBoard 积分系统...</p>
-      </div>
     );
-  }
+  };
 
-  if (error) {
-    return (
-      <div className="antd-card" style={{ padding: '32px', textAlign: 'center', margin: '24px 0' }}>
-        <p style={{ color: 'var(--antd-error)', fontSize: '16px', marginBottom: '16px', fontWeight: 600 }}>⚠️ 积分系统加载失败</p>
-        <p className="text-muted" style={{ marginBottom: '24px' }}>{error}</p>
-        <button className="antd-btn antd-btn-primary" onClick={() => { setLoading(true); setError(null); fetchBoardData(); }}>
-          重新连接
-        </button>
-      </div>
-    );
-  }
+  const handleCompleteQuest = (questId: number) => {
+    completeMutation.mutate(questId);
+  };
 
-  const activeQuests = quests.filter(q => q.completed === 0);
-  const completedQuests = quests.filter(q => q.completed === 1);
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'responsibility':
+        return <Shield size={16} className="text-primary" />;
+      case 'wisdom':
+        return <Lightbulb size={16} className="text-warning" />;
+      default:
+        return <Trophy size={16} className="text-muted" />;
+    }
+  };
+
+  const getTypeText = (type: string) => {
+    switch (type) {
+      case 'responsibility':
+        return '责任';
+      case 'wisdom':
+        return '智慧';
+      default:
+        return '其他';
+    }
+  };
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* Top Header Block */}
-      <div className="section-header">
-        <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Sparkles className="text-warning animate-pulse" size={18} aria-hidden="true" />
-            QuestBoard 积分冒险看板
-          </h2>
-          <p className="text-muted" style={{ fontSize: '13px', marginTop: '4px' }}>
-            日常家庭任务与正向成长激励中枢。
-          </p>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Trophy size={20} aria-hidden="true" className="text-warning" />
+          <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 600 }}>积分冒险看板</h1>
         </div>
-        
-        <button 
-          className={`antd-btn ${showAddForm ? 'antd-btn-danger' : 'antd-btn-primary'}`}
+        <button
+          className="antd-btn antd-btn-primary"
           onClick={() => setShowAddForm(!showAddForm)}
-          aria-expanded={showAddForm}
-          aria-controls="quest-creation-form"
+          aria-label="添加任务"
         >
-          {showAddForm ? '取消发布' : <><Plus size={14} aria-hidden="true" /> 发布新冒险</>}
+          <Plus size={14} />
+          <span>添加任务</span>
         </button>
       </div>
 
-      {/* Quest Creation Form (AntD Form layout) */}
-      {showAddForm && (
-        <form 
-          id="quest-creation-form"
-          onSubmit={handleCreateQuest} 
-          className="antd-card animate-fade-in" 
-          style={{ 
-            padding: '20px', 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-            gap: '16px', 
-            alignItems: 'end',
-            background: 'var(--antd-bg-container)'
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="quest-title" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>冒险标题</label>
-            <input 
-              id="quest-title"
-              type="text" 
-              className="antd-input" 
-              placeholder="例如：整理书架、倒垃圾、阅读半小时" 
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              required
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="quest-type" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>冒险类型</label>
-            <select 
-              id="quest-type"
-              className="antd-input" 
-              value={qType}
-              onChange={e => setQType(e.target.value)}
-              style={{ background: 'var(--antd-bg-elevated)', cursor: 'pointer' }}
-            >
-              <option value="responsibility">🛡️ 责任养成 (每日习惯/家务)</option>
-              <option value="wisdom">🎩 智慧进阶 (学习/阅读/创意)</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="quest-reward" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>积分奖励 (Points)</label>
-            <input 
-              id="quest-reward"
-              type="number" 
-              className="antd-input" 
-              min="5" 
-              max="200" 
-              step="5"
-              value={reward}
-              onChange={e => setReward(parseInt(e.target.value) || 10)}
-              required
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label htmlFor="quest-assignee" style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>冒险勇士 (Assignee)</label>
-            <select 
-              id="quest-assignee"
-              className="antd-input" 
-              value={assignee}
-              onChange={e => setAssignee(e.target.value)}
-              style={{ background: 'var(--antd-bg-elevated)', cursor: 'pointer' }}
-              required
-            >
-              {profiles.map(p => (
-                <option key={p.role} value={p.role}>
-                  {p.name} ({p.role})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button 
-            type="submit" 
-            className="antd-btn antd-btn-primary" 
-            disabled={submitting}
-            style={{ height: '32px' }}
-          >
-            {submitting ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : '立即发布'}
-          </button>
-        </form>
+      {/* Loading State */}
+      {isLoading && (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
+          <div className="spinner" style={{ marginBottom: '8px' }} />
+          <div>加载中...</div>
+        </div>
       )}
 
-      {/* Leaderboard Cards Grid (AntD Card Style) */}
-      <div className="stats-grid">
-        {profiles.map((p) => (
-          <div 
-            key={p.role} 
-            className="antd-card" 
-            style={{ 
-              padding: '20px', 
-              position: 'relative', 
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}
-          >
-            <div style={{ position: 'absolute', right: '-12px', bottom: '-12px', opacity: 0.04, color: 'var(--antd-text-primary)' }} aria-hidden="true">
-              <Trophy size={96} />
+      {/* Error State */}
+      {error && (
+        <div role="alert" style={{ 
+          padding: '16px', 
+          border: '1px solid rgba(255, 71, 87, 0.35)',
+          borderRadius: 'var(--antd-radius-md)',
+          background: 'rgba(255, 71, 87, 0.08)',
+          color: 'var(--antd-error)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <Trophy size={16} />
+            <strong>任务数据加载失败</strong>
+          </div>
+          <div style={{ fontSize: '14px' }}>{error.message}</div>
+        </div>
+      )}
+
+      {/* Add Quest Form */}
+      {showAddForm && (
+        <div className="antd-card">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>添加新任务</h2>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+                任务标题
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="输入任务标题..."
+                className="antd-input"
+                style={{ width: '100%' }}
+                aria-label="任务标题"
+              />
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: '600', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Award size={16} aria-hidden="true" className={p.role === 'child' ? 'text-warning' : 'text-accent'} />
-                {p.name}
-              </span>
-              <span style={{ 
-                fontSize: '11px', 
-                backgroundColor: 'rgba(255,255,255,0.06)', 
-                padding: '2px 8px', 
-                borderRadius: '4px',
-                color: 'var(--antd-text-secondary)'
-              }}>
-                Lvl {p.level || 1}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Shield size={16} aria-hidden="true" className="text-success" />
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>责任积分</div>
-                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--antd-success)' }}>{p.responsibilityPoints || 0}</div>
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+                  类型
+                </label>
+                <select
+                  value={qType}
+                  onChange={(e) => setQType(e.target.value)}
+                  className="antd-input"
+                  style={{ width: '100%' }}
+                  aria-label="任务类型"
+                >
+                  <option value="responsibility">责任</option>
+                  <option value="wisdom">智慧</option>
+                </select>
               </div>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Lightbulb size={16} aria-hidden="true" className="text-warning" />
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>智慧积分</div>
-                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--antd-warning)' }}>{p.wisdomPoints || 0}</div>
-                </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+                  奖励积分
+                </label>
+                <input
+                  type="number"
+                  value={reward}
+                  onChange={(e) => setReward(Number(e.target.value))}
+                  min="1"
+                  max="100"
+                  className="antd-input"
+                  style={{ width: '100%' }}
+                  aria-label="奖励积分"
+                />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+                  负责人
+                </label>
+                <input
+                  type="text"
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                  placeholder="输入负责人..."
+                  className="antd-input"
+                  style={{ width: '100%' }}
+                  aria-label="负责人"
+                />
               </div>
             </div>
-
-            {p.inventory && (
-              <div style={{ 
-                fontSize: '12px', 
-                color: 'var(--antd-text-secondary)', 
-                borderTop: '1px solid var(--antd-border-color)', 
-                paddingTop: '8px',
-                marginTop: '4px'
-              }}>
-                🎒 背包: {p.inventory}
-              </div>
-            )}
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                className="antd-btn antd-btn-primary"
+                onClick={handleAddQuest}
+                disabled={addMutation.isPending || !title.trim() || !assignee.trim()}
+                aria-label="提交任务"
+              >
+                {addMutation.isPending ? '提交中...' : '提交'}
+              </button>
+              <button
+                className="antd-btn"
+                onClick={() => setShowAddForm(false)}
+                aria-label="取消"
+              >
+                取消
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {/* Main Lists Column Divider */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
-        
-        {/* Left Column: Active Quests */}
-        <section aria-label="进行中的任务" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
-            <PlayCircle size={16} aria-hidden="true" className="text-accent" />
-            进行中的冒险 ({activeQuests.length})
-          </h3>
-
-          {activeQuests.length === 0 ? (
-            <div className="antd-card" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--antd-text-secondary)' }}>
-              <Star size={24} className="text-muted" style={{ marginBottom: '8px', opacity: 0.4 }} aria-hidden="true" />
-              <p style={{ fontSize: '14px' }}>暂无正在进行的冒险。</p>
-              <p style={{ fontSize: '12px', color: 'var(--antd-text-muted)', marginTop: '4px' }}>点击上方按钮发布一个新任务吧！</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {activeQuests.map(quest => (
-                <div 
-                  key={quest.id} 
-                  className="antd-card" 
-                  style={{ 
-                    padding: '16px 20px', 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    borderLeft: quest.type === 'responsibility' ? '3px solid var(--antd-success)' : '3px solid var(--antd-warning)'
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {quest.type === 'responsibility' ? (
-                        <span style={{ 
-                          backgroundColor: 'var(--antd-success-bg)', 
-                          color: 'var(--antd-success)', 
-                          fontSize: '11px', 
-                          padding: '1px 6px',
-                          borderRadius: '4px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}>
-                          <Shield size={10} aria-hidden="true" /> 责任
-                        </span>
-                      ) : (
-                        <span style={{ 
-                          backgroundColor: 'var(--antd-warning-bg)', 
-                          color: 'var(--antd-warning)', 
-                          fontSize: '11px', 
-                          padding: '1px 6px',
-                          borderRadius: '4px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}>
-                          <Lightbulb size={10} aria-hidden="true" /> 智慧
-                        </span>
-                      )}
-                      
-                      <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
-                        专属: {profiles.find(p => p.role === quest.assignee)?.name || quest.assignee}
-                      </span>
-                    </div>
-                    
-                    <span style={{ fontWeight: '500', fontSize: '14px', color: 'var(--antd-text-primary)' }}>
-                      {quest.title}
-                    </span>
+      {/* Profiles */}
+      {profiles.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          {profiles.map((profile) => (
+            <div key={profile.name} className="antd-card" style={{ textAlign: 'center' }}>
+              <Award size={24} className="text-warning" style={{ marginBottom: '8px' }} />
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>{profile.name}</div>
+              <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '8px' }}>
+                {profile.role} · Lv.{profile.level}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--antd-primary)' }}>
+                    {profile.wisdomPoints}
                   </div>
+                  <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>智慧</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--antd-success)' }}>
+                    {profile.responsibilityPoints}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>责任</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>金币奖励</span>
-                      <span style={{ 
-                        fontWeight: '600', 
-                        fontSize: '16px', 
-                        color: quest.type === 'responsibility' ? 'var(--antd-success)' : 'var(--antd-warning)'
-                      }}>
-                        +{quest.reward} PTS
-                      </span>
+      {/* Quest List */}
+      {quests.length > 0 && (
+        <div className="antd-card">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Trophy size={16} aria-hidden="true" className="text-warning" />
+              <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>任务列表</h2>
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
+              {quests.length} 个任务
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {quests.map((quest) => (
+              <div
+                key={quest.id}
+                className="antd-card"
+                style={{ 
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  opacity: quest.completed ? 0.6 : 1,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                  {getTypeIcon(quest.type)}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      fontWeight: 500, 
+                      marginBottom: '4px',
+                      textDecoration: quest.completed ? 'line-through' : 'none',
+                    }}>
+                      {quest.title}
                     </div>
-                    
-                    <button 
-                      className="antd-btn antd-btn-primary"
-                      disabled={completingId !== null}
-                      onClick={() => handleCompleteQuest(quest.id)}
-                      aria-label={`完成任务: ${quest.title}`}
-                      style={{ height: '32px' }}
-                    >
-                      {completingId === quest.id ? (
-                        <Loader2 size={12} className="animate-spin" aria-hidden="true" />
-                      ) : (
-                        <><CheckCircle2 size={12} aria-hidden="true" /> 达成</>
-                      )}
-                    </button>
+                    <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+                      类型: {getTypeText(quest.type)} · 负责人: {quest.assignee}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Right Column: Timeline Logs & Hall of Fame */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Timeline Logs Card */}
-          <section aria-label="积分变动日志" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
-              <Clock size={16} aria-hidden="true" className="text-muted" />
-              冒险日志
-            </h3>
-            
-            <div className="antd-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '280px', overflowY: 'auto' }}>
-              {logs.length === 0 ? (
-                <p className="text-muted" style={{ fontSize: '12px', textAlign: 'center', padding: '12px 0' }}>暂无积分变动日志</p>
-              ) : (
-                logs.map(log => (
-                  <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: '12px', borderBottom: '1px solid var(--antd-border-color)', paddingBottom: '8px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ color: 'var(--antd-text-primary)', fontWeight: '500' }}>
-                        {profiles.find(p => p.role === log.user)?.name || log.user}
-                      </span>
-                      <span className="text-muted" style={{ fontSize: '11px' }}>
-                        {log.action}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                      <span style={{ color: log.amount >= 0 ? 'var(--antd-success)' : 'var(--antd-error)', fontWeight: '600' }}>
-                        {log.amount >= 0 ? `+${log.amount}` : log.amount}
-                      </span>
-                      <span className="text-muted" style={{ fontSize: '10px' }}>
-                        {log.timestamp ? log.timestamp.split('T')[0] : ''}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          {/* Hall of Fame Card */}
-          <section aria-label="荣誉殿堂" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)' }}>
-              <Trophy size={16} aria-hidden="true" className="text-warning" />
-              荣誉殿堂 ({completedQuests.length})
-            </h3>
-            
-            <div className="antd-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
-              {completedQuests.length === 0 ? (
-                <p className="text-muted" style={{ fontSize: '12px', textAlign: 'center', padding: '12px 0' }}>尚无已达成的冒险荣耀</p>
-              ) : (
-                completedQuests.map(quest => (
-                  <div key={quest.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--antd-border-color)', opacity: 0.8 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '12px', textDecoration: 'line-through', color: 'var(--antd-text-secondary)' }}>
-                        {quest.title}
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'var(--antd-text-muted)' }}>
-                        达成: {profiles.find(p => p.role === quest.assignee)?.name || quest.assignee}
-                      </span>
-                    </div>
-                    
-                    <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--antd-success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      +{quest.reward} PTS <CheckCircle2 size={12} aria-hidden="true" />
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ 
+                    fontSize: '14px', 
+                    fontWeight: 600,
+                    color: 'var(--antd-warning)',
+                  }}>
+                    +{quest.reward}
+                  </span>
+                  {quest.completed ? (
+                    <CheckCircle2 size={20} className="text-success" />
+                  ) : (
+                    <button
+                      className="antd-btn small"
+                      onClick={() => handleCompleteQuest(quest.id)}
+                      disabled={completeMutation.isPending}
+                      aria-label={`完成任务 ${quest.id}`}
+                    >
+                      <CheckCircle2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+      )}
 
-      </div>
-
+      {/* Point Log */}
+      {logs.length > 0 && (
+        <div className="antd-card">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Clock size={16} aria-hidden="true" className="text-info" />
+              <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>积分日志</h2>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {logs.slice(0, 10).map((log) => (
+              <div
+                key={log.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '8px',
+                  fontSize: '13px',
+                  borderBottom: '1px solid var(--antd-border-color)',
+                }}
+              >
+                <div>
+                  <span style={{ fontWeight: 500 }}>{log.user}</span>
+                  <span style={{ color: 'var(--antd-text-secondary)', marginLeft: '8px' }}>{log.action}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ 
+                    color: log.amount > 0 ? 'var(--antd-success)' : 'var(--antd-error)',
+                    fontWeight: 600,
+                  }}>
+                    {log.amount > 0 ? '+' : ''}{log.amount}
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
+                    {new Date(log.timestamp).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
