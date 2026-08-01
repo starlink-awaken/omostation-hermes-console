@@ -1,20 +1,24 @@
 /**
- * L4HealthView with React Query integration.
- * 
- * This component uses React Query for data fetching,
- * replacing the manual useState + useEffect pattern.
+ * L4HealthView — L4 域健康监控.
+ *
+ * 从 fullsite 移植的改进:
+ *   - 域健康搜索筛选 (healthQuery + healthStatusFilter)
+ *   - data_quality / degraded_reasons 降级显示
+ *   - 趋势/信号/异常多维筛选展示
+ *   - 定时刷新 + 最后更新时间
+ *   - 域健康任务登记模式
  */
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Activity,
-  CheckCircle,
-  XCircle,
   AlertTriangle,
+  CheckCircle,
   RefreshCw,
-  TrendingUp,
-  Signal,
   Shield,
+  Signal,
+  TrendingUp,
+  XCircle,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../api/client';
@@ -41,6 +45,8 @@ interface HealthData {
   healthy_count: number;
   unhealthy_count: number;
   health_rate: string;
+  data_quality?: 'available' | 'degraded' | 'unavailable';
+  degraded_reasons?: string[];
   domains: DomainHealth[];
 }
 
@@ -117,15 +123,70 @@ function useL4Signal() {
   });
 }
 
+// ── Pure helpers ──
+
+function isHealthyDomain(domain: DomainHealth): boolean {
+  return domain.fresh && domain.issue_count === 0 && domain.has_state && domain.has_status;
+}
+
 // ── Component ──
 
 export default function L4HealthView() {
   const { data: healthData, isLoading: healthLoading, error: healthError, refetch: refetchHealth } = useL4Health();
-  const { data: trendData, isLoading: trendLoading } = useL4Trend();
-  const { data: signalData, isLoading: signalLoading } = useL4Signal();
+  const { data: trendData, isLoading: trendLoading, error: trendError } = useL4Trend();
+  const { data: signalData, isLoading: signalLoading, error: signalError } = useL4Signal();
+
+  // 搜索筛选状态
+  const [healthQuery, setHealthQuery] = useState('');
+  const [healthStatusFilter, setHealthStatusFilter] = useState<'all' | 'healthy' | 'unhealthy'>('all');
+  const [anomalyQuery, setAnomalyQuery] = useState('');
+  const [patternQuery, setPatternQuery] = useState('');
 
   const isLoading = healthLoading || trendLoading || signalLoading;
-  const error = healthError?.message || null;
+
+  // 三源独立错误处理: 一个失败不影响另外两个
+  const healthUnavailable = healthError || healthData?.data_quality === 'unavailable';
+  const degradedReasons = healthData?.degraded_reasons || [];
+
+  // 域筛选
+  const filteredDomains = useMemo(() => {
+    if (!healthData?.domains) return [];
+    return healthData.domains.filter((domain) => {
+      // 状态筛选
+      if (healthStatusFilter === 'healthy' && !isHealthyDomain(domain)) return false;
+      if (healthStatusFilter === 'unhealthy' && isHealthyDomain(domain)) return false;
+      // 搜索筛选
+      if (healthQuery) {
+        const query = healthQuery.toLowerCase();
+        const name = domain.name.toLowerCase();
+        const caps = domain.capabilities.join(' ').toLowerCase();
+        if (!name.includes(query) && !caps.includes(query) && !domain.id.toLowerCase().includes(query)) return false;
+      }
+      return true;
+    });
+  }, [healthData, healthQuery, healthStatusFilter]);
+
+  // 异常筛选
+  const filteredAnomalies = useMemo(() => {
+    if (!trendData?.anomalies) return [];
+    if (!anomalyQuery) return trendData.anomalies;
+    const query = anomalyQuery.toLowerCase();
+    return trendData.anomalies.filter((a) =>
+      a.domain.toLowerCase().includes(query) ||
+      a.type.toLowerCase().includes(query) ||
+      a.message.toLowerCase().includes(query)
+    );
+  }, [trendData, anomalyQuery]);
+
+  // 信号模式筛选
+  const filteredPatterns = useMemo(() => {
+    if (!signalData?.patterns) return [];
+    if (!patternQuery) return signalData.patterns;
+    const query = patternQuery.toLowerCase();
+    return signalData.patterns.filter((p) =>
+      p.pattern.toLowerCase().includes(query) || p.message.toLowerCase().includes(query)
+    );
+  }, [signalData, patternQuery]);
 
   const getHealthIcon = (domain: DomainHealth) => {
     if (!domain.exists) return <XCircle size={16} className="text-muted" />;
@@ -155,12 +216,15 @@ export default function L4HealthView() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Shield size={20} aria-hidden="true" className="text-primary" />
           <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 600 }}>L4 健康监控</h1>
+          {healthData && (
+            <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
+              更新于 {new Date(healthData.timestamp).toLocaleTimeString()}
+            </span>
+          )}
         </div>
         <button
           className="antd-btn"
-          onClick={() => {
-            refetchHealth();
-          }}
+          onClick={() => { refetchHealth(); }}
           disabled={isLoading}
           aria-label="刷新健康数据"
         >
@@ -169,8 +233,29 @@ export default function L4HealthView() {
         </button>
       </div>
 
+      {/* 降级警告 */}
+      {degradedReasons.length > 0 && (
+        <div role="alert" style={{
+          padding: '12px 16px',
+          border: '1px solid rgba(255, 184, 0, 0.35)',
+          borderRadius: 'var(--antd-radius-md)',
+          background: 'rgba(255, 184, 0, 0.06)',
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'flex-start',
+        }}>
+          <AlertTriangle size={16} style={{ color: 'var(--antd-warning)', flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <div style={{ fontWeight: 500, color: 'var(--antd-warning)', marginBottom: '4px' }}>数据降级</div>
+            <div style={{ fontSize: '13px', color: 'var(--antd-text-secondary)' }}>
+              {degradedReasons.join('; ')}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Loading State */}
-      {isLoading && (
+      {isLoading && !healthData && (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
           <RefreshCw size={24} className="spinning" style={{ marginBottom: '8px' }} />
           <div>加载中...</div>
@@ -178,9 +263,9 @@ export default function L4HealthView() {
       )}
 
       {/* Error State */}
-      {error && (
-        <div role="alert" style={{ 
-          padding: '16px', 
+      {healthUnavailable && !isLoading && (
+        <div role="alert" style={{
+          padding: '16px',
           border: '1px solid rgba(255, 71, 87, 0.35)',
           borderRadius: 'var(--antd-radius-md)',
           background: 'rgba(255, 71, 87, 0.08)',
@@ -188,9 +273,11 @@ export default function L4HealthView() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <AlertTriangle size={16} />
-            <strong>健康数据加载失败</strong>
+            <strong>健康数据不可用</strong>
           </div>
-          <div style={{ fontSize: '14px' }}>{error}</div>
+          <div style={{ fontSize: '14px' }}>
+            {healthError?.message || '健康数据暂时不可用，趋势和信号数据可能仍可使用。'}
+          </div>
         </div>
       )}
 
@@ -199,11 +286,13 @@ export default function L4HealthView() {
         <div className="antd-card">
           <div className="section-header" style={{ marginBottom: '16px' }}>
             <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>健康概览</h2>
-            <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
-              更新时间: {healthData.timestamp}
-            </span>
+            {healthData.data_quality && healthData.data_quality !== 'available' && (
+              <span style={{ fontSize: '12px', color: 'var(--antd-warning)' }}>
+                数据质量: {healthData.data_quality === 'degraded' ? '降级' : '不可用'}
+              </span>
+            )}
           </div>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--antd-primary)' }}>
@@ -233,15 +322,49 @@ export default function L4HealthView() {
         </div>
       )}
 
-      {/* Domain List */}
-      {healthData && healthData.domains.length > 0 && (
+      {/* Domain List with Filters */}
+      {filteredDomains.length > 0 && (
         <div className="antd-card">
           <div className="section-header" style={{ marginBottom: '16px' }}>
             <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>域健康状态</h2>
+            <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
+              {filteredDomains.length}/{healthData?.domains.length || 0} 域
+            </span>
           </div>
-          
+
+          {/* 筛选控件 */}
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <input
+              type="search"
+              placeholder="搜索域或能力..."
+              value={healthQuery}
+              onChange={(e) => setHealthQuery(e.target.value)}
+              className="antd-input"
+              style={{ flex: '1 1 200px', minWidth: 180 }}
+              aria-label="搜索域"
+            />
+            <select
+              value={healthStatusFilter}
+              onChange={(e) => setHealthStatusFilter(e.target.value as typeof healthStatusFilter)}
+              className="antd-input"
+              aria-label="按状态筛选"
+            >
+              <option value="all">全部状态</option>
+              <option value="healthy">健康</option>
+              <option value="unhealthy">异常</option>
+            </select>
+            {(healthQuery || healthStatusFilter !== 'all') && (
+              <button
+                className="antd-btn"
+                onClick={() => { setHealthQuery(''); setHealthStatusFilter('all'); }}
+              >
+                清除筛选
+              </button>
+            )}
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {healthData.domains.map((domain) => (
+            {filteredDomains.map((domain) => (
               <div
                 key={domain.id}
                 style={{
@@ -263,8 +386,8 @@ export default function L4HealthView() {
                     </div>
                   </div>
                 </div>
-                <div style={{ 
-                  fontSize: '12px', 
+                <div style={{
+                  fontSize: '12px',
                   fontWeight: 500,
                   color: getHealthColor(domain),
                 }}>
@@ -276,32 +399,42 @@ export default function L4HealthView() {
         </div>
       )}
 
-      {/* Signal Patterns */}
-      {signalData && signalData.patterns.length > 0 && (
+      {/* Signal Patterns with Filter */}
+      {filteredPatterns.length > 0 && (
         <div className="antd-card">
-          <div className="section-header" style={{ marginBottom: '16px' }}>
+          <div className="section-header" style={{ marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Signal size={16} aria-hidden="true" className="text-warning" />
               <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>信号模式</h2>
             </div>
             <span style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
-              总信号: {signalData.total_signals}
+              总信号: {signalData?.total_signals || 0}
             </span>
           </div>
-          
+
+          <input
+            type="search"
+            placeholder="搜索信号模式..."
+            value={patternQuery}
+            onChange={(e) => setPatternQuery(e.target.value)}
+            className="antd-input"
+            style={{ width: '100%', marginBottom: '12px' }}
+            aria-label="搜索信号模式"
+          />
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {signalData.patterns.map((pattern, index) => (
+            {filteredPatterns.map((pattern, index) => (
               <div
                 key={index}
                 style={{
                   padding: '12px',
-                  background: pattern.level === 'error' 
-                    ? 'rgba(255, 71, 87, 0.08)' 
+                  background: pattern.level === 'error'
+                    ? 'rgba(255, 71, 87, 0.08)'
                     : pattern.level === 'warning'
                     ? 'rgba(255, 184, 0, 0.08)'
                     : 'rgba(0, 242, 254, 0.03)',
-                  border: `1px solid ${pattern.level === 'error' 
-                    ? 'rgba(255, 71, 87, 0.35)' 
+                  border: `1px solid ${pattern.level === 'error'
+                    ? 'rgba(255, 71, 87, 0.35)'
                     : pattern.level === 'warning'
                     ? 'rgba(255, 184, 0, 0.35)'
                     : 'rgba(0, 242, 254, 0.08)'}`,
@@ -326,18 +459,18 @@ export default function L4HealthView() {
               <h2 style={{ fontSize: '15px', margin: 0, fontWeight: 600 }}>风险项</h2>
             </div>
           </div>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {signalData.risks.map((risk, index) => (
               <div
                 key={index}
                 style={{
                   padding: '12px',
-                  background: risk.severity === 'high' 
-                    ? 'rgba(255, 71, 87, 0.08)' 
+                  background: risk.severity === 'high'
+                    ? 'rgba(255, 71, 87, 0.08)'
                     : 'rgba(255, 184, 0, 0.08)',
-                  border: `1px solid ${risk.severity === 'high' 
-                    ? 'rgba(255, 71, 87, 0.35)' 
+                  border: `1px solid ${risk.severity === 'high'
+                    ? 'rgba(255, 71, 87, 0.35)'
                     : 'rgba(255, 184, 0, 0.35)'}`,
                   borderRadius: '4px',
                   fontSize: '13px',
@@ -351,8 +484,8 @@ export default function L4HealthView() {
         </div>
       )}
 
-      {/* Trend Data */}
-      {trendData && Object.keys(trendData.trends).length > 0 && (
+      {/* Trend Data with Anomaly Filter */}
+      {trendData && (Object.keys(trendData.trends).length > 0 || filteredAnomalies.length > 0) && (
         <div className="antd-card">
           <div className="section-header" style={{ marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -363,27 +496,57 @@ export default function L4HealthView() {
               记录数: {trendData.total_records}
             </span>
           </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-            {Object.entries(trendData.trends).map(([domain, trend]) => (
-              <div
-                key={domain}
-                style={{
-                  padding: '12px',
-                  background: 'rgba(0, 242, 254, 0.03)',
-                  border: '1px solid rgba(0, 242, 254, 0.08)',
-                  borderRadius: '4px',
-                }}
-              >
-                <div style={{ fontWeight: 500, marginBottom: '8px' }}>{domain}</div>
-                <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
-                  <div>健康率: {(trend.health_rate * 100).toFixed(1)}%</div>
-                  <div>平均问题: {trend.avg_issues.toFixed(1)}</div>
-                  <div>平均信号: {trend.avg_signals.toFixed(1)}</div>
-                </div>
+
+          {/* 异常筛选 */}
+          {filteredAnomalies.length > 0 && (
+            <>
+              <input
+                type="search"
+                placeholder="搜索异常..."
+                value={anomalyQuery}
+                onChange={(e) => setAnomalyQuery(e.target.value)}
+                className="antd-input"
+                style={{ width: '100%', marginBottom: '12px' }}
+                aria-label="搜索异常"
+              />
+              <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {filteredAnomalies.map((anomaly, index) => (
+                  <div key={index} style={{
+                    padding: '10px',
+                    background: 'rgba(255, 71, 87, 0.06)',
+                    border: '1px solid rgba(255, 71, 87, 0.2)',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                  }}>
+                    <strong>{anomaly.domain}</strong> · {anomaly.type} · {anomaly.message}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
+
+          {Object.keys(trendData.trends).length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+              {Object.entries(trendData.trends).map(([domain, trend]) => (
+                <div
+                  key={domain}
+                  style={{
+                    padding: '12px',
+                    background: 'rgba(0, 242, 254, 0.03)',
+                    border: '1px solid rgba(0, 242, 254, 0.08)',
+                    borderRadius: '4px',
+                  }}
+                >
+                  <div style={{ fontWeight: 500, marginBottom: '8px' }}>{domain}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+                    <div>健康率: {(trend.health_rate * 100).toFixed(1)}%</div>
+                    <div>平均问题: {trend.avg_issues.toFixed(1)}</div>
+                    <div>平均信号: {trend.avg_signals.toFixed(1)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

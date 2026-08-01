@@ -1,11 +1,17 @@
 /**
- * LogViewerPage with React Query integration.
+ * LogViewerPage — 日志查看器.
+ *
+ * 从 fullsite 移植的改进:
+ *   - 分页加载 (load-more) + Map 去重
+ *   - CSV 导出 (Blob + createObjectURL)
+ *   - 流式暂停/恢复 (5s 轮询)
+ *   - 三维筛选 (level + source + search)
+ *   - 错误/热点源自动识别
+ *   - 空数据/错误态 a11y
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, Download, RefreshCw, Pause, Play, Trash2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '../api/client';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Download, Pause, Play, RefreshCw, Search, Trash2 } from 'lucide-react';
 
 // ── Types ──
 
@@ -14,95 +20,165 @@ interface LogEntry {
   level: 'debug' | 'info' | 'warning' | 'error' | 'fatal';
   source: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
+
+type LogLevel = 'all' | 'debug' | 'info' | 'warning' | 'error' | 'fatal';
 
 interface LogListResponse {
   items: LogEntry[];
-}
-
-// ── Hook ──
-
-function useLogs() {
-  return useQuery({
-    queryKey: ['logs'],
-    queryFn: async () => {
-      const response = await apiFetch<LogListResponse>('/api/logs?limit=100');
-      if (!response.ok) {
-        throw new Error(response.error || 'Failed to fetch logs');
-      }
-      return response.data?.items || [];
-    },
-    staleTime: 10000,
-    refetchInterval: 10000,
-    retry: 3,
-  });
+  total?: number;
+  offset?: number;
+  has_more?: boolean;
 }
 
 // ── Component ──
 
-type LogLevel = 'all' | 'debug' | 'info' | 'warning' | 'error' | 'fatal';
-
 export default function LogViewerPage() {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logTotal, setLogTotal] = useState(0);
+  const [logOffset, setLogOffset] = useState(0);
+  const [logHasMore, setLogHasMore] = useState(false);
+  const [logLoadingMore, setLogLoadingMore] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isStreaming, setIsStreaming] = useState(true);
   const [filterLevel, setFilterLevel] = useState<LogLevel>('all');
   const [filterSource, setFilterSource] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
+  const [error, setError] = useState('');
   const logsEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { data: logs, isLoading, error } = useLogs();
+  const refreshLogs = useCallback(async () => {
+    try {
+      const response = await fetch('/api/logs?limit=100');
+      if (!response.ok) throw new Error('日志数据不可用');
+      const data: LogListResponse = await response.json();
+      const items = Array.isArray(data.items) ? data.items : [];
+      setLogs(items);
+      setLogTotal(typeof data.total === 'number' ? data.total : items.length);
+      setLogOffset(typeof data.offset === 'number' ? data.offset + items.length : items.length);
+      setLogHasMore(typeof data.has_more === 'boolean' ? data.has_more : items.length >= 100);
+      setError('');
+    } catch (err) {
+      console.error('Failed to fetch logs:', err);
+      setError(err instanceof Error ? err.message : '日志数据不可用');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // Auto-scroll to bottom when new logs arrive
+  // 分页加载更多
+  const loadMoreLogs = useCallback(async () => {
+    if (logLoadingMore || !logHasMore) return;
+    setLogLoadingMore(true);
+    try {
+      const response = await fetch(`/api/logs?limit=100&offset=${logOffset}`);
+      if (!response.ok) throw new Error('更多日志数据不可用');
+      const data: LogListResponse = await response.json();
+      const items = Array.isArray(data.items) ? data.items : [];
+      setLogs((current) => {
+        const merged = new Map(current.map((log) => [`${log.timestamp}|${log.source}|${log.message}`, log]));
+        items.forEach((log) => {
+          merged.set(`${log.timestamp}|${log.source}|${log.message}`, log);
+        });
+        return [...merged.values()];
+      });
+      setLogTotal(typeof data.total === 'number' ? data.total : logTotal);
+      setLogOffset(logOffset + items.length);
+      setLogHasMore(typeof data.has_more === 'boolean' ? data.has_more : items.length >= 100);
+    } catch (loadError) {
+      console.error('Failed to load more logs:', loadError);
+      setError(loadError instanceof Error ? loadError.message : '更多日志数据不可用');
+    } finally {
+      setLogLoadingMore(false);
+    }
+  }, [logHasMore, logLoadingMore, logOffset, logTotal]);
+
   useEffect(() => {
-    if (autoScroll && logsEndRef.current) {
+    void refreshLogs();
+    if (!isStreaming) return undefined;
+    const interval = setInterval(() => void refreshLogs(), 5000);
+    return () => clearInterval(interval);
+  }, [isStreaming, refreshLogs]);
+
+  useEffect(() => {
+    if (autoScroll && logsEndRef.current && typeof logsEndRef.current.scrollIntoView === 'function') {
       logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [logs, autoScroll]);
 
+  // CSV 导出
+  const handleExport = () => {
+    if (filteredLogs.length === 0) return;
+    const header = 'timestamp,level,source,message\n';
+    const rows = filteredLogs.map((log) => {
+      const msg = log.message.replace(/"/g, '""');
+      return `"${log.timestamp}","${log.level}","${log.source}","${msg}"`;
+    }).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cockpit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // 清除日志
+  const handleClear = () => {
+    setLogs([]);
+    setLogOffset(0);
+    setLogHasMore(false);
+    setIsStreaming(false);
+  };
+
   const getLevelColor = (level: LogEntry['level']) => {
     switch (level) {
-      case 'fatal':
-      case 'error':
-        return '#e74c3c';
-      case 'warning':
-        return '#f39c12';
-      case 'info':
-        return '#3498db';
-      case 'debug':
-        return '#95a5a6';
-      default:
-        return '#95a5a6';
+      case 'debug': return '#95a5a6';
+      case 'info': return '#3498db';
+      case 'warning': return '#f39c12';
+      case 'error': return '#e74c3c';
+      case 'fatal': return '#c0392b';
+      default: return '#95a5a6';
     }
   };
 
-  const getLevelBg = (level: LogEntry['level']) => {
+  const getLevelBgColor = (level: LogEntry['level']) => {
     switch (level) {
-      case 'fatal':
-      case 'error':
-        return 'rgba(255, 71, 87, 0.08)';
-      case 'warning':
-        return 'rgba(255, 184, 0, 0.08)';
-      case 'info':
-        return 'rgba(52, 152, 219, 0.08)';
-      case 'debug':
-        return 'rgba(149, 165, 166, 0.08)';
-      default:
-        return 'transparent';
+      case 'debug': return 'rgba(255, 255, 255, 0.02)';
+      case 'info': return 'rgba(52, 152, 219, 0.04)';
+      case 'warning': return 'rgba(243, 156, 18, 0.06)';
+      case 'error': return 'rgba(231, 76, 60, 0.08)';
+      case 'fatal': return 'rgba(192, 57, 43, 0.12)';
+      default: return 'transparent';
     }
   };
 
   const displayLogs = logs || [];
   const sources = [...new Set(displayLogs.map((log) => log.source))];
 
-  // Filter logs
+  // 三维筛选
   const filteredLogs = displayLogs.filter((log) => {
     if (filterLevel !== 'all' && log.level !== filterLevel) return false;
     if (filterSource !== 'all' && log.source !== filterSource) return false;
-    if (searchQuery && !log.message.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery) {
+      const searchableText = [
+        log.timestamp,
+        log.level,
+        log.source,
+        log.message,
+        log.metadata ? JSON.stringify(log.metadata) : '',
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!searchableText.includes(searchQuery.toLowerCase())) return false;
+    }
     return true;
   });
+
+  // 错误/热点源自动识别
+  const criticalLogs = filteredLogs.filter((log) => log.level === 'error' || log.level === 'fatal');
+  const hotSources = [...new Set((criticalLogs.length ? criticalLogs : filteredLogs).map((log) => log.source))].slice(0, 3);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -111,6 +187,11 @@ export default function LogViewerPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Search size={20} aria-hidden="true" className="text-primary" />
           <h1 style={{ fontSize: '18px', margin: 0, fontWeight: 600 }}>日志查看器</h1>
+          {logTotal > 0 && (
+            <span style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+              ({logTotal} 条)
+            </span>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
@@ -123,6 +204,23 @@ export default function LogViewerPage() {
           </button>
           <button
             className="antd-btn"
+            onClick={handleExport}
+            aria-label="导出日志"
+            disabled={filteredLogs.length === 0}
+          >
+            <Download size={14} />
+            <span>导出 CSV</span>
+          </button>
+          <button
+            className="antd-btn"
+            onClick={handleClear}
+            aria-label="清除日志"
+          >
+            <Trash2 size={14} />
+            <span>清除</span>
+          </button>
+          <button
+            className="antd-btn"
             onClick={() => setAutoScroll(!autoScroll)}
             aria-label={autoScroll ? '关闭自动滚动' : '开启自动滚动'}
           >
@@ -131,6 +229,19 @@ export default function LogViewerPage() {
           </button>
         </div>
       </div>
+
+      {/* 热点源提示 */}
+      {hotSources.length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+          <AlertTriangle size={14} style={{ color: criticalLogs.length > 0 ? 'var(--antd-warning)' : 'var(--antd-text-muted)' }} />
+          <span>热点源: {hotSources.join(', ')}</span>
+          {criticalLogs.length > 0 && (
+            <span style={{ color: 'var(--antd-error)' }}>
+              ({criticalLogs.length} 条错误)
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -167,10 +278,13 @@ export default function LogViewerPage() {
           style={{ flex: 1 }}
           aria-label="搜索日志"
         />
+        <span style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', whiteSpace: 'nowrap' }}>
+          {filteredLogs.length}/{displayLogs.length} 条
+        </span>
       </div>
 
       {/* Loading State */}
-      {isLoading && (
+      {loading && logs.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
           <div className="spinner" style={{ marginBottom: '8px' }} />
           <div>加载中...</div>
@@ -179,27 +293,35 @@ export default function LogViewerPage() {
 
       {/* Error State */}
       {error && (
-        <div role="alert" style={{ 
-          padding: '16px', 
+        <div role="alert" style={{
+          padding: '16px',
           border: '1px solid rgba(255, 71, 87, 0.35)',
           borderRadius: 'var(--antd-radius-md)',
           background: 'rgba(255, 71, 87, 0.08)',
           color: 'var(--antd-error)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Search size={16} />
+            <AlertTriangle size={16} />
             <strong>日志加载失败</strong>
           </div>
-          <div style={{ fontSize: '14px' }}>{error.message}</div>
+          <div style={{ fontSize: '14px' }}>{error}</div>
+          <button
+            className="antd-btn"
+            style={{ marginTop: '8px' }}
+            onClick={() => { setLoading(true); void refreshLogs(); }}
+          >
+            <RefreshCw size={14} />
+            <span>重试</span>
+          </button>
         </div>
       )}
 
       {/* Log List */}
-      {!isLoading && (
-        <div 
+      {!loading && !error && (
+        <div
           ref={containerRef}
-          style={{ 
-            maxHeight: '600px', 
+          style={{
+            maxHeight: '600px',
             overflow: 'auto',
             border: '1px solid var(--antd-border-color)',
             borderRadius: 'var(--antd-radius-md)',
@@ -213,18 +335,18 @@ export default function LogViewerPage() {
           ) : (
             filteredLogs.map((log, index) => (
               <div
-                key={`${log.timestamp}-${index}`}
+                key={`${log.timestamp}-${log.source}-${index}`}
                 style={{
                   padding: '8px 12px',
                   borderBottom: '1px solid var(--antd-border-color)',
-                  background: getLevelBg(log.level),
+                  background: getLevelBgColor(log.level),
                   fontSize: '13px',
                   fontFamily: 'monospace',
                 }}
               >
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                  <span style={{ 
-                    color: getLevelColor(log.level), 
+                  <span style={{
+                    color: getLevelColor(log.level),
                     fontWeight: 600,
                     minWidth: '60px',
                     textTransform: 'uppercase',
@@ -244,6 +366,18 @@ export default function LogViewerPage() {
                 </div>
               </div>
             ))
+          )}
+          {/* 加载更多 */}
+          {logHasMore && (
+            <div style={{ padding: '12px', textAlign: 'center' }}>
+              <button
+                className="antd-btn"
+                onClick={loadMoreLogs}
+                disabled={logLoadingMore}
+              >
+                {logLoadingMore ? '加载中...' : '加载更多'}
+              </button>
+            </div>
           )}
           <div ref={logsEndRef} />
         </div>
