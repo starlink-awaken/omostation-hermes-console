@@ -1,6 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import React from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Wave2DashboardView from '../Wave2DashboardView'
+
+function withQueryClient(children: React.ReactNode) {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: 0, gcTime: 0, refetchInterval: false, refetchOnWindowFocus: false },
+    },
+  })
+  return React.createElement(QueryClientProvider, { client }, children)
+}
 
 const okJson = (body: unknown) => ({ ok: true, json: async () => body }) as Response
 
@@ -82,7 +93,7 @@ describe('Wave2DashboardView', () => {
   it('renders cards heatmap and proposals from API', async () => {
     const onNavigate = vi.fn()
     const onOpenTarget = vi.fn()
-    render(<Wave2DashboardView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />)
+    render(withQueryClient(<Wave2DashboardView onNavigate={onNavigate} onOpenTarget={onOpenTarget} />))
 
     await waitFor(() => {
       expect(screen.getByTestId('wave2-dashboard')).toBeInTheDocument()
@@ -125,7 +136,7 @@ describe('Wave2DashboardView', () => {
       }
       return Promise.resolve(okJson({}))
     })
-    render(<Wave2DashboardView />)
+    render(withQueryClient(<Wave2DashboardView />))
     await waitFor(() => expect(screen.getByTestId('wave2-load-plan')).toBeInTheDocument())
     fireEvent.click(screen.getByTestId('wave2-load-plan'))
     await waitFor(() => {
@@ -138,7 +149,7 @@ describe('Wave2DashboardView', () => {
     (fetch as any).mockImplementation(() =>
       Promise.resolve({ ok: false, status: 500, json: async () => ({}) } as Response),
     )
-    render(<Wave2DashboardView />)
+    render(withQueryClient(<Wave2DashboardView />))
     await waitFor(() => {
       expect(screen.getByText(/加载失败/)).toBeInTheDocument()
     })
@@ -163,7 +174,7 @@ describe('Wave2DashboardView', () => {
       }
       return Promise.resolve(okJson({}))
     })
-    render(<Wave2DashboardView />)
+    render(withQueryClient(<Wave2DashboardView />))
     await waitFor(() => expect(screen.getByTestId('wave2-demo-seed')).toBeInTheDocument())
     fireEvent.click(screen.getByTestId('wave2-demo-seed'))
     await waitFor(() => {

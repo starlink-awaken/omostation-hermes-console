@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Minus,
 } from 'lucide-react';
+import { useWave2Dashboard, type Wave2Dashboard } from '../api/hooks';
 import './Dashboard.css';
 
 /** Minimal nav target — avoid coupling to optional cockpitNavigation module. */
@@ -111,9 +112,11 @@ export default function Wave2DashboardView({
   onNavigate,
   onOpenTarget,
 }: Wave2DashboardViewProps) {
-  const [data, setData] = useState<Wave2Dashboard | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: queryData, isLoading, error: queryError, refetch } = useWave2Dashboard();
+  const data: Wave2Dashboard | null = queryData ?? null;
+  const loading = isLoading && !data;
+  const error = queryError instanceof Error ? queryError.message : null;
+
   const [planActions, setPlanActions] = useState<PlanAction[] | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
@@ -146,23 +149,9 @@ export default function Wave2DashboardView({
     }
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/wave2/dashboard');
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const body = (await res.json()) as Wave2Dashboard;
-      setData(body);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   const loadPlan = useCallback(async () => {
     setPlanLoading(true);

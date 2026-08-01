@@ -630,10 +630,53 @@ export function useSandboxQueue() {
 
 // ── Wave2 ──
 
+export interface Wave2Dashboard {
+  schema?: string;
+  status?: string;
+  cards?: {
+    pitch_count?: number;
+    mean_success?: number;
+    trend?: string;
+    critical?: number;
+    elevated?: number;
+    proposal_count?: number;
+    p0_proposals?: number;
+  };
+  heatmap?: {
+    statuses?: string[];
+    buckets?: string[];
+    matrix?: Record<string, Record<string, number>>;
+    totals?: { pitches?: number; critical?: number; elevated?: number; ok?: number };
+  };
+  heatmap_markdown?: string;
+  proposals?: Array<{
+    id?: string;
+    kind?: string;
+    priority?: string;
+    title?: string;
+    rationale?: string;
+    suggested_omo_action?: string;
+    task_query?: string;
+    handoff?: { tab?: string; taskQuery?: string; proposal_id?: string };
+    suggested_task?: { title?: string; priority?: string };
+  }>;
+  forecast?: { trend?: string; n?: number; mean?: number; forecast?: Array<{ predicted?: number; horizon?: number }> };
+  auto_mutate_rules?: boolean;
+  error?: string;
+  data_dir?: string;
+  source?: string;
+}
+
 export function useWave2Dashboard() {
   return useQuery({
     queryKey: ['wave2-dashboard'],
-    queryFn: () => apiFetch<Record<string, unknown>>(API_ENDPOINTS.wave2.getDashboard),
+    queryFn: async () => {
+      const res = await apiFetch<Wave2Dashboard>(API_ENDPOINTS.wave2.getDashboard);
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load Wave2 dashboard');
+      }
+      return res.data;
+    },
     staleTime: 60000,
   });
 }
