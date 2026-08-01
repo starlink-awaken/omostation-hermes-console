@@ -210,7 +210,7 @@ export default function Dashboard() {
 
   // Hero content from route config
   const hero = currentRoute
-    ? { title: currentRoute.label, subtitle: '' }
+    ? { title: currentRoute.label, subtitle: currentRoute.subtitle || '' }
     : { title: '控制台', subtitle: 'eCOS 管理面板' };
 
   // Group routes by group for sidebar
