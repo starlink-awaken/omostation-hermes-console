@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { Database, Search, Save, Loader2, Link as LinkIcon, BookOpen, Clock } from 'lucide-react';
 
+type MemorySearchResult = {
+  title?: string;
+  chunk_text?: string;
+  [key: string]: unknown;
+};
+
 export default function MemoryInjector() {
   const [activeSubTab, setActiveSubTab] = useState('write');
   
@@ -15,7 +21,8 @@ export default function MemoryInjector() {
   // Search State
   const [query, setQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<MemorySearchResult[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const handleWrite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,13 +44,16 @@ export default function MemoryInjector() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || response.statusText);
       
-      setWriteResult({ status: 'success', msg: `知识注入成功，已落盘至 bos://memory。` });
+      setWriteResult({
+        status: 'success',
+        msg: data.knowledge_ref ? `知识注入成功：${data.knowledge_ref}` : '知识注入成功，已落盘至 bos://memory。',
+      });
       setSlug('');
       setTitle('');
       setContent('');
       setTags('');
-    } catch (err: any) {
-      setWriteResult({ status: 'error', msg: `注入失败: ${err.message}` });
+    } catch (err: unknown) {
+      setWriteResult({ status: 'error', msg: `注入失败: ${err instanceof Error ? err.message : '请求失败'}` });
     } finally {
       setWriteLoading(false);
     }
@@ -51,9 +61,10 @@ export default function MemoryInjector() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query) return;
+    if (!query.trim()) return;
     
     setSearchLoading(true);
+    setSearchError(null);
     setSearchResults([]);
     
     try {
@@ -66,21 +77,32 @@ export default function MemoryInjector() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || response.statusText);
       
-      // MCP returns tools result which contains content array
-      // For `search` tool, we expect a JSON string in the first text block
       const resultText = data.result?.content?.[0]?.text;
-      if (resultText) {
-        let cleanText = resultText.trim();
+      let parsed = resultText;
+      if (typeof parsed === 'string') {
+        let cleanText = parsed.trim();
         if (cleanText.startsWith('```json')) {
           cleanText = cleanText.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
         }
-        setSearchResults(JSON.parse(cleanText));
-      } else {
-        setSearchResults([]);
+        try {
+          parsed = JSON.parse(cleanText);
+        } catch {
+          parsed = cleanText ? [{ title: '检索结果', chunk_text: cleanText }] : [];
+        }
       }
-    } catch (err: any) {
+      const results = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.results)
+          ? parsed.results
+          : Array.isArray(data.result?.results)
+            ? data.result.results
+            : Array.isArray(data.results)
+              ? data.results
+              : [];
+      setSearchResults(results);
+    } catch (err: unknown) {
       console.error(err);
-      alert('检索失败: ' + err.message);
+      setSearchError(`检索失败：${err instanceof Error ? err.message : '知识服务暂不可用。'}`);
     } finally {
       setSearchLoading(false);
     }
@@ -161,9 +183,15 @@ export default function MemoryInjector() {
             </button>
           </form>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }} aria-live="polite">
+          {searchError && (
+            <div role="alert" aria-live="assertive" className="antd-card" style={{ padding: '0.75rem 1rem', color: 'var(--antd-error)', border: '1px solid rgba(255,71,87,0.2)' }}>
+              {searchError}
+            </div>
+          )}
+
+          <div className="memory-record-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }} aria-live="polite">
             {searchResults.map((res, i) => (
-              <div key={i} className="stat-card animate-fade-in" style={{ animationDelay: `${i * 0.1}s`, display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid var(--antd-border-color)' }}>
+              <div key={`${res.slug || res.title || 'memory-result'}-${i}`} className="stat-card animate-fade-in" style={{ animationDelay: `${i * 0.1}s`, display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid var(--antd-border-color)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
                   <h3 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--antd-text-primary)' }}>{res.title}</h3>
                   <span style={{ 

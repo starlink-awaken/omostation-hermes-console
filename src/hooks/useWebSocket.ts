@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface UseWebSocketOptions {
   url: string;
-  onMessage?: (data: any) => void;
+  onMessage?: (data: unknown) => void;
   onError?: (error: Event) => void;
   onOpen?: () => void;
   onClose?: () => void;
@@ -12,7 +12,7 @@ interface UseWebSocketOptions {
 
 interface UseWebSocketReturn {
   isConnected: boolean;
-  send: (data: any) => void;
+  send: (data: unknown) => void;
   reconnect: () => void;
   disconnect: () => void;
 }
@@ -28,11 +28,32 @@ export function useWebSocket({
 }: UseWebSocketOptions): UseWebSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const shouldReconnectRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectRef = useRef<() => void>(() => undefined);
+  const callbacksRef = useRef({ onMessage, onError, onOpen, onClose });
+
+  useEffect(() => {
+    callbacksRef.current = { onMessage, onError, onOpen, onClose };
+  }, [onMessage, onError, onOpen, onClose]);
+
+  const disconnect = useCallback(() => {
+    shouldReconnectRef.current = false;
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setIsConnected(false);
+  }, []);
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    shouldReconnectRef.current = true;
+    if (wsRef.current && [WebSocket.OPEN, WebSocket.CONNECTING].includes(wsRef.current.readyState)) {
       return;
     }
 
@@ -40,33 +61,39 @@ export function useWebSocket({
       const ws = new WebSocket(url);
 
       ws.onopen = () => {
+        if (wsRef.current !== ws) return;
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
-        onOpen?.();
+        callbacksRef.current.onOpen?.();
       };
 
       ws.onmessage = (event) => {
+        if (wsRef.current !== ws) return;
         try {
           const data = JSON.parse(event.data);
-          onMessage?.(data);
+          callbacksRef.current.onMessage?.(data);
         } catch {
-          onMessage?.(event.data);
+          callbacksRef.current.onMessage?.(event.data);
         }
       };
 
       ws.onerror = (error) => {
-        onError?.(error);
+        if (wsRef.current !== ws) return;
+        callbacksRef.current.onError?.(error);
       };
 
       ws.onclose = () => {
+        if (wsRef.current !== ws) return;
+        wsRef.current = null;
         setIsConnected(false);
-        onClose?.();
+        callbacksRef.current.onClose?.();
 
-        // 自动重连
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+        // 只有非主动关闭才进入自动重连，避免 disconnect() 关掉后又被 onclose 拉起。
+        if (shouldReconnectRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current += 1;
           reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
+            reconnectTimeoutRef.current = null;
+            connectRef.current();
           }, reconnectInterval);
         }
       };
@@ -75,9 +102,9 @@ export function useWebSocket({
     } catch (error) {
       console.error('WebSocket connection error:', error);
     }
-  }, [url, onMessage, onError, onOpen, onClose, reconnectInterval, maxReconnectAttempts]);
+  }, [url, reconnectInterval, maxReconnectAttempts]);
 
-  const send = useCallback((data: any) => {
+  const send = useCallback((data: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       const message = typeof data === 'string' ? data : JSON.stringify(data);
       wsRef.current.send(message);
@@ -87,21 +114,12 @@ export function useWebSocket({
   const reconnect = useCallback(() => {
     disconnect();
     reconnectAttemptsRef.current = 0;
-    connect();
-  }, [connect]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    setIsConnected(false);
-  }, []);
+    shouldReconnectRef.current = true;
+    connectRef.current();
+  }, [disconnect]);
 
   useEffect(() => {
+    connectRef.current = connect;
     connect();
 
     return () => {
@@ -121,7 +139,7 @@ export function useWebSocket({
 interface UseRealtimeDataOptions<T> {
   url: string;
   initialData: T;
-  transform?: (data: any) => T;
+  transform?: (data: unknown) => T;
 }
 
 interface UseRealtimeDataReturn<T> {

@@ -1,16 +1,11 @@
 import '@testing-library/jest-dom'
-import { vi, afterEach, beforeEach } from 'vitest'
+import { cleanup } from '@testing-library/react'
 
-// Polyfill vi.mocked for vitest 4.x compatibility
-if (!(vi as any).mocked) {
-  ;(vi as any).mocked = <T>(item: T): T => item
-}
+// Mock global fetch for component tests
+global.fetch = vi.fn()
 
-// Ensure globalThis.fetch is always a vi.fn() mock
-beforeEach(() => {
-  vi.spyOn(globalThis, 'fetch').mockImplementation(vi.fn())
-})
-
+// Clean up mocks after each test
 afterEach(() => {
-  vi.restoreAllMocks()
+  cleanup()
+  vi.clearAllMocks()
 })
