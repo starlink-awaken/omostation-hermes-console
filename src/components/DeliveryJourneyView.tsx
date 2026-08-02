@@ -12,17 +12,8 @@ import {
   FileText,
   RefreshCw,
   AlertTriangle,
-  ExternalLink,
 } from 'lucide-react';
 import { useDeliveryJourney, type DeliveryJourneyData } from '../api/hooks';
-
-interface DeliveryStage {
-  name: string;
-  status: 'verified' | 'running' | 'pending' | 'failed' | 'unavailable' | 'merged' | 'open';
-  title: string;
-  details: Record<string, unknown>;
-  last_updated: string;
-}
 
 export default function DeliveryJourneyView() {
   const [selectedFixture, setSelectedFixture] = useState<string>('LIVE');
@@ -216,6 +207,45 @@ export default function DeliveryJourneyView() {
               {journey.last_updated ? new Date(journey.last_updated).toLocaleTimeString() : '--'}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Business context keeps the technical delivery projection anchored to a measurable user outcome. */}
+      {journey && (
+        <div className="antd-card" style={{ padding: '1rem 1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <Navigation size={16} style={{ color: 'var(--antd-primary, #1677ff)' }} />
+            <strong>业务上下文</strong>
+            <span style={{ color: '#8c8c8c', fontSize: '0.8rem' }}>
+              Workflow Mesh 场景绑定
+            </span>
+          </div>
+          {journey.scene_binding ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+              <div>
+                <div style={{ color: '#8c8c8c', fontSize: '0.75rem' }}>业务场景</div>
+                <div style={{ fontWeight: '600', marginTop: '4px', fontFamily: 'monospace' }}>
+                  {journey.scene_binding.scene_id}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: '#8c8c8c', fontSize: '0.75rem' }}>用户旅程</div>
+                <div style={{ fontWeight: '600', marginTop: '4px', fontFamily: 'monospace' }}>
+                  {journey.scene_binding.journey_id}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: '#8c8c8c', fontSize: '0.75rem' }}>结果指标</div>
+                <div style={{ fontWeight: '600', marginTop: '4px', fontFamily: 'monospace' }}>
+                  {journey.scene_binding.outcome_metric}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ color: '#8c8c8c', fontSize: '0.85rem' }}>
+              当前交付记录尚未绑定业务场景、用户旅程和结果指标。
+            </div>
+          )}
         </div>
       )}
 
