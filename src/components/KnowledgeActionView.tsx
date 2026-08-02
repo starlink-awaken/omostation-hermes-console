@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowRight, BookOpen, CheckCircle2, RefreshCw, Search, ShieldAlert } from 'lucide-react';
-import { apiPost, API_ENDPOINTS, useKosSearch, useKnowledgeActionOperations, useRecordKnowledgeAction, type KnowledgeActionInput, type KnowledgeActionRef } from '../api';
+import { apiPost, API_ENDPOINTS, useKosSearch, useKnowledgeActionOperations, useRecordKnowledgeAction, useRequestTaskWorkflow, type KnowledgeActionInput, type KnowledgeActionRef, type WorkflowRequestInput } from '../api';
 import { openCockpitNavigationTarget } from './cockpitNavigation';
 
 const DEFAULT_FORM = {
@@ -25,9 +25,14 @@ export default function KnowledgeActionView() {
   const [message, setMessage] = useState<string | null>(null);
   const [receiptWarning, setReceiptWarning] = useState(false);
   const [pendingReceipt, setPendingReceipt] = useState<{ input: KnowledgeActionInput; taskId: string } | null>(null);
+  const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
+  const [workflowName, setWorkflowName] = useState('knowledge-to-action');
+  const [evidencePlan, setEvidencePlan] = useState('结果摘要\n人工复核回执');
+  const [pendingWorkflowReceipt, setPendingWorkflowReceipt] = useState<{ input: KnowledgeActionInput; taskId: string; workflowRunId: string } | null>(null);
   const search = useKosSearch(searchQuery, 8);
   const operations = useKnowledgeActionOperations(form.sceneId);
   const receipt = useRecordKnowledgeAction();
+  const workflowRequest = useRequestTaskWorkflow();
   const selectedRefs = useMemo(
     () => (search.data?.data?.results || [])
       .filter((item) => selected.includes(item.id))
@@ -65,8 +70,7 @@ export default function KnowledgeActionView() {
     }
     setPendingReceipt(null);
     setReceiptWarning(false);
-    setMessage(`任务 ${taskId} 已创建，并已记录知识到行动回执。`);
-    openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: taskId });
+    setMessage(`任务 ${taskId} 已创建，并已记录知识到行动回执；请确认后再请求 Workflow。`);
     return true;
   };
 
@@ -97,6 +101,7 @@ export default function KnowledgeActionView() {
       setMessage(taskResult.error || '任务创建失败，未写入行动回执。');
       return;
     }
+    setCreatedTaskId(taskResult.data.id);
     await persistReceipt({
       action_kind: 'task_created',
       query,
@@ -109,6 +114,71 @@ export default function KnowledgeActionView() {
       task_ref: taskResult.data.id,
       actor_ref: 'cockpit-ui://knowledge-action',
     }, taskResult.data.id);
+  };
+
+  const persistWorkflowReceipt = async (input: KnowledgeActionInput, taskId: string, workflowRunId: string) => {
+    try {
+      const receiptResult = await receipt.mutateAsync(input);
+      if (!receiptResult.ok || !receiptResult.data?.ok) {
+        setPendingWorkflowReceipt({ input, taskId, workflowRunId });
+        setReceiptWarning(true);
+        setMessage(`Workflow ${workflowRunId} 已请求，但工作流行动回执未记录；可以重试回执。`);
+        return false;
+      }
+    } catch (error) {
+      setPendingWorkflowReceipt({ input, taskId, workflowRunId });
+      setReceiptWarning(true);
+      setMessage(`Workflow ${workflowRunId} 已请求，但工作流行动回执未记录：${error instanceof Error ? error.message : '请求失败'}`);
+      return false;
+    }
+    setPendingWorkflowReceipt(null);
+    setReceiptWarning(false);
+    return true;
+  };
+
+  const requestWorkflow = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!createdTaskId) return;
+    const input: WorkflowRequestInput = {
+      workflow_name: workflowName.trim(),
+      scene_binding: {
+        scene_id: form.sceneId.trim(),
+        journey_id: form.journeyId.trim(),
+        outcome_metric: form.outcomeMetric.trim(),
+      },
+      evidence_plan: evidencePlan.split('\n').map((item) => item.trim()).filter(Boolean),
+      operation_level: form.riskLevel,
+      actor_ref: 'cockpit-ui://knowledge-action',
+    };
+    if (!input.workflow_name || input.evidence_plan.length === 0) {
+      setMessage('工作流名称和至少一项证据计划不能为空。');
+      return;
+    }
+    setMessage(null);
+    setReceiptWarning(false);
+    try {
+      const result = await workflowRequest.mutateAsync({ taskId: createdTaskId, input });
+      if (!result.ok || !result.data?.workflow_run_id) {
+        setMessage(result.error || 'Workflow 请求未被接受。');
+        return;
+      }
+      const workflowRunId = result.data.workflow_run_id;
+      const receiptInput: KnowledgeActionInput = {
+        action_kind: 'workflow_requested',
+        query: query || form.title,
+        knowledge_refs: selectedRefs,
+        scene_binding: input.scene_binding,
+        task_ref: createdTaskId,
+        workflow_run_id: workflowRunId,
+        actor_ref: 'cockpit-ui://knowledge-action',
+      };
+      if (await persistWorkflowReceipt(receiptInput, createdTaskId, workflowRunId)) {
+        setMessage(`Workflow ${workflowRunId} 已记录为${result.data.request_state === 'approval_required' ? '待审批请求' : '可进入准入评估的请求'}，未启动 worker。`);
+        openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: createdTaskId });
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Workflow 请求失败。');
+    }
   };
 
   const liveOperations = operations.data?.data?.operations;
@@ -170,6 +240,19 @@ export default function KnowledgeActionView() {
         {pendingReceipt && <button className="antd-btn" type="button" onClick={() => { void persistReceipt(pendingReceipt.input, pendingReceipt.taskId); }} disabled={receipt.isPending}>重试行动回执</button>}
         {message && <p role="status" style={{ color: receiptWarning ? '#a8071a' : '#237804', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>{receiptWarning ? <ShieldAlert size={15} /> : <CheckCircle2 size={15} />} {message}</p>}
       </section>
+
+      {createdTaskId && (
+        <section className="antd-card" style={{ padding: '1rem' }}>
+          <form onSubmit={requestWorkflow} style={{ display: 'grid', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ArrowRight size={16} /><strong>请求进入 Workflow Mesh</strong></div>
+            <small style={{ color: '#8c8c8c' }}>任务 {createdTaskId} 已落在 planned 队列；此操作只记录 WorkflowRequested，不启动 worker，也不触达外部系统。</small>
+            <input className="antd-input" aria-label="工作流名称" value={workflowName} onChange={(event) => setWorkflowName(event.target.value)} placeholder="工作流名称" />
+            <textarea className="antd-input" aria-label="证据计划" value={evidencePlan} onChange={(event) => setEvidencePlan(event.target.value)} placeholder="每行一项证据计划" rows={3} />
+            <button className="antd-btn antd-btn-primary" type="submit" disabled={workflowRequest.isPending || receipt.isPending}><ArrowRight size={14} /> 请求 Workflow（人工确认后准入）</button>
+          </form>
+          {pendingWorkflowReceipt && <button className="antd-btn" type="button" onClick={() => { void persistWorkflowReceipt(pendingWorkflowReceipt.input, pendingWorkflowReceipt.taskId, pendingWorkflowReceipt.workflowRunId); }} disabled={receipt.isPending}>重试工作流行动回执</button>}
+        </section>
+      )}
 
       <section className="antd-card" style={{ padding: '1rem' }}>
         <strong>行动漏斗</strong>

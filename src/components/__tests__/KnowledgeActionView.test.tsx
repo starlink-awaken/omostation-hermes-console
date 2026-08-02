@@ -84,4 +84,33 @@ describe('KnowledgeActionView', () => {
     expect(screen.getByText(/任务 cockpit-manual-demo 已创建/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '重试行动回执' })).toBeInTheDocument();
   });
+
+  it('requires an explicit workflow request after task creation', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.startsWith('/api/kos/search')) return { ok: true, json: async () => ({ results: [{ id: 'delivery-1', title: '交付复盘' }] }) };
+      if (url === '/api/tasks') return { ok: true, json: async () => ({ id: 'cockpit-manual-workflow', title: '请求工作流' }) };
+      if (url.includes('/request-workflow')) return { ok: true, json: async () => ({ id: 'cockpit-manual-workflow', status: 'requested', request_state: 'ready_for_admission', workflow_run_id: 'mesh-request-demo', external_side_effects: 'disabled', worker_launch: false }) };
+      if (url === '/api/knowledge/action-receipt' && init?.method === 'POST') return { ok: true, json: async () => ({ ok: true, status: 'recorded', action: { action_id: 'knowledge-action:workflow-demo' } }) };
+      return { ok: true, json: async () => ({ ok: true, operations }) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderView();
+    fireEvent.change(screen.getByLabelText('检索知识'), { target: { value: '交付' } });
+    fireEvent.click(screen.getByRole('button', { name: '检索' }));
+    await waitFor(() => expect(screen.getByText('交付复盘')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.change(screen.getByLabelText('任务标题'), { target: { value: '请求工作流' } });
+    fireEvent.change(screen.getByLabelText('任务说明'), { target: { value: '把知识行动交给受治理工作流。' } });
+    fireEvent.click(screen.getByRole('button', { name: '创建任务并记录回执' }));
+    await waitFor(() => expect(screen.getByText(/请确认后再请求 Workflow/)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /请求 Workflow/ }));
+
+    await waitFor(() => expect(screen.getByText(/mesh-request-demo 已记录/)).toBeInTheDocument());
+    const requestCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('/request-workflow'));
+    const workflowReceiptCall = fetchMock.mock.calls.filter((call) => call[0] === '/api/knowledge/action-receipt').at(-1);
+    expect(JSON.parse(String(requestCall?.[1]?.body)).workflow_name).toBe('knowledge-to-action');
+    expect(JSON.parse(String(workflowReceiptCall?.[1]?.body)).action_kind).toBe('workflow_requested');
+    expect(JSON.parse(String(workflowReceiptCall?.[1]?.body)).workflow_run_id).toBe('mesh-request-demo');
+  });
 });

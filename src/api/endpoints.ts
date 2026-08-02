@@ -45,6 +45,8 @@ export const TASK_ENDPOINTS = {
   updateTaskStatus: (taskId: string) => `/api/tasks/${taskId}/status`,
   /** Create new task */
   createTask: '/api/tasks',
+  /** Request a governed Workflow Mesh run without launching it */
+  requestWorkflow: (taskId: string) => `/api/tasks/${encodeURIComponent(taskId)}/request-workflow`,
 } as const;
 
 // ── Domain Apps ──

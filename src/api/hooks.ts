@@ -556,7 +556,7 @@ export interface KnowledgeActionInput {
   actor_ref?: string;
 }
 
-export interface KnowledgeActionRecord extends KnowledgeActionInput {
+export interface KnowledgeActionRecord extends Omit<KnowledgeActionInput, 'scene_binding'> {
   schema: 'knowledge-action/v1';
   action_id: string;
   idempotency_key: string;
@@ -617,6 +617,41 @@ export function useRecordKnowledgeAction() {
     mutationFn: (input: KnowledgeActionInput) =>
       apiPost<KnowledgeActionResponse>(API_ENDPOINTS.knowledgeAction.recordReceipt, input),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['knowledge-action-operations'] });
+    },
+  });
+}
+
+export interface WorkflowRequestInput {
+  workflow_name: string;
+  workflow_version?: string;
+  scene_binding: {
+    scene_id: string;
+    journey_id: string;
+    outcome_metric: string;
+  };
+  evidence_plan: string[];
+  operation_level?: string;
+  actor_ref?: string;
+}
+
+export interface WorkflowRequestResponse {
+  id: string;
+  status: 'requested' | 'deduplicated';
+  request_state: 'ready_for_admission' | 'approval_required';
+  workflow_run_id: string;
+  external_side_effects: 'disabled';
+  worker_launch: false;
+  [key: string]: unknown;
+}
+
+export function useRequestTaskWorkflow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, input }: { taskId: string; input: WorkflowRequestInput }) =>
+      apiPost<WorkflowRequestResponse>(API_ENDPOINTS.tasks.requestWorkflow(taskId), input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
       void queryClient.invalidateQueries({ queryKey: ['knowledge-action-operations'] });
     },
   });
