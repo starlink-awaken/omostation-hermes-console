@@ -3,14 +3,20 @@ import {
   AlertTriangle,
   CheckCircle2,
   CircleSlash2,
+  ClipboardCheck,
   Database,
+  ListChecks,
   LockKeyhole,
   RefreshCw,
   ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react';
 import {
+  useEvaluateExternalResources,
   useExternalResources,
   type ExternalResourceAvailability,
+  type ExternalResourceEvaluation,
+  type ExternalResourceSceneBinding,
   type ExternalResourceItem,
 } from '../api/hooks';
 
@@ -70,10 +76,21 @@ function ResourceRow({ item, active, onSelect }: { item: ExternalResourceItem; a
 
 export default function ExternalResourceCatalogView() {
   const { data, isLoading, error, refetch } = useExternalResources();
+  const evaluate = useEvaluateExternalResources();
   const [kind, setKind] = useState('all');
   const [availability, setAvailability] = useState('all');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState('');
+  const [capability, setCapability] = useState('search');
+  const [sceneBinding, setSceneBinding] = useState<ExternalResourceSceneBinding>({
+    scene_id: '',
+    journey_id: '',
+    outcome_metric: '',
+    data_scope: '',
+    operator: '',
+    permission_ref: '',
+  });
+  const [evaluationResult, setEvaluationResult] = useState<ExternalResourceEvaluation>();
   const projection = data?.projection;
   const filtered = useMemo(() => {
     const resources = projection?.resources ?? [];
@@ -85,6 +102,16 @@ export default function ExternalResourceCatalogView() {
     ));
   }, [availability, kind, projection, query]);
   const selected = filtered.find((item) => item.id === selectedId) || filtered[0];
+  const updateSceneBinding = (field: keyof ExternalResourceSceneBinding, value: string) => {
+    setSceneBinding((current) => ({ ...current, [field]: value }));
+  };
+  const handleEvaluation = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    evaluate.mutate(
+      { capability: capability.trim(), scene_binding: sceneBinding },
+      { onSuccess: (result) => setEvaluationResult(result.evaluation) },
+    );
+  };
 
   if (isLoading && !data) {
     return <div className="antd-card" style={{ padding: 24 }}>正在读取外部资源目录...</div>;
@@ -144,6 +171,63 @@ export default function ExternalResourceCatalogView() {
           {Object.entries(AVAILABILITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </div>
+
+      <form className="antd-card" style={{ padding: 16, display: 'grid', gap: 12 }} onSubmit={handleEvaluation} aria-label="按场景评估外部资源">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <ClipboardCheck size={18} style={{ color: 'var(--antd-primary, #1677ff)' }} />
+          <strong>按场景评估候选</strong>
+          <span style={{ color: '#ad6800', fontSize: 12, fontWeight: 600 }}><LockKeyhole size={13} /> 只读决策</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+          <label>能力<input className="antd-input" aria-label="评估能力" value={capability} onChange={(event) => setCapability(event.target.value)} placeholder="search" /></label>
+          {([
+            ['scene_id', '场景 ID'],
+            ['journey_id', '旅程 ID'],
+            ['outcome_metric', '结果指标'],
+            ['data_scope', '数据范围'],
+            ['operator', '操作人'],
+            ['permission_ref', '权限引用'],
+          ] as const).map(([field, label]) => (
+            <label key={field}>{label}<input className="antd-input" aria-label={`评估${label}`} value={sceneBinding[field]} onChange={(event) => updateSceneBinding(field, event.target.value)} /></label>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button type="submit" className="antd-btn antd-btn-primary" disabled={evaluate.isPending || !capability.trim()} aria-label="评估外部资源候选">
+            <ListChecks size={14} /> {evaluate.isPending ? '评估中...' : '评估候选'}
+          </button>
+          <span style={{ color: '#666', fontSize: 12 }}>结果只展示候选、淘汰原因和决策因子，不会激活连接。</span>
+          {evaluate.error && <span style={{ color: '#cf1322', fontSize: 12 }}>{evaluate.error instanceof Error ? evaluate.error.message : '评估失败'}</span>}
+        </div>
+      </form>
+
+      {evaluationResult && (
+        <section className="antd-card" style={{ padding: 16, display: 'grid', gap: 12 }} aria-label="外部资源场景评估结果">
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ShieldCheck size={18} style={{ color: '#389e0d' }} /><strong>评估结果：{evaluationResult.status}</strong></div>
+            <span style={{ color: '#ad6800', fontSize: 12, fontWeight: 600 }}>activation: {evaluationResult.activation}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: '#666', fontSize: 12 }}>
+            <span>候选 {evaluationResult.summary.candidate_count}</span>
+            <span>可选 {evaluationResult.summary.eligible_count}</span>
+            <span>淘汰 {evaluationResult.summary.rejected_count}</span>
+            <span>不适用 {evaluationResult.summary.not_applicable_count}</span>
+            <span>最终选择 {evaluationResult.selected_resource_id || '无'}</span>
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {evaluationResult.candidates.map((candidate) => (
+              <div key={candidate.resource_id} style={{ border: '1px solid #e8e8e8', borderRadius: 6, padding: 10, display: 'grid', gap: 5 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <strong style={{ overflowWrap: 'anywhere' }}>{candidate.resource_id}</strong>
+                  <span style={{ color: candidate.status === 'eligible' ? '#389e0d' : '#ad6800', fontSize: 12 }}>{candidate.status}</span>
+                </div>
+                {candidate.reasons.length > 0 && <span style={{ color: '#ad6800', fontSize: 12 }}>{candidate.reasons.join(' · ')}</span>}
+                {Object.keys(candidate.decision_factors).length > 0 && <span style={{ color: '#666', fontSize: 12 }}>健康 {candidate.decision_factors.health} · 可信度 {candidate.decision_factors.trust ?? 0} · 新鲜度 {candidate.decision_factors.freshness ?? 0} · 成本 {candidate.decision_factors.cost ?? 0} · 延迟 {candidate.decision_factors.latency ?? 0}</span>}
+              </div>
+            ))}
+            {evaluationResult.candidates.length === 0 && <span style={{ color: '#666' }}><CircleSlash2 size={14} /> 没有可评估候选。</span>}
+          </div>
+        </section>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 0.8fr) minmax(0, 1.6fr)', gap: 16, alignItems: 'start' }}>
         <div className="antd-card" style={{ padding: 12, display: 'grid', gap: 8 }}>

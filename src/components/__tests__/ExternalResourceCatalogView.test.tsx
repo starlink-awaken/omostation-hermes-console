@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ExternalResourceCatalogView from '../ExternalResourceCatalogView';
@@ -71,5 +71,60 @@ describe('ExternalResourceCatalogView', () => {
 
     await waitFor(() => expect(screen.getByText('catalog offline')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: '重试读取外部资源目录' })).toBeInTheDocument();
+  });
+
+  it('submits a scene-bound read-only candidate evaluation', async () => {
+    const evaluation = {
+      schema: 'external-resource-evaluation/v1',
+      mode: 'read_only_evaluation',
+      activation: 'forbidden',
+      raw_content_policy: 'never_read_or_export',
+      capability: 'search',
+      trace_id: 'trace:test',
+      policy_digest: 'external-connection-fabric/v1',
+      scene_binding: {
+        scene_id: 'research-brief',
+        journey_id: 'weekly-decision',
+        outcome_metric: 'decision_latency_hours',
+        data_scope: 'public:research',
+        operator: 'human:test',
+        permission_ref: 'permission://test',
+      },
+      status: 'selected',
+      selected_resource_id: 'source:test',
+      candidates: [{
+        resource_id: 'source:test',
+        capability: 'search',
+        status: 'eligible',
+        reasons: [],
+        decision_factors: { health: 'healthy', trust: 0.9, freshness: 0.8, cost: 0.2, latency: 0.3 },
+        rank: [1, 1, 0.9, 0.8, -0.2, -0.3, 'source:test'],
+        availability: 'available',
+        provenance_ref: 'evidence://source/test',
+      }],
+      reasons: [],
+      summary: { candidate_count: 1, eligible_count: 1, rejected_count: 0, not_applicable_count: 0 },
+    };
+    const fetchMock = vi.fn().mockImplementation(async (url: string, options?: RequestInit) => {
+      if (options?.method === 'POST') return { ok: true, json: async () => ({ ok: true, status: 'selected', evaluation }) };
+      return { ok: true, json: async () => ({ ok: true, projection }) };
+    });
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+
+    renderView();
+    await waitFor(() => expect(screen.getByText('外部能力目录')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('评估场景 ID'), { target: { value: 'research-brief' } });
+    fireEvent.change(screen.getByLabelText('评估旅程 ID'), { target: { value: 'weekly-decision' } });
+    fireEvent.change(screen.getByLabelText('评估结果指标'), { target: { value: 'decision_latency_hours' } });
+    fireEvent.change(screen.getByLabelText('评估数据范围'), { target: { value: 'public:research' } });
+    fireEvent.change(screen.getByLabelText('评估操作人'), { target: { value: 'human:test' } });
+    fireEvent.change(screen.getByLabelText('评估权限引用'), { target: { value: 'permission://test' } });
+    fireEvent.click(screen.getByRole('button', { name: '评估外部资源候选' }));
+
+    await waitFor(() => expect(screen.getByText('评估结果：selected')).toBeInTheDocument());
+    expect(screen.getAllByText('source:test').length).toBeGreaterThan(0);
+    const postCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'POST');
+    expect(postCall?.[0]).toBe('/api/external-resources/evaluate');
+    expect(String(postCall?.[1]?.body)).toContain('research-brief');
   });
 });

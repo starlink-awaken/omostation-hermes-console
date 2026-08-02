@@ -1403,6 +1403,66 @@ export interface ExternalResourceResponse {
   projection: ExternalResourceProjection;
 }
 
+export interface ExternalResourceSceneBinding {
+  scene_id: string;
+  journey_id: string;
+  outcome_metric: string;
+  data_scope: string;
+  operator: string;
+  permission_ref: string;
+}
+
+export interface ExternalResourceEvaluationInput {
+  capability: string;
+  scene_binding: ExternalResourceSceneBinding;
+  trace_id?: string;
+}
+
+export interface ExternalResourceCandidateDecision {
+  resource_id: string;
+  capability: string;
+  status: 'eligible' | 'rejected' | 'not_applicable';
+  reasons: string[];
+  decision_factors: {
+    health?: string;
+    permission?: number;
+    trust?: number;
+    freshness?: number;
+    cost?: number;
+    latency?: number;
+  };
+  rank: Array<number | string>;
+  availability?: string | null;
+  provenance_ref: string;
+}
+
+export interface ExternalResourceEvaluation {
+  schema: 'external-resource-evaluation/v1';
+  mode: 'read_only_evaluation';
+  activation: 'forbidden';
+  raw_content_policy: string;
+  capability: string;
+  trace_id: string;
+  policy_digest: string;
+  scene_binding: ExternalResourceSceneBinding;
+  status: 'selected' | 'unavailable';
+  selected_resource_id?: string | null;
+  candidates: ExternalResourceCandidateDecision[];
+  reasons: string[];
+  summary: {
+    candidate_count: number;
+    eligible_count: number;
+    rejected_count: number;
+    not_applicable_count: number;
+  };
+}
+
+export interface ExternalResourceEvaluationResponse {
+  ok: boolean;
+  status: string;
+  evaluation: ExternalResourceEvaluation;
+}
+
 export function useExternalResources() {
   return useQuery({
     queryKey: ['external-resources'],
@@ -1415,5 +1475,20 @@ export function useExternalResources() {
     },
     staleTime: 30000,
     refetchInterval: 60000,
+  });
+}
+
+export function useEvaluateExternalResources() {
+  return useMutation({
+    mutationFn: async (input: ExternalResourceEvaluationInput) => {
+      const res = await apiPost<ExternalResourceEvaluationResponse>(
+        API_ENDPOINTS.externalResources.evaluate,
+        input,
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to evaluate external resources');
+      }
+      return res.data;
+    },
   });
 }
