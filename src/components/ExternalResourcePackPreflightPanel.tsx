@@ -71,6 +71,18 @@ function StatusProjection({ projection }: { projection: ExternalResourcePackChec
       ) : (
         <span style={{ color: '#389e0d', fontSize: 13 }}>合同完整，可进入下一步目录预览。</span>
       )}
+      {projection.catalog_preview && (
+        <div style={{ border: '1px solid #d9d9d9', borderRadius: 6, padding: 10, display: 'grid', gap: 6, fontSize: 12 }} aria-label="外部扩展包目录预览">
+          <strong>目录预览：未探活</strong>
+          <span style={{ color: '#666' }}>
+            {projection.catalog_preview.resource.id} · {projection.catalog_preview.resource.kind} · 可用性 {projection.catalog_preview.resource.availability}
+          </span>
+          <span style={{ color: '#666' }}>
+            健康状态 {projection.catalog_preview.resource.health.status} · 不会把 manifest 声明当作实时探针结果
+          </span>
+          <span style={{ color: '#666' }}>{projection.catalog_preview.next_action}</span>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', color: '#666', fontSize: 12 }}>
         <span>安装禁止</span><span>provider 加载禁止</span><span>健康探针禁止</span><span>OMO 写入禁止</span><span>业务调用禁止</span>
       </div>

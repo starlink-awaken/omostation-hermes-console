@@ -1546,6 +1546,37 @@ export interface ExternalResourceResponse {
 
 export type ExternalResourcePackCheckStatus = 'blocked' | 'proposal_only' | 'ready_for_catalog_preview';
 
+export interface ExternalResourcePackCatalogPreview {
+  schema: 'external-resource-pack-catalog-preview/v1';
+  mode: 'read_only_pack_preview';
+  activation: 'forbidden';
+  raw_content_policy: string;
+  status: ExternalResourcePackCheckStatus;
+  source: string;
+  pack: {
+    pack_id: string | null;
+    pack_version: string | null;
+  };
+  resource: {
+    id: string;
+    kind: ExternalResourceKind;
+    provider: string;
+    capabilities: string[];
+    lifecycle: string;
+    version: string;
+    permission_ref: string;
+    availability: 'unobserved';
+    reason_codes: string[];
+    health: {
+      status: 'unobserved';
+      observed_at: string | null;
+      latency_ms: number | null;
+      source: string;
+    };
+  };
+  next_action: string;
+}
+
 export interface ExternalResourcePackCheckProjection {
   schema: 'external-resource-pack-check/v1';
   mode: 'read_only_conformance';
@@ -1567,6 +1598,7 @@ export interface ExternalResourcePackCheckProjection {
     capabilities: string[];
     permission_ref: string;
   } | null;
+  catalog_preview?: ExternalResourcePackCatalogPreview | null;
   execution_policy: {
     install: 'forbidden';
     provider_import: 'forbidden';
