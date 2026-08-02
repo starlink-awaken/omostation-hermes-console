@@ -1544,6 +1544,49 @@ export interface ExternalResourceResponse {
   projection: ExternalResourceProjection;
 }
 
+export type ExternalResourcePackCheckStatus = 'blocked' | 'proposal_only' | 'ready_for_catalog_preview';
+
+export interface ExternalResourcePackCheckProjection {
+  schema: 'external-resource-pack-check/v1';
+  mode: 'read_only_conformance';
+  activation: 'forbidden';
+  status: ExternalResourcePackCheckStatus;
+  reason_codes: string[];
+  pack: {
+    pack_id: string | null;
+    pack_version: string | null;
+    provider: string | null;
+  };
+  descriptor?: {
+    id: string;
+    kind: ExternalResourceKind;
+    provider: string;
+    version: string;
+    lifecycle: string;
+    mode: string;
+    capabilities: string[];
+    permission_ref: string;
+  } | null;
+  execution_policy: {
+    install: 'forbidden';
+    provider_import: 'forbidden';
+    health_probe: 'forbidden';
+    omo_write: 'forbidden';
+    business_invoke: 'forbidden';
+  };
+}
+
+export interface ExternalResourcePackPreflightResponse {
+  ok: boolean;
+  status: string;
+  projection?: ExternalResourcePackCheckProjection;
+  error?: string;
+  message?: string;
+  activation: 'forbidden';
+  persistence?: 'none';
+  provider_invocation?: false;
+}
+
 export type ExternalResourceReviewQueueStatus = 'attention' | 'clear' | 'empty' | 'unavailable';
 
 export interface ExternalResourceReviewItem {
@@ -1695,6 +1738,21 @@ export function useExternalResourceReviewQueue() {
     },
     staleTime: 30000,
     refetchInterval: 60000,
+  });
+}
+
+export function usePreflightExternalResourcePack() {
+  return useMutation({
+    mutationFn: async (pack: Record<string, unknown>) => {
+      const res = await apiPost<ExternalResourcePackPreflightResponse>(
+        API_ENDPOINTS.externalResources.packPreflight,
+        { pack },
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to preflight external resource pack');
+      }
+      return res.data;
+    },
   });
 }
 
