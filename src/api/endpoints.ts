@@ -47,6 +47,10 @@ export const TASK_ENDPOINTS = {
   createTask: '/api/tasks',
   /** Request a governed Workflow Mesh run without launching it */
   requestWorkflow: (taskId: string) => `/api/tasks/${encodeURIComponent(taskId)}/request-workflow`,
+  /** Preview admission gates for an existing Workflow Mesh request */
+  previewWorkflowAdmission: (taskId: string) => `/api/tasks/${encodeURIComponent(taskId)}/workflow-admission-preview`,
+  /** Apply admission to an existing request; worker launch is still separate */
+  admitWorkflow: (taskId: string) => `/api/tasks/${encodeURIComponent(taskId)}/admit-workflow`,
 } as const;
 
 // ── Domain Apps ──

@@ -116,6 +116,8 @@ export default function WorkflowMeshOperationsView() {
   const consumptionTone = statusTone(operations.consumption.status);
   const summary = [
     ['运行总数', operations.summary.run_count],
+    ['Workflow 请求', operations.workflow_requests?.request_count ?? 0],
+    ['待准入', operations.workflow_requests?.pending_count ?? 0],
     ['已成功', operations.summary.succeeded_runs],
     ['已验证', operations.summary.verified_runs],
     ['已关闭', operations.summary.closed_runs],

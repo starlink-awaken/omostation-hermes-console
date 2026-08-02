@@ -29,6 +29,7 @@ export default function KnowledgeActionView() {
   const [workflowName, setWorkflowName] = useState('knowledge-to-action');
   const [evidencePlan, setEvidencePlan] = useState('结果摘要\n人工复核回执');
   const [pendingWorkflowReceipt, setPendingWorkflowReceipt] = useState<{ input: KnowledgeActionInput; taskId: string; workflowRunId: string } | null>(null);
+  const [requestedWorkflowRunId, setRequestedWorkflowRunId] = useState<string | null>(null);
   const search = useKosSearch(searchQuery, 8);
   const operations = useKnowledgeActionOperations(form.sceneId);
   const receipt = useRecordKnowledgeAction();
@@ -163,6 +164,7 @@ export default function KnowledgeActionView() {
         return;
       }
       const workflowRunId = result.data.workflow_run_id;
+      setRequestedWorkflowRunId(workflowRunId);
       const receiptInput: KnowledgeActionInput = {
         action_kind: 'workflow_requested',
         query: query || form.title,
@@ -251,6 +253,11 @@ export default function KnowledgeActionView() {
             <button className="antd-btn antd-btn-primary" type="submit" disabled={workflowRequest.isPending || receipt.isPending}><ArrowRight size={14} /> 请求 Workflow（人工确认后准入）</button>
           </form>
           {pendingWorkflowReceipt && <button className="antd-btn" type="button" onClick={() => { void persistWorkflowReceipt(pendingWorkflowReceipt.input, pendingWorkflowReceipt.taskId, pendingWorkflowReceipt.workflowRunId); }} disabled={receipt.isPending}>重试工作流行动回执</button>}
+          {requestedWorkflowRunId && <div role="status" style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid #d9d9d9', background: '#fafafa' }}>
+            <strong>准入状态：已请求，等待真实门禁</strong>
+            <p style={{ margin: '0.35rem 0', color: '#666', fontSize: '0.82rem' }}>运行 {requestedWorkflowRunId} 仍需审批、能力健康和预算检查；没有真实健康快照时不会显示可执行，也不会启动 worker。</p>
+            <button className="antd-btn" type="button" onClick={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: createdTaskId })}>去任务中心继续评估</button>
+          </div>}
         </section>
       )}
 

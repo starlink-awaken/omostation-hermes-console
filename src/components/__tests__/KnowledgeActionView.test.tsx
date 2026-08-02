@@ -107,6 +107,7 @@ describe('KnowledgeActionView', () => {
     fireEvent.click(screen.getByRole('button', { name: /请求 Workflow/ }));
 
     await waitFor(() => expect(screen.getByText(/mesh-request-demo 已记录/)).toBeInTheDocument());
+    expect(screen.getByText(/准入状态：已请求，等待真实门禁/)).toBeInTheDocument();
     const requestCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('/request-workflow'));
     const workflowReceiptCall = fetchMock.mock.calls.filter((call) => call[0] === '/api/knowledge/action-receipt').at(-1);
     expect(JSON.parse(String(requestCall?.[1]?.body)).workflow_name).toBe('knowledge-to-action');

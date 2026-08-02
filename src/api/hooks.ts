@@ -657,6 +657,50 @@ export function useRequestTaskWorkflow() {
   });
 }
 
+export interface WorkflowAdmissionInput {
+  workflow_run_id: string;
+  backend: string;
+  required_capabilities: string[];
+  capability_health: Record<string, unknown>;
+  requested_budget?: number;
+  remaining_budget?: number;
+  scene_binding?: {
+    scene_id: string;
+    journey_id: string;
+    outcome_metric: string;
+  };
+}
+
+export interface WorkflowAdmissionResponse {
+  id: string;
+  status: 'eligible' | 'blocked' | 'admitted' | 'deduplicated';
+  dispatch_state?: 'preview' | 'admitted';
+  workflow_run_id: string;
+  external_side_effects: 'disabled';
+  worker_launch: false;
+  blocker?: string;
+  [key: string]: unknown;
+}
+
+export function usePreviewTaskWorkflowAdmission() {
+  return useMutation({
+    mutationFn: ({ taskId, input }: { taskId: string; input: WorkflowAdmissionInput }) =>
+      apiPost<WorkflowAdmissionResponse>(API_ENDPOINTS.tasks.previewWorkflowAdmission(taskId), input),
+  });
+}
+
+export function useAdmitTaskWorkflow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, input }: { taskId: string; input: WorkflowAdmissionInput }) =>
+      apiPost<WorkflowAdmissionResponse>(API_ENDPOINTS.tasks.admitWorkflow(taskId), input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      void queryClient.invalidateQueries({ queryKey: ['workflow-mesh-operations'] });
+    },
+  });
+}
+
 // ── System Health ──
 
 export interface SystemHealthData {
@@ -1065,6 +1109,14 @@ export interface WorkflowMeshOperationsData {
     evidence_complete_runs: number;
     rates: Record<string, number | null>;
     states: Record<string, number>;
+  };
+  workflow_requests?: {
+    request_count: number;
+    pending_count: number;
+    admitted_count: number;
+    approval_required_count: number;
+    states: Record<string, number>;
+    next_action: string;
   };
   by_scene: Array<{
     scene_binding: OutcomeSceneBinding | null;
