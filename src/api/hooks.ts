@@ -1619,6 +1619,26 @@ export interface ExternalResourcePackPreflightResponse {
   provider_invocation?: false;
 }
 
+export interface ExternalResourcePackProposalResponse {
+  ok: boolean;
+  status: 'recorded' | 'deduplicated';
+  proposal_status: ExternalResourcePackCheckStatus;
+  proposal: {
+    proposal_receipt_id: string;
+    proposal_id: string;
+    proposal_status: ExternalResourcePackCheckStatus;
+    next_stage: 'catalog_discovery' | 'proposal_evaluation';
+    activation: 'forbidden';
+    persistence: 'omo_append_only';
+    provider_invocation: false;
+  };
+  activation: 'forbidden';
+  persistence: 'omo_append_only';
+  provider_invocation: false;
+  external_side_effects: 'disabled';
+  worker_launch: false;
+}
+
 export type ExternalResourceReviewQueueStatus = 'attention' | 'clear' | 'empty' | 'unavailable';
 
 export interface ExternalResourceReviewItem {
@@ -1782,6 +1802,26 @@ export function usePreflightExternalResourcePack() {
       );
       if (!res.ok || !res.data) {
         throw new Error(res.error || 'Failed to preflight external resource pack');
+      }
+      return res.data;
+    },
+  });
+}
+
+export function useRecordExternalResourcePackProposal() {
+  return useMutation({
+    mutationFn: async (input: {
+      pack: Record<string, unknown>;
+      proposal_id: string;
+      review_action: 'submit' | 'defer' | 'request_changes';
+      actor_ref?: string;
+    }) => {
+      const res = await apiPost<ExternalResourcePackProposalResponse>(
+        API_ENDPOINTS.externalResources.packProposal,
+        input,
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to persist external resource pack proposal');
       }
       return res.data;
     },

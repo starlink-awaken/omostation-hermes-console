@@ -85,4 +85,58 @@ describe('ExternalResourcePackPreflightPanel', () => {
     await waitFor(() => expect(screen.getByText(/JSON at position/i)).toBeInTheDocument());
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('persists a safe review proposal after preflight', async () => {
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          status: 'ready_for_catalog_preview',
+          activation: 'forbidden',
+          projection: {
+            schema: 'external-resource-pack-check/v1',
+            mode: 'read_only_conformance',
+            activation: 'forbidden',
+            status: 'ready_for_catalog_preview',
+            reason_codes: [],
+            pack: { pack_id: 'pack:research-provider', pack_version: '1.0.0', provider: 'research-provider' },
+            descriptor: null,
+            execution_policy: { install: 'forbidden', provider_import: 'forbidden', health_probe: 'forbidden', omo_write: 'forbidden', business_invoke: 'forbidden' },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          status: 'recorded',
+          proposal_status: 'ready_for_catalog_preview',
+          proposal: {
+            proposal_receipt_id: 'external-pack-proposal:abc',
+            proposal_id: 'proposal:external-pack:review-1',
+            proposal_status: 'ready_for_catalog_preview',
+            next_stage: 'catalog_discovery',
+            activation: 'forbidden',
+            persistence: 'omo_append_only',
+            provider_invocation: false,
+          },
+          activation: 'forbidden',
+          persistence: 'omo_append_only',
+          provider_invocation: false,
+          external_side_effects: 'disabled',
+          worker_launch: false,
+        }),
+      }) as typeof globalThis.fetch;
+
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '预检外部扩展包' }));
+    await waitFor(() => expect(screen.getByText('可进入目录预览')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: '保存外部扩展包评审提案' }));
+
+    await waitFor(() => expect(screen.getByText(/已保存 proposal receipt/)).toBeInTheDocument());
+    const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls[1]?.[0]).toBe('/api/external-resources/packs/proposals');
+    expect(String(calls[1]?.[1]?.body)).toContain('proposal:external-pack:review-1');
+  });
 });

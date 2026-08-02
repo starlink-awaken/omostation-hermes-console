@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { CheckCircle2, CircleSlash2, FileCode2, LockKeyhole, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, CircleSlash2, FileCode2, LockKeyhole, Save, ShieldAlert } from 'lucide-react';
 import {
   usePreflightExternalResourcePack,
+  useRecordExternalResourcePackProposal,
   type ExternalResourcePackCheckProjection,
   type ExternalResourcePackCheckStatus,
 } from '../api/hooks';
@@ -92,8 +93,11 @@ function StatusProjection({ projection }: { projection: ExternalResourcePackChec
 
 export default function ExternalResourcePackPreflightPanel() {
   const [manifest, setManifest] = useState(EXAMPLE_MANIFEST);
+  const [proposalId, setProposalId] = useState('proposal:external-pack:review-1');
+  const [reviewAction, setReviewAction] = useState<'submit' | 'defer' | 'request_changes'>('submit');
   const [localError, setLocalError] = useState('');
   const preflight = usePreflightExternalResourcePack();
+  const proposal = useRecordExternalResourcePackProposal();
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -102,6 +106,23 @@ export default function ExternalResourcePackPreflightPanel() {
       const parsed = JSON.parse(manifest) as unknown;
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('manifest 必须是 JSON 对象');
       preflight.mutate(parsed as Record<string, unknown>);
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : 'manifest JSON 无效');
+    }
+  };
+
+  const saveProposal = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLocalError('');
+    try {
+      const parsed = JSON.parse(manifest) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('manifest 必须是 JSON 对象');
+      if (!proposalId.trim()) throw new Error('proposal_id 不能为空');
+      proposal.mutate({
+        pack: parsed as Record<string, unknown>,
+        proposal_id: proposalId.trim(),
+        review_action: reviewAction,
+      });
     } catch (error) {
       setLocalError(error instanceof Error ? error.message : 'manifest JSON 无效');
     }
@@ -139,6 +160,36 @@ export default function ExternalResourcePackPreflightPanel() {
         </div>
       </form>
       {preflight.data?.projection && <StatusProjection projection={preflight.data.projection} />}
+      {preflight.data?.projection && preflight.data.projection.status !== 'blocked' && (
+        <form onSubmit={saveProposal} style={{ borderTop: '1px solid #f0f0f0', paddingTop: 14, display: 'grid', gap: 10 }} aria-label="保存外部扩展包评审提案">
+          <strong style={{ fontSize: 13 }}>保存评审提案</strong>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'end' }}>
+            <label style={{ display: 'grid', gap: 6, color: '#666', fontSize: 12, flex: '1 1 240px' }}>
+              proposal_id
+              <input
+                aria-label="外部扩展包 proposal id"
+                value={proposalId}
+                onChange={(event) => setProposalId(event.target.value)}
+                style={{ padding: 8, border: '1px solid #d9d9d9', borderRadius: 6 }}
+              />
+            </label>
+            <label style={{ display: 'grid', gap: 6, color: '#666', fontSize: 12 }}>
+              评审动作
+              <select aria-label="外部扩展包评审动作" value={reviewAction} onChange={(event) => setReviewAction(event.target.value as typeof reviewAction)} style={{ padding: 8, border: '1px solid #d9d9d9', borderRadius: 6 }}>
+                <option value="submit">提交下一步</option>
+                <option value="defer">暂缓</option>
+                <option value="request_changes">要求修改</option>
+              </select>
+            </label>
+            <button type="submit" className="antd-btn" disabled={proposal.isPending} aria-label="保存外部扩展包评审提案">
+              <Save size={14} /> {proposal.isPending ? '保存中...' : '保存评审提案'}
+            </button>
+          </div>
+          <span style={{ color: '#666', fontSize: 12 }}>只保存脱敏 projection 到 OMO 追加日志，不生成准入、WorkflowRun 或 provider 调用。</span>
+          {proposal.data && <span style={{ color: '#389e0d', fontSize: 13 }}>已保存 proposal receipt：{proposal.data.proposal.proposal_receipt_id}</span>}
+          {proposal.error && <span style={{ color: '#cf1322', fontSize: 12 }}>{proposal.error instanceof Error ? proposal.error.message : '评审提案保存失败'}</span>}
+        </form>
+      )}
       {preflight.data && !preflight.data.projection && preflight.data.message && <span style={{ color: '#cf1322', fontSize: 13 }}>{preflight.data.message}</span>}
     </section>
   );

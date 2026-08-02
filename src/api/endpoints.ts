@@ -474,6 +474,8 @@ export const EXTERNAL_RESOURCE_ENDPOINTS = {
   list: '/api/external-resources',
   /** Static extension-pack conformance; never imports, invokes or activates a provider. */
   packPreflight: '/api/external-resources/packs/preflight',
+  /** Persist only a fresh safe pack review receipt; never admits or activates a provider. */
+  packProposal: '/api/external-resources/packs/proposals',
   /** Latest governed manual-review delta; never activates a resource. */
   reviewQueue: '/api/external-resources/review-queue',
   /** Scene-bound candidate evaluation; never activates or invokes a resource. */
