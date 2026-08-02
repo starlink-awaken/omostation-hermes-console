@@ -75,6 +75,26 @@ const SandboxTerminal = lazy(() => import('./components/SandboxTerminal'));
 const SettingsView = lazy(() => import('./components/SettingsView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const DeliveryJourneyView = lazy(() => import('./components/DeliveryJourneyView'));
+// eslint-disable-next-line react-refresh/only-export-components
+const CapabilityExplorer = lazy(() => import('./components/CapabilityExplorer'));
+// eslint-disable-next-line react-refresh/only-export-components
+const EcosWorkflowWorkbench = lazy(() => import('./components/EcosWorkflowWorkbench'));
+// eslint-disable-next-line react-refresh/only-export-components
+const GovernanceDomainWorkbench = lazy(() => import('./components/GovernanceDomainWorkbench'));
+// eslint-disable-next-line react-refresh/only-export-components
+const InfrastructureOpsWorkbench = lazy(() => import('./components/InfrastructureOpsWorkbench'));
+// eslint-disable-next-line react-refresh/only-export-components
+const KnowledgeExecutionWorkbench = lazy(() => import('./components/KnowledgeExecutionWorkbench'));
+// eslint-disable-next-line react-refresh/only-export-components
+const KOSWorkbench = lazy(() => import('./components/KOSWorkbench'));
+// eslint-disable-next-line react-refresh/only-export-components
+const MemoryInjector = lazy(() => import('./components/MemoryInjector'));
+// eslint-disable-next-line react-refresh/only-export-components
+const PlatformControlWorkbench = lazy(() => import('./components/PlatformControlWorkbench'));
+// eslint-disable-next-line react-refresh/only-export-components
+const RuntimeOpsWorkbench = lazy(() => import('./components/RuntimeOpsWorkbench'));
+// eslint-disable-next-line react-refresh/only-export-components
+const SystemAssuranceWorkbench = lazy(() => import('./components/SystemAssuranceWorkbench'));
 
 
 export interface RouteConfig {
@@ -92,6 +112,7 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Home', path: '/', label: '首页', subtitle: '系统健康总览、实时告警、关键指标趋势。', group: '首页', component: HomePage, icon: 'LayoutDashboard' },
   { id: 'Guide', path: '/guide', label: '驾驶舱指南', subtitle: '快速了解驾驶舱功能与操作方式。', group: '首页', component: CockpitGuideView, icon: 'Compass' },
   { id: 'SystemMap', path: '/system-map', label: '系统地图', subtitle: '全局系统结构与依赖关系可视化。', group: '首页', component: SystemMapView, icon: 'Network' },
+  { id: 'Capabilities', path: '/capabilities', label: '能力全景', subtitle: '全生态 MCP 工具 / BOS 服务 / CLI 命令一览。', group: '首页', component: CapabilityExplorer, icon: 'Layers' },
 
   // 运行大盘
   { id: 'Overview', path: '/overview', label: '概览中心', subtitle: '实时监控 eCOS v6 微服务环境，掌握集群全貌。', group: '运行大盘', component: OverviewPage, icon: 'LayoutDashboard' },
@@ -135,6 +156,16 @@ export const ROUTES: RouteConfig[] = [
 
   // 系统配置
   { id: 'Settings', path: '/settings', label: '系统设置', subtitle: '配置网格路由、API Token 与治理阈值。', group: '系统配置', component: SettingsView, icon: 'Settings' },
+  // ── 工作台 (P4-T3: 接入原本不可达的 Workbench 组件) ──
+  { id: 'EcosWorkflow', path: '/workbench/ecos-workflow', label: 'eCOS 工作流', group: '工作台', component: EcosWorkflowWorkbench, icon: 'GitBranch' },
+  { id: 'GovernanceDomain', path: '/workbench/governance-domain', label: '治理域', group: '工作台', component: GovernanceDomainWorkbench, icon: 'Shield' },
+  { id: 'InfrastructureOps', path: '/workbench/infrastructure-ops', label: '基础设施运维', group: '工作台', component: InfrastructureOpsWorkbench, icon: 'Server' },
+  { id: 'KnowledgeExecution', path: '/workbench/knowledge-execution', label: '知识执行', group: '工作台', component: KnowledgeExecutionWorkbench, icon: 'BookOpen' },
+  { id: 'KOSWorkbench', path: '/workbench/kos', label: 'KOS 工作台', group: '工作台', component: KOSWorkbench, icon: 'Database' },
+  { id: 'MemoryInjectorView', path: '/workbench/memory-injector', label: '记忆注入', group: '工作台', component: MemoryInjector, icon: 'Brain' },
+  { id: 'PlatformControl', path: '/workbench/platform-control', label: '平台控制', group: '工作台', component: PlatformControlWorkbench, icon: 'MonitorCog' },
+  { id: 'RuntimeOps', path: '/workbench/runtime-ops', label: '运行时运维', group: '工作台', component: RuntimeOpsWorkbench, icon: 'Cpu' },
+  { id: 'SystemAssurance', path: '/workbench/system-assurance', label: '系统保障', group: '工作台', component: SystemAssuranceWorkbench, icon: 'ShieldCheck' },
 ];
 
 /** Get route by tab ID */
