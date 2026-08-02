@@ -88,6 +88,8 @@ const InfrastructureOpsWorkbench = lazy(() => import('./components/Infrastructur
 // eslint-disable-next-line react-refresh/only-export-components
 const KnowledgeExecutionWorkbench = lazy(() => import('./components/KnowledgeExecutionWorkbench'));
 // eslint-disable-next-line react-refresh/only-export-components
+const KnowledgeActionView = lazy(() => import('./components/KnowledgeActionView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const KOSWorkbench = lazy(() => import('./components/KOSWorkbench'));
 // eslint-disable-next-line react-refresh/only-export-components
 const MemoryInjector = lazy(() => import('./components/MemoryInjector'));
@@ -125,6 +127,7 @@ export const ROUTES: RouteConfig[] = [
   // 智能与知识
   { id: 'Research', path: '/research', label: '研究中心', subtitle: '学术文献检索、阅读与知识沉淀。', group: '智能与知识', component: ResearchHubView, icon: 'Search' },
   { id: 'Knowledge', path: '/knowledge', label: '知识中枢', subtitle: '跨域检索与记忆摄取管线的状态和监控。', group: '智能与知识', component: KnowledgeHubView, icon: 'Database' },
+  { id: 'KnowledgeAction', path: '/knowledge-action', label: '知识到行动', subtitle: '将知识引用承接为受治理任务并记录行动回执。', group: '智能与知识', component: KnowledgeActionView, icon: 'ArrowRight' },
   { id: 'Engines', path: '/engines', label: '引擎调度', subtitle: '管理 Kairon, Gbrain 等底层知识与智能引擎。', group: '智能与知识', component: EnginesView, icon: 'Cpu' },
   { id: 'Assets', path: '/assets', label: '技术资产库', subtitle: '集中索引自动化工作流、工具管线与智能体自定义开发技能。', group: '智能与知识', component: AssetsView, icon: 'Briefcase' },
   { id: 'Protocol', path: '/protocol', label: '协议工作台', subtitle: 'BOS 协议调试与 MCP 工具测试。', group: '智能与知识', component: ProtocolWorkbenchView, icon: 'FileText' },

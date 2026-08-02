@@ -522,6 +522,106 @@ export function useKosSearch(query: string, limit?: number) {
   });
 }
 
+// ── Knowledge to action ──
+
+export interface KnowledgeActionRef {
+  ref: string;
+  title?: string;
+  source_type?: string;
+  rank?: number;
+}
+
+export type KnowledgeActionKind =
+  | 'retrieved'
+  | 'cited'
+  | 'task_created'
+  | 'workflow_requested'
+  | 'result_feedback_recorded';
+
+export interface KnowledgeActionInput {
+  action_kind: KnowledgeActionKind;
+  query?: string;
+  query_digest?: string;
+  knowledge_refs: KnowledgeActionRef[];
+  scene_binding?: {
+    scene_id: string;
+    journey_id: string;
+    outcome_metric: string;
+  };
+  task_ref?: string;
+  workflow_run_id?: string;
+  outcome_id?: string;
+  result_feedback_id?: string;
+  observed_at?: string;
+  actor_ref?: string;
+}
+
+export interface KnowledgeActionRecord extends KnowledgeActionInput {
+  schema: 'knowledge-action/v1';
+  action_id: string;
+  idempotency_key: string;
+  query_digest: string;
+  scene_binding: KnowledgeActionInput['scene_binding'] | null;
+  task_ref: string;
+  workflow_run_id: string;
+  outcome_id: string;
+  result_feedback_id: string;
+  observed_at: string;
+  recorded_at: string;
+  actor: string;
+}
+
+export interface KnowledgeActionOperations {
+  schema_version: 'knowledge-action-operations/v1';
+  status: 'live' | 'unavailable';
+  summary: {
+    action_count: number;
+    query_count: number;
+    task_count: number;
+    by_kind: Record<string, number>;
+    unique_source_count: number;
+  };
+  funnel: Record<KnowledgeActionKind, number>;
+  top_sources: Array<{ ref: string; use_count: number }>;
+  next_action: string;
+  recent_actions: KnowledgeActionRecord[];
+  [key: string]: unknown;
+}
+
+export interface KnowledgeActionOperationsResponse {
+  ok: boolean;
+  status: 'live' | 'unavailable';
+  operations: KnowledgeActionOperations;
+}
+
+export interface KnowledgeActionResponse {
+  ok: boolean;
+  status: 'recorded' | 'deduplicated' | 'invalid' | 'unavailable';
+  action?: KnowledgeActionRecord;
+  error?: string;
+  message?: string;
+}
+
+export function useKnowledgeActionOperations(sceneId?: string) {
+  return useQuery({
+    queryKey: ['knowledge-action-operations', sceneId],
+    queryFn: () => apiFetch<KnowledgeActionOperationsResponse>(API_ENDPOINTS.knowledgeAction.getOperations(sceneId)),
+    staleTime: 15000,
+    refetchInterval: 30000,
+  });
+}
+
+export function useRecordKnowledgeAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: KnowledgeActionInput) =>
+      apiPost<KnowledgeActionResponse>(API_ENDPOINTS.knowledgeAction.recordReceipt, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['knowledge-action-operations'] });
+    },
+  });
+}
+
 // ── System Health ──
 
 export interface SystemHealthData {

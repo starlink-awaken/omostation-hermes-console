@@ -231,6 +231,16 @@ export const KOS_ENDPOINTS = {
   getHealth: '/api/v1/health',
 } as const;
 
+// ── Knowledge to action ──
+
+export const KNOWLEDGE_ACTION_ENDPOINTS = {
+  /** Log-derived knowledge-to-action funnel. */
+  getOperations: (sceneId?: string) =>
+    `/api/knowledge/action-operations${sceneId ? `?scene_id=${encodeURIComponent(sceneId)}` : ''}`,
+  /** Privacy-safe action receipt; source content is never accepted. */
+  recordReceipt: '/api/knowledge/action-receipt',
+} as const;
+
 // ── Cockpit Pages ──
 
 export const COCKPIT_PAGE_ENDPOINTS = {
@@ -468,6 +478,7 @@ export const API_ENDPOINTS = {
   gbrain: GBRAIN_ENDPOINTS,
   quests: QUEST_ENDPOINTS,
   kos: KOS_ENDPOINTS,
+  knowledgeAction: KNOWLEDGE_ACTION_ENDPOINTS,
   cockpitPages: COCKPIT_PAGE_ENDPOINTS,
   systemHealth: SYSTEM_HEALTH_ENDPOINTS,
   services: SERVICE_ENDPOINTS,

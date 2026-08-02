@@ -17,6 +17,7 @@ export const COCKPIT_PAGE_REGISTRY: CockpitPageRegistryItem[] = [
   { id: 'Compute', title: '算力调配', group: '运行大盘', purpose: '查看节点算力、GPU/CPU 使用率与任务调度。', whenToUse: '推理或调度卡住时。', dimensions: ['算力', '节点', '调度'] },
   { id: 'Research', title: '研究中枢', group: '智能与知识', purpose: '承接研究发起、追问、发布和后续任务。', whenToUse: '做内容、研究、产品推演时。', dimensions: ['研究', '知识', '发布'] },
   { id: 'Knowledge', title: '知识中枢', group: '智能与知识', purpose: '查看知识与检索能力状态。', whenToUse: '想知道知识是否能支撑动作时。', dimensions: ['知识', '检索', '记忆'] },
+  { id: 'KnowledgeAction', title: '知识到行动', group: '智能与知识', purpose: '把知识引用承接为受治理任务并留下行动回执。', whenToUse: '需要把研究结论转成可验证动作时。', dimensions: ['引用', '任务', '回执'] },
   { id: 'GBrainAdmin', title: 'GBrain 管理', group: '智能与知识', purpose: '管理智能体接入、访问凭证、模型校准与请求日志。', whenToUse: '需要处理 GBrain 控制面或凭证时。', dimensions: ['智能体', '凭证', '校准', '审计'] },
   { id: 'Engines', title: '引擎调度', group: '智能与知识', purpose: '管理 Kairon、Gbrain 等智能引擎。', whenToUse: '排查能力供给层时。', dimensions: ['引擎', '模型', '供给'] },
   { id: 'Assets', title: '技术资产库', group: '智能与知识', purpose: '索引工作流、工具管线与智能体技能资产。', whenToUse: '找现成能力而不是重造轮子。', dimensions: ['工作流', '管线', '技能'] },

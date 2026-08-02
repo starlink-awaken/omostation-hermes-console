@@ -43,6 +43,7 @@ export const TAB_TO_ROUTE: Record<string, string> = {
   Compute: '/compute',
   Research: '/research',
   Knowledge: '/knowledge',
+  KnowledgeAction: '/knowledge-action',
   GBrainAdmin: '/gbrain-admin',
   Engines: '/engines',
   Assets: '/assets',
