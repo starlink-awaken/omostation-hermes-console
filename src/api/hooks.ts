@@ -988,3 +988,84 @@ export function useReviewSceneCardCandidate() {
     },
   });
 }
+
+export type ExternalResourceKind =
+  | 'knowledge_source'
+  | 'data_source'
+  | 'resource_provider'
+  | 'method_pack'
+  | 'tool_capability'
+  | 'channel'
+  | 'model_provider';
+
+export type ExternalResourceAvailability = 'available' | 'degraded' | 'proposal_only' | 'unavailable';
+
+export interface ExternalResourceHealth {
+  status: string;
+  observed_at?: string | null;
+  source?: string | null;
+  latency_ms?: number | null;
+  age_seconds?: number | null;
+  metrics?: Record<string, number>;
+}
+
+export interface ExternalResourceItem {
+  id: string;
+  kind: ExternalResourceKind;
+  provider: string;
+  protocol: string;
+  capabilities: string[];
+  data_classification: string;
+  owner: string;
+  version: string;
+  permission_ref: string;
+  mode: string;
+  lifecycle: string;
+  availability: ExternalResourceAvailability;
+  reason_codes: string[];
+  provenance_ref: string;
+  entry_point: string;
+  health: ExternalResourceHealth;
+  rollback_plan: boolean;
+  expires_at?: string | null;
+  review_at?: string | null;
+}
+
+export interface ExternalResourceProjection {
+  schema: 'external-resource-catalog/v1';
+  mode: 'read_only_projection';
+  activation: 'forbidden';
+  raw_content_policy: string;
+  observed_at: string;
+  health_ttl_seconds: number;
+  policy_digest: string;
+  resources: ExternalResourceItem[];
+  errors: Array<{ entry_point: string; status: string; error: string }>;
+  summary: {
+    resource_count: number;
+    unavailable_count: number;
+    error_count: number;
+    by_kind?: Record<string, number>;
+    by_availability?: Record<string, number>;
+  };
+}
+
+export interface ExternalResourceResponse {
+  ok: boolean;
+  projection: ExternalResourceProjection;
+}
+
+export function useExternalResources() {
+  return useQuery({
+    queryKey: ['external-resources'],
+    queryFn: async () => {
+      const res = await apiFetch<ExternalResourceResponse>(API_ENDPOINTS.externalResources.list);
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load external resources');
+      }
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+}

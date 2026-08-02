@@ -31,6 +31,7 @@ const AssetsView = React.lazy(() => import('./AssetsView'));
 const ProtocolWorkbenchView = React.lazy(() => import('./ProtocolWorkbenchView'));
 const KemsWorkbench = React.lazy(() => import('./KemsWorkbench'));
 const SceneCardReviewView = React.lazy(() => import('./SceneCardReviewView'));
+const ExternalResourceCatalogView = React.lazy(() => import('./ExternalResourceCatalogView'));
 const BrainChat = React.lazy(() => import('../views/BrainChat'));
 const WorkflowsView = React.lazy(() => import('./WorkflowsView'));
 const AlertCenterPage = React.lazy(() => import('./AlertCenterPage'));
@@ -326,6 +327,7 @@ export default function Dashboard() {
               <Route path="/protocol" element={<ProtocolRoute />} />
               <Route path="/kems" element={<KemsWorkbench />} />
               <Route path="/scene-cards" element={<SceneCardReviewView />} />
+              <Route path="/external-resources" element={<ExternalResourceCatalogView />} />
               <Route path="/brain" element={
                 <div className="animate-fade-in h-[calc(100vh-2rem)]">
                   <BrainChat />

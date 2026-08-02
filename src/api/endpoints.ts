@@ -431,6 +431,13 @@ export const SCENE_CARD_ENDPOINTS = {
   reviewCandidate: '/api/scene-cards/review',
 } as const;
 
+// ── External Connection Fabric ──
+
+export const EXTERNAL_RESOURCE_ENDPOINTS = {
+  /** Dynamic descriptor and health projection; never activates a resource. */
+  list: '/api/external-resources',
+} as const;
+
 // ── Export all endpoints ──
 
 export const API_ENDPOINTS = {
@@ -474,4 +481,5 @@ export const API_ENDPOINTS = {
   archHealth: ARCH_HEALTH_ENDPOINTS,
   deliveryJourney: DELIVERY_JOURNEY_ENDPOINTS,
   sceneCards: SCENE_CARD_ENDPOINTS,
+  externalResources: EXTERNAL_RESOURCE_ENDPOINTS,
 } as const;

@@ -55,6 +55,7 @@ export const TAB_TO_ROUTE: Record<string, string> = {
   Observability: '/observability',
   DeliveryJourney: '/delivery-journey',
   SceneCards: '/scene-cards',
+  ExternalResources: '/external-resources',
   LogViewer: '/logs',
 
   TaskCenter: '/tasks',
