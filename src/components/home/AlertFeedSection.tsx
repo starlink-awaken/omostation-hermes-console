@@ -11,6 +11,7 @@ interface Alert {
 
 interface AlertFeedSectionProps {
   alerts: Alert[];
+  dataQuality?: 'loading' | 'complete' | 'partial' | 'unavailable';
   limit?: number;
   onViewAll?: () => void;
   onConfigureRules?: () => void;
@@ -18,6 +19,7 @@ interface AlertFeedSectionProps {
 
 export default function AlertFeedSection({
   alerts,
+  dataQuality = 'complete',
   limit = 3,
   onViewAll,
   onConfigureRules,
@@ -90,11 +92,21 @@ export default function AlertFeedSection({
         </div>
       </div>
 
+      {dataQuality !== 'complete' && (
+        <div className="shell-data-banner" role="status">
+          {dataQuality === 'loading'
+            ? '正在读取真实告警数据'
+            : dataQuality === 'partial'
+              ? '告警数据部分可用，未展示默认告警'
+              : '告警数据暂不可用，未展示占位告警'}
+        </div>
+      )}
+
       <div className="alert-feed-list">
         {displayAlerts.length === 0 ? (
           <div className="alert-feed-empty">
-            <CheckCircle size={24} className="text-success" />
-            <span>暂无活跃告警</span>
+            {dataQuality === 'complete' ? <CheckCircle size={24} className="text-success" /> : <Info size={24} className="text-muted" />}
+            <span>{dataQuality === 'complete' ? '暂无活跃告警' : '没有可展示的真实告警'}</span>
           </div>
         ) : (
           displayAlerts.map((alert) => (

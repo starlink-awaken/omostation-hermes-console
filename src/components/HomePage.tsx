@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import HealthSummarySection from './home/HealthSummarySection';
 import AlertFeedSection from './home/AlertFeedSection';
 import MetricsTrendSection from './home/MetricsTrendSection';
@@ -7,83 +7,8 @@ import GovernanceOverviewSection from './home/GovernanceOverviewSection';
 import { openCockpitNavigationTarget } from './cockpitNavigation';
 import type { HealthSummary, CockpitAlert, CockpitTask, DataPoint } from '../types/cockpit';
 
-// 默认数据
-const DEFAULT_HEALTH_SUMMARY: HealthSummary = {
-  health_score: 98,
-  health_score_change: 2,
-  active_services: 24,
-  total_services: 28,
-  active_tasks: 5,
-  today_requests: 12400,
-  today_requests_change: 15,
-};
-
-const DEFAULT_ALERTS: Alert[] = [
-  {
-    id: '1',
-    level: 'warning',
-    source: 'L4 Health',
-    message: 'vault 域信号数异常 (160个)',
-    timestamp: new Date(Date.now() - 2 * 60000).toISOString(),
-  },
-  {
-    id: '2',
-    level: 'warning',
-    source: 'Agora',
-    message: 'LLM Gateway 延迟升高 (850ms)',
-    timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-  },
-  {
-    id: '3',
-    level: 'info',
-    source: 'KOS',
-    message: '搜索索引重建中',
-    timestamp: new Date(Date.now() - 10 * 60000).toISOString(),
-  },
-];
-
-const DEFAULT_TASKS: Task[] = [
-  {
-    id: 'TASK-001',
-    title: 'L4 域优化',
-    status: 'in_progress',
-    progress: 75,
-    updated_at: new Date(Date.now() - 30 * 60000).toISOString(),
-  },
-  {
-    id: 'TASK-002',
-    title: '告警规则配置',
-    status: 'completed',
-    progress: 100,
-    updated_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-  },
-  {
-    id: 'TASK-003',
-    title: 'Phase 3 实施',
-    status: 'in_progress',
-    progress: 60,
-    updated_at: new Date(Date.now() - 1 * 3600000).toISOString(),
-  },
-];
-
-// 生成时间序列数据（根据时间范围）
-const generateTimeSeriesData = (hours: number, baseValue: number, variance: number): DataPoint[] => {
-  const data: DataPoint[] = [];
-  const now = Date.now();
-  const interval = Math.max(1, Math.floor(hours / 48)); // 最多48个数据点
-  for (let i = hours; i >= 0; i -= interval) {
-    data.push({
-      timestamp: new Date(now - i * 3600000).toISOString(),
-      value: Math.round(baseValue + Math.random() * variance - variance / 2),
-    });
-  }
-  return data;
-};
-
-// 生成 7 天的数据（168 小时），这样时间范围切换时可以切片
-const DEFAULT_HEALTH_SCORE_DATA = generateTimeSeriesData(168, 95, 10);
-const DEFAULT_REQUESTS_DATA = generateTimeSeriesData(168, 500, 200);
-const DEFAULT_ERROR_RATE_DATA = generateTimeSeriesData(168, 2, 3);
+type DataQuality = 'loading' | 'complete' | 'partial' | 'unavailable';
+type HomeSource = 'summary' | 'alerts' | 'tasks' | 'metrics' | 'thoughts';
 
 interface HomePageProps {
   onTabChange?: (tab: string) => void;
@@ -96,64 +21,94 @@ interface Thought {
   content: string;
 }
 
+interface MetricsResponse {
+  health_score?: DataPoint[];
+  requests?: DataPoint[];
+  error_rate?: DataPoint[];
+}
+
+interface ThoughtsResponse {
+  status?: string;
+  thoughts?: Thought[];
+}
+
+interface ReadSuccess<T> {
+  ok: true;
+  data: T;
+}
+
+interface ReadFailure {
+  ok: false;
+  source: HomeSource;
+}
+
+type ReadResult<T> = ReadSuccess<T> | ReadFailure;
+
+const SOURCE_LABELS: Record<HomeSource, string> = {
+  summary: '健康摘要',
+  alerts: '告警列表',
+  tasks: '任务列表',
+  metrics: '指标趋势',
+  thoughts: '心智探针',
+};
+
+async function readHomeSource<T>(source: HomeSource, url: string): Promise<ReadResult<T>> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return { ok: false, source };
+    }
+    return { ok: true, data: await response.json() as T };
+  } catch {
+    return { ok: false, source };
+  }
+}
+
 function ThoughtStreamSection({ thoughts }: { thoughts: Thought[] }) {
-  if (!thoughts || thoughts.length === 0) return null;
+  if (thoughts.length === 0) return null;
 
   const roleColors: Record<string, string> = {
     builder: 'var(--antd-primary)',
     devil: 'var(--antd-error)',
     sage: 'var(--antd-warning)',
-    keeper: 'var(--antd-success)'
+    keeper: 'var(--antd-success)',
   };
 
   return (
-    <div className="services-section animate-fade-in" style={{ marginTop: '0px', marginBottom: '24px' }}>
-      <div className="section-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--antd-text-secondary)', margin: 0 }}>
-          🧠 虚拟董事会心智探针 (Thought Streams)
+    <div className="services-section animate-fade-in" style={{ marginTop: 0, marginBottom: 24 }}>
+      <div className="section-header" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--antd-text-secondary)', margin: 0 }}>
+          <span aria-hidden="true">🧠</span>
+          虚拟董事会心智探针 (Thought Streams)
         </h3>
-        <span style={{ fontSize: '10.5px', color: 'rgba(255,255,255,0.3)' }}>实时系统洞察与架构审查</span>
+        <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.3)' }}>实时系统洞察与架构审查</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-        {thoughts.map((t) => (
-          <div 
-            key={t.role} 
-            className="antd-card" 
-            style={{ 
-              padding: '16px 20px', 
-              borderLeft: `3px solid ${roleColors[t.role] || 'rgba(255,255,255,0.1)'}`,
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+        {thoughts.map((thought) => (
+          <div
+            key={thought.role}
+            className="antd-card"
+            style={{
+              padding: '16px 20px',
+              borderLeft: `3px solid ${roleColors[thought.role] || 'rgba(255,255,255,0.1)'}`,
               background: 'rgba(255,255,255,0.01)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px'
+              gap: 8,
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 600, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--antd-text-primary)' }}>
-                <span>{t.avatar}</span>
-                <span>{t.name}</span>
+              <span style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--antd-text-primary)' }}>
+                <span>{thought.avatar}</span>
+                <span>{thought.name}</span>
               </span>
-              <span style={{ 
-                fontSize: '9px', 
-                padding: '1px 5px', 
-                borderRadius: '3px',
-                backgroundColor: 'rgba(255,255,255,0.05)',
-                color: 'rgba(255,255,255,0.4)',
-                textTransform: 'uppercase',
-                fontWeight: 600
-              }}>
-                {t.role}
+              <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 600 }}>
+                {thought.role}
               </span>
             </div>
-            <p style={{ 
-              margin: 0, 
-              fontSize: '11.5px', 
-              lineHeight: '1.5', 
-              color: 'rgba(255,255,255,0.7)',
-              wordBreak: 'break-all'
-            }}>
-              {t.content}
+            <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5, color: 'rgba(255,255,255,0.7)', wordBreak: 'break-all' }}>
+              {thought.content}
             </p>
           </div>
         ))}
@@ -163,115 +118,149 @@ function ThoughtStreamSection({ thoughts }: { thoughts: Thought[] }) {
 }
 
 export default function HomePage({ onTabChange }: HomePageProps) {
-  const [healthSummary, setHealthSummary] = useState<HealthSummary>(DEFAULT_HEALTH_SUMMARY);
-  const [alerts, setAlerts] = useState<CockpitAlert[]>(DEFAULT_ALERTS);
-  const [tasks, setTasks] = useState<CockpitTask[]>(DEFAULT_TASKS);
-  const [healthScoreData, setHealthScoreData] = useState<DataPoint[]>(DEFAULT_HEALTH_SCORE_DATA);
-  const [requestsData, setRequestsData] = useState<DataPoint[]>(DEFAULT_REQUESTS_DATA);
-  const [errorRateData, setErrorRateData] = useState<DataPoint[]>(DEFAULT_ERROR_RATE_DATA);
+  void onTabChange;
+  const [healthSummary, setHealthSummary] = useState<HealthSummary | null>(null);
+  const [alerts, setAlerts] = useState<CockpitAlert[]>([]);
+  const [tasks, setTasks] = useState<CockpitTask[]>([]);
+  const [healthScoreData, setHealthScoreData] = useState<DataPoint[]>([]);
+  const [requestsData, setRequestsData] = useState<DataPoint[]>([]);
+  const [errorRateData, setErrorRateData] = useState<DataPoint[]>([]);
   const [thoughts, setThoughts] = useState<Thought[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [dataQuality, setDataQuality] = useState<DataQuality>('loading');
+  const [sourceQuality, setSourceQuality] = useState<Record<HomeSource, DataQuality>>({
+    summary: 'loading',
+    alerts: 'loading',
+    tasks: 'loading',
+    metrics: 'loading',
+    thoughts: 'loading',
+  });
+  const [degradedReasons, setDegradedReasons] = useState<string[]>([]);
 
   useEffect(() => {
+    let disposed = false;
+
     const fetchData = async () => {
-      try {
-        // 并行获取所有数据
-        const [summaryRes, alertsRes, tasksRes, metricsRes, thoughtsRes] = await Promise.all([
-          fetch('/api/health/summary'),
-          fetch('/api/alerts?limit=3&status=active'),
-          fetch('/api/tasks?limit=3&sort=updated'),
-          fetch('/api/metrics/trend?range=24h'),
-          fetch('/api/omos/thoughts'),
-        ]);
+      setLoading(true);
+      setDataQuality('loading');
+      setSourceQuality({
+        summary: 'loading',
+        alerts: 'loading',
+        tasks: 'loading',
+        metrics: 'loading',
+        thoughts: 'loading',
+      });
+      setDegradedReasons([]);
+      setHealthSummary(null);
+      setAlerts([]);
+      setTasks([]);
+      setHealthScoreData([]);
+      setRequestsData([]);
+      setErrorRateData([]);
+      setThoughts([]);
+      const [summary, alertFeed, recentTasks, metrics, thoughtsFeed] = await Promise.all([
+        readHomeSource<HealthSummary>('summary', '/api/health/summary'),
+        readHomeSource<{ items?: CockpitAlert[] }>('alerts', '/api/alerts?limit=3&status=active'),
+        readHomeSource<{ items?: CockpitTask[] }>('tasks', '/api/tasks?limit=3&sort=updated'),
+        readHomeSource<MetricsResponse>('metrics', '/api/metrics/trend?range=24h'),
+        readHomeSource<ThoughtsResponse>('thoughts', '/api/omos/thoughts'),
+      ]);
 
-        if (summaryRes.ok) {
-          const data = await summaryRes.json();
-          setHealthSummary(data);
-        }
+      if (disposed) return;
 
-        if (alertsRes.ok) {
-          const data = await alertsRes.json();
-          if (data.items && data.items.length > 0) {
-            setAlerts(data.items);
-          }
-        }
+      const results: ReadResult<unknown>[] = [summary, alertFeed, recentTasks, metrics, thoughtsFeed];
+      const failedSources = results
+        .filter((result): result is ReadFailure => !result.ok)
+        .map((result) => SOURCE_LABELS[result.source]);
+      const successCount = results.length - failedSources.length;
+      const nextQuality: DataQuality = failedSources.length === 0
+        ? 'complete'
+        : successCount === 0
+          ? 'unavailable'
+          : 'partial';
+      const qualityFor = (result: ReadResult<unknown>): DataQuality => result.ok ? 'complete' : 'unavailable';
 
-        if (tasksRes.ok) {
-          const data = await tasksRes.json();
-          if (data.items && data.items.length > 0) {
-            setTasks(data.items);
-          }
-        }
-
-        if (metricsRes.ok) {
-          const data = await metricsRes.json();
-          if (data.health_score && data.health_score.length > 0) {
-            setHealthScoreData(data.health_score);
-          }
-          if (data.requests && data.requests.length > 0) {
-            setRequestsData(data.requests);
-          }
-          if (data.error_rate && data.error_rate.length > 0) {
-            setErrorRateData(data.error_rate);
-          }
-        }
-
-        if (thoughtsRes.ok) {
-          const data = await thoughtsRes.json();
-          if (data.status === 'ok') {
-            setThoughts(data.thoughts || []);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch home data:', error);
-        // 使用默认数据
-      }
+      setHealthSummary(summary.ok ? summary.data : null);
+      setAlerts(alertFeed.ok ? alertFeed.data.items ?? [] : []);
+      setTasks(recentTasks.ok ? recentTasks.data.items ?? [] : []);
+      setHealthScoreData(metrics.ok ? metrics.data.health_score ?? [] : []);
+      setRequestsData(metrics.ok ? metrics.data.requests ?? [] : []);
+      setErrorRateData(metrics.ok ? metrics.data.error_rate ?? [] : []);
+      setThoughts(thoughtsFeed.ok && thoughtsFeed.data.status === 'ok' ? thoughtsFeed.data.thoughts ?? [] : []);
+      setSourceQuality({
+        summary: qualityFor(summary),
+        alerts: qualityFor(alertFeed),
+        tasks: qualityFor(recentTasks),
+        metrics: qualityFor(metrics),
+        thoughts: qualityFor(thoughtsFeed),
+      });
+      setDataQuality(nextQuality);
+      setDegradedReasons(failedSources);
+      setLoading(false);
     };
 
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    void fetchData();
+    const interval = setInterval(() => void fetchData(), 30000);
+    return () => {
+      disposed = true;
+      clearInterval(interval);
+    };
   }, []);
+
+  const homeMessage = loading
+    ? '正在读取真实首页数据'
+    : dataQuality === 'complete'
+      ? null
+      : dataQuality === 'partial'
+        ? `首页部分数据暂不可用：${degradedReasons.join('、')}。未展示默认运行状态。`
+        : '首页数据暂不可用，当前未展示模拟或默认运行状态。';
 
   return (
     <div className="home-page">
-      {/* 系统健康总览 */}
+      {homeMessage && (
+        <div className="shell-data-banner" role={loading ? 'status' : 'alert'}>
+          {homeMessage}
+        </div>
+      )}
+
       <HealthSummarySection
-        healthScore={healthSummary.health_score}
-        healthScoreChange={healthSummary.health_score_change}
-        activeServices={healthSummary.active_services}
-        totalServices={healthSummary.total_services}
-        activeTasks={healthSummary.active_tasks}
-        todayRequests={healthSummary.today_requests}
-        todayRequestsChange={healthSummary.today_requests_change}
+        healthScore={healthSummary?.health_score ?? 0}
+        healthScoreChange={healthSummary?.health_score_change ?? 0}
+        activeServices={healthSummary?.active_services ?? 0}
+        totalServices={healthSummary?.total_services ?? 0}
+        activeTasks={healthSummary?.active_tasks ?? 0}
+        activeTasksSource={healthSummary ? healthSummary.active_tasks_source ?? 'omo' : 'unavailable'}
+        todayRequests={healthSummary?.today_requests ?? 0}
+        todayRequestsChange={healthSummary?.today_requests_change ?? 0}
+        dataQuality={sourceQuality.summary}
+        degradedReasons={sourceQuality.summary === 'unavailable' ? ['健康摘要不可用'] : []}
       />
 
-      {/* 虚拟董事会心智探针 */}
       <ThoughtStreamSection thoughts={thoughts} />
 
-      {/* 实时告警 */}
       <AlertFeedSection
         alerts={alerts}
+        dataQuality={sourceQuality.alerts}
         limit={3}
         onViewAll={() => openCockpitNavigationTarget({ tab: 'AlertCenter' })}
         onConfigureRules={() => openCockpitNavigationTarget({ tab: 'AlertCenter', alertTab: 'rules' })}
       />
 
-      {/* 关键指标趋势 */}
       <MetricsTrendSection
         healthScoreData={healthScoreData}
         requestsData={requestsData}
         errorRateData={errorRateData}
+        dataQuality={sourceQuality.metrics}
+        degradedReasons={sourceQuality.metrics === 'unavailable' ? ['指标趋势不可用'] : []}
       />
 
-      {/* 最近任务 */}
       <RecentTasksSection
         tasks={tasks}
+        dataQuality={sourceQuality.tasks}
         limit={3}
         onViewAll={() => openCockpitNavigationTarget({ tab: 'TaskCenter' })}
       />
 
-      {/* 核心治理与战役大盘 */}
       <GovernanceOverviewSection />
     </div>
   );

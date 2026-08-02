@@ -11,12 +11,14 @@ interface Task {
 
 interface RecentTasksSectionProps {
   tasks: Task[];
+  dataQuality?: 'loading' | 'complete' | 'partial' | 'unavailable';
   limit?: number;
   onViewAll?: () => void;
 }
 
 export default function RecentTasksSection({
   tasks,
+  dataQuality = 'complete',
   limit = 3,
   onViewAll,
 }: RecentTasksSectionProps) {
@@ -91,11 +93,21 @@ export default function RecentTasksSection({
         )}
       </div>
 
+      {dataQuality !== 'complete' && (
+        <div className="shell-data-banner" role="status">
+          {dataQuality === 'loading'
+            ? '正在读取真实任务数据'
+            : dataQuality === 'partial'
+              ? '任务数据部分可用，未展示默认任务'
+              : '任务数据暂不可用，未展示占位任务'}
+        </div>
+      )}
+
       <div className="tasks-list">
         {displayTasks.length === 0 ? (
           <div className="tasks-empty">
-            <CheckCircle size={24} className="text-success" />
-            <span>暂无活跃任务</span>
+            {dataQuality === 'complete' ? <CheckCircle size={24} className="text-success" /> : <AlertCircle size={24} className="text-muted" />}
+            <span>{dataQuality === 'complete' ? '暂无活跃任务' : '没有可展示的真实任务'}</span>
           </div>
         ) : (
           displayTasks.map((task) => (
