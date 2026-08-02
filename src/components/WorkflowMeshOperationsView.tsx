@@ -8,9 +8,13 @@ import {
   Send,
   ShieldAlert,
   XCircle,
+  Check,
 } from 'lucide-react';
 import {
+  useAdmitTaskWorkflow,
+  usePreviewTaskWorkflowAdmission,
   useRecordOutcomeFeedback,
+  useWorkflowCapabilityHealth,
   useWorkflowMeshOperations,
   type OutcomeConsumptionState,
   type OutcomeFeedbackInput,
@@ -49,6 +53,15 @@ function statusTone(status: WorkflowMeshOperationsData['consumption']['status'])
 
 export default function WorkflowMeshOperationsView() {
   const { data, isLoading, error, refetch } = useWorkflowMeshOperations();
+  const [requiredCapabilitiesText, setRequiredCapabilitiesText] = useState('runtime');
+  const [taskId, setTaskId] = useState('');
+  const [workflowRunId, setWorkflowRunId] = useState('');
+  const [backend, setBackend] = useState('runtime');
+  const [admissionMessage, setAdmissionMessage] = useState<string | null>(null);
+  const requiredCapabilities = requiredCapabilitiesText.split(',').map((item) => item.trim()).filter(Boolean);
+  const capabilityHealthQuery = useWorkflowCapabilityHealth(requiredCapabilities);
+  const previewMutation = usePreviewTaskWorkflowAdmission();
+  const admitMutation = useAdmitTaskWorkflow();
   const feedbackMutation = useRecordOutcomeFeedback();
   const [form, setForm] = useState(EMPTY_FORM);
   const [message, setMessage] = useState<string | null>(null);
@@ -92,6 +105,37 @@ export default function WorkflowMeshOperationsView() {
       setForm((current) => ({ ...EMPTY_FORM, outcomeId: current.outcomeId }));
     } catch (mutationError) {
       setMessage(mutationError instanceof Error ? mutationError.message : '反馈记录失败。');
+    }
+  };
+
+  const admissionInput = () => ({
+    workflow_run_id: workflowRunId.trim(),
+    backend: backend.trim(),
+    required_capabilities: requiredCapabilities,
+    capability_health: capabilityHealthQuery.data?.capability_health || {},
+  });
+
+  const previewAdmission = async () => {
+    setAdmissionMessage(null);
+    if (!taskId.trim() || !workflowRunId.trim() || !backend.trim() || !capabilityHealthQuery.data?.ok) {
+      setAdmissionMessage('需要任务、WorkflowRun、后端和可用的真实健康证据。');
+      return;
+    }
+    try {
+      const result = await previewMutation.mutateAsync({ taskId: taskId.trim(), input: admissionInput() });
+      setAdmissionMessage(result.status === 'eligible' ? '准入预览通过，可在活动任务上确认准入。' : `准入被阻断：${result.blocker || result.status}`);
+    } catch (mutationError) {
+      setAdmissionMessage(mutationError instanceof Error ? mutationError.message : '准入预览失败。');
+    }
+  };
+
+  const admitWorkflow = async () => {
+    setAdmissionMessage(null);
+    try {
+      const result = await admitMutation.mutateAsync({ taskId: taskId.trim(), input: admissionInput() });
+      setAdmissionMessage(result.status === 'admitted' || result.status === 'deduplicated' ? 'Workflow 已受治理准入，worker 仍未启动。' : `准入未完成：${result.blocker || result.status}`);
+    } catch (mutationError) {
+      setAdmissionMessage(mutationError instanceof Error ? mutationError.message : 'Workflow 准入失败。');
     }
   };
 
@@ -148,6 +192,40 @@ export default function WorkflowMeshOperationsView() {
             <strong style={{ display: 'block', fontSize: '1.45rem', marginTop: '0.25rem' }}>{value}</strong>
           </div>
         ))}
+      </section>
+
+      <section className="antd-card" aria-label="Workflow Mesh 准入证据">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.45rem' }}>
+          <Check size={18} style={{ color: 'var(--antd-primary, #1677ff)' }} />
+          <h3 style={{ margin: 0 }}>Workflow Mesh 准入工作台</h3>
+        </div>
+        <p style={{ margin: '0 0 0.8rem', color: '#666', fontSize: '0.85rem' }}>
+          健康证据来自 Agora 只读投影；预览和准入由 OMO broker 控制，外部连接与 worker 启动保持关闭。
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.75rem' }}>
+          <label>任务 ID<input aria-label="准入任务 ID" value={taskId} onChange={(event) => setTaskId(event.target.value)} placeholder="task-..." /></label>
+          <label>WorkflowRun ID<input aria-label="准入 WorkflowRun ID" value={workflowRunId} onChange={(event) => setWorkflowRunId(event.target.value)} placeholder="workflow-run-..." /></label>
+          <label>后端<input aria-label="准入后端" value={backend} onChange={(event) => setBackend(event.target.value)} /></label>
+          <label>所需能力（逗号分隔）<input aria-label="准入所需能力" value={requiredCapabilitiesText} onChange={(event) => setRequiredCapabilitiesText(event.target.value)} /></label>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.85rem' }}>
+          <span role="status" style={{ color: capabilityHealthQuery.data?.ok ? '#237804' : '#a8071a', fontSize: '0.85rem' }}>
+            健康状态：{capabilityHealthQuery.isLoading ? '读取中...' : capabilityHealthQuery.data?.status || (capabilityHealthQuery.error ? 'unavailable' : '未读取')}
+          </span>
+          {capabilityHealthQuery.data?.source && <span style={{ color: '#8c8c8c', fontSize: '0.78rem' }}>来源：{capabilityHealthQuery.data.source}</span>}
+          {capabilityHealthQuery.data?.observed_at && <span style={{ color: '#8c8c8c', fontSize: '0.78rem' }}>观测：{capabilityHealthQuery.data.observed_at}</span>}
+          <button className="antd-btn" type="button" onClick={() => { void capabilityHealthQuery.refetch(); }} disabled={capabilityHealthQuery.isFetching}>
+            <RefreshCw size={14} /> 刷新健康
+          </button>
+          <button className="antd-btn antd-btn-primary" type="button" onClick={() => { void previewAdmission(); }} disabled={previewMutation.isPending || !capabilityHealthQuery.data?.ok}>
+            <ClipboardCheck size={14} /> {previewMutation.isPending ? '预览中...' : '预览准入'}
+          </button>
+          <button className="antd-btn" type="button" onClick={() => { void admitWorkflow(); }} disabled={admitMutation.isPending || previewMutation.data?.status !== 'eligible'}>
+            <Send size={14} /> {admitMutation.isPending ? '准入中...' : '确认准入'}
+          </button>
+        </div>
+        {capabilityHealthQuery.error && <p role="alert" style={{ color: '#a8071a', margin: '0.6rem 0 0', fontSize: '0.85rem' }}>{capabilityHealthQuery.error instanceof Error ? capabilityHealthQuery.error.message : '健康证据不可用。'}</p>}
+        {admissionMessage && <p role="status" style={{ color: admissionMessage.includes('阻断') || admissionMessage.includes('失败') ? '#a8071a' : '#237804', margin: '0.6rem 0 0', fontSize: '0.85rem' }}>{admissionMessage}</p>}
       </section>
 
       <section className="antd-card" style={{ background: consumptionTone.background, borderColor: consumptionTone.border }}>

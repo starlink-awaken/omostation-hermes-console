@@ -64,7 +64,8 @@ describe('WorkflowMeshOperationsView', () => {
       expect(screen.getByText('运行总数')).toBeInTheDocument();
       expect(screen.getByRole('option', { name: /run-21/ })).toBeInTheDocument();
     });
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/workflow-mesh/operations');
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/workflow-mesh/operations')).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith('/api/workflow-mesh/capability-health'))).toBe(true);
   });
 
   it('submits explicit feedback without implying a WorkflowRun transition', async () => {
@@ -84,8 +85,9 @@ describe('WorkflowMeshOperationsView', () => {
     fireEvent.click(screen.getByRole('button', { name: '记录反馈' }));
 
     await waitFor(() => expect(screen.getByText('结果消费反馈已记录。')).toBeInTheDocument());
-    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/workflow-mesh/outcome-feedback');
-    const body = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    const feedbackCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+    expect(feedbackCall?.[0]).toBe('/api/workflow-mesh/outcome-feedback');
+    const body = JSON.parse(String(feedbackCall?.[1]?.body));
     expect(body.workflow_run_id).toBe('run-21');
     expect(body.consumer_ref).toBe('operator://reviewer');
     expect(body.actor_ref).toBe('cockpit-ui://workflow-mesh-operations');

@@ -441,6 +441,12 @@ export const DELIVERY_JOURNEY_ENDPOINTS = {
 // ── Workflow Mesh Operations ──
 
 export const WORKFLOW_MESH_OPERATIONS_ENDPOINTS = {
+  /** Server-owned, read-only capability health evidence for admission. */
+  getCapabilityHealth: (requiredCapabilities: string[]) => {
+    const params = new URLSearchParams();
+    requiredCapabilities.forEach((capability) => params.append('required_capabilities', capability));
+    return `/api/workflow-mesh/capability-health?${params.toString()}`;
+  },
   /** Live event-derived operations projection. */
   getOperations: (sceneId?: string) =>
     `/api/workflow-mesh/operations${sceneId ? `?scene_id=${encodeURIComponent(sceneId)}` : ''}`,

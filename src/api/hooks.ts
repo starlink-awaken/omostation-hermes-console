@@ -682,6 +682,38 @@ export interface WorkflowAdmissionResponse {
   [key: string]: unknown;
 }
 
+export interface WorkflowCapabilityHealthResponse {
+  ok: boolean;
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'unavailable' | 'invalid';
+  source?: 'agora.workflow_health';
+  observed_at?: string;
+  required_capabilities?: string[];
+  capability_health?: Record<string, unknown>;
+  error?: string;
+  message?: string;
+  external_side_effects: 'disabled';
+  worker_launch: false;
+}
+
+export function useWorkflowCapabilityHealth(requiredCapabilities: string[]) {
+  const normalized = requiredCapabilities.map((item) => item.trim()).filter(Boolean);
+  return useQuery({
+    queryKey: ['workflow-capability-health', normalized],
+    queryFn: async () => {
+      const res = await apiFetch<WorkflowCapabilityHealthResponse>(
+        API_ENDPOINTS.workflowMeshOperations.getCapabilityHealth(normalized),
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load capability health');
+      }
+      return res.data;
+    },
+    enabled: normalized.length > 0,
+    staleTime: 5000,
+    refetchInterval: 15000,
+  });
+}
+
 export function usePreviewTaskWorkflowAdmission() {
   return useMutation({
     mutationFn: ({ taskId, input }: { taskId: string; input: WorkflowAdmissionInput }) =>
