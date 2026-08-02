@@ -38,6 +38,8 @@ const ProtocolWorkbenchView = lazy(() => import('./components/ProtocolWorkbenchV
 // eslint-disable-next-line react-refresh/only-export-components
 const KemsWorkbench = lazy(() => import('./components/KemsWorkbench'));
 // eslint-disable-next-line react-refresh/only-export-components
+const SceneCardReviewView = lazy(() => import('./components/SceneCardReviewView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const BrainChat = lazy(() => import('./views/BrainChat'));
 // eslint-disable-next-line react-refresh/only-export-components
 const WorkflowsView = lazy(() => import('./components/WorkflowsView'));
@@ -102,6 +104,7 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Assets', path: '/assets', label: '技术资产库', subtitle: '集中索引自动化工作流、工具管线与智能体自定义开发技能。', group: '智能与知识', component: AssetsView, icon: 'Briefcase' },
   { id: 'Protocol', path: '/protocol', label: '协议工作台', subtitle: 'BOS 协议调试与 MCP 工具测试。', group: '智能与知识', component: ProtocolWorkbenchView, icon: 'FileText' },
   { id: 'Kems', path: '/kems', label: 'KEMS 质量治理', subtitle: '以质量指标、哈希和证据引用驱动 OCR 复核与知识准入。', group: '智能与知识', component: KemsWorkbench, icon: 'FileText' },
+  { id: 'SceneCards', path: '/scene-cards', label: '场景卡评审', subtitle: '评审 Workflow Mesh 场景候选，完整性不足时保持提案态。', group: '智能与知识', component: SceneCardReviewView, icon: 'FileText' },
   { id: 'Brain', path: '/brain', label: '个人数字大脑', subtitle: '基于知识库 + 记忆 + LLM 的智能问答助手。', group: '智能助手', component: BrainChat, icon: 'Brain' },
   { id: 'KnowledgeFlow', path: '/knowledge-flow', label: '知识流动', subtitle: '知识在系统中的流转与沉淀路径。', group: '智能与知识', component: KnowledgeFlow, icon: 'BookOpen' },
   { id: 'Workflows', path: '/workflows', label: '工作流', subtitle: '实时跟踪与干预自治 Agent 的运行链路。', group: '智能与知识', component: WorkflowsView, icon: 'GitCommit' },

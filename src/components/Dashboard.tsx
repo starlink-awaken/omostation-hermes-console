@@ -1,4 +1,4 @@
-import React, { Suspense, useState } from 'react';
+import React, { Suspense } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import {
   Activity,
@@ -30,6 +30,7 @@ const EnginesView = React.lazy(() => import('./EnginesView'));
 const AssetsView = React.lazy(() => import('./AssetsView'));
 const ProtocolWorkbenchView = React.lazy(() => import('./ProtocolWorkbenchView'));
 const KemsWorkbench = React.lazy(() => import('./KemsWorkbench'));
+const SceneCardReviewView = React.lazy(() => import('./SceneCardReviewView'));
 const BrainChat = React.lazy(() => import('../views/BrainChat'));
 const WorkflowsView = React.lazy(() => import('./WorkflowsView'));
 const AlertCenterPage = React.lazy(() => import('./AlertCenterPage'));
@@ -82,12 +83,10 @@ function Wave2Route() {
     const route = getRouteById(tabId);
     navigate(route?.path ?? '/');
   };
-  const [taskSearchSeed, setTaskSearchSeed] = useState('');
   return (
     <Wave2DashboardView
       onNavigate={goTo}
       onOpenTarget={(t) => {
-        if (t.taskQuery) setTaskSearchSeed(t.taskQuery);
         if (t.tab) goTo(t.tab);
       }}
     />
@@ -326,6 +325,7 @@ export default function Dashboard() {
               <Route path="/assets" element={<AssetsView />} />
               <Route path="/protocol" element={<ProtocolRoute />} />
               <Route path="/kems" element={<KemsWorkbench />} />
+              <Route path="/scene-cards" element={<SceneCardReviewView />} />
               <Route path="/brain" element={
                 <div className="animate-fade-in h-[calc(100vh-2rem)]">
                   <BrainChat />

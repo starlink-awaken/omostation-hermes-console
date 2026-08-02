@@ -54,6 +54,7 @@ export const TAB_TO_ROUTE: Record<string, string> = {
   Debt: '/debt',
   Observability: '/observability',
   DeliveryJourney: '/delivery-journey',
+  SceneCards: '/scene-cards',
   LogViewer: '/logs',
 
   TaskCenter: '/tasks',
@@ -63,10 +64,6 @@ export const TAB_TO_ROUTE: Record<string, string> = {
   DomainApps: '/domain-apps',
   Settings: '/settings',
 };
-
-const ROUTE_TO_TAB: Record<string, string> = Object.fromEntries(
-  Object.entries(TAB_TO_ROUTE).map(([tab, route]) => [route, tab]),
-);
 
 const COCKPIT_TAB_IDS = new Set(COCKPIT_PAGE_REGISTRY.map((page) => page.id));
 

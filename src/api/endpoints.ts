@@ -422,6 +422,15 @@ export const DELIVERY_JOURNEY_ENDPOINTS = {
     `/api/delivery-journey${fixture ? `?fixture=${encodeURIComponent(fixture)}` : ''}`,
 } as const;
 
+// ── Workflow Mesh Scene Cards ──
+
+export const SCENE_CARD_ENDPOINTS = {
+  /** Candidate-only projection; never activates a scene. */
+  listCandidates: '/api/scene-cards',
+  /** Proposal-only review receipt; never writes OMO state. */
+  reviewCandidate: '/api/scene-cards/review',
+} as const;
+
 // ── Export all endpoints ──
 
 export const API_ENDPOINTS = {
@@ -464,4 +473,5 @@ export const API_ENDPOINTS = {
   knowledgeExtended: KNOWLEDGE_EXTENDED_ENDPOINTS,
   archHealth: ARCH_HEALTH_ENDPOINTS,
   deliveryJourney: DELIVERY_JOURNEY_ENDPOINTS,
+  sceneCards: SCENE_CARD_ENDPOINTS,
 } as const;

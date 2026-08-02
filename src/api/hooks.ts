@@ -880,3 +880,111 @@ export function useDeliveryJourney(fixture?: string) {
     refetchInterval: 30000,
   });
 }
+
+// ── Workflow Mesh Scene Cards ──
+
+export interface SceneCardCandidate {
+  candidate_id: string;
+  title: string;
+  status: 'candidate';
+  discovery_source: string;
+  discovery_refs: string[];
+  proposed_scene_id: string;
+  proposed_journey_id: string;
+  outcome_metric_hint: string;
+  capability_refs: string[];
+  safe_observations: string[];
+  activation_evidence_refs: string[];
+  sample_refs: string[];
+  demand_evidence_refs: string[];
+  opportunity_window: string;
+  missing_activation_fields: string[];
+}
+
+export interface SceneCardProjection {
+  schema: 'scene-card-candidate/v1';
+  mode: 'candidate_only';
+  activation: 'forbidden';
+  raw_content_policy: string;
+  candidates: SceneCardCandidate[];
+  summary: {
+    candidate_count: number;
+    activation_eligible_count: number;
+    requires_business_confirmation_count: number;
+  };
+}
+
+export interface SceneCardCandidatesResponse {
+  ok: boolean;
+  projection: SceneCardProjection;
+}
+
+export type SceneCardReviewDecision = 'pending' | 'request_evidence' | 'reject' | 'approve';
+
+export interface SceneCardReviewInput {
+  candidate_id: string;
+  decision: SceneCardReviewDecision;
+  reviewer_ref: string;
+  note: string;
+}
+
+export interface SceneCardReviewReceipt {
+  schema: 'scene-card-review/v1';
+  review_id: string;
+  candidate_id: string;
+  decision: SceneCardReviewDecision;
+  status: string;
+  reason: string;
+  next_action: string;
+  manual_consumption: 'review_queue';
+  activation: 'forbidden';
+  activation_attempted: false;
+  reviewer_ref: string;
+  note_digest: string;
+  safe_candidate_snapshot: {
+    title: string;
+    discovery_refs: string[];
+    proposed_scene_id: string;
+    proposed_journey_id: string;
+    outcome_metric_hint: string;
+    capability_refs: string[];
+    safe_observations: string[];
+  };
+  missing_activation_fields: string[];
+}
+
+export interface SceneCardReviewResponse {
+  ok: boolean;
+  receipt: SceneCardReviewReceipt;
+}
+
+export function useSceneCardCandidates() {
+  return useQuery({
+    queryKey: ['scene-card-candidates'],
+    queryFn: async () => {
+      const res = await apiFetch<SceneCardCandidatesResponse>(API_ENDPOINTS.sceneCards.listCandidates);
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load Scene Card candidates');
+      }
+      return res.data;
+    },
+    staleTime: 30000,
+  });
+}
+
+export function useReviewSceneCardCandidate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: SceneCardReviewInput) => {
+      const res = await apiPost<SceneCardReviewResponse>(API_ENDPOINTS.sceneCards.reviewCandidate, input);
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to review Scene Card candidate');
+      }
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scene-card-candidates'] });
+    },
+  });
+}
