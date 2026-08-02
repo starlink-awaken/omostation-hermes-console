@@ -119,6 +119,7 @@ describe('ExternalResourceCatalogView', () => {
     fireEvent.change(screen.getByLabelText('评估数据范围'), { target: { value: 'public:research' } });
     fireEvent.change(screen.getByLabelText('评估操作人'), { target: { value: 'human:test' } });
     fireEvent.change(screen.getByLabelText('评估权限引用'), { target: { value: 'permission://test' } });
+    fireEvent.click(screen.getByLabelText('记录选择评估观察'));
     fireEvent.click(screen.getByRole('button', { name: '评估外部资源候选' }));
 
     await waitFor(() => expect(screen.getByText('评估结果：selected')).toBeInTheDocument());
@@ -126,5 +127,6 @@ describe('ExternalResourceCatalogView', () => {
     const postCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'POST');
     expect(postCall?.[0]).toBe('/api/external-resources/evaluate');
     expect(String(postCall?.[1]?.body)).toContain('research-brief');
+    expect(String(postCall?.[1]?.body)).toContain('"persist_observation":true');
   });
 });

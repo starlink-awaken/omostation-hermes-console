@@ -470,6 +470,10 @@ export const EXTERNAL_RESOURCE_ENDPOINTS = {
   list: '/api/external-resources',
   /** Scene-bound candidate evaluation; never activates or invokes a resource. */
   evaluate: '/api/external-resources/evaluate',
+  /** Event-derived selection labels; read-only projection. */
+  selectionEvaluation: '/api/external-resources/evaluations/selection',
+  /** Offline policy comparison; never applies a policy. */
+  selectionProposal: '/api/external-resources/evaluations/proposal',
 } as const;
 
 // ── Export all endpoints ──

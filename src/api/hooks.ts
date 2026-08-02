@@ -1416,6 +1416,9 @@ export interface ExternalResourceEvaluationInput {
   capability: string;
   scene_binding: ExternalResourceSceneBinding;
   trace_id?: string;
+  persist_observation?: boolean;
+  workflow_run_id?: string;
+  actor_ref?: string;
 }
 
 export interface ExternalResourceCandidateDecision {
@@ -1461,6 +1464,26 @@ export interface ExternalResourceEvaluationResponse {
   ok: boolean;
   status: string;
   evaluation: ExternalResourceEvaluation;
+  observation_status?: 'not_requested' | 'recorded' | 'deduplicated';
+  observation_persisted?: boolean;
+  observation?: { observation_id: string; evaluation_id?: string } | null;
+}
+
+export interface ExternalResourceSelectionEvaluationResponse {
+  ok: boolean;
+  status: 'live' | 'unavailable';
+  dataset?: {
+    dataset_version: 'external-resource-selection-eval/v1';
+    rows: Array<Record<string, unknown>>;
+    summary: {
+      row_count: number;
+      linked_run_count?: number;
+      executed_count?: number;
+      aligned_count?: number;
+      outcomes?: Record<string, number>;
+      label_quality?: Record<string, number>;
+    };
+  };
 }
 
 export function useExternalResources() {
@@ -1479,6 +1502,7 @@ export function useExternalResources() {
 }
 
 export function useEvaluateExternalResources() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: ExternalResourceEvaluationInput) => {
       const res = await apiPost<ExternalResourceEvaluationResponse>(
@@ -1490,5 +1514,28 @@ export function useEvaluateExternalResources() {
       }
       return res.data;
     },
+    onSuccess: (_data, input) => {
+      void queryClient.invalidateQueries({
+        queryKey: ['external-resource-selection-evaluation', input.scene_binding.scene_id],
+      });
+    },
+  });
+}
+
+export function useExternalResourceSelectionEvaluation(sceneId?: string) {
+  return useQuery({
+    queryKey: ['external-resource-selection-evaluation', sceneId],
+    queryFn: async () => {
+      const suffix = sceneId ? `?scene_id=${encodeURIComponent(sceneId)}` : '';
+      const res = await apiFetch<ExternalResourceSelectionEvaluationResponse>(
+        `${API_ENDPOINTS.externalResources.selectionEvaluation}${suffix}`,
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load external resource evaluation evidence');
+      }
+      return res.data;
+    },
+    enabled: Boolean(sceneId),
+    staleTime: 15000,
   });
 }

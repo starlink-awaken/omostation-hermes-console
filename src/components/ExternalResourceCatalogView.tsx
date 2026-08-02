@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import {
   useEvaluateExternalResources,
+  useExternalResourceSelectionEvaluation,
   useExternalResources,
   type ExternalResourceAvailability,
   type ExternalResourceEvaluation,
@@ -91,6 +92,10 @@ export default function ExternalResourceCatalogView() {
     permission_ref: '',
   });
   const [evaluationResult, setEvaluationResult] = useState<ExternalResourceEvaluation>();
+  const [observationStatus, setObservationStatus] = useState<string>('not_requested');
+  const [persistObservation, setPersistObservation] = useState(false);
+  const [workflowRunId, setWorkflowRunId] = useState('');
+  const selectionEvaluation = useExternalResourceSelectionEvaluation(sceneBinding.scene_id || undefined);
   const projection = data?.projection;
   const filtered = useMemo(() => {
     const resources = projection?.resources ?? [];
@@ -108,8 +113,18 @@ export default function ExternalResourceCatalogView() {
   const handleEvaluation = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     evaluate.mutate(
-      { capability: capability.trim(), scene_binding: sceneBinding },
-      { onSuccess: (result) => setEvaluationResult(result.evaluation) },
+      {
+        capability: capability.trim(),
+        scene_binding: sceneBinding,
+        persist_observation: persistObservation,
+        workflow_run_id: workflowRunId.trim() || undefined,
+      },
+      {
+        onSuccess: (result) => {
+          setEvaluationResult(result.evaluation);
+          setObservationStatus(result.observation_status || 'not_requested');
+        },
+      },
     );
   };
 
@@ -190,8 +205,13 @@ export default function ExternalResourceCatalogView() {
           ] as const).map(([field, label]) => (
             <label key={field}>{label}<input className="antd-input" aria-label={`评估${label}`} value={sceneBinding[field]} onChange={(event) => updateSceneBinding(field, event.target.value)} /></label>
           ))}
+          <label>WorkflowRun ID<input className="antd-input" aria-label="评估 WorkflowRun ID" value={workflowRunId} onChange={(event) => setWorkflowRunId(event.target.value)} placeholder="可选，用于关联执行" /></label>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" aria-label="记录选择评估观察" checked={persistObservation} onChange={(event) => setPersistObservation(event.target.checked)} />
+            记录选择评估观察
+          </label>
           <button type="submit" className="antd-btn antd-btn-primary" disabled={evaluate.isPending || !capability.trim()} aria-label="评估外部资源候选">
             <ListChecks size={14} /> {evaluate.isPending ? '评估中...' : '评估候选'}
           </button>
@@ -212,6 +232,7 @@ export default function ExternalResourceCatalogView() {
             <span>淘汰 {evaluationResult.summary.rejected_count}</span>
             <span>不适用 {evaluationResult.summary.not_applicable_count}</span>
             <span>最终选择 {evaluationResult.selected_resource_id || '无'}</span>
+            <span>观察记录 {observationStatus === 'recorded' ? '已记录' : observationStatus === 'deduplicated' ? '已去重' : '未请求'}</span>
           </div>
           <div style={{ display: 'grid', gap: 8 }}>
             {evaluationResult.candidates.map((candidate) => (
@@ -225,6 +246,18 @@ export default function ExternalResourceCatalogView() {
               </div>
             ))}
             {evaluationResult.candidates.length === 0 && <span style={{ color: '#666' }}><CircleSlash2 size={14} /> 没有可评估候选。</span>}
+          </div>
+        </section>
+      )}
+
+      {selectionEvaluation.data?.dataset && (
+        <section className="antd-card" style={{ padding: 14, display: 'grid', gap: 8 }} aria-label="外部资源评测集摘要">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ClipboardCheck size={16} style={{ color: 'var(--antd-primary, #1677ff)' }} /><strong>场景评测证据</strong></div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: '#666', fontSize: 12 }}>
+            <span>观察 {selectionEvaluation.data.dataset.summary.row_count}</span>
+            <span>已关联运行 {selectionEvaluation.data.dataset.summary.linked_run_count ?? 0}</span>
+            <span>已执行 {selectionEvaluation.data.dataset.summary.executed_count ?? 0}</span>
+            <span>资源对齐 {selectionEvaluation.data.dataset.summary.aligned_count ?? 0}</span>
           </div>
         </section>
       )}
