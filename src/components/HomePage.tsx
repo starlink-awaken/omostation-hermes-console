@@ -4,11 +4,12 @@ import AlertFeedSection from './home/AlertFeedSection';
 import MetricsTrendSection from './home/MetricsTrendSection';
 import RecentTasksSection from './home/RecentTasksSection';
 import GovernanceOverviewSection from './home/GovernanceOverviewSection';
+import HomeFocusSection, { type HomeFocusPayload } from './home/HomeFocusSection';
 import { openCockpitNavigationTarget } from './cockpitNavigation';
 import type { HealthSummary, CockpitAlert, CockpitTask, DataPoint } from '../types/cockpit';
 
 type DataQuality = 'loading' | 'complete' | 'partial' | 'unavailable';
-type HomeSource = 'summary' | 'alerts' | 'tasks' | 'metrics' | 'thoughts';
+type HomeSource = 'summary' | 'alerts' | 'tasks' | 'metrics' | 'thoughts' | 'focus';
 
 interface HomePageProps {
   onTabChange?: (tab: string) => void;
@@ -50,6 +51,7 @@ const SOURCE_LABELS: Record<HomeSource, string> = {
   tasks: '任务列表',
   metrics: '指标趋势',
   thoughts: '心智探针',
+  focus: '工作焦点',
 };
 
 async function readHomeSource<T>(source: HomeSource, url: string): Promise<ReadResult<T>> {
@@ -126,6 +128,7 @@ export default function HomePage({ onTabChange }: HomePageProps) {
   const [requestsData, setRequestsData] = useState<DataPoint[]>([]);
   const [errorRateData, setErrorRateData] = useState<DataPoint[]>([]);
   const [thoughts, setThoughts] = useState<Thought[]>([]);
+  const [focus, setFocus] = useState<HomeFocusPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [dataQuality, setDataQuality] = useState<DataQuality>('loading');
   const [sourceQuality, setSourceQuality] = useState<Record<HomeSource, DataQuality>>({
@@ -134,6 +137,7 @@ export default function HomePage({ onTabChange }: HomePageProps) {
     tasks: 'loading',
     metrics: 'loading',
     thoughts: 'loading',
+    focus: 'loading',
   });
   const [degradedReasons, setDegradedReasons] = useState<string[]>([]);
 
@@ -149,6 +153,7 @@ export default function HomePage({ onTabChange }: HomePageProps) {
         tasks: 'loading',
         metrics: 'loading',
         thoughts: 'loading',
+        focus: 'loading',
       });
       setDegradedReasons([]);
       setHealthSummary(null);
@@ -158,17 +163,19 @@ export default function HomePage({ onTabChange }: HomePageProps) {
       setRequestsData([]);
       setErrorRateData([]);
       setThoughts([]);
-      const [summary, alertFeed, recentTasks, metrics, thoughtsFeed] = await Promise.all([
+      setFocus(null);
+      const [summary, alertFeed, recentTasks, metrics, thoughtsFeed, focusPayload] = await Promise.all([
         readHomeSource<HealthSummary>('summary', '/api/health/summary'),
         readHomeSource<{ items?: CockpitAlert[] }>('alerts', '/api/alerts?limit=3&status=active'),
         readHomeSource<{ items?: CockpitTask[] }>('tasks', '/api/tasks?limit=3&sort=updated'),
         readHomeSource<MetricsResponse>('metrics', '/api/metrics/trend?range=24h'),
         readHomeSource<ThoughtsResponse>('thoughts', '/api/omos/thoughts'),
+        readHomeSource<HomeFocusPayload>('focus', '/api/cockpit/system-map'),
       ]);
 
       if (disposed) return;
 
-      const results: ReadResult<unknown>[] = [summary, alertFeed, recentTasks, metrics, thoughtsFeed];
+      const results: ReadResult<unknown>[] = [summary, alertFeed, recentTasks, metrics, thoughtsFeed, focusPayload];
       const failedSources = results
         .filter((result): result is ReadFailure => !result.ok)
         .map((result) => SOURCE_LABELS[result.source]);
@@ -187,12 +194,14 @@ export default function HomePage({ onTabChange }: HomePageProps) {
       setRequestsData(metrics.ok ? metrics.data.requests ?? [] : []);
       setErrorRateData(metrics.ok ? metrics.data.error_rate ?? [] : []);
       setThoughts(thoughtsFeed.ok && thoughtsFeed.data.status === 'ok' ? thoughtsFeed.data.thoughts ?? [] : []);
+      setFocus(focusPayload.ok ? focusPayload.data : null);
       setSourceQuality({
         summary: qualityFor(summary),
         alerts: qualityFor(alertFeed),
         tasks: qualityFor(recentTasks),
         metrics: qualityFor(metrics),
         thoughts: qualityFor(thoughtsFeed),
+        focus: qualityFor(focusPayload),
       });
       setDataQuality(nextQuality);
       setDegradedReasons(failedSources);
@@ -222,6 +231,13 @@ export default function HomePage({ onTabChange }: HomePageProps) {
           {homeMessage}
         </div>
       )}
+
+      <HomeFocusSection
+        focus={focus}
+        dataQuality={sourceQuality.focus}
+        onOpenProject={(projectId) => openCockpitNavigationTarget({ tab: 'SystemMap', focusProjectId: projectId })}
+        onViewTasks={() => openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: 'system-map-focus' })}
+      />
 
       <HealthSummarySection
         healthScore={healthSummary?.health_score ?? 0}
