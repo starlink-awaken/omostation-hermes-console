@@ -480,6 +480,8 @@ export const EXTERNAL_RESOURCE_ENDPOINTS = {
   reviewQueue: '/api/external-resources/review-queue',
   /** Proposal-only scene trial review projection; never creates a WorkflowRun. */
   sceneTrials: '/api/external-resources/scene-trials',
+  /** Readiness projection; never admits or activates a WorkflowRun. */
+  sceneTrialReadiness: '/api/external-resources/scene-trials/readiness',
   /** Persist a proposal-only scene trial review receipt. */
   sceneTrialReview: '/api/external-resources/scene-trials/review',
   /** Scene-bound candidate evaluation; never activates or invokes a resource. */

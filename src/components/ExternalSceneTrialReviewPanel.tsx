@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, CircleSlash2, FileCheck2, LockKeyhole, RefreshCw, Wrench, XCircle } from 'lucide-react';
 import {
+  useExternalSceneTrialReadiness,
   useExternalSceneTrialReview,
   useReviewExternalSceneTrial,
   type ExternalSceneTrialReviewAction,
@@ -21,10 +22,18 @@ function formatTime(value?: string | null): string {
 
 function TrialItem({
   item,
+  readiness,
   onReview,
   pending,
 }: {
   item: ExternalSceneTrialReviewItem;
+  readiness?: {
+    status: 'blocked' | 'ready';
+    blockers: string[];
+    matched_workflow_run_ids: string[];
+    external_receipts: Array<{ receipt_id: string; result_state: string }>;
+    outcome_feedback: Array<{ feedback_id: string; consumption_state: string }>;
+  };
   onReview: (item: ExternalSceneTrialReviewItem, action: ExternalSceneTrialReviewAction) => void;
   pending: boolean;
 }) {
@@ -49,6 +58,18 @@ function TrialItem({
       <span style={{ color: '#666', fontSize: 12 }}>
         观测 {formatTime(item.observed_at)} · catalog {item.catalog_observation_id} · activation: {item.activation}
       </span>
+      <div style={{ display: 'grid', gap: 4, padding: '8px 10px', background: '#fafafa', borderLeft: `3px solid ${readiness?.status === 'ready' ? '#389e0d' : '#d48806'}` }}>
+        <strong style={{ fontSize: 12, color: readiness?.status === 'ready' ? '#389e0d' : '#ad6800' }}>
+          晋升就绪度：{readiness?.status === 'ready' ? '已具备提案条件' : '条件未齐备'}
+        </strong>
+        <span style={{ color: '#666', fontSize: 12 }}>
+          WorkflowRun {readiness?.matched_workflow_run_ids.length ?? 0} · 外部回执 {readiness?.external_receipts.length ?? 0} · 结果反馈 {readiness?.outcome_feedback.length ?? 0}
+        </span>
+        {readiness && readiness.blockers.length > 0 && (
+          <span style={{ color: '#ad6800', fontSize: 12 }}>阻断项：{readiness.blockers.join('、')}</span>
+        )}
+        <span style={{ color: '#666', fontSize: 12 }}>只读判定，不会自动晋升、准入或激活。</span>
+      </div>
       {item.latest_review && (
         <span style={{ color: '#389e0d', fontSize: 12 }}>
           最近回执 {item.latest_review.feedback_id} · {formatTime(item.latest_review.recorded_at)}
@@ -71,6 +92,7 @@ function TrialItem({
 
 export default function ExternalSceneTrialReviewPanel() {
   const review = useExternalSceneTrialReview();
+  const readiness = useExternalSceneTrialReadiness();
   const mutation = useReviewExternalSceneTrial();
   const [reviewerRef, setReviewerRef] = useState('ref://cockpit/reviewer');
   const [reviewRef, setReviewRef] = useState('ref://cockpit/scene-trial-review');
@@ -91,6 +113,8 @@ export default function ExternalSceneTrialReviewPanel() {
 
   const projection = review.data?.projection;
   const items = projection?.items ?? [];
+  const readinessItems = readiness.data?.projection?.items ?? [];
+  const readinessByTrialId = new Map(readinessItems.map((item) => [item.trial_id, item]));
   const summary = projection?.summary ?? { trial_count: 0, unreviewed_count: 0, reviewed_count: 0, review_actions: {} };
   return (
     <section className="antd-card" style={{ padding: 16, display: 'grid', gap: 12 }} aria-label="外部场景试运行审阅">
@@ -131,7 +155,7 @@ export default function ExternalSceneTrialReviewPanel() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#666', fontSize: 13 }}><CircleSlash2 size={15} /> 尚无可审阅的试运行记录。</div>
           ) : (
             <div style={{ display: 'grid', gap: 8 }}>
-              {items.map((item) => <TrialItem key={item.trial_id} item={item} onReview={handleReview} pending={mutation.isPending} />)}
+              {items.map((item) => <TrialItem key={item.trial_id} item={item} readiness={readinessByTrialId.get(item.trial_id)} onReview={handleReview} pending={mutation.isPending} />)}
             </div>
           )}
           <span style={{ color: '#666', fontSize: 12 }}>{projection.next_action}</span>

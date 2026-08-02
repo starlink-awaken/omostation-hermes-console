@@ -96,6 +96,40 @@ const sceneTrialProjection = {
   next_action: '先提交人工评审回执；评审不会创建 WorkflowRun 或激活连接。',
 };
 
+const sceneTrialReadinessProjection = {
+  schema: 'external-scene-trial-promotion-readiness/v1' as const,
+  mode: 'read_only_projection' as const,
+  activation: 'forbidden' as const,
+  provider_invocation: false as const,
+  workflow_run_creation: 'forbidden' as const,
+  admission_mutation: 'forbidden' as const,
+  external_side_effects: 'disabled' as const,
+  status: 'blocked' as const,
+  items: [{
+    trial_id: 'scene-trial:test',
+    scene_binding: { scene_id: 'research-brief', journey_id: 'weekly-decision', outcome_metric: 'decision_latency_hours' },
+    consumer_ref: 'ref://consumer/test',
+    latest_review: null,
+    checks: {
+      trial_recorded: true,
+      review_continued: false,
+      workflow_run_present: false,
+      workflow_run_eligible: false,
+      external_receipt_recorded: false,
+      outcome_feedback_recorded: false,
+    },
+    matched_workflow_run_ids: [],
+    workflow_states: [],
+    external_receipts: [],
+    outcome_feedback: [],
+    blockers: ['review_missing', 'workflow_run_missing'],
+    status: 'blocked' as const,
+    next_action: '补齐阻断项后重新评估',
+  }],
+  summary: { trial_count: 1, ready_count: 0, blocked_count: 1 },
+  next_action: '只对 status=ready 的场景提交人工晋升提案；系统不会自动改变准入状态。',
+};
+
 function renderView() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchInterval: false, refetchOnWindowFocus: false } } });
   return render(<QueryClientProvider client={client}><ExternalResourceCatalogView /></QueryClientProvider>);
@@ -114,6 +148,8 @@ describe('ExternalResourceCatalogView', () => {
     const fetchMock = vi.fn().mockImplementation(async (url: string) => (
       url === '/api/external-resources/review-queue'
         ? { ok: true, json: async () => ({ ok: true, projection: reviewQueueProjection }) }
+        : url === '/api/external-resources/scene-trials/readiness'
+          ? { ok: true, json: async () => ({ ok: true, projection: sceneTrialReadinessProjection }) }
         : url === '/api/external-resources/scene-trials'
           ? { ok: true, json: async () => ({ ok: true, projection: sceneTrialProjection }) }
           : { ok: true, json: async () => ({ ok: true, projection }) }
@@ -132,10 +168,13 @@ describe('ExternalResourceCatalogView', () => {
       expect(screen.getByText('场景试运行审阅')).toBeInTheDocument();
       expect(screen.getByText('scene-trial:test')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '继续试运行 scene-trial:test' })).toBeInTheDocument();
+      expect(screen.getByText('晋升就绪度：条件未齐备')).toBeInTheDocument();
+      expect(screen.getByText('阻断项：review_missing、workflow_run_missing')).toBeInTheDocument();
     });
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/external-resources');
     expect(fetchMock.mock.calls.some((call) => call[0] === '/api/external-resources/review-queue')).toBe(true);
     expect(fetchMock.mock.calls.some((call) => call[0] === '/api/external-resources/scene-trials')).toBe(true);
+    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/external-resources/scene-trials/readiness')).toBe(true);
   });
 
   it('keeps an unavailable state when the catalog cannot be read', async () => {

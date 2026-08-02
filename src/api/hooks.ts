@@ -1765,6 +1765,71 @@ export interface ExternalSceneTrialReviewMutationResponse {
   message?: string;
 }
 
+export type ExternalSceneTrialReadinessStatus = 'empty' | 'blocked' | 'ready' | 'unavailable';
+
+export interface ExternalSceneTrialReadinessItem {
+  trial_id: string;
+  scene_binding: { scene_id: string; journey_id: string; outcome_metric: string };
+  consumer_ref: string;
+  metric?: Record<string, unknown>;
+  latest_review: {
+    feedback_id?: string;
+    review_action?: ExternalSceneTrialReviewAction;
+    reviewer_ref?: string;
+    review_ref?: string;
+    observed_at?: string;
+  } | null;
+  checks: {
+    trial_recorded: boolean;
+    review_continued: boolean;
+    workflow_run_present: boolean;
+    workflow_run_eligible: boolean;
+    external_receipt_recorded: boolean;
+    outcome_feedback_recorded: boolean;
+  };
+  matched_workflow_run_ids: string[];
+  workflow_states: string[];
+  external_receipts: Array<{
+    receipt_id: string;
+    resource_id: string;
+    result_state: string;
+    observed_at: string;
+  }>;
+  outcome_feedback: Array<{
+    feedback_id: string;
+    outcome_id: string;
+    consumption_state: string;
+    consumer_ref: string;
+    observed_at: string;
+  }>;
+  blockers: string[];
+  status: 'blocked' | 'ready';
+  next_action: string;
+}
+
+export interface ExternalSceneTrialReadinessProjection {
+  schema: 'external-scene-trial-promotion-readiness/v1';
+  mode: 'read_only_projection';
+  activation: 'forbidden';
+  provider_invocation: false;
+  workflow_run_creation: 'forbidden';
+  admission_mutation: 'forbidden';
+  external_side_effects: 'disabled';
+  status: ExternalSceneTrialReadinessStatus;
+  scene_id?: string | null;
+  items: ExternalSceneTrialReadinessItem[];
+  summary: { trial_count: number; ready_count: number; blocked_count: number };
+  next_action: string;
+  error?: string;
+}
+
+export interface ExternalSceneTrialReadinessResponse {
+  ok: boolean;
+  projection?: ExternalSceneTrialReadinessProjection;
+  status?: ExternalSceneTrialReadinessStatus;
+  error?: string;
+}
+
 export interface ExternalResourceSceneBinding {
   scene_id: string;
   journey_id: string;
@@ -1914,6 +1979,24 @@ export function useReviewExternalSceneTrial() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['external-scene-trial-review'] });
     },
+  });
+}
+
+export function useExternalSceneTrialReadiness(sceneId?: string) {
+  return useQuery({
+    queryKey: ['external-scene-trial-readiness', sceneId ?? 'ALL'],
+    queryFn: async () => {
+      const suffix = sceneId ? `?scene_id=${encodeURIComponent(sceneId)}` : '';
+      const res = await apiFetch<ExternalSceneTrialReadinessResponse>(
+        `${API_ENDPOINTS.externalResources.sceneTrialReadiness}${suffix}`,
+      );
+      if (!res.ok || !res.data?.projection) {
+        throw new Error(res.data?.error || res.error || 'Failed to load scene trial readiness');
+      }
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 60000,
   });
 }
 
