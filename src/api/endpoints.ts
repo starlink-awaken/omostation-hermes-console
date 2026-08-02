@@ -461,6 +461,10 @@ export const SCENE_CARD_ENDPOINTS = {
   listCandidates: '/api/scene-cards',
   /** Proposal-only review receipt; never writes OMO state. */
   reviewCandidate: '/api/scene-cards/review',
+  /** Validate a complete Scene Card without persistence or activation. */
+  intake: '/api/scene-cards/intake',
+  /** Join a Scene Card with the latest governed catalog, read-only. */
+  preflight: '/api/scene-cards/preflight',
 } as const;
 
 // ── External Connection Fabric ──

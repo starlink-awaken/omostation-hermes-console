@@ -1306,6 +1306,117 @@ export interface SceneCardReviewResponse {
   receipt: SceneCardReviewReceipt;
 }
 
+export interface SceneCardInput {
+  schema: 'scene-card/v1';
+  lifecycle: 'proposal_only';
+  activation: 'forbidden';
+  scene_id: string;
+  journey_id: string;
+  goal: string;
+  trigger: string;
+  input_contract: string;
+  result_contract: string;
+  outcome_metric: string;
+  consumer: string;
+  approver: string;
+  owner: string;
+  failure_cost: string;
+  data_classification: string;
+  data_scope: string;
+  operator: string;
+  permission_ref: string;
+  rollback_plan: string;
+  sample_refs: string[];
+  demand_evidence_refs: string[];
+  activation_evidence_refs: string[];
+  required_capabilities: string[];
+  opportunity_window?: string;
+}
+
+export interface SceneCardIntakeProjection {
+  schema: 'scene-card-intake/v1';
+  mode: 'proposal_only_intake';
+  intake_id: string;
+  source_digest: string;
+  status: 'blocked' | 'proposal_only';
+  next_action: string;
+  activation: 'forbidden';
+  missing_fields: string[];
+  scene_card: Record<string, unknown>;
+  side_effects: {
+    raw_content_read: false;
+    provider_called: false;
+    omo_written: false;
+    workflow_created: false;
+    activation_attempted: false;
+  };
+}
+
+export interface SceneCardIntakeResponse {
+  ok: boolean;
+  status: string;
+  projection?: SceneCardIntakeProjection;
+  message?: string;
+  error?: string;
+  activation: 'forbidden';
+  persistence?: 'none';
+}
+
+export type SceneCardPreflightStatus =
+  | 'blocked'
+  | 'proposal_only'
+  | 'ready_for_admission_preview'
+  | 'unavailable';
+
+export interface SceneCardPreflightProjection {
+  schema: 'external-activation-preflight/v1';
+  mode: 'read_only_preflight';
+  activation: 'forbidden';
+  scene: {
+    scene_id: string;
+    journey_id: string;
+    outcome_metric: string;
+  };
+  status: SceneCardPreflightStatus;
+  next_action: string;
+  missing_fields: string[];
+  scene_card?: {
+    missing_fields?: string[];
+    required_capabilities?: string[];
+  };
+  capability_checks?: Array<{
+    capability: string;
+    status: 'available' | 'proposal_only' | 'unavailable';
+    candidates: Array<{
+      resource_id: string;
+      availability: string;
+      lifecycle: string;
+      reason_codes: string[];
+    }>;
+  }>;
+  catalog_freshness?: {
+    status: 'fresh' | 'stale' | 'unknown';
+    reason_codes: string[];
+  };
+  intake_status?: string;
+  side_effects: {
+    provider_called: false;
+    omo_written: false;
+    workflow_created: false;
+  };
+}
+
+export interface SceneCardPreflightResponse {
+  ok: boolean;
+  status: string;
+  projection?: SceneCardPreflightProjection;
+  catalog_source?: string;
+  message?: string;
+  error?: string;
+  activation: 'forbidden';
+  persistence?: 'none';
+}
+
 export function useSceneCardCandidates() {
   return useQuery({
     queryKey: ['scene-card-candidates'],
@@ -1333,6 +1444,36 @@ export function useReviewSceneCardCandidate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scene-card-candidates'] });
+    },
+  });
+}
+
+export function useIntakeSceneCard() {
+  return useMutation({
+    mutationFn: async (sceneCard: SceneCardInput) => {
+      const res = await apiPost<SceneCardIntakeResponse>(
+        API_ENDPOINTS.sceneCards.intake,
+        { scene_card: sceneCard },
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to intake Scene Card');
+      }
+      return res.data;
+    },
+  });
+}
+
+export function usePreflightSceneCard() {
+  return useMutation({
+    mutationFn: async (sceneCard: SceneCardInput) => {
+      const res = await apiPost<SceneCardPreflightResponse>(
+        API_ENDPOINTS.sceneCards.preflight,
+        { scene_card: sceneCard },
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to preflight Scene Card');
+      }
+      return res.data;
     },
   });
 }

@@ -14,6 +14,7 @@ import {
   type SceneCardReviewReceipt,
   type SceneCardReviewDecision,
 } from '../api/hooks';
+import SceneCardIntakePanel from './SceneCardIntakePanel';
 
 const DECISIONS: Array<{ value: SceneCardReviewDecision; label: string }> = [
   { value: 'pending', label: '保留待审' },
@@ -86,6 +87,8 @@ export default function SceneCardReviewView() {
           <RefreshCw size={14} className={isLoading ? 'spinning' : ''} /> 刷新
         </button>
       </header>
+
+      <SceneCardIntakePanel key={selected?.candidate_id || 'new-scene-card'} candidate={selected} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 0.8fr) minmax(0, 1.6fr)', gap: 16, alignItems: 'start' }}>
         <div className="antd-card" style={{ padding: 12, display: 'grid', gap: 8 }}>
