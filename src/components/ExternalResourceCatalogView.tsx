@@ -17,8 +17,10 @@ import {
   useExternalResources,
   type ExternalResourceAvailability,
   type ExternalResourceEvaluation,
+  type ExternalResourceReviewQueueProjection,
   type ExternalResourceSceneBinding,
   type ExternalResourceItem,
+  useExternalResourceReviewQueue,
 } from '../api/hooks';
 
 const KIND_LABELS: Record<string, string> = {
@@ -75,8 +77,79 @@ function ResourceRow({ item, active, onSelect }: { item: ExternalResourceItem; a
   );
 }
 
+function ReviewQueuePanel({
+  projection,
+  isLoading,
+  error,
+  onRetry,
+}: {
+  projection?: ExternalResourceReviewQueueProjection;
+  isLoading: boolean;
+  error: Error | null;
+  onRetry: () => void;
+}) {
+  const status = projection?.status;
+  const statusLabel = status === 'attention'
+    ? '需要人工复核'
+    : status === 'clear'
+      ? '当前无待复核变化'
+      : status === 'empty'
+        ? '尚无观测'
+        : '复核队列不可用';
+  const statusColor = status === 'attention' ? '#ad6800' : status === 'clear' ? '#389e0d' : '#cf1322';
+
+  return (
+    <section className="antd-card" style={{ padding: 16, display: 'grid', gap: 12 }} aria-label="外部资源人工复核队列">
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ShieldAlert size={18} style={{ color: 'var(--antd-primary, #1677ff)' }} />
+          <strong>人工复核队列</strong>
+          <span style={{ color: '#ad6800', fontSize: 12, fontWeight: 600 }}><LockKeyhole size={13} /> 只读观察</span>
+        </div>
+        {projection && <span style={{ color: statusColor, fontSize: 12, fontWeight: 600 }}>{statusLabel}</span>}
+      </div>
+
+      {isLoading && !projection && <span style={{ color: '#666', fontSize: 13 }}>正在读取最新受治理观测...</span>}
+      {error && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: '#cf1322', fontSize: 13 }}>
+          <span>{error.message || '外部资源复核队列不可用'}</span>
+          <button type="button" className="antd-btn" onClick={onRetry} aria-label="重试读取外部资源复核队列">
+            <RefreshCw size={14} /> 重试
+          </button>
+        </div>
+      )}
+
+      {projection && (
+        <>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: '#666', fontSize: 12 }}>
+            <span>待复核 {projection.summary.review_required_count}</span>
+            <span>运营观察 {projection.summary.operational_observation_count}</span>
+            <span>语义 {projection.queue_semantics}</span>
+            {projection.observed_at && <span>观测 {formatTime(projection.observed_at)}</span>}
+          </div>
+          {projection.status === 'attention' && projection.items.length > 0 && (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {projection.items.map((item) => (
+                <article key={`${item.resource_id}:${item.change}`} style={{ border: '1px solid #ffd591', borderRadius: 6, padding: 10, background: '#fffbe6', display: 'grid', gap: 5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                    <strong style={{ overflowWrap: 'anywhere' }}>{item.resource_id}</strong>
+                    <span style={{ color: '#ad6800', fontSize: 12 }}>{item.change} · {item.risk_class}</span>
+                  </div>
+                  <span style={{ color: '#666', fontSize: 12 }}>风险码：{item.risk_codes.join(' · ') || '未提供'} · 变化字段：{item.changed_fields.join('、') || '未提供'}</span>
+                </article>
+              ))}
+            </div>
+          )}
+          <span style={{ color: '#666', fontSize: 12 }}>{projection.next_action} activation: {projection.activation}</span>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function ExternalResourceCatalogView() {
   const { data, isLoading, error, refetch } = useExternalResources();
+  const reviewQueue = useExternalResourceReviewQueue();
   const evaluate = useEvaluateExternalResources();
   const [kind, setKind] = useState('all');
   const [availability, setAvailability] = useState('all');
@@ -160,6 +233,13 @@ export default function ExternalResourceCatalogView() {
           <RefreshCw size={14} className={isLoading ? 'spinning' : ''} /> 刷新
         </button>
       </header>
+
+      <ReviewQueuePanel
+        projection={reviewQueue.data?.projection}
+        isLoading={reviewQueue.isLoading}
+        error={reviewQueue.error instanceof Error ? reviewQueue.error : null}
+        onRetry={() => void reviewQueue.refetch()}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
         {[

@@ -36,6 +36,31 @@ const projection = {
   summary: { resource_count: 1, unavailable_count: 0, error_count: 0, by_availability: { available: 1 } },
 };
 
+const reviewQueueProjection = {
+  schema: 'external-resource-review-queue/v1' as const,
+  mode: 'read_only_projection' as const,
+  activation: 'forbidden' as const,
+  raw_content_policy: 'never_read_or_export',
+  source: 'omo.external_resource_observation' as const,
+  queue_semantics: 'latest_observation_delta' as const,
+  status: 'attention' as const,
+  observed_at: '2026-08-02T00:00:00+00:00',
+  recorded_at: '2026-08-02T00:01:00+00:00',
+  observation_id: 'observation:test',
+  change_state: 'changed',
+  items: [{
+    resource_id: 'source:test',
+    change: 'changed',
+    risk_class: 'manual_review' as const,
+    risk_codes: ['descriptor_provider_changed'],
+    changed_fields: ['provider'],
+    previous: { provider: 'old-provider' },
+    current: { provider: 'new-provider' },
+  }],
+  summary: { review_required_count: 1, operational_observation_count: 0, risk_codes: ['descriptor_provider_changed'] },
+  next_action: '按风险码和变更字段完成人工核查；复核本身不会批准或激活资源。',
+};
+
 function renderView() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchInterval: false, refetchOnWindowFocus: false } } });
   return render(<QueryClientProvider client={client}><ExternalResourceCatalogView /></QueryClientProvider>);
@@ -51,7 +76,11 @@ describe('ExternalResourceCatalogView', () => {
   });
 
   it('shows dynamic resource health and proposal-only activation boundary', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true, projection }) });
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => (
+      url === '/api/external-resources/review-queue'
+        ? { ok: true, json: async () => ({ ok: true, projection: reviewQueueProjection }) }
+        : { ok: true, json: async () => ({ ok: true, projection }) }
+    ));
     globalThis.fetch = fetchMock as typeof globalThis.fetch;
 
     renderView();
@@ -60,8 +89,12 @@ describe('ExternalResourceCatalogView', () => {
       expect(screen.getByText('外部能力目录')).toBeInTheDocument();
       expect(screen.getAllByText('source:test').length).toBeGreaterThan(0);
       expect(screen.getByText('activation: forbidden · mode: live_query · rollback: 已声明')).toBeInTheDocument();
+      expect(screen.getByText('人工复核队列')).toBeInTheDocument();
+      expect(screen.getByText('需要人工复核')).toBeInTheDocument();
+      expect(screen.getByText('风险码：descriptor_provider_changed · 变化字段：provider')).toBeInTheDocument();
     });
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/external-resources');
+    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/external-resources/review-queue')).toBe(true);
   });
 
   it('keeps an unavailable state when the catalog cannot be read', async () => {
@@ -71,6 +104,34 @@ describe('ExternalResourceCatalogView', () => {
 
     await waitFor(() => expect(screen.getByText('catalog offline')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: '重试读取外部资源目录' })).toBeInTheDocument();
+  });
+
+  it('shows an explicit empty review queue before the first governed observation', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => (
+      url === '/api/external-resources/review-queue'
+        ? { ok: true, json: async () => ({ ok: true, projection: { ...reviewQueueProjection, status: 'empty', items: [], summary: { review_required_count: 0, operational_observation_count: 0, risk_codes: [] }, next_action: '先运行受治理的外部资源观测，再查看人工复核队列。' } }) }
+        : { ok: true, json: async () => ({ ok: true, projection }) }
+    ));
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+
+    renderView();
+
+    await waitFor(() => expect(screen.getByText('尚无观测')).toBeInTheDocument());
+    expect(screen.getByText('待复核 0')).toBeInTheDocument();
+  });
+
+  it('shows unavailable review queue with an independent retry action', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => (
+      url === '/api/external-resources/review-queue'
+        ? Promise.reject(new Error('review queue offline'))
+        : { ok: true, json: async () => ({ ok: true, projection }) }
+    ));
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+
+    renderView();
+
+    await waitFor(() => expect(screen.getByText('review queue offline')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: '重试读取外部资源复核队列' })).toBeInTheDocument();
   });
 
   it('submits a scene-bound read-only candidate evaluation', async () => {

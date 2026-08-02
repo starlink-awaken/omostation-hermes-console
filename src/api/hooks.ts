@@ -1403,6 +1403,45 @@ export interface ExternalResourceResponse {
   projection: ExternalResourceProjection;
 }
 
+export type ExternalResourceReviewQueueStatus = 'attention' | 'clear' | 'empty' | 'unavailable';
+
+export interface ExternalResourceReviewItem {
+  resource_id: string;
+  change: string;
+  risk_class: 'manual_review';
+  risk_codes: string[];
+  changed_fields: string[];
+  previous: Record<string, unknown> | null;
+  current: Record<string, unknown> | null;
+}
+
+export interface ExternalResourceReviewQueueProjection {
+  schema: 'external-resource-review-queue/v1';
+  mode: 'read_only_projection';
+  activation: 'forbidden';
+  raw_content_policy: string;
+  source: 'omo.external_resource_observation';
+  queue_semantics: 'latest_observation_delta';
+  status: ExternalResourceReviewQueueStatus;
+  observed_at?: string | null;
+  recorded_at?: string | null;
+  observation_id?: string | null;
+  change_state?: string | null;
+  items: ExternalResourceReviewItem[];
+  summary: {
+    review_required_count: number;
+    operational_observation_count: number;
+    risk_codes: string[];
+  };
+  next_action: string;
+  error?: string;
+}
+
+export interface ExternalResourceReviewQueueResponse {
+  ok: boolean;
+  projection: ExternalResourceReviewQueueProjection;
+}
+
 export interface ExternalResourceSceneBinding {
   scene_id: string;
   journey_id: string;
@@ -1493,6 +1532,23 @@ export function useExternalResources() {
       const res = await apiFetch<ExternalResourceResponse>(API_ENDPOINTS.externalResources.list);
       if (!res.ok || !res.data) {
         throw new Error(res.error || 'Failed to load external resources');
+      }
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+}
+
+export function useExternalResourceReviewQueue() {
+  return useQuery({
+    queryKey: ['external-resource-review-queue'],
+    queryFn: async () => {
+      const res = await apiFetch<ExternalResourceReviewQueueResponse>(
+        API_ENDPOINTS.externalResources.reviewQueue,
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load external resource review queue');
       }
       return res.data;
     },

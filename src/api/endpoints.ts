@@ -468,6 +468,8 @@ export const SCENE_CARD_ENDPOINTS = {
 export const EXTERNAL_RESOURCE_ENDPOINTS = {
   /** Dynamic descriptor and health projection; never activates a resource. */
   list: '/api/external-resources',
+  /** Latest governed manual-review delta; never activates a resource. */
+  reviewQueue: '/api/external-resources/review-queue',
   /** Scene-bound candidate evaluation; never activates or invokes a resource. */
   evaluate: '/api/external-resources/evaluate',
   /** Event-derived selection labels; read-only projection. */
