@@ -61,6 +61,41 @@ const reviewQueueProjection = {
   next_action: '按风险码和变更字段完成人工核查；复核本身不会批准或激活资源。',
 };
 
+const sceneTrialProjection = {
+  schema: 'external-scene-trial-review/v1' as const,
+  mode: 'read_only_projection' as const,
+  activation: 'forbidden' as const,
+  provider_invocation: false as const,
+  workflow_run_creation: 'forbidden' as const,
+  raw_content_policy: 'never_read_or_export',
+  source: 'omo.external_scene_trial' as const,
+  status: 'attention' as const,
+  items: [{
+    trial_id: 'scene-trial:test',
+    scene_binding: { scene_id: 'research-brief', journey_id: 'weekly-decision', outcome_metric: 'decision_latency_hours' },
+    consumer_ref: 'ref://consumer/test',
+    owner_ref: 'ref://owner/test',
+    approver_ref: 'ref://approver/test',
+    permission_ref: 'ref://permission/test',
+    evidence_refs: ['evidence://demand/test', 'evidence://activation/test'],
+    preflight_ref: 'ref://preflight/test',
+    catalog_observation_id: 'observation:test',
+    trial_stage: 'observation_only' as const,
+    status: 'proposal_only' as const,
+    metric: { metric_id: 'decision_latency_hours' },
+    sample_plan: { minimum_samples: 3, window_seconds: 3600 },
+    rollback_ref: 'ref://rollback/test',
+    feedback_contract: { schema: 'outcome-feedback/v1' as const },
+    activation: 'forbidden' as const,
+    provider_invocation: false as const,
+    workflow_run_id: null,
+    observed_at: '2026-08-03T00:00:00+00:00',
+    latest_review: null,
+  }],
+  summary: { trial_count: 1, unreviewed_count: 1, reviewed_count: 0, review_actions: {} },
+  next_action: '先提交人工评审回执；评审不会创建 WorkflowRun 或激活连接。',
+};
+
 function renderView() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchInterval: false, refetchOnWindowFocus: false } } });
   return render(<QueryClientProvider client={client}><ExternalResourceCatalogView /></QueryClientProvider>);
@@ -79,7 +114,9 @@ describe('ExternalResourceCatalogView', () => {
     const fetchMock = vi.fn().mockImplementation(async (url: string) => (
       url === '/api/external-resources/review-queue'
         ? { ok: true, json: async () => ({ ok: true, projection: reviewQueueProjection }) }
-        : { ok: true, json: async () => ({ ok: true, projection }) }
+        : url === '/api/external-resources/scene-trials'
+          ? { ok: true, json: async () => ({ ok: true, projection: sceneTrialProjection }) }
+          : { ok: true, json: async () => ({ ok: true, projection }) }
     ));
     globalThis.fetch = fetchMock as typeof globalThis.fetch;
 
@@ -92,9 +129,13 @@ describe('ExternalResourceCatalogView', () => {
       expect(screen.getByText('人工复核队列')).toBeInTheDocument();
       expect(screen.getByText('需要人工复核')).toBeInTheDocument();
       expect(screen.getByText('风险码：descriptor_provider_changed · 变化字段：provider')).toBeInTheDocument();
+      expect(screen.getByText('场景试运行审阅')).toBeInTheDocument();
+      expect(screen.getByText('scene-trial:test')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '继续试运行 scene-trial:test' })).toBeInTheDocument();
     });
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/external-resources');
     expect(fetchMock.mock.calls.some((call) => call[0] === '/api/external-resources/review-queue')).toBe(true);
+    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/external-resources/scene-trials')).toBe(true);
   });
 
   it('keeps an unavailable state when the catalog cannot be read', async () => {
@@ -104,6 +145,35 @@ describe('ExternalResourceCatalogView', () => {
 
     await waitFor(() => expect(screen.getByText('catalog offline')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: '重试读取外部资源目录' })).toBeInTheDocument();
+  });
+
+  it('submits a proposal-only scene trial review without a WorkflowRun', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string, options?: RequestInit) => {
+      if (options?.method === 'POST') {
+        return { ok: true, json: async () => ({ ok: true, status: 'recorded', feedback: { feedback_id: 'review:test' }, activation: 'forbidden', provider_invocation: false, workflow_run_creation: 'forbidden' }) };
+      }
+      if (url === '/api/external-resources/scene-trials') {
+        return { ok: true, json: async () => ({ ok: true, projection: sceneTrialProjection }) };
+      }
+      if (url === '/api/external-resources/review-queue') {
+        return { ok: true, json: async () => ({ ok: true, projection: { ...reviewQueueProjection, status: 'empty', items: [] } }) };
+      }
+      return { ok: true, json: async () => ({ ok: true, projection }) };
+    });
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+
+    renderView();
+    await waitFor(() => expect(screen.getByRole('button', { name: '继续试运行 scene-trial:test' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: '继续试运行 scene-trial:test' }));
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'POST');
+      expect(postCall).toBeTruthy();
+      const body = JSON.parse(String(postCall?.[1]?.body));
+      expect(body.trial_id).toBe('scene-trial:test');
+      expect(body.review_action).toBe('continue');
+      expect(body.workflow_run_id).toBeUndefined();
+    });
   });
 
   it('shows an explicit empty review queue before the first governed observation', async () => {

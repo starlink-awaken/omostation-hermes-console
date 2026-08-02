@@ -1678,6 +1678,93 @@ export interface ExternalResourceReviewQueueResponse {
   projection: ExternalResourceReviewQueueProjection;
 }
 
+export type ExternalSceneTrialReviewAction = 'continue' | 'request_changes' | 'reject';
+export type ExternalSceneTrialReviewStatus = 'attention' | 'clear' | 'empty' | 'unavailable';
+
+export interface ExternalSceneTrialReviewRecord {
+  feedback_id: string;
+  trial_id: string;
+  review_action: ExternalSceneTrialReviewAction;
+  evidence_refs: string[];
+  reviewer_ref: string;
+  review_ref: string;
+  activation: 'forbidden';
+  provider_invocation: false;
+  workflow_run_id: null;
+  recorded_at?: string;
+}
+
+export interface ExternalSceneTrialReviewItem {
+  trial_id: string;
+  scene_binding: { scene_id: string; journey_id: string; outcome_metric: string };
+  consumer_ref: string;
+  owner_ref: string;
+  approver_ref: string;
+  permission_ref: string;
+  evidence_refs: string[];
+  preflight_ref: string;
+  catalog_observation_id: string;
+  trial_stage: 'observation_only';
+  status: 'proposal_only';
+  metric: Record<string, unknown>;
+  sample_plan: { minimum_samples: number; window_seconds: number };
+  rollback_ref: string;
+  feedback_contract: { schema: 'outcome-feedback/v1'; [key: string]: unknown };
+  activation: 'forbidden';
+  provider_invocation: false;
+  workflow_run_id: null;
+  observed_at: string;
+  trial_receipt_id?: string;
+  latest_review: ExternalSceneTrialReviewRecord | null;
+}
+
+export interface ExternalSceneTrialReviewProjection {
+  schema: 'external-scene-trial-review/v1';
+  mode: 'read_only_projection';
+  activation: 'forbidden';
+  provider_invocation: false;
+  workflow_run_creation: 'forbidden';
+  raw_content_policy: string;
+  source: 'omo.external_scene_trial';
+  status: ExternalSceneTrialReviewStatus;
+  scene_id?: string | null;
+  items: ExternalSceneTrialReviewItem[];
+  summary: {
+    trial_count: number;
+    unreviewed_count: number;
+    reviewed_count: number;
+    review_actions: Record<string, number>;
+  };
+  next_action: string;
+  error?: string;
+}
+
+export interface ExternalSceneTrialReviewResponse {
+  ok: boolean;
+  projection: ExternalSceneTrialReviewProjection;
+}
+
+export interface ExternalSceneTrialReviewInput {
+  feedback_id: string;
+  trial_id: string;
+  review_action: ExternalSceneTrialReviewAction;
+  evidence_refs: string[];
+  reviewer_ref: string;
+  review_ref: string;
+  actor_ref?: string;
+}
+
+export interface ExternalSceneTrialReviewMutationResponse {
+  ok: boolean;
+  status: 'recorded' | 'deduplicated' | 'invalid' | 'unavailable';
+  feedback?: ExternalSceneTrialReviewRecord;
+  activation: 'forbidden';
+  provider_invocation: false;
+  workflow_run_creation: 'forbidden';
+  error?: string;
+  message?: string;
+}
+
 export interface ExternalResourceSceneBinding {
   scene_id: string;
   journey_id: string;
@@ -1790,6 +1877,43 @@ export function useExternalResourceReviewQueue() {
     },
     staleTime: 30000,
     refetchInterval: 60000,
+  });
+}
+
+export function useExternalSceneTrialReview(sceneId?: string) {
+  return useQuery({
+    queryKey: ['external-scene-trial-review', sceneId ?? 'ALL'],
+    queryFn: async () => {
+      const suffix = sceneId ? `?scene_id=${encodeURIComponent(sceneId)}` : '';
+      const res = await apiFetch<ExternalSceneTrialReviewResponse>(
+        `${API_ENDPOINTS.externalResources.sceneTrials}${suffix}`,
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load external scene trials');
+      }
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+}
+
+export function useReviewExternalSceneTrial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ExternalSceneTrialReviewInput) => {
+      const res = await apiPost<ExternalSceneTrialReviewMutationResponse>(
+        API_ENDPOINTS.externalResources.sceneTrialReview,
+        input,
+      );
+      if (!res.ok || !res.data || !res.data.ok) {
+        throw new Error(res.data?.message || res.error || 'Failed to record external scene trial review');
+      }
+      return res.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['external-scene-trial-review'] });
+    },
   });
 }
 

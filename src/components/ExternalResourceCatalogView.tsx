@@ -23,6 +23,7 @@ import {
   useExternalResourceReviewQueue,
 } from '../api/hooks';
 import ExternalResourcePackPreflightPanel from './ExternalResourcePackPreflightPanel';
+import ExternalSceneTrialReviewPanel from './ExternalSceneTrialReviewPanel';
 
 const KIND_LABELS: Record<string, string> = {
   knowledge_source: '知识源',
@@ -241,6 +242,8 @@ export default function ExternalResourceCatalogView() {
         error={reviewQueue.error instanceof Error ? reviewQueue.error : null}
         onRetry={() => void reviewQueue.refetch()}
       />
+
+      <ExternalSceneTrialReviewPanel />
 
       <ExternalResourcePackPreflightPanel />
 

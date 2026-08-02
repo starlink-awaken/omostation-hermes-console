@@ -478,6 +478,10 @@ export const EXTERNAL_RESOURCE_ENDPOINTS = {
   packProposal: '/api/external-resources/packs/proposals',
   /** Latest governed manual-review delta; never activates a resource. */
   reviewQueue: '/api/external-resources/review-queue',
+  /** Proposal-only scene trial review projection; never creates a WorkflowRun. */
+  sceneTrials: '/api/external-resources/scene-trials',
+  /** Persist a proposal-only scene trial review receipt. */
+  sceneTrialReview: '/api/external-resources/scene-trials/review',
   /** Scene-bound candidate evaluation; never activates or invokes a resource. */
   evaluate: '/api/external-resources/evaluate',
   /** Event-derived selection labels; read-only projection. */
