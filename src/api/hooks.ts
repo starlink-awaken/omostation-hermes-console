@@ -854,6 +854,11 @@ export interface DeliveryJourneyData {
   source: string[];
   freshness: number;
   last_updated: string;
+  scene_binding?: {
+    scene_id: string;
+    journey_id: string;
+    outcome_metric: string;
+  };
   stages: Record<string, DeliveryStage>;
 }
 

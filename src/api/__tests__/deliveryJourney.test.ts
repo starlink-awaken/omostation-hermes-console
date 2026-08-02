@@ -22,6 +22,11 @@ const mockJourney = {
     source: ['omo', 'git'],
     freshness: 0,
     last_updated: '2026-08-01T12:00:00Z',
+    scene_binding: {
+      scene_id: 'delivery-governance',
+      journey_id: 'intent-to-merge',
+      outcome_metric: 'verified_delivery_rate',
+    },
     stages: {
       intent: { name: 'intent', status: 'verified' as const, title: 'Intent OK', details: {}, last_updated: '2026-08-01T12:00:00Z' },
     },
@@ -50,6 +55,7 @@ describe('useDeliveryJourney', () => {
     expect(result.current.data?.journey.id).toBe('dj-001');
     expect(result.current.data?.journey.status).toBe('live');
     expect(result.current.data?.journey.stages.intent.title).toBe('Intent OK');
+    expect(result.current.data?.journey.scene_binding?.scene_id).toBe('delivery-governance');
   });
 
   it('passes fixture param to URL', async () => {
