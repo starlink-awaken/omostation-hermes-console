@@ -28,6 +28,7 @@ export const COCKPIT_PAGE_REGISTRY: CockpitPageRegistryItem[] = [
   { id: 'Debt', title: '技术债务', group: '系统治理', purpose: '追踪高风险技术债务与治理优先级。', whenToUse: '规划补位和治理投入时。', dimensions: ['技术债', '风险', '优先级'] },
   { id: 'Observability', title: '运行可观测', group: '系统治理', purpose: '查看链路日志与可观测信号。', whenToUse: '需要证据而不是直觉时。', dimensions: ['可观测', '指标', '链路'] },
   { id: 'DeliveryJourney', title: '工程交付旅程', group: '系统治理', purpose: '查看工程交付与验证 7 阶段实时客观流。', whenToUse: '验证开发落地是否有闭环事实证据时。', dimensions: ['工程', '交付', '验证'] },
+  { id: 'WorkflowMeshOperations', title: 'Workflow Mesh 运营闭环', group: '系统治理', purpose: '查看运行里程碑、复盘队列和结果消费反馈。', whenToUse: '需要确认交付是否真正被消费时。', dimensions: ['运行', '反馈', '价值'] },
   { id: 'SceneCards', title: '场景卡评审', group: '智能与知识', purpose: '评审 Workflow Mesh 场景候选并保持 proposal-only 边界。', whenToUse: '把业务机会转成可验证场景时。', dimensions: ['场景', '评审', '边界'] },
   { id: 'ExternalResources', title: '外部能力目录', group: '智能与知识', purpose: '查看动态发现的外部知识、数据、方法、工具、模型和渠道。', whenToUse: '判断外部能力是否存在、健康和可触达时。', dimensions: ['外部连接', '健康', '准入'] },
 

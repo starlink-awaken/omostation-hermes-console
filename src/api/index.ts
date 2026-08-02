@@ -34,6 +34,8 @@ export {
   KOS_ENDPOINTS,
   COCKPIT_PAGE_ENDPOINTS,
   SYSTEM_HEALTH_ENDPOINTS,
+  DELIVERY_JOURNEY_ENDPOINTS,
+  WORKFLOW_MESH_OPERATIONS_ENDPOINTS,
 } from './endpoints';
 
 // ── Hooks ──
@@ -61,6 +63,8 @@ export {
   useCreateTask,
   useDeleteTask,
   useCreateAlertRule,
+  useWorkflowMeshOperations,
+  useRecordOutcomeFeedback,
 } from './hooks';
 
 export type {
@@ -90,6 +94,13 @@ export type {
   KosSearchResult,
   KosSearchResponse,
   SystemHealthData,
+  OutcomeConsumptionState,
+  OutcomeSceneBinding,
+  OutcomeFeedbackInput,
+  OutcomeFeedbackRecord,
+  WorkflowMeshOperationsData,
+  WorkflowMeshOperationsResponse,
+  OutcomeFeedbackResponse,
 } from './hooks';
 
 // ── Provider ──

@@ -881,6 +881,135 @@ export function useDeliveryJourney(fixture?: string) {
   });
 }
 
+// ── Workflow Mesh Operations ──
+
+export type OutcomeConsumptionState = 'reviewed' | 'adopted' | 'submitted' | 'dispatched' | 'cited' | 'rejected';
+
+export interface OutcomeSceneBinding {
+  scene_id: string;
+  journey_id: string;
+  outcome_metric: string;
+}
+
+export interface OutcomeFeedbackInput {
+  workflow_run_id: string;
+  outcome_id: string;
+  scene_binding: OutcomeSceneBinding;
+  consumption_state: OutcomeConsumptionState;
+  consumer_ref: string;
+  result_ref?: string;
+  evidence_refs?: string[];
+  value?: { amount?: number; unit?: string; baseline?: number; comparison?: string };
+  observed_at?: string;
+  note?: string;
+  actor_ref?: string;
+}
+
+export interface OutcomeFeedbackRecord extends OutcomeFeedbackInput {
+  feedback_id: string;
+  recorded_at: string;
+  result_ref: string;
+  evidence_refs: string[];
+  value: Record<string, unknown>;
+}
+
+export interface WorkflowMeshOperationsData {
+  schema_version: string;
+  status: 'live' | 'unavailable';
+  source: { kind: string; path: string; projection: string };
+  filter: { scene_id: string | null };
+  summary: {
+    run_count: number;
+    active_runs: number;
+    admitted_runs: number;
+    succeeded_runs: number;
+    verified_runs: number;
+    merged_runs: number;
+    closed_runs: number;
+    failed_runs: number;
+    evidence_complete_runs: number;
+    rates: Record<string, number | null>;
+    states: Record<string, number>;
+  };
+  by_scene: Array<{
+    scene_binding: OutcomeSceneBinding | null;
+    run_count: number;
+    succeeded_runs: number;
+    verified_runs: number;
+    closed_runs: number;
+    consumed_runs: number;
+    feedback_count: number;
+  }>;
+  review_queue: Array<Record<string, unknown>>;
+  consumption: {
+    status: 'not_observed' | 'observed' | 'rejected';
+    consumed_runs: number;
+    feedback_count: number;
+    eligible_closed_runs: number;
+    consumption_rate_among_eligible_closed_runs: number | null;
+    states: Record<string, number>;
+    eligible_outcomes: Array<{
+      workflow_run_id: string;
+      outcome_id: string;
+      state: string;
+      scene_binding: OutcomeSceneBinding;
+      evidence_count: number;
+    }>;
+    feedback: OutcomeFeedbackRecord[];
+    next_action: string;
+  };
+}
+
+export interface WorkflowMeshOperationsResponse {
+  ok: boolean;
+  operations: WorkflowMeshOperationsData;
+}
+
+export interface OutcomeFeedbackResponse {
+  ok: boolean;
+  status: 'recorded' | 'deduplicated' | 'invalid';
+  feedback?: OutcomeFeedbackRecord;
+  error?: string;
+  message?: string;
+}
+
+export function useWorkflowMeshOperations(sceneId?: string) {
+  return useQuery({
+    queryKey: ['workflow-mesh-operations', sceneId ?? 'ALL'],
+    queryFn: async () => {
+      const res = await apiFetch<WorkflowMeshOperationsResponse>(
+        API_ENDPOINTS.workflowMeshOperations.getOperations(sceneId),
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load Workflow Mesh operations');
+      }
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+  });
+}
+
+export function useRecordOutcomeFeedback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: OutcomeFeedbackInput) => {
+      const res = await apiPost<OutcomeFeedbackResponse>(
+        API_ENDPOINTS.workflowMeshOperations.recordOutcomeFeedback,
+        input,
+      );
+      if (!res.ok || !res.data || !res.data.ok) {
+        throw new Error(res.data?.message || res.error || 'Failed to record outcome feedback');
+      }
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-mesh-operations'] });
+    },
+  });
+}
+
 // ── Workflow Mesh Scene Cards ──
 
 export interface SceneCardCandidate {

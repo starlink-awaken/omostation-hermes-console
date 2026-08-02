@@ -422,6 +422,16 @@ export const DELIVERY_JOURNEY_ENDPOINTS = {
     `/api/delivery-journey${fixture ? `?fixture=${encodeURIComponent(fixture)}` : ''}`,
 } as const;
 
+// ── Workflow Mesh Operations ──
+
+export const WORKFLOW_MESH_OPERATIONS_ENDPOINTS = {
+  /** Live event-derived operations projection. */
+  getOperations: (sceneId?: string) =>
+    `/api/workflow-mesh/operations${sceneId ? `?scene_id=${encodeURIComponent(sceneId)}` : ''}`,
+  /** Explicit result-consumption feedback; does not mutate WorkflowRun state. */
+  recordOutcomeFeedback: '/api/workflow-mesh/outcome-feedback',
+} as const;
+
 // ── Workflow Mesh Scene Cards ──
 
 export const SCENE_CARD_ENDPOINTS = {
@@ -480,6 +490,7 @@ export const API_ENDPOINTS = {
   knowledgeExtended: KNOWLEDGE_EXTENDED_ENDPOINTS,
   archHealth: ARCH_HEALTH_ENDPOINTS,
   deliveryJourney: DELIVERY_JOURNEY_ENDPOINTS,
+  workflowMeshOperations: WORKFLOW_MESH_OPERATIONS_ENDPOINTS,
   sceneCards: SCENE_CARD_ENDPOINTS,
   externalResources: EXTERNAL_RESOURCE_ENDPOINTS,
 } as const;

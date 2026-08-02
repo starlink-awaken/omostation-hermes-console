@@ -54,6 +54,7 @@ export const TAB_TO_ROUTE: Record<string, string> = {
   Debt: '/debt',
   Observability: '/observability',
   DeliveryJourney: '/delivery-journey',
+  WorkflowMeshOperations: '/workflow-mesh-operations',
   SceneCards: '/scene-cards',
   ExternalResources: '/external-resources',
   LogViewer: '/logs',

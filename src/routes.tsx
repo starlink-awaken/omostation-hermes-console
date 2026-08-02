@@ -76,6 +76,8 @@ const SettingsView = lazy(() => import('./components/SettingsView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const DeliveryJourneyView = lazy(() => import('./components/DeliveryJourneyView'));
 // eslint-disable-next-line react-refresh/only-export-components
+const WorkflowMeshOperationsView = lazy(() => import('./components/WorkflowMeshOperationsView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const CapabilityExplorer = lazy(() => import('./components/CapabilityExplorer'));
 // eslint-disable-next-line react-refresh/only-export-components
 const EcosWorkflowWorkbench = lazy(() => import('./components/EcosWorkflowWorkbench'));
@@ -139,6 +141,7 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Debt', path: '/debt', label: '债务治理', subtitle: '全自动审计技术债务评分，追踪高危风险。', group: '系统治理', component: DebtView, icon: 'FileText' },
   { id: 'Observability', path: '/observability', label: '可观测性', subtitle: '多维度链路日志与可观测性分析面板。', group: '系统治理', component: ObservabilityView, icon: 'BarChart3' },
   { id: 'DeliveryJourney', path: '/delivery-journey', label: '工程交付旅程', group: '系统治理', component: DeliveryJourneyView, icon: 'Compass' },
+  { id: 'WorkflowMeshOperations', path: '/workflow-mesh-operations', label: '运营闭环', subtitle: '查看运行里程碑、复盘队列与结果消费回执。', group: '系统治理', component: WorkflowMeshOperationsView, icon: 'Activity' },
 
   { id: 'C2G', path: '/c2g', label: 'C2G 战略中心', subtitle: '跟踪系统从战役目标到治理卡片的全生命周期。', group: '系统治理', component: C2GStrategyView, icon: 'Compass' },
   { id: 'Wave2', path: '/wave2', label: 'Wave2 预测面板', subtitle: '热力、预测序列与治理提案。', group: '系统治理', component: Wave2DashboardView, icon: 'Zap' },
