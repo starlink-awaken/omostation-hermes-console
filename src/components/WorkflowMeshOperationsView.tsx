@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import {
   useAdmitTaskWorkflow,
+  useRecordEvaluationLabel,
   useRecordExternalReceipt,
   usePreviewTaskWorkflowAdmission,
   useRecordOutcomeFeedback,
@@ -22,6 +23,7 @@ import {
   type OutcomeFeedbackInput,
   type ExternalReceiptInput,
   type ExternalReceiptResultState,
+  type EvaluationLabelInput,
   type WorkflowMeshOperationsData,
 } from '../api/hooks';
 
@@ -64,6 +66,20 @@ const EMPTY_RECEIPT_FORM = {
   errorCode: '',
 };
 
+const EMPTY_LABEL_FORM = {
+  evaluationId: '',
+  reviewStage: 'primary' as EvaluationLabelInput['review_stage'],
+  decision: 'accept' as EvaluationLabelInput['decision'],
+  selectionQuality: 'acceptable' as EvaluationLabelInput['selection_quality'],
+  outcomeQuality: 'unknown' as EvaluationLabelInput['outcome_quality'],
+  confidence: 'medium' as EvaluationLabelInput['confidence'],
+  reviewerRef: 'operator://redacted/reviewer',
+  adjudicatorRef: '',
+  evidenceRefs: '',
+  noteDigest: '',
+  observedAt: new Date().toISOString(),
+};
+
 function metricLabel(value: number | null | undefined): string {
   return value === null || value === undefined ? '-' : `${Math.round(value * 100)}%`;
 }
@@ -87,10 +103,13 @@ export default function WorkflowMeshOperationsView() {
   const admitMutation = useAdmitTaskWorkflow();
   const feedbackMutation = useRecordOutcomeFeedback();
   const receiptMutation = useRecordExternalReceipt();
+  const labelMutation = useRecordEvaluationLabel();
   const [form, setForm] = useState(EMPTY_FORM);
   const [receiptForm, setReceiptForm] = useState(EMPTY_RECEIPT_FORM);
   const [message, setMessage] = useState<string | null>(null);
   const [receiptMessage, setReceiptMessage] = useState<string | null>(null);
+  const [labelForm, setLabelForm] = useState(EMPTY_LABEL_FORM);
+  const [labelMessage, setLabelMessage] = useState<string | null>(null);
 
   const operations = data?.operations;
   const selectedOutcome = useMemo(
@@ -106,6 +125,11 @@ export default function WorkflowMeshOperationsView() {
   const updateReceiptForm = (field: keyof typeof EMPTY_RECEIPT_FORM, value: string) => {
     setReceiptMessage(null);
     setReceiptForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateLabelForm = (field: keyof typeof EMPTY_LABEL_FORM, value: string) => {
+    setLabelMessage(null);
+    setLabelForm((current) => ({ ...current, [field]: value }));
   };
 
   const submitReceipt = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -170,6 +194,41 @@ export default function WorkflowMeshOperationsView() {
       setForm((current) => ({ ...EMPTY_FORM, outcomeId: current.outcomeId }));
     } catch (mutationError) {
       setMessage(mutationError instanceof Error ? mutationError.message : '反馈记录失败。');
+    }
+  };
+
+  const submitLabel = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!labelForm.evaluationId.trim()) {
+      setLabelMessage('请选择一个评测样本。');
+      return;
+    }
+    const evidenceRefs = labelForm.evidenceRefs.split(',').map((item) => item.trim()).filter(Boolean);
+    if (evidenceRefs.length === 0) {
+      setLabelMessage('至少需要一条证据引用。');
+      return;
+    }
+    const input: EvaluationLabelInput = {
+      label_id: `cockpit-label:${labelForm.evaluationId}:${labelForm.reviewStage}:${Date.now()}`,
+      evaluation_id: labelForm.evaluationId,
+      review_stage: labelForm.reviewStage,
+      decision: labelForm.decision,
+      selection_quality: labelForm.selectionQuality,
+      outcome_quality: labelForm.outcomeQuality,
+      confidence: labelForm.confidence,
+      evidence_refs: evidenceRefs,
+      reviewer_ref: labelForm.reviewerRef,
+      adjudicator_ref: labelForm.adjudicatorRef || undefined,
+      note_digest: labelForm.noteDigest || undefined,
+      observed_at: labelForm.observedAt,
+      actor_ref: 'cockpit-ui://workflow-mesh-operations',
+    };
+    try {
+      const result = await labelMutation.mutateAsync(input);
+      setLabelMessage(result.status === 'deduplicated' ? '这条标注已存在，未重复写入。' : '结构化标注已记录。');
+      setLabelForm((current) => ({ ...EMPTY_LABEL_FORM, evaluationId: current.evaluationId, reviewStage: current.reviewStage }));
+    } catch (mutationError) {
+      setLabelMessage(mutationError instanceof Error ? mutationError.message : '标注记录失败。');
     }
   };
 
@@ -324,6 +383,43 @@ export default function WorkflowMeshOperationsView() {
             ].map(([label, value]) => <div key={label} style={{ padding: '0.7rem', background: '#fafafa', border: '1px solid #f0f0f0' }}><div style={{ color: '#8c8c8c', fontSize: '0.76rem' }}>{label}</div><strong>{value}</strong></div>)}
           </div>
           {operations.evaluation_samples.rows.length > 0 && <div style={{ marginTop: '0.75rem' }}>{operations.evaluation_samples.rows.slice(0, 5).map((item) => <div key={item.evaluation_id} style={{ borderTop: '1px solid #f0f0f0', padding: '0.6rem 0', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}><span>{item.workflow_run_id || item.evaluation_id}</span><span style={{ color: item.status === 'ready' ? '#237804' : item.status === 'execution_ready' ? '#874d00' : '#a8071a' }}>{item.status === 'ready' ? 'ready' : item.blockers.join('、') || item.execution_outcome}</span></div>)}</div>}
+        </section>
+      )}
+
+      {operations.evaluation_labels && (
+        <section className="antd-card" aria-label="人工评测标注队列">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.45rem' }}>
+            <FileCheck2 size={18} style={{ color: 'var(--antd-primary, #1677ff)' }} />
+            <h3 style={{ margin: 0 }}>人工评测标注队列</h3>
+            <span style={{ color: '#8c8c8c', fontSize: '0.78rem' }}>双人复核后才进入训练候选</span>
+          </div>
+          <p style={{ margin: '0 0 0.75rem', color: '#666', fontSize: '0.85rem' }}>
+            只提交结构化判断、证据引用和摘要哈希，不上传外部原文；标注不会启动 provider、worker 或 WorkflowRun。
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.65rem' }}>
+            {[
+              ['待标注', operations.evaluation_labels.summary.unlabeled_count],
+              ['单人复核', operations.evaluation_labels.summary.single_review_count],
+              ['意见冲突', operations.evaluation_labels.summary.adjudication_required_count],
+              ['可用标签', operations.evaluation_labels.summary.label_ready_count],
+            ].map(([label, value]) => <div key={label} style={{ padding: '0.7rem', background: '#fafafa', border: '1px solid #f0f0f0' }}><div style={{ color: '#8c8c8c', fontSize: '0.76rem' }}>{label}</div><strong>{value}</strong></div>)}
+          </div>
+          {operations.evaluation_labels.rows.length > 0 && (
+            <form onSubmit={submitLabel} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.75rem', marginTop: '0.85rem' }}>
+              <label>评测样本<select aria-label="评测样本" value={labelForm.evaluationId} onChange={(event) => updateLabelForm('evaluationId', event.target.value)} required><option value="">选择样本</option>{operations.evaluation_labels.rows.map((row) => <option key={row.evaluation_id} value={row.evaluation_id}>{row.evaluation_id} · {row.status}</option>)}</select></label>
+              <label>复核阶段<select aria-label="复核阶段" value={labelForm.reviewStage} onChange={(event) => updateLabelForm('reviewStage', event.target.value)}><option value="primary">主标注</option><option value="adjudication">Adjudication</option></select></label>
+              <label>结论<select aria-label="标注结论" value={labelForm.decision} onChange={(event) => updateLabelForm('decision', event.target.value)}><option value="accept">接受</option><option value="reject">拒绝</option><option value="uncertain">不确定</option></select></label>
+              <label>选择质量<select aria-label="选择质量" value={labelForm.selectionQuality} onChange={(event) => updateLabelForm('selectionQuality', event.target.value)}><option value="good">好</option><option value="acceptable">可接受</option><option value="poor">差</option><option value="unknown">未知</option></select></label>
+              <label>结果质量<select aria-label="结果质量" value={labelForm.outcomeQuality} onChange={(event) => updateLabelForm('outcomeQuality', event.target.value)}><option value="effective">有效</option><option value="partial">部分有效</option><option value="ineffective">无效</option><option value="unknown">未知</option></select></label>
+              <label>置信度<select aria-label="标注置信度" value={labelForm.confidence} onChange={(event) => updateLabelForm('confidence', event.target.value)}><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label>
+              <label>复核人引用<input aria-label="标注复核人引用" value={labelForm.reviewerRef} onChange={(event) => updateLabelForm('reviewerRef', event.target.value)} required placeholder="operator://..." /></label>
+              {labelForm.reviewStage === 'adjudication' && <label>Adjudicator 引用<input aria-label="Adjudicator 引用" value={labelForm.adjudicatorRef} onChange={(event) => updateLabelForm('adjudicatorRef', event.target.value)} required placeholder="operator://..." /></label>}
+              <label style={{ gridColumn: '1 / -1' }}>证据引用（逗号分隔）<input aria-label="标注证据引用" value={labelForm.evidenceRefs} onChange={(event) => updateLabelForm('evidenceRefs', event.target.value)} required placeholder="evidence://..." /></label>
+              <label>摘要 SHA-256（可选）<input aria-label="标注摘要哈希" value={labelForm.noteDigest} onChange={(event) => updateLabelForm('noteDigest', event.target.value)} placeholder="sha256:..." /></label>
+              <label>观测时间<input aria-label="标注观测时间" value={labelForm.observedAt} onChange={(event) => updateLabelForm('observedAt', event.target.value)} required /></label>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><button className="antd-btn antd-btn-primary" disabled={labelMutation.isPending} type="submit"><FileCheck2 size={14} /> {labelMutation.isPending ? '提交中...' : labelForm.reviewStage === 'adjudication' ? '提交 Adjudication' : '提交主标注'}</button>{labelMessage && <span role="status" style={{ color: labelMessage.includes('失败') ? '#a8071a' : '#237804', fontSize: '0.85rem' }}>{labelMessage}</span>}</div>
+            </form>
+          )}
         </section>
       )}
 

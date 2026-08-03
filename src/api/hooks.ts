@@ -1155,6 +1155,42 @@ export interface ExternalReceiptRecord {
   provenance_ref?: string;
 }
 
+export type EvaluationLabelReviewStage = 'primary' | 'adjudication';
+export type EvaluationLabelDecision = 'accept' | 'reject' | 'uncertain';
+export type EvaluationLabelQuality = 'good' | 'acceptable' | 'poor' | 'unknown';
+export type EvaluationLabelOutcomeQuality = 'effective' | 'partial' | 'ineffective' | 'unknown';
+export type EvaluationLabelConfidence = 'low' | 'medium' | 'high';
+
+export interface EvaluationLabelInput {
+  label_id: string;
+  evaluation_id: string;
+  review_stage: EvaluationLabelReviewStage;
+  decision: EvaluationLabelDecision;
+  selection_quality: EvaluationLabelQuality;
+  outcome_quality: EvaluationLabelOutcomeQuality;
+  confidence: EvaluationLabelConfidence;
+  evidence_refs: string[];
+  reviewer_ref: string;
+  adjudicator_ref?: string;
+  note_digest?: string;
+  observed_at: string;
+  actor_ref?: string;
+}
+
+export interface EvaluationLabelResponse {
+  ok: boolean;
+  status: 'recorded' | 'deduplicated' | 'invalid' | 'unavailable';
+  label?: Record<string, unknown>;
+  activation?: 'forbidden';
+  provider_invocation?: false;
+  workflow_run_creation?: false;
+  worker_launch?: false;
+  external_side_effects?: 'disabled';
+  persistence?: 'omo_append_only';
+  error?: string;
+  message?: string;
+}
+
 export interface WorkflowMeshOperationsData {
   schema_version: string;
   status: 'live' | 'unavailable';
@@ -1233,6 +1269,44 @@ export interface WorkflowMeshOperationsData {
     }>;
     next_action: string;
   };
+  evaluation_labels?: {
+    schema_version: string;
+    status: 'observed' | 'not_observed';
+    summary: {
+      row_count: number;
+      eligible_count: number;
+      unlabeled_count: number;
+      single_review_count: number;
+      consensus_count: number;
+      adjudication_required_count: number;
+      adjudicated_count: number;
+      blocked_count: number;
+      label_ready_count: number;
+    };
+    rows: Array<{
+      evaluation_id: string;
+      workflow_run_id: string | null;
+      scene_binding: OutcomeSceneBinding | null;
+      execution_outcome?: string;
+      selection_alignment?: string;
+      readiness_status?: string;
+      status: 'unlabeled' | 'single_review' | 'consensus' | 'adjudication_required' | 'adjudicated' | 'blocked';
+      blockers: string[];
+      primary_review_count: number;
+      adjudication_count: number;
+      latest_label?: {
+        label_id?: string;
+        review_stage?: EvaluationLabelReviewStage;
+        decision?: EvaluationLabelDecision;
+        selection_quality?: EvaluationLabelQuality;
+        outcome_quality?: EvaluationLabelOutcomeQuality;
+        confidence?: EvaluationLabelConfidence;
+        reviewer_ref?: string;
+        adjudicator_ref?: string;
+      } | null;
+    }>;
+    next_action: string;
+  };
 }
 
 export interface WorkflowMeshOperationsResponse {
@@ -1304,6 +1378,26 @@ export function useRecordExternalReceipt() {
       );
       if (!res.ok || !res.data || !res.data.ok) {
         throw new Error(res.data?.message || res.error || 'Failed to record external receipt');
+      }
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-mesh-operations'] });
+    },
+  });
+}
+
+export function useRecordEvaluationLabel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: EvaluationLabelInput) => {
+      const res = await apiPost<EvaluationLabelResponse>(
+        API_ENDPOINTS.workflowMeshOperations.recordEvaluationLabel,
+        input,
+      );
+      if (!res.ok || !res.data || !res.data.ok) {
+        throw new Error(res.data?.message || res.error || 'Failed to record evaluation label');
       }
       return res.data;
     },

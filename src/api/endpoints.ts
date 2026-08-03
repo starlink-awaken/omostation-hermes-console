@@ -454,6 +454,8 @@ export const WORKFLOW_MESH_OPERATIONS_ENDPOINTS = {
   recordOutcomeFeedback: '/api/workflow-mesh/outcome-feedback',
   /** Record a receipt for an already completed external operation. */
   recordExternalReceipt: '/api/workflow-mesh/external-receipt',
+  /** Record a structured human evaluation label; never uploads source content. */
+  recordEvaluationLabel: '/api/workflow-mesh/evaluation-label',
 } as const;
 
 // ── Workflow Mesh Scene Cards ──

@@ -41,6 +41,35 @@ const operations = {
     feedback: [],
     next_action: 'record_explicit_outcome_consumption_feedback',
   },
+  evaluation_labels: {
+    schema_version: 'workflow-mesh-evaluation-label-queue/v1',
+    status: 'observed',
+    summary: {
+      row_count: 1,
+      eligible_count: 1,
+      unlabeled_count: 1,
+      single_review_count: 0,
+      consensus_count: 0,
+      adjudication_required_count: 0,
+      adjudicated_count: 0,
+      blocked_count: 0,
+      label_ready_count: 0,
+    },
+    rows: [{
+      evaluation_id: 'evaluation-21',
+      workflow_run_id: 'run-21',
+      scene_binding: { scene_id: 'engineering-delivery', journey_id: 'intent-to-evidence', outcome_metric: 'verified_delivery_lead_time' },
+      execution_outcome: 'success',
+      selection_alignment: 'aligned',
+      readiness_status: 'ready',
+      status: 'unlabeled',
+      blockers: [],
+      primary_review_count: 0,
+      adjudication_count: 0,
+      latest_label: null,
+    }],
+    next_action: 'submit_primary_labels',
+  },
 };
 
 function renderView() {
@@ -122,6 +151,32 @@ describe('WorkflowMeshOperationsView', () => {
     expect(body.workflow_run_id).toBe('run-21');
     expect(body.receipt.resource_id).toBe('source:research');
     expect(body.receipt.output_digest).toHaveLength(64);
+  });
+
+  it('submits a structured evaluation label without source content', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return { ok: true, json: async () => ({ ok: true, status: 'recorded', label: { label_id: 'label-21' } }) };
+      }
+      return { ok: true, json: async () => ({ ok: true, operations }) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderView();
+    await waitFor(() => expect(screen.getByLabelText('评测样本')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('评测样本'), { target: { value: 'evaluation-21' } });
+    fireEvent.change(screen.getByLabelText('标注复核人引用'), { target: { value: 'operator://reviewer-21' } });
+    fireEvent.change(screen.getByLabelText('标注证据引用'), { target: { value: 'evidence://evaluation/21' } });
+    fireEvent.click(screen.getByRole('button', { name: '提交主标注' }));
+
+    await waitFor(() => expect(screen.getByText('结构化标注已记录。')).toBeInTheDocument());
+    const labelCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST' && String(init?.body).includes('evaluation-21'));
+    expect(labelCall?.[0]).toBe('/api/workflow-mesh/evaluation-label');
+    const body = JSON.parse(String(labelCall?.[1]?.body));
+    expect(body.evaluation_id).toBe('evaluation-21');
+    expect(body.evidence_refs).toEqual(['evidence://evaluation/21']);
+    expect(body.actor_ref).toBe('cockpit-ui://workflow-mesh-operations');
+    expect(body.raw_content).toBeUndefined();
   });
 
   it('keeps an unavailable state when the projection cannot be read', async () => {

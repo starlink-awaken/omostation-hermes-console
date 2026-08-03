@@ -121,6 +121,8 @@ export type {
   ExternalReceiptInput,
   ExternalReceiptRecord,
   ExternalReceiptResponse,
+  EvaluationLabelInput,
+  EvaluationLabelResponse,
   WorkflowMeshOperationsData,
   WorkflowMeshOperationsResponse,
   OutcomeFeedbackResponse,
