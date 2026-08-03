@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, apiPost } from '../api/client';
+import { openCockpitNavigationTarget } from './cockpitNavigation';
 
 // ── Types ──
 
@@ -37,6 +38,19 @@ interface Task {
     scene_id: string;
     journey_id: string;
     outcome_metric: string;
+  } | null;
+  workflow_request?: {
+    workflow_run_id: string;
+    workflow_name: string;
+    workflow_version: string;
+    state: string;
+    request_state: 'ready_for_admission' | 'approval_required';
+    approval_required: boolean;
+    admission_state: 'pending' | 'admitted';
+    scene_binding: Task['scene_binding'];
+    evidence_plan: string[];
+    last_event_type: string;
+    next_action: string;
   } | null;
 }
 
@@ -95,6 +109,7 @@ function useCancelTask() {
 }
 
 function useRequestTaskWorkflow() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ taskId, workflowName, evidencePlan, sceneBinding }: {
       taskId: string;
@@ -118,6 +133,9 @@ function useRequestTaskWorkflow() {
         throw new Error(response.error || 'Failed to request Workflow Mesh');
       }
       return response.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 }
@@ -211,6 +229,18 @@ export default function TaskCenterPage({
       case 'medium': return '中';
       case 'low': return '低';
       default: return '未知';
+    }
+  };
+
+  const getWorkflowStateText = (state: string) => {
+    switch (state) {
+      case 'planned': return '待准入';
+      case 'admitted': return '已准入';
+      case 'dispatched': return '已派发';
+      case 'running': return '运行中';
+      case 'succeeded': return '已完成';
+      case 'verified': return '已验证';
+      default: return state || '未知';
     }
   };
 
@@ -611,6 +641,36 @@ export default function TaskCenterPage({
                       {workflowNotice && <span role="status" style={{ color: '#237804', fontSize: '12px' }}>{workflowNotice}</span>}
                     </form>
                   )}
+                </section>
+              )}
+
+              {selectedTask.workflow_request && (
+                <section style={{ borderTop: '1px solid #f0f0f0', paddingTop: '12px', display: 'grid', gap: '10px' }} aria-label="Workflow Mesh 请求状态">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <GitBranch size={15} className="text-primary" />
+                    <strong>Workflow Mesh 请求状态</strong>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
+                    <span>工作流：{selectedTask.workflow_request.workflow_name} · {selectedTask.workflow_request.workflow_version}</span>
+                    <span>运行：{selectedTask.workflow_request.workflow_run_id}</span>
+                    <span>状态：{getWorkflowStateText(selectedTask.workflow_request.state)}</span>
+                    <span>准入：{selectedTask.workflow_request.admission_state === 'admitted' ? '已准入' : '待预览'}</span>
+                    <span>审批：{selectedTask.workflow_request.approval_required ? selectedTask.workflow_request.request_state : '无需审批'}</span>
+                    <span>下一步：{selectedTask.workflow_request.next_action}</span>
+                  </div>
+                  {selectedTask.workflow_request.evidence_plan.length > 0 && (
+                    <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>
+                      证据计划：{selectedTask.workflow_request.evidence_plan.join('；')}
+                    </div>
+                  )}
+                  <button
+                    className="antd-btn"
+                    type="button"
+                    onClick={() => openCockpitNavigationTarget({ tab: 'WorkflowMeshOperations' })}
+                    aria-label="打开 Workflow Mesh 准入工作台"
+                  >
+                    <GitBranch size={14} /> 打开准入工作台
+                  </button>
                 </section>
               )}
               
