@@ -318,6 +318,16 @@ export default function KemsWorkbench() {
     } catch (err) { setError(err instanceof Error ? err.message : '生成裁决评测集失败') } finally { setKemsAction('') }
   }
 
+  const buildWorkflowMeshManifest = async () => {
+    if (!evaluationDataset.id.trim() || !evaluationDataset.version.trim()) { setError('数据集 ID 和版本均为必填'); return }
+    setKemsAction('workflow-mesh-manifest')
+    try {
+      const data = await api('/api/kems/evaluations/workflow-mesh-manifest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataset_id: evaluationDataset.id.trim(), dataset_version: evaluationDataset.version.trim(), split: 'test' }) })
+      setEvaluationDataset(current => ({ ...current, manifestSha256: String(data.manifest_sha256 || ''), samples: JSON.stringify(data.samples || [], null, 2) }))
+      setEvaluationResult(data)
+    } catch (err) { setError(err instanceof Error ? err.message : '生成 Workflow Mesh 评测集失败') } finally { setKemsAction('') }
+  }
+
   return (
     <section className="kems-workbench" aria-label="KEMS OCR 质量工作台">
       <div className="kems-toolbar">
@@ -408,6 +418,7 @@ export default function KemsWorkbench() {
           <label>脱敏 adjudicated 样本 JSON<input className="antd-input kems-json-input" aria-label="脱敏评测样本 JSON" value={evaluationDataset.samples} onChange={event => setEvaluationDataset({ ...evaluationDataset, samples: event.target.value })} placeholder='[{"sample_id":"...","source_ref":"vault://redacted/...","labels":{}}]' /></label>
           <button className="antd-btn antd-btn-primary" disabled={kemsAction === 'evaluation-manifest'}><ClipboardCheck size={14} /> 登记评测集</button>
           <button className="antd-btn" type="button" disabled={kemsAction === 'adjudication-manifest'} onClick={() => void buildAdjudicatedManifest()}><ClipboardCheck size={14} /> 从已裁决队列生成</button>
+          <button className="antd-btn" type="button" disabled={kemsAction === 'workflow-mesh-manifest'} onClick={() => void buildWorkflowMeshManifest()}><ClipboardCheck size={14} /> 从 Workflow Mesh 生成</button>
         </form>
         <form className="kems-panel kems-correction-form" onSubmit={recordEvaluation}>
           <div className="kems-panel-heading"><div><h3>模型评测运行</h3><span>结果进入 EvaluationStore</span></div><CheckCircle2 size={16} /></div>

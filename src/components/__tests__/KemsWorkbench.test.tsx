@@ -100,6 +100,25 @@ describe('KemsWorkbench', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('accuracy')
   })
 
+  it('materializes only explicit Workflow Mesh adjudication into KEMS', async () => {
+    (fetch as any).mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url === '/api/kems/ocr/review-queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
+      if (url === '/api/kems/adjudication/queue?limit=100') return { ok: true, json: async () => ({ items: [] }) } as Response
+      if (url === '/api/kems/evaluations/workflow-mesh-manifest') return { ok: true, json: async () => ({ dataset_id: 'workflow-mesh-test', sample_count: 1, manifest_sha256: 'a'.repeat(64), samples: [{ sample_id: 'workflow-evaluation:eval-1', source_ref: 'vault://redacted/workflow-mesh/evaluations/eval-1', annotation_status: 'adjudicated', labels: { decision: 'accept' } }] }) } as Response
+      void init
+      return { ok: true, json: async () => ({}) } as Response
+    })
+
+    render(<KemsWorkbench />)
+    await waitFor(() => expect(screen.getByText('当前没有待复核样本')).toBeInTheDocument())
+    fireEvent.change(screen.getByLabelText('评测集 ID'), { target: { value: 'workflow-mesh-test' } })
+    fireEvent.change(screen.getByLabelText('评测集版本'), { target: { value: 'v1' } })
+    fireEvent.click(screen.getByRole('button', { name: '从 Workflow Mesh 生成' }))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/kems/evaluations/workflow-mesh-manifest', expect.objectContaining({ method: 'POST', body: expect.stringContaining('workflow-mesh-test') })))
+    expect(await screen.findByRole('status')).toHaveTextContent('workflow-evaluation:eval-1')
+  })
+
   it('submits a redacted candidate model evaluation and keeps promotion blocked', async () => {
     (fetch as any).mockImplementation(async (input) => {
       const url = String(input)
