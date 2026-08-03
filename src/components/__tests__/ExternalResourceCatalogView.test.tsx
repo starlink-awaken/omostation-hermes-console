@@ -177,6 +177,56 @@ describe('ExternalResourceCatalogView', () => {
     expect(fetchMock.mock.calls.some((call) => call[0] === '/api/external-resources/scene-trials/readiness')).toBe(true);
   });
 
+  it('shows connection plan evidence gaps without enabling activation', async () => {
+    const connectionPlan = {
+      schema: 'external-resource-connection-plan/v1',
+      mode: 'read_only_projection',
+      activation: 'forbidden',
+      provider_invocation: false,
+      workflow_run_creation: false,
+      admission_mutation: false,
+      observed_at: '2026-08-03T00:00:00Z',
+      directory_digest: 'sha256:directory',
+      items: [{
+        resource_id: 'tool:ocr',
+        kind: 'tool_capability',
+        provider: 'ocr-provider',
+        lifecycle: 'discovered',
+        availability: 'unavailable',
+        next_step: 'health_probe',
+        status: 'blocked',
+        blockers: ['health_observation_required'],
+        required_inputs: ['health_probe'],
+        owner_ref: 'owner:ocr',
+        permission_ref: 'permission://ocr',
+      }],
+      summary: {
+        resource_count: 1,
+        blocked_count: 1,
+        ready_for_review_count: 0,
+        next_step_counts: { health_probe: 1 },
+      },
+      status: 'attention',
+    };
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => (
+      url === '/api/external-resources/connection-plan'
+        ? { ok: true, json: async () => ({ ok: true, status: 'attention', projection: connectionPlan }) }
+        : { ok: true, json: async () => ({ ok: true, projection }) }
+    ));
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('连接计划')).toBeInTheDocument();
+      expect(screen.getByText('tool:ocr')).toBeInTheDocument();
+      expect(screen.getByText('下一步：health_probe · 责任人：owner:ocr')).toBeInTheDocument();
+      expect(screen.getByText('阻塞：health_observation_required · 需要：health_probe')).toBeInTheDocument();
+    });
+    expect(fetchMock.mock.calls.some((call) => call[0] === '/api/external-resources/connection-plan')).toBe(true);
+    expect(screen.getByText('只读准备')).toBeInTheDocument();
+  });
+
   it('keeps an unavailable state when the catalog cannot be read', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('catalog offline')) as typeof globalThis.fetch;
 

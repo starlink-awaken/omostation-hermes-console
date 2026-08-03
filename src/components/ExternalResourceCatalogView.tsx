@@ -13,11 +13,13 @@ import {
 } from 'lucide-react';
 import {
   useEvaluateExternalResources,
+  useExternalResourceConnectionPlan,
   useExternalResourceSelectionEvaluation,
   useExternalResources,
   type ExternalResourceAvailability,
   type ExternalResourceEvaluation,
   type ExternalResourceReviewQueueProjection,
+  type ExternalResourceConnectionPlanProjection,
   type ExternalResourceSceneBinding,
   type ExternalResourceItem,
   useExternalResourceReviewQueue,
@@ -149,9 +151,80 @@ function ReviewQueuePanel({
   );
 }
 
+function ConnectionPlanPanel({
+  projection,
+  isLoading,
+  error,
+  onRetry,
+}: {
+  projection?: ExternalResourceConnectionPlanProjection;
+  isLoading: boolean;
+  error: Error | null;
+  onRetry: () => void;
+}) {
+  const status = projection?.status;
+  const statusLabel = status === 'attention'
+    ? '有待补证据项'
+    : status === 'available'
+      ? '可进入复核'
+      : status === 'empty'
+        ? '暂无计划'
+        : '连接计划不可用';
+  const statusColor = status === 'available' ? '#389e0d' : status === 'empty' ? '#666' : '#ad6800';
+
+  return (
+    <section className="antd-card" style={{ padding: 16, display: 'grid', gap: 12 }} aria-label="外部能力连接计划">
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ListChecks size={18} style={{ color: 'var(--antd-primary, #1677ff)' }} />
+          <strong>连接计划</strong>
+          <span style={{ color: '#ad6800', fontSize: 12, fontWeight: 600 }}><LockKeyhole size={13} /> 只读准备</span>
+        </div>
+        {projection && <span style={{ color: statusColor, fontSize: 12, fontWeight: 600 }}>{statusLabel}</span>}
+      </div>
+
+      {isLoading && !projection && <span style={{ color: '#666', fontSize: 13 }}>正在读取能力触达准备...</span>}
+      {error && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: '#cf1322', fontSize: 13 }}>
+          <span>{error.message || '外部能力连接计划不可用'}</span>
+          <button type="button" className="antd-btn" onClick={onRetry} aria-label="重试读取外部能力连接计划">
+            <RefreshCw size={14} /> 重试
+          </button>
+        </div>
+      )}
+
+      {projection && (
+        <>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: '#666', fontSize: 12 }}>
+            <span>资源 {projection.summary.resource_count}</span>
+            <span>可进入复核 {projection.summary.ready_for_review_count}</span>
+            <span>待补证据 {projection.summary.blocked_count}</span>
+          </div>
+          {projection.items.length > 0 && (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {projection.items.map((item) => (
+                <article key={item.resource_id} style={{ border: '1px solid #e8e8e8', borderRadius: 6, padding: 10, display: 'grid', gap: 5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                    <strong style={{ overflowWrap: 'anywhere' }}>{item.resource_id}</strong>
+                    <span style={{ color: item.status === 'ready_for_review' ? '#389e0d' : '#ad6800', fontSize: 12 }}>{item.status === 'ready_for_review' ? '可复核' : '阻塞'}</span>
+                  </div>
+                  <span style={{ color: '#666', fontSize: 12 }}>下一步：{item.next_step} · 责任人：{item.owner_ref || '未声明'}</span>
+                  <span style={{ color: '#ad6800', fontSize: 12 }}>阻塞：{item.blockers.join('、') || '无'} · 需要：{item.required_inputs.join('、') || '无'}</span>
+                </article>
+              ))}
+            </div>
+          )}
+          {projection.next_action && <span style={{ color: '#666', fontSize: 12 }}>{projection.next_action}</span>}
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function ExternalResourceCatalogView() {
   const { data, isLoading, error, refetch } = useExternalResources();
   const reviewQueue = useExternalResourceReviewQueue();
+  const connectionPlan = useExternalResourceConnectionPlan();
   const evaluate = useEvaluateExternalResources();
   const [kind, setKind] = useState('all');
   const [availability, setAvailability] = useState('all');
@@ -241,6 +314,13 @@ export default function ExternalResourceCatalogView() {
         isLoading={reviewQueue.isLoading}
         error={reviewQueue.error instanceof Error ? reviewQueue.error : null}
         onRetry={() => void reviewQueue.refetch()}
+      />
+
+      <ConnectionPlanPanel
+        projection={connectionPlan.data?.projection}
+        isLoading={connectionPlan.isLoading}
+        error={connectionPlan.error instanceof Error ? connectionPlan.error : null}
+        onRetry={() => void connectionPlan.refetch()}
       />
 
       <ExternalSceneTrialReviewPanel />

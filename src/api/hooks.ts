@@ -1544,6 +1544,50 @@ export interface ExternalResourceResponse {
   projection: ExternalResourceProjection;
 }
 
+export type ExternalResourceConnectionPlanStatus = 'available' | 'attention' | 'empty' | 'unavailable';
+
+export interface ExternalResourceConnectionPlanItem {
+  resource_id: string;
+  kind: string;
+  provider: string;
+  lifecycle: string;
+  availability: string;
+  next_step: string;
+  status: 'blocked' | 'ready_for_review';
+  blockers: string[];
+  required_inputs: string[];
+  owner_ref: string;
+  permission_ref: string;
+}
+
+export interface ExternalResourceConnectionPlanProjection {
+  schema: 'external-resource-connection-plan/v1';
+  mode: 'read_only_projection';
+  activation: 'forbidden';
+  provider_invocation: false;
+  workflow_run_creation: false;
+  admission_mutation: false;
+  observed_at: string;
+  directory_digest: string;
+  items: ExternalResourceConnectionPlanItem[];
+  summary: {
+    resource_count: number;
+    blocked_count: number;
+    ready_for_review_count: number;
+    next_step_counts: Record<string, number>;
+  };
+  status?: ExternalResourceConnectionPlanStatus;
+  next_action?: string;
+  errors?: Array<{ entry_point: string; status: string; error: string }>;
+}
+
+export interface ExternalResourceConnectionPlanResponse {
+  ok: boolean;
+  status?: ExternalResourceConnectionPlanStatus;
+  projection?: ExternalResourceConnectionPlanProjection;
+  error?: string;
+}
+
 export type ExternalResourcePackCheckStatus = 'blocked' | 'proposal_only' | 'ready_for_catalog_preview';
 
 export interface ExternalResourcePackCatalogPreview {
@@ -1937,6 +1981,26 @@ export function useExternalResourceReviewQueue() {
       );
       if (!res.ok || !res.data) {
         throw new Error(res.error || 'Failed to load external resource review queue');
+      }
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+}
+
+export function useExternalResourceConnectionPlan() {
+  return useQuery({
+    queryKey: ['external-resource-connection-plan'],
+    queryFn: async () => {
+      const res = await apiFetch<ExternalResourceConnectionPlanResponse>(
+        API_ENDPOINTS.externalResources.connectionPlan,
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load external resource connection plan');
+      }
+      if (res.data.projection?.schema !== 'external-resource-connection-plan/v1') {
+        return { ...res.data, projection: undefined };
       }
       return res.data;
     },

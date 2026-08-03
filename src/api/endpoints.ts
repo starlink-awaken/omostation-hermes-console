@@ -478,6 +478,8 @@ export const EXTERNAL_RESOURCE_ENDPOINTS = {
   packProposal: '/api/external-resources/packs/proposals',
   /** Latest governed manual-review delta; never activates a resource. */
   reviewQueue: '/api/external-resources/review-queue',
+  /** Read-only evidence gaps for extending an external capability. */
+  connectionPlan: '/api/external-resources/connection-plan',
   /** Proposal-only scene trial review projection; never creates a WorkflowRun. */
   sceneTrials: '/api/external-resources/scene-trials',
   /** Readiness projection; never admits or activates a WorkflowRun. */
