@@ -1628,6 +1628,53 @@ export interface ExternalResourceResponse {
   projection: ExternalResourceProjection;
 }
 
+export type ExternalResourceRefreshStatus = 'ready' | 'attention' | 'empty' | 'unavailable';
+export type ExternalResourceFreshness = 'fresh' | 'stale' | 'invalid' | 'unknown';
+
+export interface ExternalResourceRefreshStatusProjection {
+  schema: 'external-resource-refresh-status/v1';
+  mode: 'read_only_projection';
+  activation: 'forbidden';
+  provider_invocation: false;
+  workflow_run_creation: false;
+  worker_launch: false;
+  source: 'omo.external_resource_observation';
+  status: ExternalResourceRefreshStatus;
+  freshness: ExternalResourceFreshness;
+  observed_at?: string | null;
+  recorded_at?: string | null;
+  observation_id?: string | null;
+  age_seconds?: number | null;
+  catalog_ttl_seconds?: number | null;
+  change_state?: string | null;
+  review_required: boolean;
+  risk_codes: string[];
+  next_action: string;
+  error?: string;
+}
+
+export interface ExternalResourceRefreshStatusResponse {
+  ok: boolean;
+  projection?: ExternalResourceRefreshStatusProjection;
+}
+
+export interface ExternalResourceRefreshResponse {
+  ok: boolean;
+  status: 'recorded' | 'deduplicated' | 'invalid' | 'unavailable';
+  observation_status?: 'recorded' | 'deduplicated';
+  observation_run_status?: 'recorded' | 'deduplicated';
+  observation?: { observation_id?: string; change_state?: string } | null;
+  observation_run?: { receipt_id?: string } | null;
+  change_summary?: { review_required?: boolean; risk_codes?: string[] };
+  error?: string;
+  message?: string;
+  activation: 'forbidden';
+  provider_invocation: false;
+  workflow_run_creation: false;
+  worker_launch: false;
+  external_side_effects: 'disabled';
+}
+
 export type ExternalResourceConnectionPlanStatus = 'available' | 'attention' | 'empty' | 'unavailable';
 
 export interface ExternalResourceConnectionPlanItem {
@@ -2053,6 +2100,48 @@ export function useExternalResources() {
     },
     staleTime: 30000,
     refetchInterval: 60000,
+  });
+}
+
+export function useExternalResourceRefreshStatus() {
+  return useQuery({
+    queryKey: ['external-resource-refresh-status'],
+    queryFn: async () => {
+      const res = await apiFetch<ExternalResourceRefreshStatusResponse>(
+        API_ENDPOINTS.externalResources.refreshStatus,
+      );
+      if (!res.ok || !res.data) {
+        throw new Error(res.error || 'Failed to load external resource refresh status');
+      }
+      if (res.data.projection?.schema !== 'external-resource-refresh-status/v1') {
+        return { ...res.data, projection: undefined };
+      }
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+}
+
+export function useRefreshExternalResources() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input?: { actor_ref?: string; run_id?: string; probe?: boolean }) => {
+      const res = await apiPost<ExternalResourceRefreshResponse>(
+        API_ENDPOINTS.externalResources.refresh,
+        input || {},
+      );
+      if (!res.ok || !res.data || !res.data.ok) {
+        throw new Error(res.data?.message || res.error || 'Failed to refresh external resources');
+      }
+      return res.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['external-resources'] });
+      void queryClient.invalidateQueries({ queryKey: ['external-resource-review-queue'] });
+      void queryClient.invalidateQueries({ queryKey: ['external-resource-connection-plan'] });
+      void queryClient.invalidateQueries({ queryKey: ['external-resource-refresh-status'] });
+    },
   });
 }
 

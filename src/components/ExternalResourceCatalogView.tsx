@@ -14,8 +14,10 @@ import {
 import {
   useEvaluateExternalResources,
   useExternalResourceConnectionPlan,
+  useExternalResourceRefreshStatus,
   useExternalResourceSelectionEvaluation,
   useExternalResources,
+  useRefreshExternalResources,
   type ExternalResourceAvailability,
   type ExternalResourceEvaluation,
   type ExternalResourceReviewQueueProjection,
@@ -225,6 +227,8 @@ export default function ExternalResourceCatalogView() {
   const { data, isLoading, error, refetch } = useExternalResources();
   const reviewQueue = useExternalResourceReviewQueue();
   const connectionPlan = useExternalResourceConnectionPlan();
+  const refreshStatus = useExternalResourceRefreshStatus();
+  const refresh = useRefreshExternalResources();
   const evaluate = useEvaluateExternalResources();
   const [kind, setKind] = useState('all');
   const [availability, setAvailability] = useState('all');
@@ -245,6 +249,7 @@ export default function ExternalResourceCatalogView() {
   const [workflowRunId, setWorkflowRunId] = useState('');
   const selectionEvaluation = useExternalResourceSelectionEvaluation(sceneBinding.scene_id || undefined);
   const projection = data?.projection;
+  const refreshProjection = refreshStatus.data?.projection;
   const filtered = useMemo(() => {
     const resources = projection?.resources ?? [];
     const normalized = query.trim().toLowerCase();
@@ -304,10 +309,37 @@ export default function ExternalResourceCatalogView() {
           </div>
           <span style={{ color: '#666', fontSize: 13 }}>动态发现、健康、新鲜度和准入边界</span>
         </div>
-        <button type="button" className="antd-btn" onClick={() => void refetch()} disabled={isLoading} aria-label="刷新外部资源目录">
-          <RefreshCw size={14} className={isLoading ? 'spinning' : ''} /> 刷新
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          {refreshProjection && (
+            <span style={{ color: refreshProjection.freshness === 'fresh' ? '#389e0d' : '#ad6800', fontSize: 12, fontWeight: 600 }}>
+              新鲜度：{refreshProjection.freshness === 'fresh' ? '新鲜' : refreshProjection.freshness === 'stale' ? '已过期' : refreshProjection.freshness === 'unknown' ? '尚无观测' : '需检查'}
+            </span>
+          )}
+          <button type="button" className="antd-btn" onClick={() => refresh.mutate({})} disabled={refresh.isPending} aria-label="运行受治理外部资源刷新">
+            <RefreshCw size={14} className={refresh.isPending ? 'spinning' : ''} /> {refresh.isPending ? '观测中...' : '受治理刷新'}
+          </button>
+          <button type="button" className="antd-btn" onClick={() => void refetch()} disabled={isLoading} aria-label="读取外部资源目录">
+            <Database size={14} /> 读取
+          </button>
+        </div>
       </header>
+
+      {(refresh.error || refresh.data) && (
+        <div className="antd-card" style={{ padding: 12, color: refresh.error ? '#cf1322' : '#389e0d', fontSize: 13 }} aria-live="polite">
+          {refresh.error instanceof Error
+            ? refresh.error.message
+            : `观测${refresh.data?.status === 'deduplicated' ? '已去重' : '已记录'}：${refresh.data?.observation?.observation_id || '已生成回执'}`}
+        </div>
+      )}
+
+      {refreshProjection && (
+        <div className="antd-card" style={{ padding: 12, display: 'flex', gap: 12, flexWrap: 'wrap', color: '#666', fontSize: 12 }} aria-label="外部资源刷新状态">
+          <span>状态：{refreshProjection.status === 'attention' ? '待复核' : refreshProjection.status === 'ready' ? '可继续只读评估' : refreshProjection.status === 'empty' ? '尚无观测' : '不可用'}</span>
+          <span>变更：{refreshProjection.change_state || '无'}</span>
+          <span>风险码：{refreshProjection.risk_codes.join(' · ') || '无'}</span>
+          <span>{refreshProjection.next_action}</span>
+        </div>
+      )}
 
       <ReviewQueuePanel
         projection={reviewQueue.data?.projection}

@@ -349,4 +349,58 @@ describe('ExternalResourceCatalogView', () => {
     expect(String(postCall?.[1]?.body)).toContain('research-brief');
     expect(String(postCall?.[1]?.body)).toContain('"persist_observation":true');
   });
+
+  it('runs a governed refresh and exposes freshness recovery state', async () => {
+    const refreshProjection = {
+      schema: 'external-resource-refresh-status/v1',
+      mode: 'read_only_projection',
+      activation: 'forbidden',
+      provider_invocation: false,
+      workflow_run_creation: false,
+      worker_launch: false,
+      source: 'omo.external_resource_observation',
+      status: 'ready',
+      freshness: 'stale',
+      observed_at: '2026-08-01T00:00:00+00:00',
+      recorded_at: '2026-08-01T00:00:01+00:00',
+      observation_id: 'observation:stale',
+      age_seconds: 90000,
+      catalog_ttl_seconds: 3600,
+      change_state: 'unchanged',
+      review_required: false,
+      risk_codes: [],
+      next_action: '运行受治理刷新，确认外部资源健康和目录新鲜度。',
+    } as const;
+    const fetchMock = vi.fn().mockImplementation(async (url: string, options?: RequestInit) => {
+      if (options?.method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            ok: true,
+            status: 'recorded',
+            observation: { observation_id: 'observation:fresh' },
+            activation: 'forbidden',
+            provider_invocation: false,
+            workflow_run_creation: false,
+            worker_launch: false,
+            external_side_effects: 'disabled',
+          }),
+        };
+      }
+      if (url === '/api/external-resources/refresh-status') {
+        return { ok: true, json: async () => ({ ok: true, projection: refreshProjection }) };
+      }
+      return { ok: true, json: async () => ({ ok: true, projection }) };
+    });
+    globalThis.fetch = fetchMock as typeof globalThis.fetch;
+
+    renderView();
+    await waitFor(() => expect(screen.getByText('新鲜度：已过期')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: '运行受治理外部资源刷新' }));
+
+    await waitFor(() => expect(screen.getByText('观测已记录：observation:fresh')).toBeInTheDocument());
+    const postCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'POST');
+    expect(postCall?.[0]).toBe('/api/external-resources/refresh');
+    expect(String(postCall?.[1]?.body)).toBe('{}');
+  });
 });

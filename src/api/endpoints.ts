@@ -474,6 +474,10 @@ export const SCENE_CARD_ENDPOINTS = {
 export const EXTERNAL_RESOURCE_ENDPOINTS = {
   /** Dynamic descriptor and health projection; never activates a resource. */
   list: '/api/external-resources',
+  /** Persist one governed read-only observation and its run receipt. */
+  refresh: '/api/external-resources/refresh',
+  /** Freshness and recovery projection; never performs discovery. */
+  refreshStatus: '/api/external-resources/refresh-status',
   /** Static extension-pack conformance; never imports, invokes or activates a provider. */
   packPreflight: '/api/external-resources/packs/preflight',
   /** Persist only a fresh safe pack review receipt; never admits or activates a provider. */
