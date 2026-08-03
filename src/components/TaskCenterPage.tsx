@@ -14,8 +14,8 @@ import {
   Pause,
   Play,
   X,
-  Eye,
   RefreshCw,
+  GitBranch,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, apiPost } from '../api/client';
@@ -33,6 +33,11 @@ interface Task {
   assignee?: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   tags?: string[];
+  scene_binding?: {
+    scene_id: string;
+    journey_id: string;
+    outcome_metric: string;
+  } | null;
 }
 
 interface TaskListResponse {
@@ -89,6 +94,34 @@ function useCancelTask() {
   });
 }
 
+function useRequestTaskWorkflow() {
+  return useMutation({
+    mutationFn: async ({ taskId, workflowName, evidencePlan, sceneBinding }: {
+      taskId: string;
+      workflowName: string;
+      evidencePlan: string[];
+      sceneBinding: NonNullable<Task['scene_binding']>;
+    }) => {
+      const response = await apiPost<{
+        workflow_run_id?: string;
+        request_state?: string;
+        external_side_effects?: string;
+        worker_launch?: boolean;
+      }>(`/api/tasks/${encodeURIComponent(taskId)}/request-workflow`, {
+        workflow_name: workflowName,
+        workflow_version: 'v1',
+        scene_binding: sceneBinding,
+        evidence_plan: evidencePlan,
+        actor_ref: 'cockpit-ui://task-center',
+      });
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to request Workflow Mesh');
+      }
+      return response.data;
+    },
+  });
+}
+
 // ── Component ──
 
 type TaskStatus = 'all' | 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
@@ -104,14 +137,20 @@ export default function TaskCenterPage({
   const [filterStatus, setFilterStatus] = useState<TaskStatus>('all');
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [workflowName, setWorkflowName] = useState('scene-to-workflow');
+  const [evidencePlan, setEvidencePlan] = useState('WorkflowRun 运行证据\n外部连接回执\n结果消费反馈');
+  const [workflowNotice, setWorkflowNotice] = useState<string | null>(null);
 
   const { data: tasks, isLoading, error } = useTasks();
   const updateStatusMutation = useUpdateTaskStatus();
   const cancelMutation = useCancelTask();
+  const workflowMutation = useRequestTaskWorkflow();
 
   // Accept new seeds when navigating from Wave2 panel
   useEffect(() => {
     if (initialSearchQuery !== undefined && initialSearchQuery !== '') {
+      // Navigation handoffs may reuse this mounted page with a new task query.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchQuery(initialSearchQuery);
     }
   }, [initialSearchQuery]);
@@ -190,6 +229,27 @@ export default function TaskCenterPage({
 
   const handleCancel = (taskId: string) => {
     cancelMutation.mutate(taskId);
+  };
+
+  const handleRequestWorkflow = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedTask?.scene_binding) return;
+    const plan = evidencePlan.split('\n').map((item) => item.trim()).filter(Boolean);
+    if (!workflowName.trim() || plan.length === 0) {
+      setWorkflowNotice('工作流名称和证据计划不能为空。');
+      return;
+    }
+    setWorkflowNotice(null);
+    workflowMutation.mutate({
+      taskId: selectedTask.id,
+      workflowName: workflowName.trim(),
+      evidencePlan: plan,
+      sceneBinding: selectedTask.scene_binding,
+    }, {
+      onSuccess: (result) => {
+        setWorkflowNotice(`Workflow ${result?.workflow_run_id || '已请求'} 已记录，状态 ${result?.request_state || 'requested'}；未启动 worker。`);
+      },
+    });
   };
 
   return (
@@ -525,6 +585,33 @@ export default function TaskCenterPage({
                     ))}
                   </div>
                 </div>
+              )}
+
+              {selectedTask.scene_binding && (
+                <section style={{ borderTop: '1px solid #f0f0f0', paddingTop: '12px', display: 'grid', gap: '10px' }} aria-label="场景绑定与 Workflow Mesh 请求">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <GitBranch size={15} className="text-primary" />
+                    <strong>场景绑定</strong>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '12px' }}>
+                    <span>场景：{selectedTask.scene_binding.scene_id}</span>
+                    <span>旅程：{selectedTask.scene_binding.journey_id}</span>
+                    <span>指标：{selectedTask.scene_binding.outcome_metric}</span>
+                  </div>
+                  {selectedTask.status === 'pending' && (
+                    <form onSubmit={handleRequestWorkflow} style={{ display: 'grid', gap: '8px' }} aria-label="请求 Workflow Mesh">
+                      <strong>请求进入 Workflow Mesh</strong>
+                      <span style={{ color: 'var(--antd-text-secondary)', fontSize: '12px' }}>只记录 WorkflowRequested；后续仍需审批、能力健康和预算准入，不会启动 worker。</span>
+                      <input className="antd-input" aria-label="任务工作流名称" value={workflowName} onChange={(event) => setWorkflowName(event.target.value)} />
+                      <textarea className="antd-input" aria-label="任务证据计划" value={evidencePlan} onChange={(event) => setEvidencePlan(event.target.value)} rows={3} />
+                      <button className="antd-btn antd-btn-primary" type="submit" disabled={workflowMutation.isPending} aria-label="请求任务 Workflow">
+                        <GitBranch size={14} /> {workflowMutation.isPending ? '请求中...' : '请求 Workflow'}
+                      </button>
+                      {workflowMutation.error && <span role="alert" style={{ color: 'var(--antd-error)' }}>{workflowMutation.error instanceof Error ? workflowMutation.error.message : 'Workflow 请求失败'}</span>}
+                      {workflowNotice && <span role="status" style={{ color: '#237804', fontSize: '12px' }}>{workflowNotice}</span>}
+                    </form>
+                  )}
+                </section>
               )}
               
               {selectedTask.progress > 0 && (
