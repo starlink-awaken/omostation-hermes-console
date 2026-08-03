@@ -3,6 +3,7 @@ import {
   Activity,
   CheckCircle2,
   ClipboardCheck,
+  DatabaseZap,
   FileCheck2,
   RefreshCw,
   Send,
@@ -12,12 +13,15 @@ import {
 } from 'lucide-react';
 import {
   useAdmitTaskWorkflow,
+  useRecordExternalReceipt,
   usePreviewTaskWorkflowAdmission,
   useRecordOutcomeFeedback,
   useWorkflowCapabilityHealth,
   useWorkflowMeshOperations,
   type OutcomeConsumptionState,
   type OutcomeFeedbackInput,
+  type ExternalReceiptInput,
+  type ExternalReceiptResultState,
   type WorkflowMeshOperationsData,
 } from '../api/hooks';
 
@@ -30,6 +34,11 @@ const FEEDBACK_STATES: Array<{ value: OutcomeConsumptionState; label: string }> 
   { value: 'rejected', label: '已拒绝' },
 ];
 
+const RECEIPT_STATES: Array<{ value: ExternalReceiptResultState; label: string }> = [
+  { value: 'succeeded', label: '成功' },
+  { value: 'degraded', label: '降级' },
+];
+
 const EMPTY_FORM = {
   outcomeId: '',
   state: 'reviewed' as OutcomeConsumptionState,
@@ -39,6 +48,20 @@ const EMPTY_FORM = {
   amount: '',
   unit: '',
   note: '',
+};
+
+const EMPTY_RECEIPT_FORM = {
+  outcomeId: '',
+  receiptId: '',
+  traceId: '',
+  resourceId: '',
+  operation: '',
+  resultState: 'succeeded' as ExternalReceiptResultState,
+  observedAt: new Date().toISOString(),
+  provenanceRef: '',
+  policyDigest: '',
+  outputDigest: '',
+  errorCode: '',
 };
 
 function metricLabel(value: number | null | undefined): string {
@@ -63,8 +86,11 @@ export default function WorkflowMeshOperationsView() {
   const previewMutation = usePreviewTaskWorkflowAdmission();
   const admitMutation = useAdmitTaskWorkflow();
   const feedbackMutation = useRecordOutcomeFeedback();
+  const receiptMutation = useRecordExternalReceipt();
   const [form, setForm] = useState(EMPTY_FORM);
+  const [receiptForm, setReceiptForm] = useState(EMPTY_RECEIPT_FORM);
   const [message, setMessage] = useState<string | null>(null);
+  const [receiptMessage, setReceiptMessage] = useState<string | null>(null);
 
   const operations = data?.operations;
   const selectedOutcome = useMemo(
@@ -75,6 +101,45 @@ export default function WorkflowMeshOperationsView() {
   const updateForm = (field: keyof typeof EMPTY_FORM, value: string) => {
     setMessage(null);
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateReceiptForm = (field: keyof typeof EMPTY_RECEIPT_FORM, value: string) => {
+    setReceiptMessage(null);
+    setReceiptForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const submitReceipt = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const receiptOutcome = operations?.consumption.eligible_outcomes.find(
+      (item) => item.outcome_id === receiptForm.outcomeId,
+    );
+    if (!receiptOutcome) {
+      setReceiptMessage('请选择一个已经形成结果的 WorkflowRun。');
+      return;
+    }
+    const input: ExternalReceiptInput = {
+      workflow_run_id: receiptOutcome.workflow_run_id,
+      producer: 'cockpit-ui://workflow-mesh-operations',
+      receipt: {
+        receipt_id: receiptForm.receiptId,
+        trace_id: receiptForm.traceId,
+        resource_id: receiptForm.resourceId,
+        operation: receiptForm.operation,
+        result_state: receiptForm.resultState,
+        observed_at: receiptForm.observedAt,
+        provenance_ref: receiptForm.provenanceRef,
+        policy_digest: receiptForm.policyDigest,
+        output_digest: receiptForm.outputDigest || undefined,
+        error_code: receiptForm.errorCode || undefined,
+      },
+    };
+    try {
+      const result = await receiptMutation.mutateAsync(input);
+      setReceiptMessage(result.status === 'recorded' ? '外部回执已写入 Workflow Mesh 证据。' : '外部回执已处理。');
+      setReceiptForm((current) => ({ ...EMPTY_RECEIPT_FORM, outcomeId: current.outcomeId }));
+    } catch (mutationError) {
+      setReceiptMessage(mutationError instanceof Error ? mutationError.message : '外部回执记录失败。');
+    }
   };
 
   const submitFeedback = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -238,6 +303,62 @@ export default function WorkflowMeshOperationsView() {
             </p>
           </div>
         </div>
+      </section>
+
+      {operations.evaluation_samples && (
+        <section className="antd-card" aria-label="评测样本准备度">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.45rem' }}>
+            <DatabaseZap size={18} style={{ color: 'var(--antd-primary, #1677ff)' }} />
+            <h3 style={{ margin: 0 }}>真实评测样本准备度</h3>
+            <span style={{ color: '#8c8c8c', fontSize: '0.78rem' }}>事件、receipt、结果反馈三方对齐</span>
+          </div>
+          <p style={{ margin: '0 0 0.75rem', color: '#666', fontSize: '0.85rem' }}>
+            这里只展示可追溯标签和阻塞原因，不导出外部原文，也不把未对齐运行伪装成训练样本。
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.65rem' }}>
+            {[
+              ['样本总数', operations.evaluation_samples.summary.row_count],
+              ['完整可评测', operations.evaluation_samples.summary.ready_count],
+              ['执行标签就绪', operations.evaluation_samples.summary.execution_ready_count],
+              ['待补证据', operations.evaluation_samples.summary.blocked_count],
+            ].map(([label, value]) => <div key={label} style={{ padding: '0.7rem', background: '#fafafa', border: '1px solid #f0f0f0' }}><div style={{ color: '#8c8c8c', fontSize: '0.76rem' }}>{label}</div><strong>{value}</strong></div>)}
+          </div>
+          {operations.evaluation_samples.rows.length > 0 && <div style={{ marginTop: '0.75rem' }}>{operations.evaluation_samples.rows.slice(0, 5).map((item) => <div key={item.evaluation_id} style={{ borderTop: '1px solid #f0f0f0', padding: '0.6rem 0', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}><span>{item.workflow_run_id || item.evaluation_id}</span><span style={{ color: item.status === 'ready' ? '#237804' : item.status === 'execution_ready' ? '#874d00' : '#a8071a' }}>{item.status === 'ready' ? 'ready' : item.blockers.join('、') || item.execution_outcome}</span></div>)}</div>}
+        </section>
+      )}
+
+      <section className="antd-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.75rem' }}>
+          <DatabaseZap size={18} style={{ color: 'var(--antd-primary, #1677ff)' }} />
+          <h3 style={{ margin: 0 }}>外部调用回执</h3>
+          <span style={{ color: '#8c8c8c', fontSize: '0.78rem' }}>仅录入已发生调用的最小证据，不启动 provider</span>
+        </div>
+        {operations.consumption.eligible_outcomes.length === 0 ? (
+          <p style={{ color: '#8c8c8c', margin: 0 }}>当前没有带场景绑定的可关联结果。</p>
+        ) : (
+          <form onSubmit={submitReceipt} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+            <label>关联结果
+              <select aria-label="回执关联结果" value={receiptForm.outcomeId} onChange={(event) => updateReceiptForm('outcomeId', event.target.value)} required>
+                <option value="">选择运行结果</option>
+                {operations.consumption.eligible_outcomes.map((outcome) => <option key={outcome.outcome_id} value={outcome.outcome_id}>{outcome.workflow_run_id} · {outcome.state}</option>)}
+              </select>
+            </label>
+            <label>Receipt ID<input aria-label="Receipt ID" value={receiptForm.receiptId} onChange={(event) => updateReceiptForm('receiptId', event.target.value)} required placeholder="receipt-..." /></label>
+            <label>Trace ID<input aria-label="Receipt Trace ID" value={receiptForm.traceId} onChange={(event) => updateReceiptForm('traceId', event.target.value)} required placeholder="trace-..." /></label>
+            <label>资源 ID<input aria-label="回执资源 ID" value={receiptForm.resourceId} onChange={(event) => updateReceiptForm('resourceId', event.target.value)} required placeholder="source-..." /></label>
+            <label>操作<input aria-label="回执操作" value={receiptForm.operation} onChange={(event) => updateReceiptForm('operation', event.target.value)} required placeholder="search / fetch / publish" /></label>
+            <label>结果状态<select aria-label="回执结果状态" value={receiptForm.resultState} onChange={(event) => updateReceiptForm('resultState', event.target.value)}>{RECEIPT_STATES.map((state) => <option key={state.value} value={state.value}>{state.label}</option>)}</select></label>
+            <label>观测时间<input aria-label="回执观测时间" value={receiptForm.observedAt} onChange={(event) => updateReceiptForm('observedAt', event.target.value)} required /></label>
+            <label>来源引用<input aria-label="回执来源引用" value={receiptForm.provenanceRef} onChange={(event) => updateReceiptForm('provenanceRef', event.target.value)} required placeholder="evidence://..." /></label>
+            <label>策略摘要<input aria-label="回执策略摘要" value={receiptForm.policyDigest} onChange={(event) => updateReceiptForm('policyDigest', event.target.value)} required placeholder="policy-digest" /></label>
+            <label>输出 SHA-256<input aria-label="回执输出摘要" value={receiptForm.outputDigest} onChange={(event) => updateReceiptForm('outputDigest', event.target.value)} required={receiptForm.resultState === 'succeeded'} placeholder="64 位十六进制摘要" /></label>
+            <label>错误码（降级时可填）<input aria-label="回执错误码" value={receiptForm.errorCode} onChange={(event) => updateReceiptForm('errorCode', event.target.value)} /></label>
+            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button className="antd-btn antd-btn-primary" disabled={receiptMutation.isPending} type="submit"><DatabaseZap size={14} /> {receiptMutation.isPending ? '写入中...' : '写入外部回执'}</button>
+              {receiptMessage && <span role="status" style={{ color: receiptMessage.includes('失败') ? '#a8071a' : '#237804', fontSize: '0.85rem' }}>{receiptMessage}</span>}
+            </div>
+          </form>
+        )}
       </section>
 
       <section className="antd-card">

@@ -72,6 +72,7 @@ export {
   useCreateAlertRule,
   useWorkflowMeshOperations,
   useRecordOutcomeFeedback,
+  useRecordExternalReceipt,
 } from './hooks';
 
 export type {
@@ -116,6 +117,10 @@ export type {
   OutcomeSceneBinding,
   OutcomeFeedbackInput,
   OutcomeFeedbackRecord,
+  ExternalReceiptResultState,
+  ExternalReceiptInput,
+  ExternalReceiptRecord,
+  ExternalReceiptResponse,
   WorkflowMeshOperationsData,
   WorkflowMeshOperationsResponse,
   OutcomeFeedbackResponse,

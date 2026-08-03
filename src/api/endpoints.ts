@@ -452,6 +452,8 @@ export const WORKFLOW_MESH_OPERATIONS_ENDPOINTS = {
     `/api/workflow-mesh/operations${sceneId ? `?scene_id=${encodeURIComponent(sceneId)}` : ''}`,
   /** Explicit result-consumption feedback; does not mutate WorkflowRun state. */
   recordOutcomeFeedback: '/api/workflow-mesh/outcome-feedback',
+  /** Record a receipt for an already completed external operation. */
+  recordExternalReceipt: '/api/workflow-mesh/external-receipt',
 } as const;
 
 // ── Workflow Mesh Scene Cards ──

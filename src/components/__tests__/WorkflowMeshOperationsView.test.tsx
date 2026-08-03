@@ -62,7 +62,7 @@ describe('WorkflowMeshOperationsView', () => {
       expect(screen.getByText('Workflow Mesh 运营闭环')).toBeInTheDocument();
       expect(screen.getByText('结果消费尚未观测')).toBeInTheDocument();
       expect(screen.getByText('运行总数')).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: /run-21/ })).toBeInTheDocument();
+      expect(screen.getByLabelText('结果')).toBeInTheDocument();
     });
     expect(fetchMock.mock.calls.some(([url]) => url === '/api/workflow-mesh/operations')).toBe(true);
     expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith('/api/workflow-mesh/capability-health'))).toBe(true);
@@ -78,7 +78,7 @@ describe('WorkflowMeshOperationsView', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderView();
-    await waitFor(() => expect(screen.getByRole('option', { name: /run-21/ })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText('结果')).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText('结果'), { target: { value: 'outcome:run-21' } });
     fireEvent.change(screen.getByLabelText('消费方引用'), { target: { value: 'operator://reviewer' } });
@@ -91,6 +91,37 @@ describe('WorkflowMeshOperationsView', () => {
     expect(body.workflow_run_id).toBe('run-21');
     expect(body.consumer_ref).toBe('operator://reviewer');
     expect(body.actor_ref).toBe('cockpit-ui://workflow-mesh-operations');
+  });
+
+  it('records an external receipt through the governed broker', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return { ok: true, json: async () => ({ ok: true, status: 'recorded', receipt: { evidence_id: 'external:evidence-21' } }) };
+      }
+      return { ok: true, json: async () => ({ ok: true, operations }) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderView();
+    await waitFor(() => expect(screen.getByLabelText('回执关联结果')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('回执关联结果'), { target: { value: 'outcome:run-21' } });
+    fireEvent.change(screen.getByLabelText('Receipt ID'), { target: { value: 'receipt-21' } });
+    fireEvent.change(screen.getByLabelText('Receipt Trace ID'), { target: { value: 'trace-21' } });
+    fireEvent.change(screen.getByLabelText('回执资源 ID'), { target: { value: 'source:research' } });
+    fireEvent.change(screen.getByLabelText('回执操作'), { target: { value: 'search' } });
+    fireEvent.change(screen.getByLabelText('回执来源引用'), { target: { value: 'evidence://research/21' } });
+    fireEvent.change(screen.getByLabelText('回执策略摘要'), { target: { value: 'policy-21' } });
+    fireEvent.change(screen.getByLabelText('回执输出摘要'), { target: { value: 'a'.repeat(64) } });
+    fireEvent.click(screen.getByRole('button', { name: '写入外部回执' }));
+
+    await waitFor(() => expect(screen.getByText('外部回执已写入 Workflow Mesh 证据。')).toBeInTheDocument());
+    const receiptCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST' && String(init?.body).includes('receipt-21'));
+    expect(receiptCall?.[0]).toBe('/api/workflow-mesh/external-receipt');
+    const body = JSON.parse(String(receiptCall?.[1]?.body));
+    expect(body.workflow_run_id).toBe('run-21');
+    expect(body.receipt.resource_id).toBe('source:research');
+    expect(body.receipt.output_digest).toHaveLength(64);
   });
 
   it('keeps an unavailable state when the projection cannot be read', async () => {

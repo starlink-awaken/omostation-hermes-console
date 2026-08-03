@@ -1124,6 +1124,37 @@ export interface OutcomeFeedbackRecord extends OutcomeFeedbackInput {
   value: Record<string, unknown>;
 }
 
+export type ExternalReceiptResultState = 'succeeded' | 'degraded';
+
+export interface ExternalReceiptInput {
+  workflow_run_id: string;
+  step_run_id?: string;
+  producer?: string;
+  receipt: {
+    receipt_id: string;
+    trace_id: string;
+    resource_id: string;
+    operation: string;
+    result_state: ExternalReceiptResultState;
+    observed_at: string;
+    provenance_ref: string;
+    policy_digest: string;
+    output_digest?: string;
+    error_code?: string;
+  };
+}
+
+export interface ExternalReceiptRecord {
+  event_id?: string;
+  evidence_id?: string;
+  receipt_id?: string;
+  workflow_run_id?: string;
+  resource_id?: string;
+  result_state?: ExternalReceiptResultState;
+  observed_at?: string;
+  provenance_ref?: string;
+}
+
 export interface WorkflowMeshOperationsData {
   schema_version: string;
   status: 'live' | 'unavailable';
@@ -1177,6 +1208,31 @@ export interface WorkflowMeshOperationsData {
     feedback: OutcomeFeedbackRecord[];
     next_action: string;
   };
+  evaluation_samples?: {
+    schema_version: string;
+    status: 'observed' | 'not_observed';
+    summary: {
+      row_count: number;
+      ready_count: number;
+      execution_ready_count: number;
+      blocked_count: number;
+      blockers: Record<string, number>;
+    };
+    rows: Array<{
+      evaluation_id: string;
+      workflow_run_id: string | null;
+      scene_binding: OutcomeSceneBinding | null;
+      join_status?: string;
+      receipt_count: number;
+      execution_outcome?: string;
+      selection_alignment?: string;
+      consumption_state?: string;
+      label_quality?: string;
+      status: 'ready' | 'execution_ready' | 'blocked';
+      blockers: string[];
+    }>;
+    next_action: string;
+  };
 }
 
 export interface WorkflowMeshOperationsResponse {
@@ -1188,6 +1244,14 @@ export interface OutcomeFeedbackResponse {
   ok: boolean;
   status: 'recorded' | 'deduplicated' | 'invalid';
   feedback?: OutcomeFeedbackRecord;
+  error?: string;
+  message?: string;
+}
+
+export interface ExternalReceiptResponse {
+  ok: boolean;
+  status: 'recorded' | 'invalid' | 'unavailable';
+  receipt?: ExternalReceiptRecord;
   error?: string;
   message?: string;
 }
@@ -1220,6 +1284,26 @@ export function useRecordOutcomeFeedback() {
       );
       if (!res.ok || !res.data || !res.data.ok) {
         throw new Error(res.data?.message || res.error || 'Failed to record outcome feedback');
+      }
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-mesh-operations'] });
+    },
+  });
+}
+
+export function useRecordExternalReceipt() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: ExternalReceiptInput) => {
+      const res = await apiPost<ExternalReceiptResponse>(
+        API_ENDPOINTS.workflowMeshOperations.recordExternalReceipt,
+        input,
+      );
+      if (!res.ok || !res.data || !res.data.ok) {
+        throw new Error(res.data?.message || res.error || 'Failed to record external receipt');
       }
       return res.data;
     },
