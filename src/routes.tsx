@@ -64,6 +64,8 @@ const QuestBoard = lazy(() => import('./components/QuestBoard'));
 // eslint-disable-next-line react-refresh/only-export-components
 const KnowledgeFlow = lazy(() => import('./components/KnowledgeFlow'));
 // eslint-disable-next-line react-refresh/only-export-components
+const SwarmDashboard = lazy(() => import('./components/SwarmDashboard'));
+// eslint-disable-next-line react-refresh/only-export-components
 const LogViewerPage = lazy(() => import('./components/LogViewerPage'));
 // eslint-disable-next-line react-refresh/only-export-components
 const TaskCenterPage = lazy(() => import('./components/TaskCenterPage'));
@@ -149,6 +151,7 @@ export const ROUTES: RouteConfig[] = [
   { id: 'C2G', path: '/c2g', label: 'C2G 战略中心', subtitle: '跟踪系统从战役目标到治理卡片的全生命周期。', group: '系统治理', component: C2GStrategyView, icon: 'Compass' },
   { id: 'Wave2', path: '/wave2', label: 'Wave2 预测面板', subtitle: '热力、预测序列与治理提案。', group: '系统治理', component: Wave2DashboardView, icon: 'Zap' },
   { id: 'GBrainAdmin', path: '/gbrain-admin', label: 'GBrain 管理', subtitle: 'GBrain 智能体管理、校准与监控。', group: '系统治理', component: GBrainDashboard, icon: 'Brain' },
+  { id: 'Swarm', path: '/swarm', label: 'Swarm 协同', subtitle: 'agent 协同运行链路、工作流窗口、声明占用与合规决策。', group: '系统治理', component: SwarmDashboard, icon: 'Activity' },
 
   // 开发工具
   { id: 'LogViewer', path: '/logs', label: '日志查看器', subtitle: '实时日志流、搜索、过滤、导出。', group: '开发工具', component: LogViewerPage, icon: 'FileText' },
