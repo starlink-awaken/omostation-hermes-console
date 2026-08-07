@@ -2412,3 +2412,76 @@ export function useRejectIntent() {
     },
   });
 }
+
+// ── Week 4: Connector + Review ──
+
+export interface WeeklyReviewReport {
+  report_period: string;
+  generated_at: string;
+  summary: {
+    total_intents: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    done: number;
+    accuracy: number;
+    false_positive_rate: number;
+    time_saved_minutes: number;
+    time_saved_hours: number;
+  };
+  distribution: {
+    by_source: Record<string, number>;
+    by_priority: Record<string, number>;
+  };
+  daily_trend: Record<string, number>;
+}
+
+export interface PilotReport {
+  pilot_name: string;
+  pilot_duration: string;
+  generated_at: string;
+  scenes: Array<{ id: string; name: string; status: string; priority: string; journey_count: number; intent_count: number }>;
+  total_intents: number;
+}
+
+export function useWeeklyReview(weeks: number = 1) {
+  return useQuery({
+    queryKey: ['decision-inbox-review-weekly', weeks],
+    queryFn: async () => {
+      const res = await apiFetch<{ ok: boolean; report: WeeklyReviewReport }>(
+        API_ENDPOINTS.decisionInbox.reviewWeekly(weeks),
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load review');
+      return res.data.report;
+    },
+    staleTime: 30000,
+  });
+}
+
+export function usePilotReport() {
+  return useQuery({
+    queryKey: ['decision-inbox-review-pilot'],
+    queryFn: async () => {
+      const res = await apiFetch<{ ok: boolean; report: PilotReport }>(
+        API_ENDPOINTS.decisionInbox.reviewPilot,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load pilot report');
+      return res.data.report;
+    },
+    staleTime: 60000,
+  });
+}
+
+export function useConnectorStats() {
+  return useQuery({
+    queryKey: ['decision-inbox-connector-stats'],
+    queryFn: async () => {
+      const res = await apiFetch<{ ok: boolean; stats: any }>(
+        API_ENDPOINTS.decisionInbox.connectorStats,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load connector stats');
+      return res.data.stats;
+    },
+    staleTime: 15000,
+  });
+}

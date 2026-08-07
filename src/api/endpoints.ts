@@ -536,6 +536,14 @@ export const DECISION_INBOX_ENDPOINTS = {
   approvalStats: '/api/decision-inbox/approvals/stats',
   /** List receipts */
   listReceipts: '/api/decision-inbox/approvals/receipts',
+  /** Run connector */
+  connectorRun: '/api/decision-inbox/connector/run',
+  /** Connector stats */
+  connectorStats: '/api/decision-inbox/connector/stats',
+  /** Weekly review */
+  reviewWeekly: (weeks?: number) => `/api/decision-inbox/review/weekly${weeks ? `?weeks=${weeks}` : ''}`,
+  /** Pilot report */
+  reviewPilot: '/api/decision-inbox/review/pilot',
 } as const;
 
 // ── Export all endpoints ──
