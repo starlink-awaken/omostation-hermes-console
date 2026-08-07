@@ -18,6 +18,8 @@ import {
   List,
   BarChart3,
   ClipboardList,
+  Edit3,
+  EyeOff,
 } from 'lucide-react';
 import {
   useDecisionInboxScenes,
@@ -54,6 +56,8 @@ function TabButton({ id, label, icon: Icon, active, onClick }: {
 export default function DecisionInboxView() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [selectedSceneId, setSelectedSceneId] = useState<string>('');
+  const [editingIntentId, setEditingIntentId] = useState<string | null>(null);
+  const [editedContent, setEditedContent] = useState<string>('');
 
   const { data: scenes = [], isLoading: scenesLoading } = useDecisionInboxScenes();
   const { data: summary, isLoading: summaryLoading } = useInboxSummary();
@@ -68,14 +72,31 @@ export default function DecisionInboxView() {
   const [newIntentSource, setNewIntentSource] = useState('manual');
   const [newIntentPriority, setNewIntentPriority] = useState('P3');
 
-  const queue = queueData?.queue ?? [];
+  const queue = (queueData?.queue ?? []).slice(0, 5);
 
   const handleApprove = (item: ApprovalQueueItem) => {
     approve.mutate({ intent_id: item.intent_id, reviewer: 'human', note: 'Approved via cockpit-ui' });
   };
 
-  const handleReject = (item: ApprovalQueueItem) => {
-    reject.mutate({ intent_id: item.intent_id, reviewer: 'human', note: 'Rejected via cockpit-ui' });
+  const handleApproveWithEdit = (item: ApprovalQueueItem) => {
+    if (!editedContent.trim()) return;
+    approve.mutate({ intent_id: item.intent_id, reviewer: 'human', note: 'Approved with edit via cockpit-ui', outcome_metric: editedContent });
+    setEditingIntentId(null);
+    setEditedContent('');
+  };
+
+  const handleIgnore = (item: ApprovalQueueItem) => {
+    reject.mutate({ intent_id: item.intent_id, reviewer: 'human', note: 'Ignored via cockpit-ui' });
+  };
+
+  const startEdit = (item: ApprovalQueueItem) => {
+    setEditingIntentId(item.intent_id);
+    setEditedContent(item.raw_content);
+  };
+
+  const cancelEdit = () => {
+    setEditingIntentId(null);
+    setEditedContent('');
   };
 
   const handleCreateScene = () => {
@@ -205,24 +226,72 @@ export default function DecisionInboxView() {
                         证据: {item.evidence_count} 条 · 创建: {item.created_at.slice(0, 19)}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 4, marginLeft: 16 }}>
-                      <button
-                        className="antd-btn antd-btn-primary"
-                        style={{ background: '#52c41a', borderColor: '#52c41a' }}
-                        onClick={() => handleApprove(item)}
-                        disabled={approve.isPending}
-                      >
-                        <CheckCircle2 className="icon" size={14} /> 通过
-                      </button>
-                      <button
-                        className="antd-btn"
-                        style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
-                        onClick={() => handleReject(item)}
-                        disabled={reject.isPending}
-                      >
-                        <XCircle className="icon" size={14} /> 拒绝
-                      </button>
-                    </div>
+                     <div style={{ display: 'flex', gap: 4, marginLeft: 16, flexDirection: 'column' }}>
+                       {editingIntentId === item.intent_id ? (
+                         <>
+                           <textarea
+                             className="antd-input"
+                             value={editedContent}
+                             onChange={(e) => setEditedContent(e.target.value)}
+                             rows={3}
+                             style={{ minWidth: 200, marginBottom: 4 }}
+                           />
+                           <div style={{ display: 'flex', gap: 4 }}>
+                             <button
+                               className="antd-btn antd-btn-primary"
+                               style={{ background: '#52c41a', borderColor: '#52c41a' }}
+                               onClick={() => handleApproveWithEdit(item)}
+                               disabled={approve.isPending}
+                             >
+                               <CheckCircle2 className="icon" size={14} /> 确认改后采纳
+                             </button>
+                             <button
+                               className="antd-btn"
+                               onClick={cancelEdit}
+                             >
+                               取消
+                             </button>
+                           </div>
+                         </>
+                       ) : (
+                         <>
+                           <div style={{ display: 'flex', gap: 4 }}>
+                             <button
+                               className="antd-btn antd-btn-primary"
+                               style={{ background: '#52c41a', borderColor: '#52c41a' }}
+                               onClick={() => handleApprove(item)}
+                               disabled={approve.isPending}
+                             >
+                               <CheckCircle2 className="icon" size={14} /> 采纳
+                             </button>
+                             <button
+                               className="antd-btn"
+                               style={{ borderColor: '#1890ff', color: '#1890ff' }}
+                               onClick={() => startEdit(item)}
+                               disabled={approve.isPending}
+                             >
+                               <Edit3 className="icon" size={14} /> 改后采纳
+                             </button>
+                             <button
+                               className="antd-btn"
+                               style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
+                               onClick={() => handleIgnore(item)}
+                               disabled={reject.isPending}
+                             >
+                               <EyeOff className="icon" size={14} /> 忽略
+                             </button>
+                           </div>
+                           <button
+                             className="antd-btn"
+                             style={{ borderColor: '#ff4d4f', color: '#ff4d4f', marginTop: 4 }}
+                             onClick={() => handleReject(item)}
+                             disabled={reject.isPending}
+                           >
+                             <XCircle className="icon" size={14} /> 拒绝
+                           </button>
+                         </>
+                       )}
+                     </div>
                   </div>
                 </div>
               ))}

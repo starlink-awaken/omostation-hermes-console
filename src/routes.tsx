@@ -140,6 +140,7 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Kems', path: '/kems', label: 'KEMS 质量治理', subtitle: '以质量指标、哈希和证据引用驱动 OCR 复核与知识准入。', group: '智能与知识', component: KemsWorkbench, icon: 'FileText' },
   { id: 'SceneCards', path: '/scene-cards', label: '场景卡评审', subtitle: '评审 Workflow Mesh 场景候选，完整性不足时保持提案态。', group: '智能与知识', component: SceneCardReviewView, icon: 'FileText' },
   { id: 'DecisionInbox', path: '/decision-inbox', label: '决策收件箱', subtitle: '场景卡驱动的决策生命周期管理 — 摄入→审批→完成。', group: '智能与知识', component: DecisionInboxView, icon: 'Inbox' },
+  { id: 'Inbox', path: '/inbox', label: '收件箱', subtitle: '每日待裁决条目（上限 5 条），采纳 / 改后采纳 / 忽略。', group: '智能与知识', component: DecisionInboxView, icon: 'Inbox' },
   { id: 'PilotReview', path: '/pilot-review', label: '试点复盘', subtitle: '每周复盘统计、准确率、时间节省与试点总结报告。', group: '智能与知识', component: PilotReviewView, icon: 'BarChart3' },
   { id: 'ExternalResources', path: '/external-resources', label: '外部能力目录', subtitle: '查看外部知识、数据、方法、工具和渠道的动态发现与健康状态。', group: '智能与知识', component: ExternalResourceCatalogView, icon: 'Database' },
   { id: 'Brain', path: '/brain', label: '个人数字大脑', subtitle: '基于知识库 + 记忆 + LLM 的智能问答助手。', group: '智能助手', component: BrainChat, icon: 'Brain' },
