@@ -2221,3 +2221,194 @@ export function useExternalResourceSelectionEvaluation(sceneId?: string) {
     staleTime: 15000,
   });
 }
+
+// ── Decision Inbox ──
+
+export interface DecisionInboxScene {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  priority: string;
+  created_at: string;
+  journeys: DecisionInboxJourney[];
+}
+
+export interface DecisionInboxJourney {
+  id: string;
+  scene_id: string;
+  name: string;
+  status: string;
+  created_at: string;
+  intents: DecisionInboxIntent[];
+}
+
+export interface DecisionInboxIntent {
+  id: string;
+  journey_id: string;
+  source: string;
+  raw_content: string;
+  status: string;
+  priority: string;
+  task_id?: string;
+  created_at: string;
+  processed_at?: string;
+}
+
+export interface InboxSummary {
+  scene_count: number;
+  total_intents: number;
+  pending_intents: number;
+  by_source: Record<string, number>;
+  by_priority: Record<string, number>;
+}
+
+export interface ApprovalQueueItem {
+  intent_id: string;
+  scene_id: string;
+  scene_name: string;
+  journey_id: string;
+  journey_name: string;
+  source: string;
+  raw_content: string;
+  priority: string;
+  created_at: string;
+  evidence_count: number;
+}
+
+export function useDecisionInboxScenes() {
+  return useQuery({
+    queryKey: ['decision-inbox-scenes'],
+    queryFn: async () => {
+      const res = await apiFetch<{ ok: boolean; scenes: DecisionInboxScene[] }>(
+        API_ENDPOINTS.decisionInbox.listScenes,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load scenes');
+      return res.data.scenes;
+    },
+    staleTime: 10000,
+  });
+}
+
+export function useDecisionInboxScene(sceneId: string) {
+  return useQuery({
+    queryKey: ['decision-inbox-scene', sceneId],
+    queryFn: async () => {
+      const res = await apiFetch<{ ok: boolean; scene: DecisionInboxScene }>(
+        API_ENDPOINTS.decisionInbox.getScene(sceneId),
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load scene');
+      return res.data.scene;
+    },
+    enabled: Boolean(sceneId),
+    staleTime: 10000,
+  });
+}
+
+export function useInboxSummary() {
+  return useQuery({
+    queryKey: ['decision-inbox-summary'],
+    queryFn: async () => {
+      const res = await apiFetch<{ ok: boolean; summary: InboxSummary }>(
+        API_ENDPOINTS.decisionInbox.getSummary,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load summary');
+      return res.data.summary;
+    },
+    staleTime: 10000,
+  });
+}
+
+export function useCreateScene() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string; description?: string; priority?: string }) => {
+      const res = await apiPost<{ ok: boolean; scene: DecisionInboxScene }>(
+        API_ENDPOINTS.decisionInbox.createScene, input,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to create scene');
+      return res.data.scene;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['decision-inbox-scenes'] }); },
+  });
+}
+
+export function useAddIntent(sceneId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { source: string; raw_content: string; priority?: string; journey_id?: string }) => {
+      const res = await apiPost<{ ok: boolean; intent: DecisionInboxIntent }>(
+        API_ENDPOINTS.decisionInbox.addIntent(sceneId), input,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to add intent');
+      return res.data.intent;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['decision-inbox-scene', sceneId] });
+      qc.invalidateQueries({ queryKey: ['decision-inbox-summary'] });
+    },
+  });
+}
+
+export function useUpdateIntent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { intent_id: string; status: string; task_id?: string }) => {
+      const res = await apiFetch<{ ok: boolean; intent: DecisionInboxIntent }>(
+        API_ENDPOINTS.decisionInbox.updateIntent(input.intent_id),
+        { method: 'PATCH', body: JSON.stringify({ status: input.status, task_id: input.task_id }) },
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to update intent');
+      return res.data.intent;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['decision-inbox'] }); },
+  });
+}
+
+export function useApprovalQueue() {
+  return useQuery({
+    queryKey: ['decision-inbox-approval-queue'],
+    queryFn: async () => {
+      const res = await apiFetch<{ ok: boolean; queue: ApprovalQueueItem[]; total: number }>(
+        API_ENDPOINTS.decisionInbox.approvalQueue,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load approval queue');
+      return res.data;
+    },
+    staleTime: 10000,
+  });
+}
+
+export function useApproveIntent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { intent_id: string; reviewer?: string; note?: string; outcome_metric?: string }) => {
+      const res = await apiPost<{ ok: boolean; receipt_id: string; task_id: string; status: string }>(
+        API_ENDPOINTS.decisionInbox.approveIntent, input,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to approve intent');
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['decision-inbox-approval-queue'] });
+      qc.invalidateQueries({ queryKey: ['decision-inbox-summary'] });
+    },
+  });
+}
+
+export function useRejectIntent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { intent_id: string; reviewer?: string; note?: string }) => {
+      const res = await apiPost<{ ok: boolean; receipt_id: string; status: string }>(
+        API_ENDPOINTS.decisionInbox.rejectIntent, input,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to reject intent');
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['decision-inbox-approval-queue'] });
+      qc.invalidateQueries({ queryKey: ['decision-inbox-summary'] });
+    },
+  });
+}

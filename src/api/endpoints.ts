@@ -496,6 +496,48 @@ export const EXTERNAL_RESOURCE_ENDPOINTS = {
   selectionProposal: '/api/external-resources/evaluations/proposal',
 } as const;
 
+// ── Decision Inbox ──
+
+export const DECISION_INBOX_ENDPOINTS = {
+  /** List all scenes */
+  listScenes: '/api/decision-inbox/scenes',
+  /** Get scene by ID */
+  getScene: (sceneId: string) => `/api/decision-inbox/scenes/${sceneId}`,
+  /** Create scene */
+  createScene: '/api/decision-inbox/scenes',
+  /** Create journey */
+  createJourney: (sceneId: string) => `/api/decision-inbox/scenes/${sceneId}/journeys`,
+  /** List intents */
+  listIntents: (sceneId: string, status?: string) =>
+    `/api/decision-inbox/scenes/${sceneId}/intents${status ? `?status=${status}` : ''}`,
+  /** Add intent */
+  addIntent: (sceneId: string) => `/api/decision-inbox/scenes/${sceneId}/intents`,
+  /** Update intent status */
+  updateIntent: (intentId: string) => `/api/decision-inbox/intents/${intentId}`,
+  /** Get inbox summary */
+  getSummary: '/api/decision-inbox/summary',
+  /** Intake preview */
+  intakePreview: '/api/decision-inbox/intake/preview',
+  /** Run intake */
+  runIntake: (sceneId: string) => `/api/decision-inbox/intake/${sceneId}`,
+  /** Batch intake */
+  batchIntake: (sceneId: string) => `/api/decision-inbox/intake/${sceneId}/batch`,
+  /** Get approval queue */
+  approvalQueue: '/api/decision-inbox/approvals/queue',
+  /** Get evidence detail */
+  approvalEvidence: (intentId: string) => `/api/decision-inbox/approvals/evidence/${intentId}`,
+  /** Approve intent */
+  approveIntent: '/api/decision-inbox/approvals/approve',
+  /** Reject intent */
+  rejectIntent: '/api/decision-inbox/approvals/reject',
+  /** Get approval history */
+  approvalHistory: '/api/decision-inbox/approvals/history',
+  /** Get approval stats */
+  approvalStats: '/api/decision-inbox/approvals/stats',
+  /** List receipts */
+  listReceipts: '/api/decision-inbox/approvals/receipts',
+} as const;
+
 // ── Export all endpoints ──
 
 export const API_ENDPOINTS = {
@@ -542,4 +584,5 @@ export const API_ENDPOINTS = {
   workflowMeshOperations: WORKFLOW_MESH_OPERATIONS_ENDPOINTS,
   sceneCards: SCENE_CARD_ENDPOINTS,
   externalResources: EXTERNAL_RESOURCE_ENDPOINTS,
+  decisionInbox: DECISION_INBOX_ENDPOINTS,
 } as const;

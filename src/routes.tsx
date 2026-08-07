@@ -66,6 +66,8 @@ const KnowledgeFlow = lazy(() => import('./components/KnowledgeFlow'));
 // eslint-disable-next-line react-refresh/only-export-components
 const SwarmDashboard = lazy(() => import('./components/SwarmDashboard'));
 // eslint-disable-next-line react-refresh/only-export-components
+const DecisionInboxView = lazy(() => import('./components/DecisionInboxView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const LogViewerPage = lazy(() => import('./components/LogViewerPage'));
 // eslint-disable-next-line react-refresh/only-export-components
 const TaskCenterPage = lazy(() => import('./components/TaskCenterPage'));
@@ -135,6 +137,7 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Protocol', path: '/protocol', label: '协议工作台', subtitle: 'BOS 协议调试与 MCP 工具测试。', group: '智能与知识', component: ProtocolWorkbenchView, icon: 'FileText' },
   { id: 'Kems', path: '/kems', label: 'KEMS 质量治理', subtitle: '以质量指标、哈希和证据引用驱动 OCR 复核与知识准入。', group: '智能与知识', component: KemsWorkbench, icon: 'FileText' },
   { id: 'SceneCards', path: '/scene-cards', label: '场景卡评审', subtitle: '评审 Workflow Mesh 场景候选，完整性不足时保持提案态。', group: '智能与知识', component: SceneCardReviewView, icon: 'FileText' },
+  { id: 'DecisionInbox', path: '/decision-inbox', label: '决策收件箱', subtitle: '场景卡驱动的决策生命周期管理 — 摄入→审批→完成。', group: '智能与知识', component: DecisionInboxView, icon: 'Inbox' },
   { id: 'ExternalResources', path: '/external-resources', label: '外部能力目录', subtitle: '查看外部知识、数据、方法、工具和渠道的动态发现与健康状态。', group: '智能与知识', component: ExternalResourceCatalogView, icon: 'Database' },
   { id: 'Brain', path: '/brain', label: '个人数字大脑', subtitle: '基于知识库 + 记忆 + LLM 的智能问答助手。', group: '智能助手', component: BrainChat, icon: 'Brain' },
   { id: 'KnowledgeFlow', path: '/knowledge-flow', label: '知识流动', subtitle: '知识在系统中的流转与沉淀路径。', group: '智能与知识', component: KnowledgeFlow, icon: 'BookOpen' },
