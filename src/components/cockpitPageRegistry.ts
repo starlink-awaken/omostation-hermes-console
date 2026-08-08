@@ -40,4 +40,5 @@ export const COCKPIT_PAGE_REGISTRY: CockpitPageRegistryItem[] = [
   { id: 'QuestBoard', title: '积分冒险', group: '领域应用', purpose: '承接家庭成长激励与积分任务。', whenToUse: '家庭互动和任务激励时。', dimensions: ['家庭', '积分', '成长'] },
   { id: 'DomainApps', title: '应用中心', group: '领域应用', purpose: '统一挂载家庭驾驶舱、OPC 作战台和领域服务。', whenToUse: '要进入家庭驾驶舱或 OPC 时。', dimensions: ['领域应用', '运行态', '挂载'] },
   { id: 'Settings', title: '底层设置', group: '系统配置', purpose: '配置网格路由、凭据和治理阈值。', whenToUse: '准备挂载新应用或修配置时。', dimensions: ['配置', '凭据', '阈值'] },
+  { id: 'DigitalBrainWorkplace', title: '数字大脑工作台', group: '领域应用', purpose: 'LifeOS 全域数字大脑公文自动化、心智模型与长尾领域常驻 Agent 蜂群。', whenToUse: '进行日常工作公文处理、家庭/教育/健康多领域自主进化时。', dimensions: ['数字大脑', 'LifeOS', '公文流', '常驻Agent'] },
 ];

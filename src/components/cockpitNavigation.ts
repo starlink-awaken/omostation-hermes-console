@@ -66,6 +66,7 @@ export const TAB_TO_ROUTE: Record<string, string> = {
   QuestBoard: '/quest',
   DomainApps: '/domain-apps',
   Settings: '/settings',
+  DigitalBrainWorkplace: '/digital-brain',
 };
 
 const COCKPIT_TAB_IDS = new Set(COCKPIT_PAGE_REGISTRY.map((page) => page.id));

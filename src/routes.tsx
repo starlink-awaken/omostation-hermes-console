@@ -58,6 +58,8 @@ const C2GStrategyView = lazy(() => import('./components/C2GStrategyView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const Wave2DashboardView = lazy(() => import('./components/Wave2DashboardView'));
 // eslint-disable-next-line react-refresh/only-export-components
+const DigitalBrainWorkplaceView = lazy(() => import('./components/DigitalBrainWorkplaceView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const DomainAppsView = lazy(() => import('./components/DomainAppsView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const QuestBoard = lazy(() => import('./components/QuestBoard'));
@@ -168,6 +170,7 @@ export const ROUTES: RouteConfig[] = [
   // 领域应用
   { id: 'QuestBoard', path: '/quests', label: '积分冒险', subtitle: '让家庭充满正向激励与智慧成长。', group: '领域应用', component: QuestBoard, icon: 'Trophy' },
   { id: 'DomainApps', path: '/domain-apps', label: '领域应用', subtitle: '第三方领域应用集成。', group: '领域应用', component: DomainAppsView, icon: 'LayoutDashboard' },
+  { id: 'DigitalBrainWorkplace', path: '/digital-brain', label: '数字大脑', subtitle: 'Cybernetic LifeOS 全域数字大脑工作台与常驻 Agent 蜂群。', group: '领域应用', component: DigitalBrainWorkplaceView, icon: 'Brain' },
 
   // 系统配置
   { id: 'Settings', path: '/settings', label: '系统设置', subtitle: '配置网格路由、API Token 与治理阈值。', group: '系统配置', component: SettingsView, icon: 'Settings' },
