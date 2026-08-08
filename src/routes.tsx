@@ -84,6 +84,10 @@ const SettingsView = lazy(() => import('./components/SettingsView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const DeliveryJourneyView = lazy(() => import('./components/DeliveryJourneyView'));
 // eslint-disable-next-line react-refresh/only-export-components
+const OutcomesView = lazy(() => import('./components/OutcomesView'));
+// eslint-disable-next-line react-refresh/only-export-components
+const JourneysTimelineView = lazy(() => import('./components/JourneysTimelineView'));
+// eslint-disable-next-line react-refresh/only-export-components
 const WorkflowMeshOperationsView = lazy(() => import('./components/WorkflowMeshOperationsView'));
 // eslint-disable-next-line react-refresh/only-export-components
 const CapabilityExplorer = lazy(() => import('./components/CapabilityExplorer'));
@@ -154,6 +158,8 @@ export const ROUTES: RouteConfig[] = [
   { id: 'Debt', path: '/debt', label: '债务治理', subtitle: '全自动审计技术债务评分，追踪高危风险。', group: '系统治理', component: DebtView, icon: 'FileText' },
   { id: 'Observability', path: '/observability', label: '可观测性', subtitle: '多维度链路日志与可观测性分析面板。', group: '系统治理', component: ObservabilityView, icon: 'BarChart3' },
   { id: 'DeliveryJourney', path: '/delivery-journey', label: '工程交付旅程', group: '系统治理', component: DeliveryJourneyView, icon: 'Compass' },
+  { id: 'Outcomes', path: '/outcomes', label: '结果与校准', subtitle: '决策裁决、校准曲线、交付结果一览。', group: '系统治理', component: OutcomesView, icon: 'Target' },
+  { id: 'JourneysTimeline', path: '/journeys', label: '旅程时间线', subtitle: '跨场景交付旅程 chronological 视图。', group: '系统治理', component: JourneysTimelineView, icon: 'GitBranch' },
   { id: 'WorkflowMeshOperations', path: '/workflow-mesh-operations', label: '运营闭环', subtitle: '查看运行里程碑、复盘队列与结果消费回执。', group: '系统治理', component: WorkflowMeshOperationsView, icon: 'Activity' },
 
   { id: 'C2G', path: '/c2g', label: 'C2G 战略中心', subtitle: '跟踪系统从战役目标到治理卡片的全生命周期。', group: '系统治理', component: C2GStrategyView, icon: 'Compass' },

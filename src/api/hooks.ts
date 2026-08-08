@@ -2485,3 +2485,146 @@ export function useConnectorStats() {
     staleTime: 15000,
   });
 }
+
+// ── Outcomes & Calibration ──
+
+export interface OutcomesSummary {
+  ok: boolean;
+  pending_count: number;
+  history_count: number;
+  calibration_scenes: number;
+  knowledge_funnel?: KnowledgeFunnel;
+}
+
+export interface KnowledgeFunnel {
+  retrieved: number;
+  cited: number;
+  citation_rate: number | null;
+  task_created: number;
+  status: string;
+}
+
+export interface OutcomePendingItem {
+  scene_id: string;
+  run_id: string;
+  submitted_at: string;
+  actor: string;
+  notes: string;
+}
+
+export interface OutcomeHistoryItem {
+  scene_id: string;
+  run_id: string;
+  adjudication: string;
+  actor: string;
+  adjudicated_at: string;
+  notes: string;
+}
+
+export interface CalibrationScene {
+  scene_id: string;
+  accepted: number;
+  total: number;
+  calibration: number;
+  updated_at: string;
+}
+
+export interface CalibrationCapability {
+  id: string;
+  capability_ref: string;
+  success_rate: number;
+  sample_size: number;
+  measured_at: string;
+}
+
+export interface OutcomesCalibration {
+  ok: boolean;
+  scenes: CalibrationScene[];
+  capabilities: CalibrationCapability[];
+}
+
+export function useOutcomesSummary() {
+  return useQuery({
+    queryKey: ['outcomes-summary'],
+    queryFn: async () => {
+      const res = await apiFetch<OutcomesSummary>(API_ENDPOINTS.outcomes.getSummary);
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load outcomes summary');
+      return res.data;
+    },
+    staleTime: 30000,
+  });
+}
+
+export function useOutcomesPending() {
+  return useQuery({
+    queryKey: ['outcomes-pending'],
+    queryFn: async () => {
+      const res = await apiFetch<{ ok: boolean; items: OutcomePendingItem[] }>(
+        API_ENDPOINTS.outcomes.getPending,
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load pending outcomes');
+      return res.data.items;
+    },
+    staleTime: 15000,
+  });
+}
+
+export function useOutcomesHistory(limit = 50) {
+  return useQuery({
+    queryKey: ['outcomes-history', limit],
+    queryFn: async () => {
+      const res = await apiFetch<{ ok: boolean; items: OutcomeHistoryItem[] }>(
+        API_ENDPOINTS.outcomes.getHistory(limit),
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load outcomes history');
+      return res.data.items;
+    },
+    staleTime: 30000,
+  });
+}
+
+export function useOutcomesCalibration() {
+  return useQuery({
+    queryKey: ['outcomes-calibration'],
+    queryFn: async () => {
+      const res = await apiFetch<OutcomesCalibration>(API_ENDPOINTS.outcomes.getCalibration);
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load calibration data');
+      return res.data;
+    },
+    staleTime: 60000,
+  });
+}
+
+// ── Journeys Timeline ──
+
+export interface JourneyTimelineItem {
+  source: string;
+  scene_id: string;
+  journey_id: string;
+  status: string;
+  started_at: string;
+  completed_at: string;
+  actor: string;
+  notes: string;
+}
+
+export interface JourneyTimeline {
+  ok: boolean;
+  total: number;
+  success_rate: number;
+  items: JourneyTimelineItem[];
+}
+
+export function useJourneysTimeline(params?: { scene_id?: string; limit?: number }) {
+  return useQuery({
+    queryKey: ['journeys-timeline', params?.scene_id, params?.limit],
+    queryFn: async () => {
+      const res = await apiFetch<JourneyTimeline>(
+        API_ENDPOINTS.journeys.getTimeline(params),
+      );
+      if (!res.ok || !res.data) throw new Error(res.error || 'Failed to load journeys timeline');
+      return res.data;
+    },
+    staleTime: 30000,
+  });
+}

@@ -546,6 +546,33 @@ export const DECISION_INBOX_ENDPOINTS = {
   reviewPilot: '/api/decision-inbox/review/pilot',
 } as const;
 
+// ── Outcomes & Calibration ──
+
+export const OUTCOMES_ENDPOINTS = {
+  /** Aggregate outcomes summary */
+  getSummary: '/api/outcomes',
+  /** Pending adjudication queue */
+  getPending: '/api/outcomes/pending',
+  /** Adjudicated history (newest first) */
+  getHistory: (limit = 50) => `/api/outcomes/history?limit=${limit}`,
+  /** Per-scene and per-capability calibration data */
+  getCalibration: '/api/outcomes/calibration',
+  /** Knowledge-to-action funnel (recall → citation → task) */
+  getKnowledgeFunnel: '/api/outcomes/knowledge-funnel',
+} as const;
+
+// ── Journeys Timeline ──
+
+export const JOURNEYS_ENDPOINTS = {
+  /** Chronological timeline of delivery journeys */
+  getTimeline: (params?: { scene_id?: string; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.scene_id) searchParams.set('scene_id', params.scene_id);
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    return `/api/journeys${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+  },
+} as const;
+
 // ── Export all endpoints ──
 
 export const API_ENDPOINTS = {
@@ -593,4 +620,6 @@ export const API_ENDPOINTS = {
   sceneCards: SCENE_CARD_ENDPOINTS,
   externalResources: EXTERNAL_RESOURCE_ENDPOINTS,
   decisionInbox: DECISION_INBOX_ENDPOINTS,
+  outcomes: OUTCOMES_ENDPOINTS,
+  journeys: JOURNEYS_ENDPOINTS,
 } as const;
