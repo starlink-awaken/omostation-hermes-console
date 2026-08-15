@@ -48,6 +48,8 @@ const TaskCenterPage = React.lazy(() => import('./TaskCenterPage'));
 const PerformanceMonitorPage = React.lazy(() => import('./PerformanceMonitorPage'));
 const SandboxTerminal = React.lazy(() => import('./SandboxTerminal'));
 const SettingsView = React.lazy(() => import('./SettingsView'));
+const OutcomesView = React.lazy(() => import('./OutcomesView'));
+const JourneysTimelineView = React.lazy(() => import('./JourneysTimelineView'));
 
 // Icon mapping for dynamic sidebar generation
 const ICON_MAP: Record<string, React.ComponentType<{ size: number; 'aria-hidden'?: boolean; className?: string }>> = {
@@ -348,6 +350,8 @@ export default function Dashboard() {
               <Route path="/quests" element={<QuestBoard />} />
               <Route path="/domain-apps" element={<DomainAppsRoute />} />
               <Route path="/settings" element={<SettingsView />} />
+              <Route path="/outcomes" element={<OutcomesView />} />
+              <Route path="/journeys" element={<JourneysTimelineView />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </RouteErrorBoundary>
