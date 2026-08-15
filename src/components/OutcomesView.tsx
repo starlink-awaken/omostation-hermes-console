@@ -25,8 +25,18 @@ import {
   useOutcomesHistory,
   useOutcomesCalibration,
 } from '../api/hooks';
+import {
+  DISCONNECTED_LABEL,
+  OUTCOMES_TAB_LABELS,
+  calibrationBlockDisconnected,
+  countDisplay,
+  feedState,
+  knowledgeFunnelRateDisplay,
+  listPlaceholder,
+  type OutcomesTab,
+} from './outcomesDisplay';
 
-type Tab = 'pending' | 'history' | 'calibration';
+type Tab = OutcomesTab;
 
 function TabButton({
   label,
@@ -84,10 +94,49 @@ function adjudicationIcon(adj: string) {
 export default function OutcomesView() {
   const [activeTab, setActiveTab] = useState<Tab>('pending');
 
-  const { data: summary } = useOutcomesSummary();
-  const { data: pending = [], isLoading: pendingLoading } = useOutcomesPending();
-  const { data: history = [], isLoading: historyLoading } = useOutcomesHistory();
-  const { data: calibration, isLoading: calibrationLoading } = useOutcomesCalibration();
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+  } = useOutcomesSummary();
+  const {
+    data: pending,
+    isLoading: pendingLoading,
+    isError: pendingError,
+  } = useOutcomesPending();
+  const {
+    data: history,
+    isLoading: historyLoading,
+    isError: historyError,
+  } = useOutcomesHistory();
+  const {
+    data: calibration,
+    isLoading: calibrationLoading,
+    isError: calibrationError,
+  } = useOutcomesCalibration();
+
+  const summaryState = feedState({
+    isLoading: summaryLoading,
+    isError: summaryError,
+    hasData: Boolean(summary),
+  });
+  const pendingState = feedState({
+    isLoading: pendingLoading,
+    isError: pendingError,
+    hasData: pending !== undefined,
+  });
+  const historyState = feedState({
+    isLoading: historyLoading,
+    isError: historyError,
+    hasData: history !== undefined,
+  });
+  const calibrationState = feedState({
+    isLoading: calibrationLoading,
+    isError: calibrationError,
+    hasData: Boolean(calibration),
+  });
+  const pendingItems = pending ?? [];
+  const historyItems = history ?? [];
 
   return (
     <div className="antd-page">
@@ -110,29 +159,27 @@ export default function OutcomesView() {
         <div className="antd-card" style={{ padding: 16 }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 13, color: '#888' }}>待裁决</h3>
           <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0 }}>
-            {summary?.pending_count ?? '—'}
+            {countDisplay(summaryState, summary?.pending_count)}
           </p>
         </div>
         <div className="antd-card" style={{ padding: 16 }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 13, color: '#888' }}>已裁决</h3>
           <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0 }}>
-            {summary?.history_count ?? '—'}
+            {countDisplay(summaryState, summary?.history_count)}
           </p>
         </div>
         <div className="antd-card" style={{ padding: 16 }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 13, color: '#888' }}>校准场景</h3>
           <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0 }}>
-            {summary?.calibration_scenes ?? '—'}
+            {countDisplay(summaryState, summary?.calibration_scenes)}
           </p>
         </div>
         <div className="antd-card" style={{ padding: 16, borderLeft: '4px solid #722ed1' }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 13, color: '#888' }}>知识引用率</h3>
           <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0 }}>
-            {summary?.knowledge_funnel?.status === 'live'
-              ? summary.knowledge_funnel.citation_rate !== null
-                ? `${(summary.knowledge_funnel.citation_rate * 100).toFixed(1)}%`
-                : '—'
-              : '未接入'}
+            {summaryState === 'loading'
+              ? '加载中...'
+              : knowledgeFunnelRateDisplay(summary?.knowledge_funnel)}
           </p>
           <p style={{ fontSize: 11, color: '#999', margin: '4px 0 0' }}>
             {summary?.knowledge_funnel?.status === 'live'
@@ -145,20 +192,20 @@ export default function OutcomesView() {
       {/* Tab bar */}
       <div className="antd-tab-bar" style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
         <TabButton
-          label="待裁决队列"
+          label={OUTCOMES_TAB_LABELS.pending}
           icon={Clock}
           active={activeTab === 'pending'}
           onClick={() => setActiveTab('pending')}
-          badge={summary?.pending_count}
+          badge={summaryState === 'live' ? summary?.pending_count : undefined}
         />
         <TabButton
-          label="已裁决历史"
+          label={OUTCOMES_TAB_LABELS.history}
           icon={CheckCircle2}
           active={activeTab === 'history'}
           onClick={() => setActiveTab('history')}
         />
         <TabButton
-          label="校准曲线"
+          label={OUTCOMES_TAB_LABELS.calibration}
           icon={TrendingUp}
           active={activeTab === 'calibration'}
           onClick={() => setActiveTab('calibration')}
@@ -168,11 +215,11 @@ export default function OutcomesView() {
       {/* Pending tab */}
       {activeTab === 'pending' && (
         <div>
-          {pendingLoading ? (
+          {pendingState !== 'live' ? (
             <div className="antd-card" style={{ padding: 24 }}>
-              加载中...
+              {listPlaceholder(pendingState, '暂无待裁决项')}
             </div>
-          ) : pending.length === 0 ? (
+          ) : pendingItems.length === 0 ? (
             <div
               className="antd-card"
               style={{ padding: 32, textAlign: 'center', color: '#888' }}
@@ -184,7 +231,7 @@ export default function OutcomesView() {
               </p>
             </div>
           ) : (
-            pending.map((item, i) => (
+            pendingItems.map((item, i) => (
               <div
                 key={`${item.scene_id}-${item.run_id}-${i}`}
                 className="antd-card"
@@ -217,11 +264,11 @@ export default function OutcomesView() {
       {/* History tab */}
       {activeTab === 'history' && (
         <div>
-          {historyLoading ? (
+          {historyState !== 'live' ? (
             <div className="antd-card" style={{ padding: 24 }}>
-              加载中...
+              {listPlaceholder(historyState, '暂无裁决历史')}
             </div>
-          ) : history.length === 0 ? (
+          ) : historyItems.length === 0 ? (
             <div
               className="antd-card"
               style={{ padding: 32, textAlign: 'center', color: '#888' }}
@@ -230,7 +277,7 @@ export default function OutcomesView() {
               <p>暂无裁决历史</p>
             </div>
           ) : (
-            history.map((item, i) => {
+            historyItems.map((item, i) => {
               const AdjIcon = adjudicationIcon(item.adjudication);
               return (
                 <div
@@ -288,7 +335,7 @@ export default function OutcomesView() {
       {/* Calibration tab */}
       {activeTab === 'calibration' && (
         <div>
-          {calibrationLoading ? (
+          {calibrationState === 'loading' ? (
             <div className="antd-card" style={{ padding: 24 }}>
               加载中...
             </div>
@@ -296,12 +343,12 @@ export default function OutcomesView() {
             <div>
               {/* Per-scene calibration */}
               <h3 style={{ marginBottom: 12 }}>场景校准</h3>
-              {calibration?.scenes.length === 0 ? (
+              {calibrationBlockDisconnected(calibrationState, calibration?.scenes) ? (
                 <div
                   className="antd-card"
                   style={{ padding: 24, textAlign: 'center', color: '#888' }}
                 >
-                  未接入
+                  {DISCONNECTED_LABEL}
                 </div>
               ) : (
                 <div
@@ -372,7 +419,7 @@ export default function OutcomesView() {
                         />
                       </div>
                       <p style={{ fontSize: 11, color: '#666', marginTop: 6 }}>
-                        更新: {scene.updated_at || '未接入'}
+                        更新: {scene.updated_at || DISCONNECTED_LABEL}
                       </p>
                     </div>
                   ))}
@@ -381,12 +428,12 @@ export default function OutcomesView() {
 
               {/* Per-capability calibration */}
               <h3 style={{ marginBottom: 12 }}>能力校准</h3>
-              {calibration?.capabilities.length === 0 ? (
+              {calibrationBlockDisconnected(calibrationState, calibration?.capabilities) ? (
                 <div
                   className="antd-card"
                   style={{ padding: 24, textAlign: 'center', color: '#888' }}
                 >
-                  未接入
+                  {DISCONNECTED_LABEL}
                 </div>
               ) : (
                 <div
@@ -438,7 +485,7 @@ export default function OutcomesView() {
                         </span>
                       </div>
                       <span style={{ fontSize: 11, color: '#666' }}>
-                        样本: {cap.sample_size} · {cap.measured_at || '未接入'}
+                        样本: {cap.sample_size} · {cap.measured_at || DISCONNECTED_LABEL}
                       </span>
                     </div>
                   ))}

@@ -12,6 +12,13 @@
 import React, { useState } from 'react';
 import { GitBranch, Filter, CheckCircle2, XCircle, Clock, Circle } from 'lucide-react';
 import { useJourneysTimeline, type JourneyTimelineItem } from '../api/hooks';
+import {
+  DISCONNECTED_LABEL,
+  countDisplay,
+  feedState,
+  listPlaceholder,
+  ratePercentDisplay,
+} from './outcomesDisplay';
 
 function statusColor(status: string): string {
   const s = status.toLowerCase();
@@ -112,7 +119,7 @@ function TimelineNode({ item }: { item: JourneyTimelineItem }) {
             color: '#666',
           }}
         >
-          <span>{item.started_at || '未接入'}</span>
+          <span>{item.started_at || DISCONNECTED_LABEL}</span>
           {item.actor && <span>{item.actor}</span>}
         </div>
         {item.notes && (
@@ -128,13 +135,19 @@ function TimelineNode({ item }: { item: JourneyTimelineItem }) {
 export default function JourneysTimelineView() {
   const [sceneFilter, setSceneFilter] = useState('');
 
-  const { data, isLoading } = useJourneysTimeline(
+  const { data, isLoading, isError } = useJourneysTimeline(
     sceneFilter ? { scene_id: sceneFilter } : undefined,
   );
 
+  const timelineState = feedState({
+    isLoading,
+    isError,
+    hasData: Boolean(data),
+  });
   const items = data?.items ?? [];
-  const total = data?.total ?? 0;
-  const successRate = data?.success_rate ?? 0;
+  const total = data?.total;
+  const successRate = data?.success_rate;
+  const sourceCount = new Set(items.map((i) => i.source)).size;
 
   const sceneIds = Array.from(
     new Set(items.map((i) => i.scene_id).filter(Boolean)),
@@ -161,7 +174,7 @@ export default function JourneysTimelineView() {
         <div className="antd-card" style={{ padding: 16 }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 13, color: '#888' }}>总旅程</h3>
           <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0 }}>
-            {total || '—'}
+            {countDisplay(timelineState, total)}
           </p>
         </div>
         <div className="antd-card" style={{ padding: 16 }}>
@@ -171,16 +184,25 @@ export default function JourneysTimelineView() {
               fontSize: 28,
               fontWeight: 'bold',
               margin: 0,
-              color: total > 0 ? (successRate >= 0.7 ? '#52c41a' : successRate >= 0.4 ? '#faad14' : '#f5222d') : '#888',
+              color:
+                timelineState === 'live' && (total ?? 0) > 0
+                  ? (successRate ?? 0) >= 0.7
+                    ? '#52c41a'
+                    : (successRate ?? 0) >= 0.4
+                      ? '#faad14'
+                      : '#f5222d'
+                  : '#888',
             }}
           >
-            {total > 0 ? `${(successRate * 100).toFixed(0)}%` : '未接入'}
+            {ratePercentDisplay(timelineState, successRate, {
+              sampleSize: total ?? 0,
+            })}
           </p>
         </div>
         <div className="antd-card" style={{ padding: 16 }}>
           <h3 style={{ margin: '0 0 4px', fontSize: 13, color: '#888' }}>数据源</h3>
           <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0 }}>
-            {new Set(items.map((i) => i.source)).size || '—'}
+            {countDisplay(timelineState, timelineState === 'live' ? sourceCount : undefined)}
           </p>
         </div>
       </div>
@@ -214,9 +236,9 @@ export default function JourneysTimelineView() {
       </div>
 
       {/* Timeline */}
-      {isLoading ? (
+      {timelineState !== 'live' ? (
         <div className="antd-card" style={{ padding: 24 }}>
-          加载中...
+          {listPlaceholder(timelineState, '暂无旅程记录')}
         </div>
       ) : items.length === 0 ? (
         <div
