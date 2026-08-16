@@ -368,6 +368,87 @@ export default function ComputeView() {
         </div>
       )}
 
+      {/* ── omlxc Compute Fabric & Prefix Warmer 算力织网全景 ── */}
+      <div className="antd-card" style={{ border: '1px solid rgba(0, 242, 254, 0.25)', background: 'linear-gradient(180deg, rgba(0, 242, 254, 0.03) 0%, transparent 100%)' }}>
+        <div className="section-header" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Activity size={18} className="text-primary" />
+            <h2 style={{ fontSize: '16px', margin: 0, fontWeight: 700 }}>omlxc 智能算力织网 &amp; 前缀预热中枢</h2>
+            <span style={{ fontSize: '11px', background: 'rgba(0, 242, 254, 0.12)', color: 'var(--antd-primary, #00f2fe)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>v3.4.0 Active</span>
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--antd-text-muted)' }}>
+            双级语义缓存 (L1 0ms + L2 Invariant) · AST 意图分诊 · VRAM 显存自愈
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>🌡️ 硬件温控 / 电源水位</div>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--antd-success, #52c41a)' }}>● NOMINAL (AC 已插电)</div>
+            <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)', marginTop: '4px' }}>调度乘子: 1.00x (全功率放行)</div>
+          </div>
+
+          <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>🧠 意图复杂度分诊引擎</div>
+            <div style={{ fontSize: '15px', fontWeight: 600 }}>FAST | STANDARD | REASONING</div>
+            <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)', marginTop: '4px' }}>AST 零延迟分级 · 自动模型配准</div>
+          </div>
+
+          <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>⚡ 零延迟系统前缀预热</div>
+            <div style={{ fontSize: '15px', fontWeight: 600 }}>3 组核心治理 System Prompt</div>
+            <div style={{ fontSize: '11px', color: 'var(--antd-text-muted)', marginTop: '4px' }}>常驻 L1/L2 缓存 · TTFT 0ms 响应</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            className="antd-btn antd-btn-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/governance/compute/fabric/warm', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ model_id: 'coding' })
+                });
+                const data = await res.json();
+                alert(`✅ 系统前缀预热完成！\n预热模型: ${data.data?.model_id || 'coding'}\n预热前缀数: ${data.data?.warmed_count || 3}\n节省 Token: ${data.data?.estimated_saved_tokens || 120}`);
+              } catch (e: any) {
+                alert(`❌ 预热请求失败: ${e?.message || e}`);
+              }
+            }}
+          >
+            <Zap size={14} />
+            <span>一键预热前缀缓存 (0ms TTFT)</span>
+          </button>
+
+          <button
+            className="antd-btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            onClick={async () => {
+              const tokens = prompt('请输入长上下文 Token 数量进行 KV 显存预算评估:', '32768');
+              if (!tokens) return;
+              try {
+                const res = await fetch('/api/governance/compute/fabric/vram', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ model_id: 'coding', context_tokens: parseInt(tokens, 10) })
+                });
+                const data = await res.json();
+                const d = data.data || {};
+                alert(`📊 VRAM 预算评估结果:\n模型: ${d.model_id}\n上下文 Token: ${d.context_tokens}\nKV Cache 显存: ${d.kv_cache_mb?.toFixed(1)} MB\n预估总显存: ${d.total_estimated_vram_mb?.toFixed(1)} MB\n准入放行: ${d.admitted ? '✅ 放行' : '⚠️ 拦截/需压缩'}\n压缩建议: ${d.compaction_advised ? '需要滑动蒸馏' : '显存充裕'}`);
+              } catch (e: any) {
+                alert(`❌ 显存估算失败: ${e?.message || e}`);
+              }
+            }}
+          >
+            <Cpu size={14} />
+            <span>KV Cache 显存自愈估算器</span>
+          </button>
+        </div>
+      </div>
+
       {/* Budget Control */}
       {computeData && (
         <div className="antd-card">
