@@ -446,6 +446,36 @@ export default function ComputeView() {
             <Cpu size={14} />
             <span>KV Cache 显存自愈估算器</span>
           </button>
+
+          <button
+            className="antd-btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            onClick={async () => {
+              const tokens = prompt('请输入当前会话 Token 长度 (例如 32768):', '32768');
+              if (!tokens) return;
+              const freeVram = prompt('请输入节点空闲显存 (MB, 例如 4096):', '4096');
+              if (!freeVram) return;
+              try {
+                const res = await fetch('/api/governance/compute/fabric/compact', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    model_id: 'coding',
+                    tokens: parseInt(tokens, 10),
+                    available_mb: parseFloat(freeVram)
+                  })
+                });
+                const data = await res.json();
+                const d = data.data || {};
+                alert(`🧬 上下文滑动蒸馏与显存自愈评估:\n模型: ${d.model_id}\n原始 Token: ${d.original_tokens}\n压缩后 Token: ${d.compacted_tokens}\n裁剪 Token: ${d.pruned_tokens} (压缩率 ${(d.compression_ratio * 100).toFixed(1)}%)\n自愈判定: ${d.compaction_advised ? '⚠️ 触发滑动蒸馏' : '✅ 显存充裕无需压缩'}\n摘要预览: ${d.distilled_summary || '保留完整多轮对话'}`);
+              } catch (e: any) {
+                alert(`❌ 蒸馏压缩模拟失败: ${e?.message || e}`);
+              }
+            }}
+          >
+            <Activity size={14} />
+            <span>上下文滑动蒸馏模拟器</span>
+          </button>
         </div>
       </div>
 
