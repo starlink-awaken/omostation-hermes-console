@@ -409,7 +409,7 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
       .sort((left, right) => {
         const statusDelta = left.portfolio.score - right.portfolio.score;
         if (statusDelta !== 0) return statusDelta;
-        return right.triage_commands.length - left.triage_commands.length;
+        return (right.triage_commands?.length ?? 0) - (left.triage_commands?.length ?? 0);
       });
   }, [activeUsagePageIds, activeUsagePath, systemMap]);
 
@@ -495,8 +495,8 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
         operatorActions: item.operator_actions || [],
         operatorActionDetails: item.operator_action_details || [],
         nextAction: item.next_action,
-        traceabilityStatus: item.traceability_status || (item.roadmap_items.length > 0 ? 'tracked' : 'untracked'),
-        traceabilityNextAction: item.traceability_next_action || (item.roadmap_items.length > 0 ? '保持页面路线图与验收项同步。' : '补一条页面路线图或验收项，记录下一步能力建设。'),
+        traceabilityStatus: item.traceability_status || ((item.roadmap_items?.length ?? 0) > 0 ? 'tracked' : 'untracked'),
+        traceabilityNextAction: item.traceability_next_action || ((item.roadmap_items?.length ?? 0) > 0 ? '保持页面路线图与验收项同步。' : '补一条页面路线图或验收项，记录下一步能力建设。'),
         roadmapStatus: item.roadmap_status || (item.roadmap_items.some((id) => roadmapById.get(id)?.status === 'shipped') ? 'shipped' : 'planned'),
       }));
     }
@@ -511,7 +511,7 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
       );
       const roadmapItems = systemMap.roadmap.items.filter((item) => item.cockpit_page === page.id);
       const actions = projects.reduce(
-        (total, project) => total + project.actions.length + project.triage_commands.length,
+        (total, project) => total + (project.actions?.length ?? 0) + (project.triage_commands?.length ?? 0),
         0,
       );
       const score =
@@ -647,7 +647,7 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
   const selectedFeatureSignals = useMemo(() => {
     if (!selectedFeatureDomain) return [];
     const signals: { id: string; title: string; detail: string }[] = [];
-    if (selectedFeatureDomain.providers.length === 0) {
+    if ((selectedFeatureDomain.providers?.length ?? 0) === 0) {
       signals.unshift({
         id: 'providers',
         title: '提供方未登记',
@@ -874,7 +874,7 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
         nextAction: activeUsagePath.steps[0]
           ? `先从"${activeUsagePath.steps[0]}"开始，顺着路径把页面、清单、能力域和草稿重新串起来。`
           : '先把这条路径重新挂回页面、清单和任务承接。',
-        evidence: `覆盖页 ${activeUsagePath.pages.length} · 清单 ${activeUsagePlaybooks.length} · 草稿 ${activeUsageDrafts.length}`,
+        evidence: `覆盖页 ${activeUsagePath.pages?.length ?? 0} · 清单 ${activeUsagePlaybooks.length} · 草稿 ${activeUsageDrafts.length}`,
         statusTone: usageMissingSignals === 0 ? 'online' : usageMissingSignals <= 2 ? 'degraded' : 'offline',
         statusLabel: usageMissingSignals === 0 ? '路径成型' : usageMissingSignals <= 2 ? '可走待补' : '断链较多',
         primaryTarget: { tab: 'SystemMap', usagePathId: activeUsagePath.id },
@@ -908,9 +908,9 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
         laneLabel: `能力域 · ${selectedFeatureDomain.coverage === 'native' ? '原生' : selectedFeatureDomain.coverage}`,
         summary: selectedFeatureDomain.english || 'Capability Domain',
         nextAction: selectedFeaturePageMaturity?.nextAction || '继续补页面、路径、清单和路线图之间的能力映射。',
-        evidence: `提供方 ${selectedFeatureDomain.providers.length} · 能力项 ${selectedFeatureDomain.capability_items.length} · 项目 ${selectedFeatureProjects.length}`,
-        statusTone: selectedFeatureDomain.coverage === 'native' ? 'online' : selectedFeatureDomain.providers.length > 0 ? 'degraded' : 'offline',
-        statusLabel: selectedFeatureDomain.coverage === 'native' ? '映射成型' : selectedFeatureDomain.providers.length > 0 ? '映射待补' : '待建能力链',
+        evidence: `提供方 ${selectedFeatureDomain.providers?.length ?? 0} · 能力项 ${selectedFeatureDomain.capability_items?.length ?? 0} · 项目 ${selectedFeatureProjects.length}`,
+        statusTone: selectedFeatureDomain.coverage === 'native' ? 'online' : (selectedFeatureDomain.providers?.length ?? 0) > 0 ? 'degraded' : 'offline',
+        statusLabel: selectedFeatureDomain.coverage === 'native' ? '映射成型' : (selectedFeatureDomain.providers?.length ?? 0) > 0 ? '映射待补' : '待建能力链',
         primaryTarget: { tab: 'SystemMap', featureDomainId: selectedFeatureDomain.id },
         primaryLabel: '打开能力域',
         secondaryTarget: { tab: 'TaskCenter', taskQuery: selectedFeatureDomain.cockpit_page },
@@ -926,7 +926,7 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
         laneLabel: `项目组合 · ${selectedProject.portfolio.status === 'healthy' ? '健康' : selectedProject.portfolio.status === 'watch' ? '观察' : selectedProject.portfolio.status === 'at_risk' ? '风险' : '阻塞'}`,
         summary: selectedProject.portfolio.primary_gap || selectedProject.role || selectedProject.stack,
         nextAction: selectedProject.portfolio.next_action || selectedProject.operational.next_action,
-        evidence: `验证 ${verification.status} · triage ${selectedProject.triage_commands.length} · workflow ${selectedProject.workflow.latest_status}`,
+        evidence: `验证 ${verification.status} · triage ${selectedProject.triage_commands?.length ?? 0} · workflow ${selectedProject.workflow.latest_status}`,
         statusTone: selectedProject.portfolio.status === 'healthy'
           ? 'online'
           : selectedProject.portfolio.status === 'at_risk' || selectedProject.portfolio.status === 'watch'
@@ -1096,6 +1096,71 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
       priorityItems,
     };
   }, [draftTasks, pageMaturity, projectsById, systemMap]);
+
+  // Return defaults when systemMap is null (loading/error state).
+  // NOTE: This guard MUST come after all useMemo hooks above to preserve
+  // hook call order across renders (Rules of Hooks).
+  if (!systemMap) {
+    return {
+      pagesById: new Map(),
+      projectsById: new Map(),
+      projectLayerOptions: [],
+      projectPageOptions: [],
+      pageGroups: [],
+      projectFocusOptions: [],
+      coverageFilterOptions: [],
+      coverageDimensions: [],
+      activeCoverage: undefined,
+      activePortfolioBucket: null,
+      projectEntryRows: [],
+      projectEntrySummary: { mapped: 0, drafts: 0, blocked: 0 },
+      activeRepairDimension: null,
+      dimensionRepairRows: [],
+      filteredProjects: [],
+      coverageMatrixRows: [],
+      filteredProjectIds: new Set(),
+      selectedVisibleProjectIds: [],
+      filteredTriageQueues: [],
+      filteredTriageCommandCount: 0,
+      runtimeProbeSummary: { runtimeProjects: 0, stopped: 0, pendingApproval: 0, approved: 0, commands: 0 },
+      selectedProject: null,
+      activeUsagePath: null,
+      activeUsagePageIds: new Set(),
+      activeUsagePlaybooks: [],
+      activeUsageDomains: [],
+      activeUsageRoadmap: [],
+      activeUsageProjects: [],
+      activeUsagePlaybookIds: new Set(),
+      activeUsageTouchesDomainApps: false,
+      activeUsageTriageCommands: [],
+      activeUsageDrafts: [],
+      selectedGap: null,
+      pageMaturity: [],
+      pageMaturitySummary: { ready: 0, watch: 0, gap: 0, tracked: 0, untracked: 0, roadmapShipped: 0 },
+      visiblePageMaturity: [],
+      selectedPageMaturity: null,
+      selectedPageGapSignals: [],
+      selectedPagePlaybooks: [],
+      selectedPageDrafts: [],
+      selectedFeatureDomain: null,
+      selectedFeaturePage: null,
+      selectedFeatureProjects: [],
+      selectedFeatureUsagePaths: [],
+      selectedFeaturePlaybooks: [],
+      selectedFeatureRoadmapItems: [],
+      selectedFeaturePageMaturity: null,
+      selectedFeatureDrafts: [],
+      selectedFeatureSignals: [],
+      gapClosureRows: [],
+      selectedGapClosureRow: null,
+      selectedProjectUsagePaths: [],
+      selectedProjectPlaybooks: [],
+      selectedProjectDrafts: [],
+      systemMapWorkbenchRows: [],
+      capabilityBuildBacklog: { pagesWithoutUsage: [], pagesWithoutDomain: [], plannedRoadmapItems: [], gapItems: [], domainAttention: [], actionableDrafts: [] },
+      buildControlTower: { pageItems: [], domainContractItems: [], verificationItems: [], priorityItems: [] },
+    };
+  }
 
   return {
     pagesById,

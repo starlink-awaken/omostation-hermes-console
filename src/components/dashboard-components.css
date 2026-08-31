@@ -160,6 +160,59 @@
   to { transform: rotate(360deg); }
 }
 
+/* Fade-in animation (used across views) */
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* System Map page layout */
+.system-map-page {
+  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.system-map-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: var(--antd-error);
+  gap: 12px;
+}
+
+.system-map-action-feedback {
+  padding: 12px 16px;
+  border-radius: var(--antd-radius-md);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.system-map-action-feedback.error {
+  background: var(--antd-error-bg);
+  color: var(--antd-error);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.system-map-action-feedback.success {
+  background: var(--antd-success-bg);
+  color: var(--antd-success);
+  border: 1px solid rgba(5, 243, 162, 0.3);
+}
+
+/* Capability Explorer */
+.capability-explorer {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
 /* Knowledge Hub Sub-Tabs System */
 .knowledge-tabs-container {
   display: flex;

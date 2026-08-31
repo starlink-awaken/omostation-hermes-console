@@ -9,6 +9,7 @@ import {
   Copy,
   ExternalLink,
   Layers,
+  Map as MapIcon,
   Network,
   Route,
   Search,

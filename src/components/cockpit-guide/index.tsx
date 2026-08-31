@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { ArrowRight, Compass, LayoutDashboard, Map as MapIcon, Route, Sparkles } from 'lucide-react';
+import '../Dashboard.css';
 import ActionSurfacePanel from '../ActionSurfacePanel';
 import { COCKPIT_WORK_MODES } from '../cockpitWorkModes';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from '../cockpitNavigation';
-import { useGuideData } from './useGuideData';
+import { useGuideData, GUIDE_GROUPS } from './useGuideData';
 import { GuideUsagePath } from './GuideUsagePath';
 import { GuideTaskList } from './GuideTaskList';
 import { GuidePlaybook } from './GuidePlaybook';
@@ -131,7 +132,6 @@ export default function CockpitGuideView({
     setGuideRetryToken,
     promoteFeaturedDraft,
     staticPageCount,
-    GUIDE_GROUPS,
     GUIDE_PATHS,
     GUIDE_PAGES_BY_ID,
   } = useGuideData();

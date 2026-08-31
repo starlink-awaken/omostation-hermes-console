@@ -60,7 +60,7 @@ const GUIDE_GROUP_BLUEPRINTS: GuideGroupBlueprint[] = [
   },
 ];
 
-const GUIDE_GROUPS: GuideGroup[] = GUIDE_GROUP_BLUEPRINTS.map((group) => ({
+export const GUIDE_GROUPS: GuideGroup[] = GUIDE_GROUP_BLUEPRINTS.map((group) => ({
   ...group,
   pages: COCKPIT_PAGE_REGISTRY.filter((page) => group.registryGroups.includes(page.group)),
 }));

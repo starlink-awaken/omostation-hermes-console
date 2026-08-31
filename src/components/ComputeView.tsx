@@ -341,22 +341,22 @@ export default function ComputeView() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div className="antd-card" style={{ textAlign: 'center' }}>
             <Cpu size={24} className="text-primary" style={{ marginBottom: '8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>{computeData.total_calls.toLocaleString()}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{(computeData.total_calls ?? 0).toLocaleString()}</div>
             <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>总调用次数</div>
           </div>
           <div className="antd-card" style={{ textAlign: 'center' }}>
             <Zap size={24} className="text-warning" style={{ marginBottom: '8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>{computeData.total_tokens.toLocaleString()}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{(computeData.total_tokens ?? 0).toLocaleString()}</div>
             <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>总 Token 数</div>
           </div>
           <div className="antd-card" style={{ textAlign: 'center' }}>
             <DollarSign size={24} className="text-success" style={{ marginBottom: '8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>${computeData.total_cost_usd.toFixed(4)}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>${(computeData.total_cost_usd ?? 0).toFixed(4)}</div>
             <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>本地成本</div>
           </div>
           <div className="antd-card" style={{ textAlign: 'center' }}>
             <TrendingUp size={24} className="text-info" style={{ marginBottom: '8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>${computeData.total_saved_usd.toFixed(4)}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>${(computeData.total_saved_usd ?? 0).toFixed(4)}</div>
             <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>节省成本</div>
           </div>
         </div>
@@ -509,12 +509,12 @@ export default function ComputeView() {
                 {computeData.nodes.map((node) => (
                   <tr key={node.node_id} style={{ borderBottom: '1px solid var(--antd-border-color)' }}>
                     <td style={{ padding: '8px' }}>{node.node_label}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{node.calls.toLocaleString()}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{node.tokens.toLocaleString()}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>${node.estimated_cost_usd.toFixed(4)}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>${node.equivalent_cloud_cost_usd.toFixed(4)}</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>{(node.calls ?? 0).toLocaleString()}</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>{(node.tokens ?? 0).toLocaleString()}</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>${(node.estimated_cost_usd ?? 0).toFixed(4)}</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>${(node.equivalent_cloud_cost_usd ?? 0).toFixed(4)}</td>
                     <td style={{ padding: '8px', textAlign: 'right', color: 'var(--antd-success)' }}>
-                      ${node.saved_vs_cloud_usd.toFixed(4)}
+                      ${(node.saved_vs_cloud_usd ?? 0).toFixed(4)}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right' }}>
                       {node.latency_ms_avg ? `${node.latency_ms_avg.toFixed(0)}ms` : '-'}

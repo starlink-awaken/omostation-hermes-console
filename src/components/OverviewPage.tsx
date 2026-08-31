@@ -30,7 +30,15 @@ function useServicesQuery() {
       if (!response.ok) {
         throw new Error(response.error || 'Failed to fetch services');
       }
-      return response.data ?? [];
+      // 兼容两种响应形态: 直接数组 或 { services: [...] } 包装对象
+      const data = response.data;
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (data && typeof data === 'object' && Array.isArray((data as Record<string, unknown>).services)) {
+        return (data as Record<string, unknown>).services as RawService[];
+      }
+      return [];
     },
     staleTime: 5000,
     refetchInterval: 5000,
@@ -39,15 +47,18 @@ function useServicesQuery() {
 }
 
 export default function OverviewPage() {
-  const { data: rawServices, isLoading } = useServicesQuery();
+  const { data: rawServices, isLoading, error: servicesError } = useServicesQuery();
 
-  const services: Service[] = (rawServices ?? []).map((item) => ({
-    id: item.name,
-    name: item.name,
-    status: item.circuit === '断路' ? 'offline' : item.circuit === '半开' ? 'degraded' : 'online',
-    uptime: item.uptime || 'N/A',
-    latency: item.latency || '-',
-  }));
+  // API may return array or error object
+  const servicesArray: Service[] = Array.isArray(rawServices)
+    ? rawServices.map((item) => ({
+        id: item.name,
+        name: item.name,
+        status: item.circuit === '断路' ? 'offline' : item.circuit === '半开' ? 'degraded' : 'online',
+        uptime: item.uptime || 'N/A',
+        latency: item.latency || '-',
+      }))
+    : [];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -105,7 +116,7 @@ export default function OverviewPage() {
                 </tr>
               </thead>
               <tbody>
-                {services.map(svc => (
+                {servicesArray.map(svc => (
                   <tr key={svc.id} className="service-row">
                     <td className="font-medium" style={{ fontWeight: 500 }}>{svc.name}</td>
                     <td>

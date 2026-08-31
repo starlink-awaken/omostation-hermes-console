@@ -180,7 +180,7 @@ export default function KnowledgeExecutionWorkbench({
   // Derive typed data from hooks
   const tasks: TaskItem[] = (tasksData?.items as unknown as TaskItem[]) || [];
   const workflows: WorkflowPayload = (workflowsData as unknown as WorkflowPayload) || { workflows: [], total: 0 };
-  const skills: SkillItem[] = (skillsData as unknown as SkillItem[]) || [];
+  const skills: SkillItem[] = ((skillsData as unknown as { skills?: SkillItem[] })?.skills) || [];
   const pipelineList: string[] = (pipelinesData as unknown as string[]) || [];
   const systemMap = systemMapData as unknown as SystemMapLite || {};
 
