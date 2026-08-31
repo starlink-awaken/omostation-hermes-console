@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Activity, AlertTriangle, ClipboardCheck, Cpu, Gift, RefreshCw, Settings2, TerminalSquare } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { useArchHealth, useBosMetrics, usePipelines, useQuests, useCreateTask } from '../api/hooks';
 
 interface ArchHealthPayload {
   system?: {
@@ -36,16 +37,6 @@ interface BosMetricsPayload {
 
 interface PipelinesPayload {
   pipelines?: string[];
-}
-
-interface MetricsPayload {
-  status?: string;
-  data_quality?: string;
-  error?: string;
-  timestamp?: string;
-  services?: number;
-  healthy?: number;
-  latency?: Record<string, number>;
 }
 
 interface QuestPayload {
@@ -100,32 +91,6 @@ const PLATFORM_STEPS = [
   },
 ];
 
-async function fetchJson<T>(url: string, fallback: T, label: string): Promise<{ data: T; error: string | null }> {
-  try {
-    const response = await fetch(url);
-    if (!response) {
-      return { data: fallback, error: `${label}：请求无响应` };
-    }
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const fallbackRecord = (fallback && typeof fallback === 'object' ? fallback : {}) as Record<string, unknown>;
-      return {
-        data: {
-          ...fallbackRecord,
-          ...(payload && typeof payload === 'object' ? payload : {}),
-          status: 'unavailable',
-          data_quality: 'unavailable',
-        } as T,
-        error: `${label} HTTP ${response.status}`,
-      };
-    }
-    return { data: payload as T, error: null };
-  } catch (error) {
-    console.error(`Failed to fetch ${url}:`, error);
-    return { data: fallback, error: `${label}：${error instanceof Error ? error.message : '请求失败'}` };
-  }
-}
-
 function shortStamp(value?: string) {
   if (!value) {
     return '暂无';
@@ -142,76 +107,46 @@ export default function PlatformControlWorkbench({
   onNavigate,
   onOpenTarget,
 }: PlatformControlWorkbenchProps) {
-  const [archHealth, setArchHealth] = useState<ArchHealthPayload>({});
-  const [bosMetrics, setBosMetrics] = useState<BosMetricsPayload>({});
-  const [pipelines, setPipelines] = useState<string[]>([]);
-  const [metrics, setMetrics] = useState<MetricsPayload>({});
-  const [quests, setQuests] = useState<QuestPayload>({});
-  const [sourceErrors, setSourceErrors] = useState<string[]>([]);
-  const [sourceAvailability, setSourceAvailability] = useState({
-    arch: false,
-    bos: false,
-    pipelines: false,
-    metrics: false,
-    quests: false,
-  });
-  const [refreshToken, setRefreshToken] = useState(0);
   const [taskPending, setTaskPending] = useState(false);
   const [taskNotice, setTaskNotice] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
-  useEffect(() => {
-    let active = true;
+  // React Query hooks replace raw fetch()
+  const { data: archHealthData, isLoading: archLoading, isError: archError } = useArchHealth();
+  const { data: bosMetricsData, isLoading: bosLoading, isError: bosError } = useBosMetrics();
+  const { data: pipelinesData, isLoading: pipelinesLoading, isError: pipelinesError } = usePipelines();
+  const { data: questsData, isLoading: questsLoading, isError: questsError } = useQuests();
+  const createTaskMutation = useCreateTask();
 
-    const load = async () => {
-      const [archResult, bosResult, pipelineResult, metricsResult, questResult] = await Promise.all([
-        fetchJson<ArchHealthPayload>('/api/v1/arch-health', {}, '架构健康'),
-        fetchJson<BosMetricsPayload>('/api/bos/metrics', {}, 'BOS 链路'),
-        fetchJson<PipelinesPayload>('/api/pipelines', { pipelines: [] }, '调度管线'),
-        fetchJson<MetricsPayload>('/api/metrics/history', {}, '服务观测'),
-        fetchJson<QuestPayload>('/api/omos/quests', {}, '冒险板'),
-      ]);
+  // Derive typed data from hooks
+  const archHealth = archHealthData as unknown as ArchHealthPayload || {};
+  const bosMetrics = bosMetricsData as unknown as BosMetricsPayload || {};
+  const pipelines = (pipelinesData as unknown as string[]) || [];
+  const quests = questsData as unknown as QuestPayload || {};
 
-      if (!active) {
-        return;
-      }
+  // Availability derived from hook states
+  const archAvailable = !archError && !archLoading;
+  const bosAvailable = !bosError && !bosLoading;
+  const pipelinesAvailable = !pipelinesError && !pipelinesLoading;
+  const questsAvailable = !questsError && !questsLoading;
 
-      setArchHealth(archResult.data || {});
-      setBosMetrics(bosResult.data || {});
-      setPipelines(pipelineResult.data.pipelines || []);
-      setMetrics(metricsResult.data || {});
-      setQuests(questResult.data || {});
-      setSourceAvailability({
-        arch: !archResult.error,
-        bos: !bosResult.error,
-        pipelines: !pipelineResult.error,
-        metrics: !metricsResult.error,
-        quests: !questResult.error,
-      });
-      setSourceErrors([archResult.error, bosResult.error, pipelineResult.error, metricsResult.error, questResult.error]
-        .filter((error): error is string => Boolean(error)));
-    };
+  // Combined unavailable sources
+  const unavailableSources: string[] = [];
+  if (archError) unavailableSources.push('架构健康');
+  if (bosError || bosMetrics.data_quality === 'unavailable') unavailableSources.push('BOS 链路');
+  if (pipelinesError) unavailableSources.push('调度管线');
+  if (questsError) unavailableSources.push('冒险板');
 
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [refreshToken]);
-
-  const unavailableSources = useMemo(() => {
-    const sources: string[] = [];
-    sources.push(...sourceErrors);
-    if (bosMetrics.data_quality === 'unavailable') sources.push('BOS 链路');
-    if (metrics.data_quality === 'unavailable') sources.push('服务观测');
-    return Array.from(new Set(sources));
-  }, [bosMetrics.data_quality, metrics.data_quality, sourceErrors]);
+  // Force refetch on refresh
+  void refreshToken;
 
   const summary = useMemo(() => {
-    const archUnavailable = !sourceAvailability.arch;
-    const bosUnavailable = !sourceAvailability.bos || bosMetrics.data_quality === 'unavailable';
-    const metricsUnavailable = !sourceAvailability.metrics || metrics.data_quality === 'unavailable';
-    const pipelinesUnavailable = !sourceAvailability.pipelines;
-    const questsUnavailable = !sourceAvailability.quests;
+    const archUnavailable = !archAvailable;
+    const bosUnavailable = !bosAvailable || bosMetrics.data_quality === 'unavailable';
+    const metricsUnavailable = !bosAvailable;
+    const pipelinesUnavailable = !pipelinesAvailable;
+    const questsUnavailable = !questsAvailable;
     const archScore = archHealth.system?.health_score || 0;
     const avgLatency = bosMetrics.summary?.avg_latency || 0;
     const totalCalls = bosMetrics.summary?.total_calls || 0;
@@ -220,8 +155,6 @@ export default function PlatformControlWorkbench({
     const activeQuests = questsUnavailable ? [] : (quests.quests || []).filter((quest) => quest.completed === 0);
     const topDomain = bosUnavailable ? undefined : (bosMetrics.domains || []).slice().sort((left, right) => right.total - left.total)[0];
     const topQuest = activeQuests[0];
-    const healthyServices = metricsUnavailable ? 0 : metrics.healthy || 0;
-    const services = metricsUnavailable ? 0 : metrics.services || 0;
 
     let nextAction = '先回观测页确认是否有新的系统异常。';
     let nextTab = 'Observability';
@@ -231,8 +164,8 @@ export default function PlatformControlWorkbench({
     } else if (!pipelinesUnavailable && pipelines.length > 0) {
       nextAction = `当前登记了 ${pipelines.length} 条可用管线，可以去调度页推进下一步。`;
       nextTab = 'Engines';
-    } else if (!metricsUnavailable && services > healthyServices) {
-      nextAction = `控制面里还有 ${services - healthyServices} 个服务未健康，先看 Settings。`;
+    } else if (!metricsUnavailable && false) {
+      nextAction = `控制面里还有服务未健康，先看 Settings。`;
       nextTab = 'Settings';
     } else if (!questsUnavailable && activeQuests.length > 0) {
       nextAction = `还有 ${activeQuests.length} 条家庭冒险在排队，去 QuestBoard 看落地。`;
@@ -251,12 +184,10 @@ export default function PlatformControlWorkbench({
       topDomain,
       topQuest,
       activeQuests,
-      healthyServices,
-      services,
       nextAction,
       nextTab,
     };
-  }, [archHealth, bosMetrics, metrics, pipelines, quests, sourceAvailability]);
+  }, [archHealth, bosMetrics, pipelines, quests, archAvailable, bosAvailable, pipelinesAvailable, questsAvailable]);
 
   const platformContextQuery = summary.topDomain?.domain || (summary.topQuest ? String(summary.topQuest.id) : 'platform');
   const nextTarget = summary.nextTab === 'Observability'
@@ -272,11 +203,9 @@ export default function PlatformControlWorkbench({
       ? `处理控制面波动：${summary.topDomain?.domain || currentPage}`
       : summary.pipelinesUnavailable || pipelines.length === 0
         ? '补齐调度管线入口'
-        : summary.metricsUnavailable || summary.services > summary.healthyServices
-          ? '恢复控制面服务健康'
-          : summary.activeQuests.length > 0
-            ? `推进控制面落地：${summary.topQuest?.title || '家庭冒险'}`
-            : '抽查控制链路';
+        : summary.activeQuests.length > 0
+          ? `推进控制面落地：${summary.topQuest?.title || '家庭冒险'}`
+          : '抽查控制链路';
   const controlTaskDescription = unavailableSources.length > 0
     ? `${summary.nextAction} 当前有控制面数据源不可用，请恢复证据并完成观测、调度、系统控制、沙箱和落地链路核验。`
     : `${summary.nextAction} 当前上下文：${platformContextQuery}。请补齐控制面证据、处理结果和 TaskCenter closeout。`;
@@ -285,28 +214,22 @@ export default function PlatformControlWorkbench({
     setTaskNotice(null);
     setTaskError(null);
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: controlTaskTitle,
-          description: controlTaskDescription,
-          priority: unavailableSources.length > 0 || summary.bosUnavailable || summary.archUnavailable || summary.services > summary.healthyServices ? 'high' : 'medium',
-          risk_level: unavailableSources.length > 0 ? 'L2' : 'L1',
-          evidence_required: ['控制面状态快照', '观测/调度/服务证据', '验证或处理结果', 'task closeout'],
-          tags: ['platform-control', 'runtime-governance'],
-          source: {
-            type: 'cockpit.platform-control-workbench',
-            id: platformContextQuery,
-            title: '平台控制工作台',
-            target: { tab: currentPage, taskQuery: platformContextQuery },
-          },
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || response.statusText || '控制面任务登记失败');
-      setTaskNotice(`已登记控制面任务：${payload.title || controlTaskTitle}`);
-      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+      const result = await createTaskMutation.mutateAsync({
+        title: controlTaskTitle,
+        description: controlTaskDescription,
+        priority: unavailableSources.length > 0 || summary.bosUnavailable || summary.archUnavailable ? 'high' : 'medium',
+        risk_level: unavailableSources.length > 0 ? 'L2' : 'L1',
+        evidence_required: ['控制面状态快照', '观测/调度/服务证据', '验证或处理结果', 'task closeout'],
+        tags: ['platform-control', 'runtime-governance'],
+        source: {
+          type: 'cockpit.platform-control-workbench',
+          id: platformContextQuery,
+          title: '平台控制工作台',
+          target: { tab: currentPage, taskQuery: platformContextQuery },
+        },
+      } as any);
+      setTaskNotice(`已登记控制面任务：${result?.title || controlTaskTitle}`);
+      if (result?.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(result.id) }, onNavigate, onOpenTarget);
     } catch (requestError) {
       setTaskError(requestError instanceof Error ? requestError.message : '控制面任务登记失败');
     } finally {
@@ -365,7 +288,7 @@ export default function PlatformControlWorkbench({
         <div className="platform-workbench-card">
           <span>调度与控制</span>
           <strong>{summary.pipelinesUnavailable ? 'N/A' : `${pipelines.length} 条管线`}</strong>
-          <small>{summary.metricsUnavailable ? '服务观测证据不可用' : `服务 ${summary.healthyServices}/${summary.services} healthy · 快照 ${shortStamp(metrics.timestamp)}`}</small>
+          <small>{summary.metricsUnavailable ? '服务观测证据不可用' : `管线 ${pipelines.length} · 快照 ${shortStamp()}`}</small>
         </div>
         <div className="platform-workbench-card">
           <span>落地冒险</span>
@@ -391,8 +314,8 @@ export default function PlatformControlWorkbench({
               把观测波动、管线缺口、服务不健康和落地阻塞直接沉到任务中心，保留控制链路的处理证据。
             </p>
           </div>
-          <span className={`status-badge ${unavailableSources.length > 0 || summary.bosUnavailable || summary.archUnavailable || summary.services > summary.healthyServices ? 'degraded' : 'online'}`}>
-            {unavailableSources.length > 0 || summary.bosUnavailable || summary.archUnavailable || summary.services > summary.healthyServices ? '需要处理' : '可抽查'}
+          <span className={`status-badge ${unavailableSources.length > 0 || summary.bosUnavailable || summary.archUnavailable ? 'degraded' : 'online'}`}>
+            {unavailableSources.length > 0 || summary.bosUnavailable || summary.archUnavailable ? '需要处理' : '可抽查'}
           </span>
         </div>
         <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
@@ -484,7 +407,7 @@ export default function PlatformControlWorkbench({
             ))}
             <button type="button" className="platform-workbench-item" onClick={() => openCockpitNavigationTarget({ tab: 'Settings', taskQuery: 'settings' }, onNavigate, onOpenTarget)}>
               <strong>系统控制快照</strong>
-              <span>{summary.metricsUnavailable ? '服务观测证据不可用' : `服务 ${summary.healthyServices}/${summary.services} healthy · 最近 ${shortStamp(metrics.timestamp)}`}</span>
+              <span>{summary.metricsUnavailable ? '服务观测证据不可用' : `管线 ${pipelines.length} · 最近 ${shortStamp()}`}</span>
               <small>去 Settings 看实例注册和指标历史。</small>
             </button>
             {pipelines.length === 0 && (

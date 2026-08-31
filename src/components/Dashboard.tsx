@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import {
   Activity,
@@ -6,6 +6,32 @@ import {
   Settings,
   Command,
   Zap,
+  LayoutDashboard,
+  Compass,
+  Network,
+  Cpu,
+  Globe,
+  Database,
+  Briefcase,
+  FileText,
+  Brain,
+  ArrowRight,
+  BookOpen,
+  GitCommit,
+  Bell,
+  Heart,
+  BarChart3,
+  ClipboardList,
+  Terminal,
+  Trophy,
+  Inbox,
+  Target,
+  GitBranch,
+  Shield,
+  Server,
+  MonitorCog,
+  ShieldCheck,
+  Layers,
 } from 'lucide-react';
 import { ROUTES, getRouteById, getRouteByPath } from '../routes';
 import Breadcrumb from './common/Breadcrumb';
@@ -13,6 +39,8 @@ import { RouteErrorBoundary } from './common/RouteErrorBoundary';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
 import QuickActionsPanel, { useQuickActions } from './common/QuickActionsPanel';
 import { useKeyboardShortcuts } from './common/CommandPalette';
+import UserMenu from './common/UserMenu';
+import { useCockpitStore } from '../store';
 import './Dashboard.css';
 
 // Lazy-loaded view components
@@ -50,29 +78,56 @@ const SandboxTerminal = React.lazy(() => import('./SandboxTerminal'));
 const SettingsView = React.lazy(() => import('./SettingsView'));
 const OutcomesView = React.lazy(() => import('./OutcomesView'));
 const JourneysTimelineView = React.lazy(() => import('./JourneysTimelineView'));
+const CapabilityExplorer = React.lazy(() => import('./CapabilityExplorer'));
+const KnowledgeActionView = React.lazy(() => import('./KnowledgeActionView'));
+const DecisionInboxView = React.lazy(() => import('./DecisionInboxView'));
+const PilotReviewView = React.lazy(() => import('./PilotReviewView'));
+const DeliveryJourneyView = React.lazy(() => import('./DeliveryJourneyView'));
+const WorkflowMeshOperationsView = React.lazy(() => import('./WorkflowMeshOperationsView'));
+const SwarmDashboard = React.lazy(() => import('./SwarmDashboard'));
+const DigitalBrainWorkplaceView = React.lazy(() => import('./DigitalBrainWorkplaceView'));
+const EcosWorkflowWorkbench = React.lazy(() => import('./EcosWorkflowWorkbench'));
+const GovernanceDomainWorkbench = React.lazy(() => import('./GovernanceDomainWorkbench'));
+const InfrastructureOpsWorkbench = React.lazy(() => import('./InfrastructureOpsWorkbench'));
+const KnowledgeExecutionWorkbench = React.lazy(() => import('./KnowledgeExecutionWorkbench'));
+const KOSWorkbench = React.lazy(() => import('./KOSWorkbench'));
+const MemoryInjector = React.lazy(() => import('./MemoryInjector'));
+const PlatformControlWorkbench = React.lazy(() => import('./PlatformControlWorkbench'));
+const RuntimeOpsWorkbench = React.lazy(() => import('./RuntimeOpsWorkbench'));
+const SystemAssuranceWorkbench = React.lazy(() => import('./SystemAssuranceWorkbench'));
 
 // Icon mapping for dynamic sidebar generation
 const ICON_MAP: Record<string, React.ComponentType<{ size: number; 'aria-hidden'?: boolean; className?: string }>> = {
-  LayoutDashboard: (props) => <Activity {...props} />,
-  Globe: (props) => <Activity {...props} />,
-  Network: (props) => <Activity {...props} />,
-  Cpu: (props) => <Activity {...props} />,
-  Database: (props) => <Activity {...props} />,
-  Briefcase: (props) => <Activity {...props} />,
-  FileText: (props) => <Activity {...props} />,
-  Brain: (props) => <Activity {...props} />,
-  BookOpen: (props) => <Activity {...props} />,
-  GitCommit: (props) => <Activity {...props} />,
-  Bell: (props) => <Activity {...props} />,
-  Heart: (props) => <Activity {...props} />,
-  BarChart3: (props) => <Activity {...props} />,
-  Compass: (props) => <Activity {...props} />,
-  Zap: (props) => <Activity {...props} />,
-  ClipboardList: (props) => <Activity {...props} />,
-  Terminal: (props) => <Settings {...props} />,
-  Trophy: (props) => <Activity {...props} />,
+  LayoutDashboard: (props) => <LayoutDashboard {...props} />,
+  Globe: (props) => <Globe {...props} />,
+  Network: (props) => <Network {...props} />,
+  Cpu: (props) => <Cpu {...props} />,
+  Database: (props) => <Database {...props} />,
+  Briefcase: (props) => <Briefcase {...props} />,
+  FileText: (props) => <FileText {...props} />,
+  Brain: (props) => <Brain {...props} />,
+  BookOpen: (props) => <BookOpen {...props} />,
+  GitCommit: (props) => <GitCommit {...props} />,
+  Bell: (props) => <Bell {...props} />,
+  Heart: (props) => <Heart {...props} />,
+  BarChart3: (props) => <BarChart3 {...props} />,
+  Compass: (props) => <Compass {...props} />,
+  Zap: (props) => <Zap {...props} />,
+  ClipboardList: (props) => <ClipboardList {...props} />,
+  Terminal: (props) => <Terminal {...props} />,
+  Trophy: (props) => <Trophy {...props} />,
   Settings: (props) => <Settings {...props} />,
   Search: (props) => <Search {...props} />,
+  ArrowRight: (props) => <ArrowRight {...props} />,
+  Inbox: (props) => <Inbox {...props} />,
+  Target: (props) => <Target {...props} />,
+  GitBranch: (props) => <GitBranch {...props} />,
+  Activity: (props) => <Activity {...props} />,
+  Shield: (props) => <Shield {...props} />,
+  Server: (props) => <Server {...props} />,
+  MonitorCog: (props) => <MonitorCog {...props} />,
+  ShieldCheck: (props) => <ShieldCheck {...props} />,
+  Layers: (props) => <Layers {...props} />,
 };
 
 function getIconComponent(iconName?: string): React.ComponentType<{ size: number; 'aria-hidden'?: boolean; className?: string }> {
@@ -178,18 +233,39 @@ export default function Dashboard() {
     navigate(route?.path ?? '/');
   };
 
+  // Search state from Zustand store
+  const searchQuery = useCockpitStore((s) => s.search.query);
+  const setSearchQuery = useCockpitStore((s) => s.search.setQuery);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Command palette
-  const { isOpen: isCommandPaletteOpen, open: openCommandPalette, close: closeCommandPalette } = useCommandPalette(
+  const { isOpen: isCommandPaletteOpen, initialQuery, open: openCommandPalette, openWithQuery, close: closeCommandPalette } = useCommandPalette(
     ROUTES.map(r => ({ id: r.id, label: r.label, description: r.label, action: () => goTo(r.id) })),
   );
 
   // Quick actions panel
   const { isOpen: isQuickActionsOpen, open: openQuickActions, close: closeQuickActions } = useQuickActions();
 
+  // Open command palette with current search query pre-filled
+  const handleSearchOpenPalette = useCallback(() => {
+    openWithQuery(searchQuery);
+  }, [openWithQuery, searchQuery]);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     shortcuts: [
-      { key: 'k', ctrl: true, description: '打开命令面板', action: openCommandPalette },
+      {
+        key: 'k',
+        ctrl: true,
+        description: '聚焦搜索框 / 打开命令面板',
+        action: () => {
+          if (isCommandPaletteOpen) {
+            closeCommandPalette();
+          } else {
+            searchInputRef.current?.focus();
+          }
+        },
+      },
       { key: 'j', ctrl: true, description: '打开快捷操作', action: openQuickActions },
       { key: '1', ctrl: true, description: '首页', action: () => goTo('Home') },
       { key: '2', ctrl: true, description: '概览', action: () => goTo('Overview') },
@@ -282,20 +358,29 @@ export default function Dashboard() {
         <header className="topbar">
           <div className="search-bar" role="search">
             <Search size={16} className="text-muted" aria-hidden="true" />
-            <input type="text" placeholder="搜索服务、模型、智能体..." aria-label="全局搜索输入框" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="搜索服务、模型、智能体... (Enter 打开命令面板)"
+              aria-label="全局搜索输入框"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearchOpenPalette();
+                }
+              }}
+            />
           </div>
           <div className="topbar-actions">
-            <button className="topbar-btn" onClick={openCommandPalette} title="命令面板 (Ctrl+K)">
+            <button className="topbar-btn" onClick={handleSearchOpenPalette} title="命令面板 (Ctrl+K)">
               <Command size={16} />
             </button>
             <button className="topbar-btn" onClick={openQuickActions} title="快捷操作 (Ctrl+J)">
               <Zap size={16} />
             </button>
           </div>
-          <div className="user-profile" role="button" aria-label="个人中心，管理员" tabIndex={0}>
-            <div className="avatar" aria-hidden="true">AD</div>
-            <span>管理员</span>
-          </div>
+          <UserMenu />
         </header>
 
         <div className="content-area">
@@ -352,6 +437,23 @@ export default function Dashboard() {
               <Route path="/settings" element={<SettingsView />} />
               <Route path="/outcomes" element={<OutcomesView />} />
               <Route path="/journeys" element={<JourneysTimelineView />} />
+              <Route path="/capabilities" element={<CapabilityExplorer />} />
+              <Route path="/knowledge-action" element={<KnowledgeActionView />} />
+              <Route path="/decision-inbox" element={<DecisionInboxView />} />
+              <Route path="/pilot-review" element={<PilotReviewView />} />
+              <Route path="/delivery-journey" element={<DeliveryJourneyView />} />
+              <Route path="/workflow-mesh-operations" element={<WorkflowMeshOperationsView />} />
+              <Route path="/swarm" element={<SwarmDashboard />} />
+              <Route path="/digital-brain" element={<DigitalBrainWorkplaceView />} />
+              <Route path="/workbench/ecos-workflow" element={<EcosWorkflowWorkbench />} />
+              <Route path="/workbench/governance-domain" element={<GovernanceDomainWorkbench />} />
+              <Route path="/workbench/infrastructure-ops" element={<InfrastructureOpsWorkbench />} />
+              <Route path="/workbench/knowledge-execution" element={<KnowledgeExecutionWorkbench />} />
+              <Route path="/workbench/kos" element={<KOSWorkbench />} />
+              <Route path="/workbench/memory-injector" element={<MemoryInjector />} />
+              <Route path="/workbench/platform-control" element={<PlatformControlWorkbench />} />
+              <Route path="/workbench/runtime-ops" element={<RuntimeOpsWorkbench />} />
+              <Route path="/workbench/system-assurance" element={<SystemAssuranceWorkbench />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </RouteErrorBoundary>
@@ -363,6 +465,7 @@ export default function Dashboard() {
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onClose={closeCommandPalette}
+        initialQuery={initialQuery}
         commands={ROUTES.map(r => ({
           id: r.id,
           label: r.label,

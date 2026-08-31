@@ -132,16 +132,15 @@ export default function ComputeView() {
 
   const fetchModels = async () => {
     try {
-      const res = await fetch('/api/governance/compute/models');
-      const json = await res.json();
-      if (json.status === 'success') {
-        setModels(json.models || []);
-        setLoadedByNode(json.loaded_by_node || {});
+      const res = await apiFetch<{ status: string; models?: LocalModel[]; loaded_by_node?: Record<string, string[]> }>('/api/governance/compute/models');
+      if (res.ok && res.data?.status === 'success') {
+        setModels(res.data.models || []);
+        setLoadedByNode(res.data.loaded_by_node || {});
       }
     } catch { /* 静默:面板非关键路径 */ }
   };
 
-  useEffect(() => { fetchModels(); }, []);
+  useEffect(() => { void fetchModels(); }, []);
 
   const isLoaded = (id: string) =>
     Object.values(loadedByNode).some(list =>
@@ -150,15 +149,10 @@ export default function ComputeView() {
   const modelAction = async (model: string, action: 'load' | 'unload') => {
     setModelsBusy(model); setModelsMsg('');
     try {
-      const res = await fetch('/api/governance/compute/model-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, action })
-      });
-      const json = await res.json();
-      setModelsMsg(json.status === 'success'
+      const res = await apiPost<{ status: string; detail?: string; output?: string }>('/api/governance/compute/model-action', { model, action });
+      setModelsMsg(res.ok && res.data?.status === 'success'
         ? `✅ ${action} ${model} 完成`
-        : `❌ ${json.detail || json.output || '失败'}`);
+        : `❌ ${res.data?.detail || res.data?.output || res.error || '失败'}`);
       await fetchModels();
     } catch (e: any) {
       setModelsMsg('❌ ' + (e?.message || String(e)));
@@ -347,22 +341,22 @@ export default function ComputeView() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div className="antd-card" style={{ textAlign: 'center' }}>
             <Cpu size={24} className="text-primary" style={{ marginBottom: '8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>{computeData.total_calls.toLocaleString()}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{(computeData.total_calls ?? 0).toLocaleString()}</div>
             <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>总调用次数</div>
           </div>
           <div className="antd-card" style={{ textAlign: 'center' }}>
             <Zap size={24} className="text-warning" style={{ marginBottom: '8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>{computeData.total_tokens.toLocaleString()}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>{(computeData.total_tokens ?? 0).toLocaleString()}</div>
             <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>总 Token 数</div>
           </div>
           <div className="antd-card" style={{ textAlign: 'center' }}>
             <DollarSign size={24} className="text-success" style={{ marginBottom: '8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>${computeData.total_cost_usd.toFixed(4)}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>${(computeData.total_cost_usd ?? 0).toFixed(4)}</div>
             <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>本地成本</div>
           </div>
           <div className="antd-card" style={{ textAlign: 'center' }}>
             <TrendingUp size={24} className="text-info" style={{ marginBottom: '8px' }} />
-            <div style={{ fontSize: '24px', fontWeight: 700 }}>${computeData.total_saved_usd.toFixed(4)}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700 }}>${(computeData.total_saved_usd ?? 0).toFixed(4)}</div>
             <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)' }}>节省成本</div>
           </div>
         </div>
@@ -407,13 +401,9 @@ export default function ComputeView() {
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             onClick={async () => {
               try {
-                const res = await fetch('/api/governance/compute/fabric/warm', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ model_id: 'coding' })
-                });
-                const data = await res.json();
-                alert(`✅ 系统前缀预热完成！\n预热模型: ${data.data?.model_id || 'coding'}\n预热前缀数: ${data.data?.warmed_count || 3}\n节省 Token: ${data.data?.estimated_saved_tokens || 120}`);
+                const res = await apiPost<{ model_id?: string; warmed_count?: number; estimated_saved_tokens?: number }>('/api/governance/compute/fabric/warm', { model_id: 'coding' });
+                if (!res.ok) throw new Error(res.error || '预热请求失败');
+                alert(`✅ 系统前缀预热完成！\n预热模型: ${res.data?.model_id || 'coding'}\n预热前缀数: ${res.data?.warmed_count || 3}\n节省 Token: ${res.data?.estimated_saved_tokens || 120}`);
               } catch (e: any) {
                 alert(`❌ 预热请求失败: ${e?.message || e}`);
               }
@@ -430,13 +420,9 @@ export default function ComputeView() {
               const tokens = prompt('请输入长上下文 Token 数量进行 KV 显存预算评估:', '32768');
               if (!tokens) return;
               try {
-                const res = await fetch('/api/governance/compute/fabric/vram', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ model_id: 'coding', context_tokens: parseInt(tokens, 10) })
-                });
-                const data = await res.json();
-                const d = data.data || {};
+                const res = await apiPost<{ model_id?: string; context_tokens?: number; kv_cache_mb?: number; total_estimated_vram_mb?: number; admitted?: boolean; compaction_advised?: boolean }>('/api/governance/compute/fabric/vram', { model_id: 'coding', context_tokens: parseInt(tokens, 10) });
+                if (!res.ok) throw new Error(res.error || '显存估算失败');
+                const d = res.data || {};
                 alert(`📊 VRAM 预算评估结果:\n模型: ${d.model_id}\n上下文 Token: ${d.context_tokens}\nKV Cache 显存: ${d.kv_cache_mb?.toFixed(1)} MB\n预估总显存: ${d.total_estimated_vram_mb?.toFixed(1)} MB\n准入放行: ${d.admitted ? '✅ 放行' : '⚠️ 拦截/需压缩'}\n压缩建议: ${d.compaction_advised ? '需要滑动蒸馏' : '显存充裕'}`);
               } catch (e: any) {
                 alert(`❌ 显存估算失败: ${e?.message || e}`);
@@ -456,18 +442,14 @@ export default function ComputeView() {
               const freeVram = prompt('请输入节点空闲显存 (MB, 例如 4096):', '4096');
               if (!freeVram) return;
               try {
-                const res = await fetch('/api/governance/compute/fabric/compact', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    model_id: 'coding',
-                    tokens: parseInt(tokens, 10),
-                    available_mb: parseFloat(freeVram)
-                  })
+                const res = await apiPost<{ model_id?: string; original_tokens?: number; compacted_tokens?: number; pruned_tokens?: number; compression_ratio?: number; compaction_advised?: boolean; distilled_summary?: string }>('/api/governance/compute/fabric/compact', {
+                  model_id: 'coding',
+                  tokens: parseInt(tokens, 10),
+                  available_mb: parseFloat(freeVram)
                 });
-                const data = await res.json();
-                const d = data.data || {};
-                alert(`🧬 上下文滑动蒸馏与显存自愈评估:\n模型: ${d.model_id}\n原始 Token: ${d.original_tokens}\n压缩后 Token: ${d.compacted_tokens}\n裁剪 Token: ${d.pruned_tokens} (压缩率 ${(d.compression_ratio * 100).toFixed(1)}%)\n自愈判定: ${d.compaction_advised ? '⚠️ 触发滑动蒸馏' : '✅ 显存充裕无需压缩'}\n摘要预览: ${d.distilled_summary || '保留完整多轮对话'}`);
+                if (!res.ok) throw new Error(res.error || '蒸馏压缩模拟失败');
+                const d = res.data || {};
+                alert(`🧬 上下文滑动蒸馏与显存自愈评估:\n模型: ${d.model_id}\n原始 Token: ${d.original_tokens}\n压缩后 Token: ${d.compacted_tokens}\n裁剪 Token: ${d.pruned_tokens} (压缩率 ${((d.compression_ratio ?? 0) * 100).toFixed(1)}%)\n自愈判定: ${d.compaction_advised ? '⚠️ 触发滑动蒸馏' : '✅ 显存充裕无需压缩'}\n摘要预览: ${d.distilled_summary || '保留完整多轮对话'}`);
               } catch (e: any) {
                 alert(`❌ 蒸馏压缩模拟失败: ${e?.message || e}`);
               }
@@ -527,12 +509,12 @@ export default function ComputeView() {
                 {computeData.nodes.map((node) => (
                   <tr key={node.node_id} style={{ borderBottom: '1px solid var(--antd-border-color)' }}>
                     <td style={{ padding: '8px' }}>{node.node_label}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{node.calls.toLocaleString()}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{node.tokens.toLocaleString()}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>${node.estimated_cost_usd.toFixed(4)}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>${node.equivalent_cloud_cost_usd.toFixed(4)}</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>{(node.calls ?? 0).toLocaleString()}</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>{(node.tokens ?? 0).toLocaleString()}</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>${(node.estimated_cost_usd ?? 0).toFixed(4)}</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>${(node.equivalent_cloud_cost_usd ?? 0).toFixed(4)}</td>
                     <td style={{ padding: '8px', textAlign: 'right', color: 'var(--antd-success)' }}>
-                      ${node.saved_vs_cloud_usd.toFixed(4)}
+                      ${(node.saved_vs_cloud_usd ?? 0).toFixed(4)}
                     </td>
                     <td style={{ padding: '8px', textAlign: 'right' }}>
                       {node.latency_ms_avg ? `${node.latency_ms_avg.toFixed(0)}ms` : '-'}

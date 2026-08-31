@@ -1,0 +1,36 @@
+/* LoadingSkeleton — Skeleton loading states (shimmer blocks) */
+
+/* Base .skeleton class lives in index.css — here we only add shape rules. */
+
+.skeleton-line {
+  height: 14px;
+  width: 100%;
+  border-radius: var(--antd-radius-sm);
+}
+
+.skeleton-card {
+  height: 80px;
+  width: 100%;
+  border-radius: var(--antd-radius-lg);
+}
+
+.skeleton-rect {
+  height: 48px;
+  width: 100%;
+  border-radius: var(--antd-radius-md);
+}
+
+.skeleton-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Multi-line helper */
+.skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}

@@ -220,11 +220,11 @@ export default function CapabilityExplorer() {
       </div>
 
       {/* BOS 域分布 */}
-      {bosData && Object.keys(bosData.domain_counts).length > 0 && (
+      {bosData && Object.keys(bosData.domain_counts || {}).length > 0 && (
         <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '16px' }}>
           <div style={{ fontWeight: 600, marginBottom: '12px' }}>BOS 服务域分布 ({bosData.total} 服务)</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
-            {Object.entries(bosData.domain_counts)
+            {Object.entries(bosData.domain_counts || {})
               .sort(([, a], [, b]) => b - a)
               .map(([domain, count]) => (
                 <div

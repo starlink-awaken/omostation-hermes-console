@@ -17,6 +17,7 @@ import './Dashboard.css';
 import GovernanceDomainWorkbench from './GovernanceDomainWorkbench';
 import ActionSurfacePanel from './ActionSurfacePanel';
 import { type CockpitNavigationTarget } from './cockpitNavigation';
+import { apiFetch, apiPost } from '../api/client';
 
 type DomainApp = {
   id: string;
@@ -149,6 +150,17 @@ type OpcWorkspace = {
     revenue: Record<string, string>[];
   };
   source_paths?: Record<string, string>;
+};
+
+/** Minimal system-map payload shape needed for domain-build rows. */
+type SystemMapPayload = {
+  cockpit_pages?: Array<{ id?: string; title?: string }>;
+  project_portfolio?: {
+    priority_projects?: DomainBuildProject[];
+  };
+  roadmap?: {
+    items?: DomainBuildRoadmapItem[];
+  };
 };
 
 const EMPTY_OPC_WORKSPACE: OpcWorkspace = {
@@ -537,22 +549,16 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
     setError('');
     try {
       const [appsResult, opcResult, systemMapResult] = await Promise.allSettled([
-        fetch('/api/domain-apps'),
-        fetch('/api/opc/workspace'),
-        fetch('/api/cockpit/system-map'),
+        apiFetch<DomainAppsPayload>('/api/domain-apps'),
+        apiFetch<OpcWorkspace>('/api/opc/workspace'),
+        apiFetch<SystemMapPayload>('/api/cockpit/system-map'),
       ]);
-      const readPayload = async (result: PromiseSettledResult<Response>) => (
-        result.status === 'fulfilled' ? result.value.json().catch(() => ({})) : {}
-      );
-      const appsPayload = await readPayload(appsResult);
-      const opcPayload = await readPayload(opcResult);
-      const systemMapPayload = await readPayload(systemMapResult);
       const failures: string[] = [];
       if (appsResult.status !== 'fulfilled' || !appsResult.value.ok) {
-        failures.push((appsPayload as { detail?: string; error?: string }).detail || (appsPayload as { error?: string }).error || '领域应用清单读取失败');
+        failures.push(appsResult.status === 'fulfilled' ? (appsResult.value.error || '领域应用清单读取失败') : '领域应用清单读取失败');
       }
       if (opcResult.status !== 'fulfilled' || !opcResult.value.ok) {
-        failures.push((opcPayload as { detail?: string; error?: string }).detail || (opcPayload as { error?: string }).error || 'OPC 工作区读取失败');
+        failures.push(opcResult.status === 'fulfilled' ? (opcResult.value.error || 'OPC 工作区读取失败') : 'OPC 工作区读取失败');
       }
       if (systemMapResult.status !== 'fulfilled' || !systemMapResult.value.ok) {
         failures.push('系统地图补充数据读取失败');
@@ -561,12 +567,13 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
       if (appsResult.status !== 'fulfilled' || !appsResult.value.ok) {
         throw new Error(failures[0] || '领域应用清单读取失败');
       }
+      const systemMapPayload = systemMapResult.status === 'fulfilled' && systemMapResult.value.ok ? systemMapResult.value.data : null;
       const pagesById = new globalThis.Map<string, { id: string; title?: string }>(
-        ((systemMapPayload.cockpit_pages || []) as Array<{ id?: string; title?: string }>)
+        ((systemMapPayload?.cockpit_pages || []) as Array<{ id?: string; title?: string }>)
           .filter((page): page is { id: string; title?: string } => Boolean(page.id))
           .map((page) => [page.id, page] as const),
       );
-      const projectRows = ((systemMapPayload.project_portfolio?.priority_projects || []) as DomainBuildProject[])
+      const projectRows = ((systemMapPayload?.project_portfolio?.priority_projects || []) as DomainBuildProject[])
         .filter((project) => project.cockpit_page && DOMAIN_SURFACE_PAGE_IDS.has(project.cockpit_page))
         .slice(0, 4)
         .map((project) => {
@@ -584,7 +591,7 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
             taskTarget: { tab: 'TaskCenter', taskQuery: project.id },
           };
         });
-      const roadmapRows = ((systemMapPayload.roadmap?.items || []) as DomainBuildRoadmapItem[])
+      const roadmapRows = ((systemMapPayload?.roadmap?.items || []) as DomainBuildRoadmapItem[])
         .filter((item) => item.cockpit_page && DOMAIN_SURFACE_PAGE_IDS.has(item.cockpit_page) && item.status !== 'shipped')
         .slice(0, 4)
         .map((item) => {
@@ -602,8 +609,8 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
             taskTarget: { tab: 'TaskCenter', taskQuery: item.id || item.title || 'roadmap' },
           };
         });
-      setApps(appsPayload as DomainAppsPayload);
-      setOpc(opcResult.status === 'fulfilled' && opcResult.value.ok ? opcPayload as OpcWorkspace : EMPTY_OPC_WORKSPACE);
+      setApps(appsResult.value.data);
+      setOpc(opcResult.status === 'fulfilled' && opcResult.value.ok ? opcResult.value.data : EMPTY_OPC_WORKSPACE);
       setDomainBuildRows([...projectRows, ...roadmapRows]);
     } catch (err) {
       setError(err instanceof Error ? err.message : '领域应用数据读取失败');
@@ -729,12 +736,11 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
     setActionNotice(null);
     setActionError(null);
     try {
-      const response = await fetch(`/api/cockpit/domain-apps/${app.id}/actions/${action.id}/queue`, { method: 'POST' });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || '领域应用动作登记失败');
-      setActionNotice(`已登记“${action.label}”，任务中心将负责后续审批与留证。`);
+      const res = await apiPost<{ id?: string; detail?: string }>(`/api/cockpit/domain-apps/${app.id}/actions/${action.id}/queue`, {});
+      if (!res.ok) throw new Error(res.error || '领域应用动作登记失败');
+      setActionNotice(`已登记”${action.label}”，任务中心将负责后续审批与留证。`);
       await load();
-      if (payload.id) openTaskCenter(payload.id);
+      if (res.data?.id) openTaskCenter(res.data.id);
       else setActionError('领域应用动作已返回成功，但没有任务 ID，无法定位后续审批。');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '领域应用动作登记失败');
@@ -750,12 +756,11 @@ export default function DomainAppsView({ onNavigate, onOpenTarget, taskQuery }: 
     setActionNotice(null);
     setActionError(null);
     try {
-      const response = await fetch(`/api/cockpit/domain-apps/${app.id}/verify`, { method: 'POST' });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || '领域应用验证执行失败');
-      setActionNotice(`验证完成：${app.name} exit ${payload.exit_code ?? 'unknown'}，已写入任务证据。`);
+      const res = await apiPost<{ id?: string; exit_code?: number; detail?: string }>(`/api/cockpit/domain-apps/${app.id}/verify`, {});
+      if (!res.ok) throw new Error(res.error || '领域应用验证执行失败');
+      setActionNotice(`验证完成：${app.name} exit ${res.data?.exit_code ?? 'unknown'}，已写入任务证据。`);
       await load();
-      if (payload.id) openTaskCenter(payload.id);
+      if (res.data?.id) openTaskCenter(res.data.id);
       else setActionError('验证已返回结果，但没有任务 ID，无法定位执行证据。');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : '领域应用验证执行失败');

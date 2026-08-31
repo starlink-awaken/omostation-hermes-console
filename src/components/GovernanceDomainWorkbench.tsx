@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AppWindow, ClipboardCheck, Compass, Layers, ShieldCheck } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { useSystemMap, useDebt, useOmoStatus, useL4Health, useCreateTask } from '../api/hooks';
 
 interface RoadmapItem {
   id: string;
@@ -139,23 +140,6 @@ const GOVERNANCE_STEPS = [
   },
 ];
 
-async function fetchGovernanceSource<T>(url: string, label: string, fallback: T): Promise<{ data: T; error: string | null }> {
-  try {
-    const response = await fetch(url);
-    if (!response) {
-      return { data: fallback, error: `${label}：请求无响应` };
-    }
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return { data: fallback, error: `${label} HTTP ${response.status}` };
-    }
-    return { data: payload as T, error: null };
-  } catch (error) {
-    console.error(`Failed to fetch ${url}:`, error);
-    return { data: fallback, error: `${label}：${error instanceof Error ? error.message : '请求失败'}` };
-  }
-}
-
 function severityLabel(value?: string) {
   switch ((value || '').toLowerCase()) {
     case 'p0':
@@ -178,55 +162,39 @@ export default function GovernanceDomainWorkbench({
   onNavigate,
   onOpenTarget,
 }: GovernanceDomainWorkbenchProps) {
-  const [systemMap, setSystemMap] = useState<SystemMapGovernanceLite>({});
-  const [debt, setDebt] = useState<DebtPayload>({});
-  const [omoStatus, setOmoStatus] = useState<OmoStatusPayload>({});
-  const [l4Health, setL4Health] = useState<L4HealthPayload>({});
-  const [sourceErrors, setSourceErrors] = useState<string[]>([]);
-  const [sourceAvailability, setSourceAvailability] = useState({
-    systemMap: false,
-    debt: false,
-    omoStatus: false,
-    l4Health: false,
-  });
-  const [refreshToken, setRefreshToken] = useState(0);
   const [taskPending, setTaskPending] = useState(false);
   const [taskNotice, setTaskNotice] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
-  useEffect(() => {
-    let active = true;
+  // React Query hooks replace raw fetch()
+  const { data: systemMapData, isLoading: systemMapLoading, isError: systemMapError } = useSystemMap();
+  const { data: debtData, isLoading: debtLoading, isError: debtError } = useDebt();
+  const { data: omoStatusData, isLoading: omoStatusLoading, isError: omoStatusError } = useOmoStatus();
+  const { data: l4HealthData, isLoading: l4HealthLoading, isError: l4HealthError } = useL4Health();
+  const createTaskMutation = useCreateTask();
 
-    const load = async () => {
-      const [systemMapResult, debtResult, omoStatusResult, l4HealthResult] = await Promise.all([
-        fetchGovernanceSource<SystemMapGovernanceLite>('/api/cockpit/system-map', '系统地图', {}),
-        fetchGovernanceSource<DebtPayload>('/api/debt', '技术债账本', {}),
-        fetchGovernanceSource<OmoStatusPayload>('/api/omos/status', 'OMO 状态', {}),
-        fetchGovernanceSource<L4HealthPayload>('/api/l4/health', 'L4 健康', {}),
-      ]);
+  // Derive typed data from hooks
+  const systemMap = systemMapData as unknown as SystemMapGovernanceLite || {};
+  const debt = debtData as unknown as DebtPayload || {};
+  const omoStatus = omoStatusData as unknown as OmoStatusPayload || {};
+  const l4Health = l4HealthData as unknown as L4HealthPayload || {};
 
-      if (!active) {
-        return;
-      }
+  // Availability derived from hook states
+  const systemMapAvailable = !systemMapError && !systemMapLoading;
+  const debtAvailable = !debtError && !debtLoading;
+  const omoStatusAvailable = !omoStatusError && !omoStatusLoading;
+  const l4HealthAvailable = !l4HealthError && !l4HealthLoading;
 
-      setSystemMap(systemMapResult.data || {});
-      setDebt(debtResult.data || {});
-      setOmoStatus(omoStatusResult.data || {});
-      setL4Health(l4HealthResult.data || {});
-      setSourceAvailability({
-        systemMap: !systemMapResult.error,
-        debt: !debtResult.error,
-        omoStatus: !omoStatusResult.error,
-        l4Health: !l4HealthResult.error,
-      });
-      setSourceErrors([systemMapResult.error, debtResult.error, omoStatusResult.error, l4HealthResult.error].filter((error): error is string => Boolean(error)));
-    };
+  // Combined errors
+  const sourceErrors: string[] = [];
+  if (systemMapError) sourceErrors.push('系统地图');
+  if (debtError) sourceErrors.push('技术债账本');
+  if (omoStatusError) sourceErrors.push('OMO 状态');
+  if (l4HealthError) sourceErrors.push('L4 健康');
 
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [refreshToken]);
+  // Force refetch on refresh
+  void refreshToken;
 
   const summary = useMemo(() => {
     const projectSummary = systemMap.project_portfolio?.summary;
@@ -238,13 +206,13 @@ export default function GovernanceDomainWorkbench({
 
     let nextAction = '先回系统地图确定组合阻塞，再决定治理落点。';
     let nextTab = 'SystemMap';
-    if (!sourceAvailability.systemMap) {
+    if (!systemMapAvailable) {
       nextAction = '系统地图证据暂不可用，先重试后再判断组合阻塞。';
       nextTab = 'SystemMap';
     } else if (blockedProjects > 0) {
       nextAction = `项目组合里还有 ${blockedProjects} 个阻塞项，先从系统地图或 C2G 收敛。`;
       nextTab = 'C2G';
-    } else if (!sourceAvailability.debt) {
+    } else if (!debtAvailable) {
       nextAction = '技术债账本证据暂不可用，先重试后再判断清债优先级。';
       nextTab = 'Debt';
     } else if (openDebt > 0) {
@@ -253,7 +221,7 @@ export default function GovernanceDomainWorkbench({
     } else if (securityAttention > 0) {
       nextAction = `有 ${securityAttention} 个领域应用还在吃安全关注，先看领域挂载。`;
       nextTab = 'DomainApps';
-    } else if (!sourceAvailability.l4Health) {
+    } else if (!l4HealthAvailable) {
       nextAction = 'L4 健康证据暂不可用，先重试后再判断异常域。';
       nextTab = 'L4Health';
     } else if (unhealthyDomains > 0) {
@@ -264,10 +232,10 @@ export default function GovernanceDomainWorkbench({
     return {
       projectSummary,
       domainSummary,
-      systemMapUnavailable: !sourceAvailability.systemMap,
-      debtUnavailable: !sourceAvailability.debt,
-      omoStatusUnavailable: !sourceAvailability.omoStatus,
-      l4HealthUnavailable: !sourceAvailability.l4Health,
+      systemMapUnavailable: !systemMapAvailable,
+      debtUnavailable: !debtAvailable,
+      omoStatusUnavailable: !omoStatusAvailable,
+      l4HealthUnavailable: !l4HealthAvailable,
       openDebt,
       blockedProjects,
       securityAttention,
@@ -281,7 +249,7 @@ export default function GovernanceDomainWorkbench({
       topAttentionApp: systemMap.domain_apps?.attention_items?.[0],
       topUnhealthyDomain: l4Health.domains?.find((domain) => !domain.fresh) || l4Health.domains?.[0],
     };
-  }, [debt, l4Health, sourceAvailability, systemMap]);
+  }, [debt, l4Health, systemMap, systemMapAvailable, debtAvailable, omoStatusAvailable, l4HealthAvailable]);
 
   const governanceContextQuery = summary.topProject?.id
     || summary.topDebt?.id
@@ -317,28 +285,22 @@ export default function GovernanceDomainWorkbench({
     setTaskNotice(null);
     setTaskError(null);
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: governanceTaskTitle,
-          description: governanceTaskDescription,
-          priority: summary.blockedProjects > 0 || summary.openDebt > 0 || summary.securityAttention > 0 || summary.unhealthyDomains > 0 ? 'high' : 'medium',
-          risk_level: summary.systemMapUnavailable || summary.debtUnavailable || summary.l4HealthUnavailable ? 'L2' : 'L1',
-          evidence_required: ['治理对象状态快照', '处理前后证据', '跨域影响确认', 'task closeout'],
-          tags: ['governance', 'domain-closure'],
-          source: {
-            type: 'cockpit.governance-domain-workbench',
-            id: currentPage,
-            title: '系统治理工作台',
-            target: { tab: currentPage, taskQuery: governanceTaskTitle },
-          },
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || response.statusText || '治理任务登记失败');
-      setTaskNotice(`已登记治理任务：${payload.title || governanceTaskTitle}`);
-      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+      const result = await createTaskMutation.mutateAsync({
+        title: governanceTaskTitle,
+        description: governanceTaskDescription,
+        priority: summary.blockedProjects > 0 || summary.openDebt > 0 || summary.securityAttention > 0 || summary.unhealthyDomains > 0 ? 'high' : 'medium',
+        risk_level: summary.systemMapUnavailable || summary.debtUnavailable || summary.l4HealthUnavailable ? 'L2' : 'L1',
+        evidence_required: ['治理对象状态快照', '处理前后证据', '跨域影响确认', 'task closeout'],
+        tags: ['governance', 'domain-closure'],
+        source: {
+          type: 'cockpit.governance-domain-workbench',
+          id: currentPage,
+          title: '系统治理工作台',
+          target: { tab: currentPage, taskQuery: governanceTaskTitle },
+        },
+      } as any);
+      setTaskNotice(`已登记治理任务：${result?.title || governanceTaskTitle}`);
+      if (result?.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(result.id) }, onNavigate, onOpenTarget);
     } catch (requestError) {
       setTaskError(requestError instanceof Error ? requestError.message : '治理任务登记失败');
     } finally {

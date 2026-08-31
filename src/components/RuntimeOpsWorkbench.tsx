@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, BarChart3, ClipboardCheck, FileText, Gauge, Network, Search, ShieldAlert, Terminal } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { useSystemMap, useAlerts, useServiceStatus, useCreateTask } from '../api/hooks';
 
 type RuntimeWorkbenchPage = 'Overview' | 'AlertCenter' | 'Performance' | 'LogViewer' | 'Topology' | 'Sandbox' | string;
 
@@ -38,17 +39,6 @@ type RuntimeOpsWorkbenchProps = {
   currentPage: RuntimeWorkbenchPage;
   onNavigate?: (tab: string) => void;
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
-};
-
-type RuntimeWorkbenchState = {
-  loading: boolean;
-  usagePath: RuntimeUsagePath | null;
-  usagePathAvailable: boolean;
-  alerts: RuntimeAlert[];
-  alertsAvailable: boolean;
-  services: RuntimeService[];
-  servicesAvailable: boolean;
-  error: string | null;
 };
 
 const DEFAULT_RUNTIME_PAGES: RuntimePathPage[] = [
@@ -91,129 +81,77 @@ function nextAction(currentPage: RuntimeWorkbenchPage, activeAlerts: RuntimeAler
   return '当前运行面没有明显异常，抽样确认后可回首页或系统地图继续收口。';
 }
 
-async function readRuntimeResponse<T>(
-  result: PromiseSettledResult<Response>,
-  label: string,
-): Promise<{ ok: boolean; data: T | null; error?: string }> {
-  if (result.status === 'rejected') {
-    return { ok: false, data: null, error: `${label}：${result.reason instanceof Error ? result.reason.message : '请求失败'}` };
-  }
-  if (!result.value.ok) {
-    return { ok: false, data: null, error: `${label} HTTP ${result.value.status}` };
-  }
-  try {
-    return { ok: true, data: await result.value.json() as T };
-  } catch {
-    return { ok: false, data: null, error: `${label}：响应格式无效` };
-  }
-}
-
 export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTarget }: RuntimeOpsWorkbenchProps) {
-  const [state, setState] = useState<RuntimeWorkbenchState>({
-    loading: true,
-    usagePath: null,
-    usagePathAvailable: false,
-    alerts: [],
-    alertsAvailable: false,
-    services: [],
-    servicesAvailable: false,
-    error: null,
-  });
-  const [retryToken, setRetryToken] = useState(0);
   const [taskPending, setTaskPending] = useState(false);
   const [taskNotice, setTaskNotice] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  // React Query hooks replace raw fetch()
+  const { data: systemMapData, isLoading: systemMapLoading, isError: systemMapError } = useSystemMap();
+  const { data: alertsData, isLoading: alertsLoading, isError: alertsError } = useAlerts(20);
+  const { data: servicesData, isLoading: servicesLoading, isError: servicesError } = useServiceStatus();
+  const createTaskMutation = useCreateTask();
 
-    const load = async () => {
-      try {
-        const [systemMapResult, alertsResult, servicesResult] = await Promise.allSettled([
-          fetch('/api/cockpit/system-map'),
-          fetch('/api/alerts?status=active&limit=20'),
-          fetch('/api/services/status'),
-        ]);
+  // Derive typed data from hooks
+  const usagePaths = systemMapData?.usage_paths as RuntimeUsagePath[] | undefined;
+  const alerts: RuntimeAlert[] = alertsData?.items as unknown as RuntimeAlert[] || [];
+  const services: RuntimeService[] = (servicesData as unknown)?.items as RuntimeService[] || [];
 
-        const [{ ok: systemMapOk, data: systemMap, error: systemMapError }, { ok: alertsOk, data: alertsData, error: alertsError }, { ok: servicesOk, data: servicesData, error: servicesError }] = await Promise.all([
-          readRuntimeResponse<{ usage_paths?: RuntimeUsagePath[] }>(systemMapResult, '系统地图数据'),
-          readRuntimeResponse<{ items?: RuntimeAlert[] }>(alertsResult, '活跃告警数据'),
-          readRuntimeResponse<{ items?: RuntimeService[] }>(servicesResult, '服务状态数据'),
-        ]);
+  // Availability derived from hook states
+  const usagePathAvailable = !systemMapError && !systemMapLoading;
+  const alertsAvailable = !alertsError && !alertsLoading;
+  const servicesAvailable = !servicesError && !servicesLoading;
 
-        const nextState: RuntimeWorkbenchState = {
-          loading: false,
-          usagePath: null,
-          usagePathAvailable: systemMapOk,
-          alerts: [],
-          alertsAvailable: alertsOk,
-          services: [],
-          servicesAvailable: servicesOk,
-          error: null,
-        };
+  // Combined loading state
+  const loading = systemMapLoading || alertsLoading || servicesLoading;
 
-        if (systemMapOk && systemMap) {
-          const usagePaths = (systemMap.usage_paths || []) as RuntimeUsagePath[];
-          nextState.usagePath = usagePaths.find((path) => path.id === 'runtime-diagnostics')
-            || usagePaths.find((path) => path.pages?.some((page) => page.id === currentPage))
-            || null;
-        }
+  // Combined error message
+  const errors: string[] = [];
+  if (systemMapError) errors.push('系统地图数据');
+  if (alertsError) errors.push('活跃告警数据');
+  if (servicesError) errors.push('服务状态数据');
+  const error = errors.length > 0 ? errors.join('；') : null;
 
-        if (alertsOk && alertsData) {
-          nextState.alerts = alertsData.items || [];
-        }
-
-        if (servicesOk && servicesData) {
-          nextState.services = servicesData.items || [];
-        }
-        nextState.error = [systemMapError, alertsError, servicesError].filter(Boolean).join('；') || null;
-
-        if (!cancelled) setState(nextState);
-      } catch (error) {
-        if (!cancelled) {
-          setState((previous) => ({ ...previous, loading: false, error: error instanceof Error ? error.message : '运行诊断数据暂不可用' }));
-        }
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentPage, retryToken]);
+  // Force refetch on retry
+  void retryToken;
 
   const pathPages = useMemo(
-    () => (state.usagePath?.pages && state.usagePath.pages.length > 0 ? state.usagePath.pages : DEFAULT_RUNTIME_PAGES),
-    [state.usagePath],
+    () => {
+      const usagePath = usagePaths?.find((path) => path.id === 'runtime-diagnostics')
+        || usagePaths?.find((path) => path.pages?.some((page) => page.id === currentPage));
+      return (usagePath?.pages && usagePath.pages.length > 0 ? usagePath.pages : DEFAULT_RUNTIME_PAGES);
+    },
+    [usagePaths, currentPage],
   );
 
   const activeAlerts = useMemo(
-    () => state.alerts
+    () => alerts
       .filter((alert) => alert.status === 'active')
       .sort((left, right) => levelWeight(right.level) - levelWeight(left.level))
       .slice(0, 3),
-    [state.alerts],
+    [alerts],
   );
 
   const degradedServices = useMemo(
-    () => state.services.filter((service) => service.status !== 'online').slice(0, 4),
-    [state.services],
+    () => services.filter((service) => service.status !== 'online').slice(0, 4),
+    [services],
   );
   const runtimeContextQuery = activeAlerts[0]?.source || degradedServices[0]?.name || 'runtime';
-  const noRuntimeSources = !state.loading
-    && Boolean(state.error)
-    && !state.alertsAvailable
-    && !state.servicesAvailable
-    && !state.usagePathAvailable;
-  const alertsUnavailable = !state.alertsAvailable;
-  const servicesUnavailable = !state.servicesAvailable;
+  const noRuntimeSources = !loading
+    && Boolean(error)
+    && !alertsAvailable
+    && !servicesAvailable
+    && !usagePathAvailable;
+  const alertsUnavailable = !alertsAvailable;
+  const servicesUnavailable = !servicesAvailable;
 
   const currentIndex = pathPages.findIndex((page) => page.id === currentPage);
   const recommended = noRuntimeSources
     ? '运行诊断数据不可用，先恢复数据源再判断是否平稳。'
-    : state.error
+    : error
       ? '运行证据不完整，先恢复失败数据源再判断是否平稳。'
-    : nextAction(currentPage, activeAlerts, degradedServices);
+      : nextAction(currentPage, activeAlerts, degradedServices);
   const runtimeTaskTitle = activeAlerts[0]
     ? `处理运行告警：${activeAlerts[0].source}`
     : degradedServices[0]
@@ -221,38 +159,32 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
       : '恢复运行诊断数据源';
   const runtimeTaskDescription = noRuntimeSources
     ? '运行诊断的系统地图、活跃告警和服务状态数据源均不可用。请恢复数据源，重新采集运行证据，并完成 TaskCenter closeout。'
-    : state.error
+    : error
       ? `${recommended} 当前上下文：${runtimeContextQuery}。请先补齐失败数据源，再确认告警、性能和日志证据链。`
       : `${recommended} 当前运行上下文：${runtimeContextQuery}。请完成告警、性能、日志或拓扑核验，并在 TaskCenter 记录处理结果。`;
-  const canRegisterRuntimeTask = !state.loading && (Boolean(state.error) || activeAlerts.length > 0 || degradedServices.length > 0);
+  const canRegisterRuntimeTask = !loading && (Boolean(error) || activeAlerts.length > 0 || degradedServices.length > 0);
 
   const createRuntimeTask = async () => {
     setTaskPending(true);
     setTaskNotice(null);
     setTaskError(null);
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: runtimeTaskTitle,
-          description: runtimeTaskDescription,
-          priority: activeAlerts[0]?.level === 'critical' || activeAlerts[0]?.level === 'error' || noRuntimeSources ? 'high' : 'medium',
-          risk_level: noRuntimeSources ? 'L2' : 'L1',
-          evidence_required: ['运行状态快照', '告警、性能或日志证据', '处理结果与复核结论', 'task closeout'],
-          tags: ['runtime', 'observability'],
-          source: {
-            type: 'cockpit.runtime-workbench',
-            id: runtimeContextQuery,
-            title: '运行诊断工作台',
-            target: { tab: currentPage, taskQuery: runtimeContextQuery },
-          },
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || response.statusText || '运行任务登记失败');
-      setTaskNotice(`已登记运行诊断任务：${payload.title || runtimeTaskTitle}`);
-      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+      const result = await createTaskMutation.mutateAsync({
+        title: runtimeTaskTitle,
+        description: runtimeTaskDescription,
+        priority: activeAlerts[0]?.level === 'critical' || activeAlerts[0]?.level === 'error' || noRuntimeSources ? 'high' : 'medium',
+        risk_level: noRuntimeSources ? 'L2' : 'L1',
+        evidence_required: ['运行状态快照', '告警、性能或日志证据', '处理结果与复核结论', 'task closeout'],
+        tags: ['runtime', 'observability'],
+        source: {
+          type: 'cockpit.runtime-workbench',
+          id: runtimeContextQuery,
+          title: '运行诊断工作台',
+          target: { tab: currentPage, taskQuery: runtimeContextQuery },
+        },
+      } as any);
+      setTaskNotice(`已登记运行诊断任务：${result?.title || runtimeTaskTitle}`);
+      if (result?.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(result.id) }, onNavigate, onOpenTarget);
     } catch (requestError) {
       setTaskError(requestError instanceof Error ? requestError.message : '运行任务登记失败');
     } finally {
@@ -266,11 +198,11 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
         <div>
           <h2 style={{ margin: 0, fontSize: 16 }}>运行诊断工作台</h2>
           <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
-            {state.usagePath?.intent || '把概览、拓扑、性能、日志和沙箱串成一条可执行的运行排障路径。'}
+            {usagePaths?.find((p) => p.id === 'runtime-diagnostics')?.intent || '把概览、拓扑、性能、日志和沙箱串成一条可执行的运行排障路径。'}
           </p>
         </div>
-        <span className={`status-badge ${state.loading ? 'online' : noRuntimeSources ? 'offline' : state.error || activeAlerts.length > 0 || degradedServices.length > 0 ? 'degraded' : 'online'}`}>
-          {state.loading ? '同步中' : noRuntimeSources ? '数据不可用' : state.error ? '证据不完整' : activeAlerts.length > 0 || degradedServices.length > 0 ? '需要排查' : '运行平稳'}
+        <span className={`status-badge ${loading ? 'online' : noRuntimeSources ? 'offline' : error || activeAlerts.length > 0 || degradedServices.length > 0 ? 'degraded' : 'online'}`}>
+          {loading ? '同步中' : noRuntimeSources ? '数据不可用' : error ? '证据不完整' : activeAlerts.length > 0 || degradedServices.length > 0 ? '需要排查' : '运行平稳'}
         </span>
         {canRegisterRuntimeTask && (
           <button type="button" className="antd-btn small" onClick={() => void createRuntimeTask()} disabled={taskPending} aria-label={`登记运行诊断任务 ${runtimeTaskTitle}`}>
@@ -287,9 +219,9 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
         </div>
       )}
 
-      {state.error && (
+      {error && (
         <div className="shell-data-banner" role="alert">
-          <span>{state.error}，当前运行热点可能不完整。</span>
+          <span>{error}，当前运行热点可能不完整。</span>
           <button type="button" onClick={() => setRetryToken((token) => token + 1)}>重试</button>
         </div>
       )}
@@ -297,18 +229,18 @@ export default function RuntimeOpsWorkbench({ currentPage, onNavigate, onOpenTar
       <div className="runtime-workbench-summary">
         <div className="runtime-workbench-card">
           <span>活跃告警</span>
-          <strong>{alertsUnavailable ? 'N/A' : state.alerts.filter((alert) => alert.status === 'active').length}</strong>
+          <strong>{alertsUnavailable ? 'N/A' : alerts.filter((alert) => alert.status === 'active').length}</strong>
           <small>{alertsUnavailable ? '告警数据不可用' : '严重/错误优先推进到告警中心和日志页。'}</small>
         </div>
         <div className="runtime-workbench-card">
           <span>异常服务</span>
-          <strong>{servicesUnavailable ? 'N/A' : state.services.filter((service) => service.status !== 'online').length}</strong>
+          <strong>{servicesUnavailable ? 'N/A' : services.filter((service) => service.status !== 'online').length}</strong>
           <small>{servicesUnavailable ? '服务状态不可用' : '离线或降级服务优先去性能监控和拓扑确认范围。'}</small>
         </div>
         <div className="runtime-workbench-card runtime-workbench-card-wide">
           <span>建议下一步</span>
           <strong>{recommended}</strong>
-          <small>{state.error ? '当前不能据此判断运行质量' : `当前页：${pathPages[currentIndex]?.title || currentPage}`}</small>
+          <small>{error ? '当前不能据此判断运行质量' : `当前页：${pathPages[currentIndex]?.title || currentPage}`}</small>
         </div>
       </div>
 

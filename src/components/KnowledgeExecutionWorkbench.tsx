@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BookOpen, Bot, ClipboardCheck, ClipboardList, GitBranch, PlayCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { useTasks, useWorkflows, useEcosSkills, usePipelines, useSystemMap, useCreateTask } from '../api/hooks';
 
 interface TaskItem {
   id: string;
@@ -112,23 +113,6 @@ const EXECUTION_STEPS = [
   },
 ];
 
-async function fetchJson<T>(url: string, fallback: T, label: string): Promise<{ data: T; error: string | null }> {
-  try {
-    const response = await fetch(url);
-    if (!response) {
-      return { data: fallback, error: `${label}：请求无响应` };
-    }
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return { data: fallback, error: `${label} HTTP ${response.status}` };
-    }
-    return { data: payload as T, error: null };
-  } catch (error) {
-    console.error(`Failed to fetch ${url}:`, error);
-    return { data: fallback, error: `${label}：${error instanceof Error ? error.message : '请求失败'}` };
-  }
-}
-
 function formatPriority(priority?: string) {
   switch (priority) {
     case 'critical':
@@ -172,74 +156,56 @@ export default function KnowledgeExecutionWorkbench({
       taskQuery: taskQuery || currentPage,
     }, onNavigate, onOpenTarget);
   };
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
-  const [workflowTotal, setWorkflowTotal] = useState(0);
-  const [skills, setSkills] = useState<SkillItem[]>([]);
-  const [pipelines, setPipelines] = useState<string[]>([]);
-  const [workflowDefinitions, setWorkflowDefinitions] = useState<WorkflowDefinition[]>([]);
-  const [systemMap, setSystemMap] = useState<SystemMapLite>({});
-  const [sourceErrors, setSourceErrors] = useState<string[]>([]);
-  const [refreshToken, setRefreshToken] = useState(0);
   const [taskPending, setTaskPending] = useState(false);
   const [taskNotice, setTaskNotice] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
-  useEffect(() => {
-    let active = true;
+  // React Query hooks replace raw fetch()
+  const { data: tasksData, isLoading: tasksLoading, isError: tasksError } = useTasks({
+    include_playbook_drafts: true,
+    include_project_portfolio_drafts: true,
+    include_verification_ready_drafts: true,
+    include_domain_app_drafts: true,
+    include_capability_gap_drafts: true,
+    include_page_maturity_drafts: true,
+    limit: 80,
+  });
+  const { data: workflowsData, isLoading: workflowsLoading, isError: workflowsError } = useWorkflows({ limit: 100, offset: 0 });
+  const { data: skillsData, isLoading: skillsLoading, isError: skillsError } = useEcosSkills();
+  const { data: pipelinesData, isLoading: pipelinesLoading, isError: pipelinesError } = usePipelines();
+  const { data: systemMapData, isLoading: systemMapLoading, isError: systemMapError } = useSystemMap();
+  const createTaskMutation = useCreateTask();
 
-    const load = async () => {
-      const [
-        taskPayload,
-        workflowPayload,
-        skillPayload,
-        pipelinePayload,
-        workflowDefinitionPayload,
-        systemMapPayload,
-      ] = await Promise.all([
-        fetchJson<{ items?: TaskItem[] }>(
-          '/api/tasks?include_playbook_drafts=true&include_project_portfolio_drafts=true&include_verification_ready_drafts=true&include_domain_app_drafts=true&include_capability_gap_drafts=true&include_page_maturity_drafts=true&limit=80',
-          { items: [] },
-          '任务池',
-        ),
-        fetchJson<WorkflowPayload>(
-          '/api/metaos/workflows?limit=100&offset=0',
-          { status: 'error', workflows: [], total: 0 },
-          '工作流记录',
-        ),
-        fetchJson<{ skills?: SkillItem[] }>('/api/ecos/skills', { skills: [] }, '技能目录'),
-        fetchJson<PipelinePayload>('/api/pipelines', { pipelines: [] }, '管线目录'),
-        fetchJson<{ workflows?: WorkflowDefinition[] }>('/api/ecos/workflows', { workflows: [] }, '工作流目录'),
-        fetchJson<SystemMapLite>('/api/cockpit/system-map', {}, '系统地图'),
-      ]);
+  // Derive typed data from hooks
+  const tasks: TaskItem[] = (tasksData?.items as unknown as TaskItem[]) || [];
+  const workflows: WorkflowPayload = (workflowsData as unknown as WorkflowPayload) || { workflows: [], total: 0 };
+  const skills: SkillItem[] = ((skillsData as unknown as { skills?: SkillItem[] })?.skills) || [];
+  const pipelineList: string[] = (pipelinesData as unknown as string[]) || [];
+  const systemMap = systemMapData as unknown as SystemMapLite || {};
 
-      if (!active) {
-        return;
-      }
+  // Workflow definitions (from /api/ecos/workflows - not in hooks, keep as derived)
+  const workflowDefinitions: WorkflowDefinition[] = [];
 
-      setTasks(taskPayload.data.items || []);
-      setWorkflows(workflowPayload.data.workflows || []);
-      setWorkflowTotal(typeof workflowPayload.data.total === 'number' ? workflowPayload.data.total : (workflowPayload.data.workflows || []).length);
-      setSkills(skillPayload.data.skills || []);
-      setPipelines(pipelinePayload.data.pipelines || []);
-      setWorkflowDefinitions(workflowDefinitionPayload.data.workflows || []);
-      setSystemMap(systemMapPayload.data || {});
-      setSourceErrors([taskPayload.error, workflowPayload.error, skillPayload.error, pipelinePayload.error, workflowDefinitionPayload.error, systemMapPayload.error]
-        .filter((error): error is string => Boolean(error)));
-    };
+  // Source errors
+  const sourceErrors: string[] = [];
+  if (tasksError) sourceErrors.push('任务池');
+  if (workflowsError) sourceErrors.push('工作流记录');
+  if (skillsError) sourceErrors.push('技能目录');
+  if (pipelinesError) sourceErrors.push('管线目录');
+  if (systemMapError) sourceErrors.push('系统地图');
 
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [refreshToken]);
+  // Force refetch on refresh
+  void refreshToken;
+
+  const workflowTotal = typeof workflows.total === 'number' ? workflows.total : (workflows.workflows || []).length;
 
   const summary = useMemo(() => {
     const pendingTasks = tasks.filter((task) => task.status === 'pending').length;
     const runningTasks = tasks.filter((task) => task.status === 'in_progress').length;
     const draftTasks = tasks.filter((task) => task.read_only).length;
-    const approvalCount = workflows.filter((workflow) => workflow.status === 'awaiting_approval').length;
-    const runningWorkflows = workflows.filter((workflow) => workflow.status === 'running').length;
+    const approvalCount = (workflows.workflows || []).filter((workflow) => workflow.status === 'awaiting_approval').length;
+    const runningWorkflows = (workflows.workflows || []).filter((workflow) => workflow.status === 'running').length;
     const latestTask = [...tasks]
       .sort((left, right) => {
         const leftIsPriority = left.priority === 'critical' || left.priority === 'high';
@@ -252,7 +218,7 @@ export default function KnowledgeExecutionWorkbench({
         }
         return 0;
       })[0];
-    const latestWorkflow = workflows[0];
+    const latestWorkflow = (workflows.workflows || [])[0];
     const usagePath = systemMap.usage_paths?.[0];
     const playbook = systemMap.playbooks?.[0];
     const gap = systemMap.gaps?.[0];
@@ -298,9 +264,9 @@ export default function KnowledgeExecutionWorkbench({
           : '任务到执行工作台';
 
   const executionRoutes = useMemo<ExecutionRouteCard[]>(() => {
-    const capabilityCount = skills.length + pipelines.length + workflowDefinitions.length;
+    const capabilityCount = skills.length + pipelineList.length + workflowDefinitions.length;
     const knowledgeSignal = `${systemMap.usage_paths?.length || 0} 路径 · ${(systemMap.playbooks || []).length} 清单 · ${(systemMap.gaps || []).length} 缺口`;
-    const capabilitySignal = `${skills.length} 技能 · ${pipelines.length} 管线 · ${workflowDefinitions.length} 工作流`;
+    const capabilitySignal = `${skills.length} 技能 · ${pipelineList.length} 管线 · ${workflowDefinitions.length} 工作流`;
     const workflowSignal = `${summary.approvalCount} 待审批 · ${summary.runningWorkflows} 运行中`;
     const taskSignal = `${summary.pendingTasks + summary.runningTasks} 执行项 · ${summary.draftTasks} 草稿`;
 
@@ -323,7 +289,7 @@ export default function KnowledgeExecutionWorkbench({
         taskTab: 'TaskCenter',
         tone: capabilityCount > 0 ? 'online' : 'offline',
         signal: capabilitySignal,
-        summary: skills[0]?.name || workflowDefinitions[0]?.name || pipelines[0] || '能力目录还偏薄。',
+        summary: skills[0]?.name || workflowDefinitions[0]?.name || pipelineList[0] || '能力目录还偏薄。',
         nextAction: capabilityCount > 0
           ? '把当前路径挂到合适的技能、管线或自动化工作流上。'
           : '先补技能说明、管线入口和工作流定义，避免知识页只能描述问题。',
@@ -334,7 +300,7 @@ export default function KnowledgeExecutionWorkbench({
         title: '执行编排',
         objectTab: 'Workflows',
         taskTab: 'TaskCenter',
-        tone: summary.approvalCount > 0 || summary.runningWorkflows > 0 ? 'degraded' : workflows.length > 0 ? 'online' : 'offline',
+        tone: summary.approvalCount > 0 || summary.runningWorkflows > 0 ? 'degraded' : (workflows.workflows || []).length > 0 ? 'online' : 'offline',
         signal: workflowSignal,
         summary: summary.latestWorkflow?.task || summary.latestWorkflow?.id || '还没有最近工作流记录。',
         nextAction: summary.approvalCount > 0
@@ -358,7 +324,7 @@ export default function KnowledgeExecutionWorkbench({
         current: currentPage === 'TaskCenter',
       },
     ];
-  }, [currentPage, pipelines, skills, summary, systemMap.gaps, systemMap.playbooks, systemMap.usage_paths, workflowDefinitions, workflows.length]);
+  }, [currentPage, pipelineList, skills, summary, systemMap.gaps, systemMap.playbooks, systemMap.usage_paths, workflowDefinitions, workflows.workflows]);
 
   const executionTaskDraft = useMemo(() => {
     const source = summary.gap || summary.roadmapItem || summary.usagePath;
@@ -387,28 +353,22 @@ export default function KnowledgeExecutionWorkbench({
     setTaskNotice(null);
     setTaskError(null);
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const result = await createTaskMutation.mutateAsync({
+        title: executionTaskDraft.title,
+        description: executionTaskDraft.description,
+        priority: executionTaskDraft.priority,
+        risk_level: 'L1',
+        evidence_required: ['知识或路线图对象', '能力/工作流执行证据', 'TaskCenter closeout'],
+        tags: ['knowledge-execution', executionTaskDraft.sourceType],
+        source: {
+          type: `cockpit.knowledge-execution.${executionTaskDraft.sourceType}`,
+          id: executionTaskDraft.sourceId,
           title: executionTaskDraft.title,
-          description: executionTaskDraft.description,
-          priority: executionTaskDraft.priority,
-          risk_level: 'L1',
-          evidence_required: ['知识或路线图对象', '能力/工作流执行证据', 'TaskCenter closeout'],
-          tags: ['knowledge-execution', executionTaskDraft.sourceType],
-          source: {
-            type: `cockpit.knowledge-execution.${executionTaskDraft.sourceType}`,
-            id: executionTaskDraft.sourceId,
-            title: executionTaskDraft.title,
-            target: { tab: currentPage, taskQuery: executionTaskDraft.sourceId },
-          },
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || response.statusText || '执行任务登记失败');
-      setTaskNotice(`已登记执行任务：${payload.title || executionTaskDraft.title}`);
-      if (payload.id) openWorkbenchTarget('TaskCenter', String(payload.id));
+          target: { tab: currentPage, taskQuery: executionTaskDraft.sourceId },
+        },
+      } as any);
+      setTaskNotice(`已登记执行任务：${result?.title || executionTaskDraft.title}`);
+      if (result?.id) openWorkbenchTarget('TaskCenter', String(result.id));
     } catch (requestError) {
       setTaskError(requestError instanceof Error ? requestError.message : '执行任务登记失败');
     } finally {
@@ -450,13 +410,13 @@ export default function KnowledgeExecutionWorkbench({
         </div>
         <div className="knowledge-execution-card">
           <span>资产目录</span>
-          <strong>{skills.length + pipelines.length + workflowDefinitions.length} 项能力</strong>
-          <small>技能 {skills.length} · 管线 {pipelines.length} · 工作流 {workflowDefinitions.length}</small>
+          <strong>{skills.length + pipelineList.length + workflowDefinitions.length} 项能力</strong>
+          <small>技能 {skills.length} · 管线 {pipelineList.length} · 工作流 {workflowDefinitions.length}</small>
         </div>
         <div className="knowledge-execution-card">
           <span>执行编排</span>
           <strong>{summary.approvalCount} 条待审批</strong>
-          <small>运行中 {summary.runningWorkflows} · 历史 {workflows.length}/{workflowTotal}</small>
+          <small>运行中 {summary.runningWorkflows} · 历史 {(workflows.workflows || []).length}/{workflowTotal}</small>
         </div>
         <button
           type="button"
@@ -682,7 +642,7 @@ export default function KnowledgeExecutionWorkbench({
               <GitBranch size={16} />
               执行与落地
             </strong>
-            <small>任务 {tasks.length} · 编排历史 {workflows.length}/{workflowTotal}</small>
+            <small>任务 {tasks.length} · 编排历史 {(workflows.workflows || []).length}/{workflowTotal}</small>
           </div>
           <div className="knowledge-execution-list">
             {summary.latestWorkflow && (

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Server, Cpu, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '../api/client';
 
 interface Service {
   id: string;
@@ -9,36 +11,54 @@ interface Service {
   latency: string;
 }
 
-export default function OverviewPage() {
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
+interface RawService {
+  name: string;
+  circuit?: string;
+  uptime?: string;
+  latency?: string;
+}
 
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const response = await fetch('/api/services');
-        if (response.ok) {
-          const data = await response.json();
-          const formattedServices: Service[] = data.map((item: any) => ({
-            id: item.name,
-            name: item.name,
-            status: item.circuit === '断路' ? 'offline' : item.circuit === '半开' ? 'degraded' : 'online',
-            uptime: item.uptime || 'N/A',
-            latency: item.latency || '-',
-          }));
-          setServices(formattedServices.length > 0 ? formattedServices : []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch services:', error);
-      } finally {
-        setLoading(false);
+/**
+ * Fetch services from the backend using the centralized API client.
+ * Uses React Query for caching, background refetching, and loading/error states.
+ */
+function useServicesQuery() {
+  return useQuery({
+    queryKey: ['services-overview'],
+    queryFn: async () => {
+      const response = await apiFetch<RawService[]>('/api/services');
+      if (!response.ok) {
+        throw new Error(response.error || 'Failed to fetch services');
       }
-    };
+      // 兼容两种响应形态: 直接数组 或 { services: [...] } 包装对象
+      const data = response.data;
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (data && typeof data === 'object' && Array.isArray((data as Record<string, unknown>).services)) {
+        return (data as Record<string, unknown>).services as RawService[];
+      }
+      return [];
+    },
+    staleTime: 5000,
+    refetchInterval: 5000,
+    retry: 3,
+  });
+}
 
-    fetchServices();
-    const interval = setInterval(fetchServices, 5000);
-    return () => clearInterval(interval);
-  }, []);
+export default function OverviewPage() {
+  const { data: rawServices, isLoading, error: servicesError } = useServicesQuery();
+
+  // API may return array or error object
+  const servicesArray: Service[] = Array.isArray(rawServices)
+    ? rawServices.map((item) => ({
+        id: item.name,
+        name: item.name,
+        status: item.circuit === '断路' ? 'offline' : item.circuit === '半开' ? 'degraded' : 'online',
+        uptime: item.uptime || 'N/A',
+        latency: item.latency || '-',
+      }))
+    : [];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -80,7 +100,7 @@ export default function OverviewPage() {
         </div>
 
         <div className="services-list">
-          {loading ? (
+          {isLoading ? (
             <div className="loading-state">
               <div className="spinner" aria-hidden="true"></div>
               <p>正在连接 Agora 服务网格...</p>
@@ -96,7 +116,7 @@ export default function OverviewPage() {
                 </tr>
               </thead>
               <tbody>
-                {services.map(svc => (
+                {servicesArray.map(svc => (
                   <tr key={svc.id} className="service-row">
                     <td className="font-medium" style={{ fontWeight: 500 }}>{svc.name}</td>
                     <td>

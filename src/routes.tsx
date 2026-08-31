@@ -121,6 +121,10 @@ export interface RouteConfig {
   group: string;
   component: React.LazyExoticComponent<React.ComponentType>;
   icon?: string;
+  /** When true, the route is reachable but hidden from the sidebar navigation */
+  hidden?: boolean;
+  /** Parent route ID for nested navigation / breadcrumb hierarchies */
+  parentId?: string;
 }
 
 export const ROUTES: RouteConfig[] = [
