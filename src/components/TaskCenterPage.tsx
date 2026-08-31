@@ -366,7 +366,7 @@ export default function TaskCenterPage({
           ) : (
             filteredTasks.map((task, index) => (
               <div
-                key={task.id || index}
+                key={`${task.id}-${index}`}
                 className="antd-card"
                 style={{ 
                   display: 'flex',

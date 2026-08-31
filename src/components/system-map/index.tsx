@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { RefreshCw, ShieldAlert } from 'lucide-react';
 import '../Dashboard.css';
 import type { PageMaturityFilter, SystemMapPayload } from './types';
 import { normalizeSearchText } from './utils';
