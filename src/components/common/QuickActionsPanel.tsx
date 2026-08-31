@@ -11,6 +11,7 @@
  * 导航调用走 openCockpitNavigationTarget (React Router 适配), 不再用 hash.
  */
 import React, { useEffect, useRef, useState } from 'react';
+import './common.css';
 import {
   Plus,
   FileText,

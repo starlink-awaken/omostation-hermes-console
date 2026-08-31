@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BookOpen, CheckCircle2, ClipboardList, Database, Loader2, Network, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { useCreateTask } from '../api/hooks';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -70,6 +71,7 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
   const [taskNotice, setTaskNotice] = useState<string | null>(null);
 
   const hasEvidence = results.length > 0 || Boolean(context || clusters || verifyResult);
+  const createTaskMutation = useCreateTask();
 
   const createEvidenceTask = async () => {
     if (!hasEvidence || taskPending) return;
@@ -79,18 +81,14 @@ export default function KOSWorkbench({ onNavigate, onOpenTarget, initialQuery }:
     setError(null);
     try {
       const evidence = JSON.stringify({ query: query.trim(), claim: claim.trim(), results, context, clusters, verifyResult }, null, 2).slice(0, 6000);
-      const response = await fetchJson('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `KOS 证据治理：${subject}`,
-          description: `基于 KOS 检索或声明校验结果，核对知识证据、关联对象和后续执行动作。\n\n原始摘要：\n${evidence}`,
-          priority: verifyResult ? 'high' : 'medium',
-          risk_level: 'L1',
-          evidence_required: ['KOS 原始响应', '关联知识对象确认', '后续执行结果', 'task closeout'],
-        }),
-      }) as JsonRecord;
-      const taskId = typeof response.id === 'string' ? response.id : '';
+      const result = await createTaskMutation.mutateAsync({
+        title: `KOS 证据治理：${subject}`,
+        description: `基于 KOS 检索或声明校验结果，核对知识证据、关联对象和后续执行动作。\n\n原始摘要：\n${evidence}`,
+        priority: verifyResult ? 'high' : 'medium',
+        risk_level: 'L1',
+        evidence_required: ['KOS 原始响应', '关联知识对象确认', '后续执行结果', 'task closeout'],
+      } as any);
+      const taskId = result?.id ? String(result.id) : '';
       if (!taskId) throw new Error('任务服务没有返回任务 ID');
       setTaskNotice(`KOS 证据已登记为任务：${taskId}`);
       openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: taskId }, onNavigate, onOpenTarget);

@@ -91,6 +91,19 @@ export const COMPUTE_ENDPOINTS = {
   getStatus: '/api/governance/compute/status',
   /** Get compute metrics */
   getMetrics: '/api/governance/compute/metrics',
+  /** Get compute models */
+  getModels: '/api/governance/compute/models',
+} as const;
+
+// ── Compute Fabric ──
+
+export const COMPUTE_FABRIC_ENDPOINTS = {
+  /** Get compute fabric nodes */
+  getNodes: '/api/governance/compute/fabric/nodes',
+  /** Get compute fabric workloads */
+  getWorkloads: '/api/governance/compute/fabric/workloads',
+  /** Get compute fabric overview (wildcard base) */
+  getOverview: '/api/governance/compute/fabric/overview',
 } as const;
 
 // ── Logs ──
@@ -582,6 +595,7 @@ export const API_ENDPOINTS = {
   alerts: ALERT_ENDPOINTS,
   bos: BOS_ENDPOINTS,
   compute: COMPUTE_ENDPOINTS,
+  computeFabric: COMPUTE_FABRIC_ENDPOINTS,
   logs: LOG_ENDPOINTS,
   research: RESEARCH_ENDPOINTS,
   workflows: WORKFLOW_ENDPOINTS,

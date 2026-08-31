@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Activity, ArrowRight, ClipboardCheck, Cpu, FileText, Gauge, Network, Route, Workflow } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { useComputeStatus, useBosHealth, useBosServices, useServiceStatus, useCreateTask } from '../api/hooks';
 
 type InfraPage = 'McpMesh' | 'Topology' | 'Compute' | 'Overview' | 'LogViewer' | string;
 
@@ -73,19 +74,6 @@ type InfrastructureOpsWorkbenchProps = {
   onOpenTarget?: (target: CockpitNavigationTarget) => void;
 };
 
-type InfrastructureState = {
-  loading: boolean;
-  compute: ComputePayload | null;
-  computeAvailable: boolean;
-  bosHealth: BosHealth | null;
-  bosHealthAvailable: boolean;
-  bosServices: BosService[];
-  bosServicesAvailable: boolean;
-  runtime: RuntimeService[];
-  runtimeAvailable: boolean;
-  error: string | null;
-};
-
 const INFRA_STEPS: InfraStep[] = [
   { id: 'McpMesh', title: '网格与 MCP', group: '基础设施' },
   { id: 'Topology', title: '全局拓扑', group: '基础设施' },
@@ -122,130 +110,82 @@ function nextInfraAction(currentPage: InfraPage, degradedServices: RuntimeServic
   return '当前基础设施层没有明显红灯，抽样检查日志和慢链路即可。';
 }
 
-async function readInfrastructureResponse<T>(
-  result: PromiseSettledResult<Response>,
-  label: string,
-): Promise<{ ok: boolean; data: T | null; error?: string }> {
-  if (result.status === 'rejected') {
-    return { ok: false, data: null, error: `${label}：${result.reason instanceof Error ? result.reason.message : '请求失败'}` };
-  }
-  if (!result.value.ok) {
-    return { ok: false, data: null, error: `${label} HTTP ${result.value.status}` };
-  }
-  try {
-    return { ok: true, data: await result.value.json() as T };
-  } catch {
-    return { ok: false, data: null, error: `${label}：响应格式无效` };
-  }
-}
-
 export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, onOpenTarget }: InfrastructureOpsWorkbenchProps) {
-  const [state, setState] = useState<InfrastructureState>({
-    loading: true,
-    compute: null,
-    computeAvailable: false,
-    bosHealth: null,
-    bosHealthAvailable: false,
-    bosServices: [],
-    bosServicesAvailable: false,
-    runtime: [],
-    runtimeAvailable: false,
-    error: null,
-  });
-  const [retryToken, setRetryToken] = useState(0);
   const [taskPending, setTaskPending] = useState(false);
   const [taskNotice, setTaskNotice] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  // React Query hooks replace raw fetch()
+  const { data: computeData, isLoading: computeLoading, isError: computeError } = useComputeStatus();
+  const { data: bosHealthData, isLoading: bosHealthLoading, isError: bosHealthError } = useBosHealth();
+  const { data: bosServicesData, isLoading: bosServicesLoading, isError: bosServicesError } = useBosServices();
+  const { data: runtimeData, isLoading: runtimeLoading, isError: runtimeError } = useServiceStatus();
+  const createTaskMutation = useCreateTask();
 
-    const load = async () => {
-      try {
-        const [computeResult, bosHealthResult, bosServicesResult, runtimeResult] = await Promise.allSettled([
-          fetch('/api/governance/compute/status'),
-          fetch('/api/bos/health'),
-          fetch('/api/bos/services'),
-          fetch('/api/services/status'),
-        ]);
+  // Derive typed data from hooks
+  const compute: ComputePayload | null = computeData?.nodes ? computeData as unknown as ComputePayload : null;
+  const bosHealth: BosHealth | null = bosHealthData ? bosHealthData as unknown as BosHealth : null;
+  const bosServices: BosService[] = bosServicesData
+    ? (Array.isArray(bosServicesData) ? bosServicesData as unknown as BosService[] : [])
+    : [];
+  const runtime: RuntimeService[] = runtimeData
+    ? ((runtimeData as unknown)?.items as RuntimeService[] || [])
+    : [];
 
-        const [{ ok: computeOk, data: compute, error: computeError }, { ok: bosHealthOk, data: bosHealth, error: bosHealthError }, { ok: bosServicesOk, data: bosServices, error: bosServicesError }, { ok: runtimeOk, data: runtime, error: runtimeError }] = await Promise.all([
-          readInfrastructureResponse<ComputePayload>(computeResult, '计算状态数据'),
-          readInfrastructureResponse<BosHealth>(bosHealthResult, 'BOS 健康数据'),
-          readInfrastructureResponse<{ services?: BosService[] }>(bosServicesResult, 'BOS 服务目录'),
-          readInfrastructureResponse<{ items?: RuntimeService[] }>(runtimeResult, '运行服务状态'),
-        ]);
+  // Availability derived from hook error states
+  const computeAvailable = !computeError && !computeLoading;
+  const bosHealthAvailable = !bosHealthError && !bosHealthLoading;
+  const bosServicesAvailable = !bosServicesError && !bosServicesLoading;
+  const runtimeAvailable = !runtimeError && !runtimeLoading;
 
-        const nextState: InfrastructureState = {
-          loading: false,
-          compute: null,
-          computeAvailable: computeOk,
-          bosHealth: null,
-          bosHealthAvailable: bosHealthOk,
-          bosServices: [],
-          bosServicesAvailable: bosServicesOk,
-          runtime: [],
-          runtimeAvailable: runtimeOk,
-          error: null,
-        };
+  // Combined loading state
+  const loading = computeLoading || bosHealthLoading || bosServicesLoading || runtimeLoading;
 
-        if (computeOk) nextState.compute = compute;
-        if (bosHealthOk) nextState.bosHealth = bosHealth;
-        if (bosServicesOk && bosServices) {
-          nextState.bosServices = bosServices.services || [];
-        }
-        if (runtimeOk && runtime) {
-          nextState.runtime = runtime.items || [];
-        }
-        nextState.error = [computeError, bosHealthError, bosServicesError, runtimeError].filter(Boolean).join('；') || null;
+  // Combined error message
+  const errors: string[] = [];
+  if (computeError) errors.push('计算状态数据');
+  if (bosHealthError) errors.push('BOS 健康数据');
+  if (bosServicesError) errors.push('BOS 服务目录');
+  if (runtimeError) errors.push('运行服务状态');
+  const error = errors.length > 0 ? errors.join('；') : null;
 
-        if (!cancelled) setState(nextState);
-      } catch (error) {
-        if (!cancelled) {
-          setState((previous) => ({ ...previous, loading: false, error: error instanceof Error ? error.message : '基础设施数据暂不可用' }));
-        }
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentPage, retryToken]);
+  // Force refetch on retry (retryToken change triggers re-render with fresh data)
+  void retryToken;
 
   const degradedServices = useMemo(
-    () => state.runtime.filter((service) => service.status !== 'online'),
-    [state.runtime],
+    () => runtime.filter((service) => service.status !== 'online'),
+    [runtime],
   );
 
   const unhealthyNodes = useMemo(
-    () => (state.compute?.nodes || []).filter((node) => node.status !== 'online' || (node.gpu_usage || 0) >= 85 || (node.cpu_usage || 0) >= 85),
-    [state.compute],
+    () => (compute?.nodes || []).filter((node) => node.status !== 'online' || (node.gpu_usage || 0) >= 85 || (node.cpu_usage || 0) >= 85),
+    [compute],
   );
 
   const unhealthyModels = useMemo(
-    () => (state.compute?.available_models || []).filter((model) => model.status !== 'healthy'),
-    [state.compute],
+    () => (compute?.available_models || []).filter((model) => model.status !== 'healthy'),
+    [compute],
   );
 
   const topDomains = useMemo(
-    () => Object.entries(state.bosHealth?.domains || {})
+    () => Object.entries(bosHealth?.domains || {})
       .sort((left, right) => right[1] - left[1])
       .slice(0, 4),
-    [state.bosHealth],
+    [bosHealth],
   );
 
-  const recommended = state.error
+  const recommended = error
     ? '基础设施证据不完整，先恢复失败数据源再判断下一步。'
-    : nextInfraAction(currentPage, degradedServices, unhealthyNodes, unhealthyModels, state.bosHealth);
+    : nextInfraAction(currentPage, degradedServices, unhealthyNodes, unhealthyModels, bosHealth);
   const infrastructureContextQuery = unhealthyNodes[0]?.id || unhealthyModels[0]?.model_name || topDomains[0]?.[0] || currentPage;
-  const noInfrastructureSources = !state.loading
-    && Boolean(state.error)
-    && !state.computeAvailable
-    && !state.bosHealthAvailable
-    && !state.bosServicesAvailable
-    && !state.runtimeAvailable;
-  const gridUnavailable = !state.bosHealthAvailable && !state.bosServicesAvailable;
+  const noInfrastructureSources = !loading
+    && Boolean(error)
+    && !computeAvailable
+    && !bosHealthAvailable
+    && !bosServicesAvailable
+    && !runtimeAvailable;
+  const gridUnavailable = !bosHealthAvailable && !bosServicesAvailable;
   const infrastructureTaskTitle = noInfrastructureSources
     ? '恢复基础设施诊断数据源'
     : unhealthyNodes.length > 0
@@ -258,33 +198,28 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
   const infrastructureTaskDescription = noInfrastructureSources
     ? '基础设施工作台的计算、BOS、服务目录和运行态数据源均不可用。请恢复数据源并完成网格、算力、服务和日志链路验收。'
     : `${recommended} 当前上下文：${infrastructureContextQuery}。请关联基础设施指标、服务状态、网格或日志证据，并完成 TaskCenter closeout。`;
+
   const createInfrastructureTask = async () => {
     setTaskPending(true);
     setTaskNotice(null);
     setTaskError(null);
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: infrastructureTaskTitle,
-          description: infrastructureTaskDescription,
-          priority: noInfrastructureSources || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? 'high' : 'medium',
-          risk_level: noInfrastructureSources ? 'L2' : 'L1',
-          evidence_required: ['基础设施状态快照', '网格/服务/算力证据', '日志或处理结果', 'task closeout'],
-          tags: ['infrastructure', 'runtime-governance'],
-          source: {
-            type: 'cockpit.infrastructure-workbench',
-            id: infrastructureContextQuery,
-            title: '基础设施工作台',
-            target: { tab: currentPage, taskQuery: infrastructureContextQuery },
-          },
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || response.statusText || '基础设施任务登记失败');
-      setTaskNotice(`已登记基础设施任务：${payload.title || infrastructureTaskTitle}`);
-      if (payload.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) }, onNavigate, onOpenTarget);
+      const result = await createTaskMutation.mutateAsync({
+        title: infrastructureTaskTitle,
+        description: infrastructureTaskDescription,
+        priority: noInfrastructureSources || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? 'high' : 'medium',
+        risk_level: noInfrastructureSources ? 'L2' : 'L1',
+        evidence_required: ['基础设施状态快照', '网格/服务/算力证据', '日志或处理结果', 'task closeout'],
+        tags: ['infrastructure', 'runtime-governance'],
+        source: {
+          type: 'cockpit.infrastructure-workbench',
+          id: infrastructureContextQuery,
+          title: '基础设施工作台',
+          target: { tab: currentPage, taskQuery: infrastructureContextQuery },
+        },
+      } as any);
+      setTaskNotice(`已登记基础设施任务：${result?.title || infrastructureTaskTitle}`);
+      if (result?.id) openCockpitNavigationTarget({ tab: 'TaskCenter', taskQuery: String(result.id) }, onNavigate, onOpenTarget);
     } catch (requestError) {
       setTaskError(requestError instanceof Error ? requestError.message : '基础设施任务登记失败');
     } finally {
@@ -301,14 +236,14 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
             把 BOS 网格、服务拓扑、算力节点和运行异常串成一条基础设施诊断链路。
           </p>
         </div>
-        <span className={`status-badge ${state.loading ? 'online' : noInfrastructureSources ? 'offline' : state.error || degradedServices.length > 0 || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? 'degraded' : 'online'}`}>
-          {state.loading ? '同步中' : noInfrastructureSources ? '数据不可用' : state.error || degradedServices.length > 0 || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? '需要排查' : '基础设施平稳'}
+        <span className={`status-badge ${loading ? 'online' : noInfrastructureSources ? 'offline' : error || degradedServices.length > 0 || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? 'degraded' : 'online'}`}>
+          {loading ? '同步中' : noInfrastructureSources ? '数据不可用' : error || degradedServices.length > 0 || unhealthyNodes.length > 0 || unhealthyModels.length > 0 ? '需要排查' : '基础设施平稳'}
         </span>
       </div>
 
-      {state.error && (
+      {error && (
         <div className="shell-data-banner" role="alert">
-          <span>{state.error}，当前基础设施诊断可能不完整。</span>
+          <span>{error}，当前基础设施诊断可能不完整。</span>
           <button type="button" onClick={() => setRetryToken((token) => token + 1)}>重试</button>
         </div>
       )}
@@ -316,18 +251,18 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
       <div className="infra-workbench-summary">
         <div className="infra-workbench-card">
           <span>网格路由</span>
-          <strong>{gridUnavailable ? 'N/A' : state.bosHealth ? state.bosHealth.total_routes || state.bosServices.length : state.bosServices.length}</strong>
-          <small>成功率 {gridUnavailable ? 'N/A' : state.bosHealth?.metrics?.success_rate !== undefined ? `${Math.round(state.bosHealth.metrics.success_rate * 100)}%` : '暂无'}</small>
+          <strong>{gridUnavailable ? 'N/A' : bosHealth ? bosHealth.total_routes || bosServices.length : bosServices.length}</strong>
+          <small>成功率 {gridUnavailable ? 'N/A' : bosHealth?.metrics?.success_rate !== undefined ? `${Math.round(bosHealth.metrics.success_rate * 100)}%` : '暂无'}</small>
         </div>
         <div className="infra-workbench-card">
           <span>异常节点</span>
-          <strong>{state.computeAvailable ? unhealthyNodes.length : 'N/A'}</strong>
-          <small>模型异常 {state.computeAvailable ? unhealthyModels.length : 'N/A'} · 运行异常 {state.runtimeAvailable ? degradedServices.length : 'N/A'}</small>
+          <strong>{computeAvailable ? unhealthyNodes.length : 'N/A'}</strong>
+          <small>模型异常 {computeAvailable ? unhealthyModels.length : 'N/A'} · 运行异常 {runtimeAvailable ? degradedServices.length : 'N/A'}</small>
         </div>
         <div className="infra-workbench-card infra-workbench-card-wide">
           <span>建议下一步</span>
           <strong>{recommended}</strong>
-          <small>{state.compute?.summary ? `近期调用 ${state.compute.summary.recent_calls || 0} · 平均延迟 ${Math.round(state.compute.summary.avg_latency_ms || 0)} ms` : noInfrastructureSources ? '算力摘要不可用' : '算力摘要暂无'}</small>
+          <small>{compute?.summary ? `近期调用 ${compute.summary.recent_calls || 0} · 平均延迟 ${Math.round(compute.summary.avg_latency_ms || 0)} ms` : noInfrastructureSources ? '算力摘要不可用' : '算力摘要暂无'}</small>
         </div>
       </div>
 
@@ -432,7 +367,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
               </button>
             ))}
             {unhealthyNodes.length === 0 && unhealthyModels.length === 0 && (
-              <div className="home-focus-empty infra-workbench-empty">{state.computeAvailable ? '当前没有异常节点或模型' : '算力数据不可用'}</div>
+              <div className="home-focus-empty infra-workbench-empty">{computeAvailable ? '当前没有异常节点或模型' : '算力数据不可用'}</div>
             )}
           </div>
         </article>
@@ -446,7 +381,7 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
             </button>
           </div>
           <div className="infra-workbench-list">
-            {state.runtime.slice(0, 4).map((service) => (
+            {runtime.slice(0, 4).map((service) => (
               <button
                 key={service.name}
                 className="infra-workbench-item"
@@ -458,8 +393,8 @@ export default function InfrastructureOpsWorkbench({ currentPage, onNavigate, on
                 <small>{service.uptime ? `运行 ${service.uptime}` : '进入性能页看运行趋势。'}</small>
               </button>
             ))}
-            {state.runtime.length === 0 && (
-              <div className="home-focus-empty infra-workbench-empty">{state.runtimeAvailable ? '当前没有可用运行服务' : '运行服务数据不可用'}</div>
+            {runtime.length === 0 && (
+              <div className="home-focus-empty infra-workbench-empty">{runtimeAvailable ? '当前没有可用运行服务' : '运行服务数据不可用'}</div>
             )}
           </div>
         </article>

@@ -1,0 +1,52 @@
+/* StatusBadge — Consistent status indicator (success/warning/error/info/neutral) */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: var(--antd-radius-md);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.status-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.status-badge-label {
+  /* Inherits color from parent */
+}
+
+/* Tone variants — use the design tokens from index.css */
+.status-badge-success {
+  color: var(--antd-success);
+  background: var(--antd-success-bg);
+}
+
+.status-badge-warning {
+  color: var(--antd-warning);
+  background: var(--antd-warning-bg);
+}
+
+.status-badge-error {
+  color: var(--antd-error);
+  background: var(--antd-error-bg);
+}
+
+.status-badge-info {
+  color: var(--antd-info);
+  background: rgba(0, 210, 255, 0.08);
+}
+
+.status-badge-neutral {
+  color: var(--antd-text-secondary);
+  background: rgba(148, 163, 184, 0.1);
+}

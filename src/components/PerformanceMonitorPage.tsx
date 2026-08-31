@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Cpu, HardDrive, RefreshCw, Wifi } from 'lucide-react';
+import './PerformanceMonitorPage.css';
 
 interface MetricData {
   timestamp: string;

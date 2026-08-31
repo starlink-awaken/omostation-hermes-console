@@ -51,7 +51,7 @@ export default function AreaChart({
               </linearGradient>
             )}
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid-stroke)" />
           <XAxis
             dataKey={xField}
             stroke="#888888"
@@ -66,10 +66,11 @@ export default function AreaChart({
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e0e0e0',
+              backgroundColor: 'var(--chart-tooltip-bg)',
+              border: '1px solid var(--chart-tooltip-border)',
               borderRadius: '4px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              color: 'var(--chart-tooltip-text)',
             }}
           />
           <Area

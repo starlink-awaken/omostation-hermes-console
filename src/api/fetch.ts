@@ -1,11 +1,8 @@
 /**
+ * @deprecated 使用 `src/api/client.ts` 中的 apiFetch/apiPost/apiPut/apiDelete 替代。
+ * 此文件保留仅为兼容，将在后续 Phase 迁移中移除。
+ *
  * 通用 fetch 包装器.
- *
- * 从 fullsite Dashboard/TaskCenterPage/OverviewPage/McpMeshView/AlertCenterPage 提取并统一:
- *   - fetchWithTimeout — 带 AbortController 超时的 fetch
- *   - readFetchResult — PromiseSettledResult<Response> → 强类型结果
- *
- * 统一的超时处理、错误消息格式，避免每个视图各写一遍.
  */
 
 /** 默认超时毫秒 (5 秒) */

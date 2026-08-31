@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import './HomePage.css';
 import HealthSummarySection from './home/HealthSummarySection';
 import AlertFeedSection from './home/AlertFeedSection';
 import MetricsTrendSection from './home/MetricsTrendSection';
@@ -7,6 +8,8 @@ import GovernanceOverviewSection from './home/GovernanceOverviewSection';
 import HomeFocusSection, { type HomeFocusPayload } from './home/HomeFocusSection';
 import { openCockpitNavigationTarget } from './cockpitNavigation';
 import type { HealthSummary, CockpitAlert, CockpitTask, DataPoint } from '../types/cockpit';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '../api/client';
 
 type DataQuality = 'loading' | 'complete' | 'partial' | 'unavailable';
 type HomeSource = 'summary' | 'alerts' | 'tasks' | 'metrics' | 'thoughts' | 'focus';
@@ -54,16 +57,88 @@ const SOURCE_LABELS: Record<HomeSource, string> = {
   focus: '工作焦点',
 };
 
-async function readHomeSource<T>(source: HomeSource, url: string): Promise<ReadResult<T>> {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      return { ok: false, source };
-    }
-    return { ok: true, data: await response.json() as T };
-  } catch {
-    return { ok: false, source };
-  }
+// ── Data fetching hooks (using centralized apiFetch) ──
+
+function useHealthSummary() {
+  return useQuery({
+    queryKey: ['home-health-summary'],
+    queryFn: async () => {
+      const res = await apiFetch<HealthSummary>('/api/health/summary');
+      if (!res.ok) throw new Error(res.error || 'Failed to fetch health summary');
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 2,
+  });
+}
+
+function useHomeAlerts() {
+  return useQuery({
+    queryKey: ['home-alerts'],
+    queryFn: async () => {
+      const res = await apiFetch<{ items?: CockpitAlert[] }>('/api/alerts?limit=3&status=active');
+      if (!res.ok) throw new Error(res.error || 'Failed to fetch alerts');
+      return res.data?.items ?? [];
+    },
+    staleTime: 15000,
+    refetchInterval: 15000,
+    retry: 2,
+  });
+}
+
+function useHomeTasks() {
+  return useQuery({
+    queryKey: ['home-tasks'],
+    queryFn: async () => {
+      const res = await apiFetch<{ items?: CockpitTask[] }>('/api/tasks?limit=3&sort=updated');
+      if (!res.ok) throw new Error(res.error || 'Failed to fetch tasks');
+      return res.data?.items ?? [];
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 2,
+  });
+}
+
+function useHomeMetrics() {
+  return useQuery({
+    queryKey: ['home-metrics'],
+    queryFn: async () => {
+      const res = await apiFetch<MetricsResponse>('/api/metrics/trend?range=24h');
+      if (!res.ok) throw new Error(res.error || 'Failed to fetch metrics');
+      return res.data;
+    },
+    staleTime: 60000,
+    retry: 2,
+  });
+}
+
+function useHomeThoughts() {
+  return useQuery({
+    queryKey: ['home-thoughts'],
+    queryFn: async () => {
+      const res = await apiFetch<ThoughtsResponse>('/api/omos/thoughts');
+      if (!res.ok) throw new Error(res.error || 'Failed to fetch thoughts');
+      return res.data;
+    },
+    staleTime: 30000,
+    retry: 2,
+  });
+}
+
+function useHomeFocus() {
+  return useQuery({
+    queryKey: ['home-focus'],
+    queryFn: async () => {
+      const res = await apiFetch<HomeFocusPayload>('/api/cockpit/system-map');
+      if (!res.ok) throw new Error(res.error || 'Failed to fetch focus');
+      return res.data;
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 2,
+  });
 }
 
 function ThoughtStreamSection({ thoughts }: { thoughts: Thought[] }) {
@@ -121,113 +196,62 @@ function ThoughtStreamSection({ thoughts }: { thoughts: Thought[] }) {
 
 export default function HomePage({ onTabChange }: HomePageProps) {
   void onTabChange;
-  const [healthSummary, setHealthSummary] = useState<HealthSummary | null>(null);
-  const [alerts, setAlerts] = useState<CockpitAlert[]>([]);
-  const [tasks, setTasks] = useState<CockpitTask[]>([]);
-  const [healthScoreData, setHealthScoreData] = useState<DataPoint[]>([]);
-  const [requestsData, setRequestsData] = useState<DataPoint[]>([]);
-  const [errorRateData, setErrorRateData] = useState<DataPoint[]>([]);
-  const [thoughts, setThoughts] = useState<Thought[]>([]);
-  const [focus, setFocus] = useState<HomeFocusPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dataQuality, setDataQuality] = useState<DataQuality>('loading');
-  const [sourceQuality, setSourceQuality] = useState<Record<HomeSource, DataQuality>>({
-    summary: 'loading',
-    alerts: 'loading',
-    tasks: 'loading',
-    metrics: 'loading',
-    thoughts: 'loading',
-    focus: 'loading',
-  });
-  const [degradedReasons, setDegradedReasons] = useState<string[]>([]);
 
-  useEffect(() => {
-    let disposed = false;
+  const summaryQuery = useHealthSummary();
+  const alertsQuery = useHomeAlerts();
+  const tasksQuery = useHomeTasks();
+  const metricsQuery = useHomeMetrics();
+  const thoughtsQuery = useHomeThoughts();
+  const focusQuery = useHomeFocus();
 
-    const fetchData = async () => {
-      setLoading(true);
-      setDataQuality('loading');
-      setSourceQuality({
-        summary: 'loading',
-        alerts: 'loading',
-        tasks: 'loading',
-        metrics: 'loading',
-        thoughts: 'loading',
-        focus: 'loading',
-      });
-      setDegradedReasons([]);
-      setHealthSummary(null);
-      setAlerts([]);
-      setTasks([]);
-      setHealthScoreData([]);
-      setRequestsData([]);
-      setErrorRateData([]);
-      setThoughts([]);
-      setFocus(null);
-      const [summary, alertFeed, recentTasks, metrics, thoughtsFeed, focusPayload] = await Promise.all([
-        readHomeSource<HealthSummary>('summary', '/api/health/summary'),
-        readHomeSource<{ items?: CockpitAlert[] }>('alerts', '/api/alerts?limit=3&status=active'),
-        readHomeSource<{ items?: CockpitTask[] }>('tasks', '/api/tasks?limit=3&sort=updated'),
-        readHomeSource<MetricsResponse>('metrics', '/api/metrics/trend?range=24h'),
-        readHomeSource<ThoughtsResponse>('thoughts', '/api/omos/thoughts'),
-        readHomeSource<HomeFocusPayload>('focus', '/api/cockpit/system-map'),
-      ]);
+  // Derive data quality per source
+  const sourceQuality: Record<HomeSource, DataQuality> = {
+    summary: summaryQuery.isLoading ? 'loading' : summaryQuery.isError ? 'unavailable' : 'complete',
+    alerts: alertsQuery.isLoading ? 'loading' : alertsQuery.isError ? 'unavailable' : 'complete',
+    tasks: tasksQuery.isLoading ? 'loading' : tasksQuery.isError ? 'unavailable' : 'complete',
+    metrics: metricsQuery.isLoading ? 'loading' : metricsQuery.isError ? 'unavailable' : 'complete',
+    thoughts: thoughtsQuery.isLoading ? 'loading' : thoughtsQuery.isError ? 'unavailable' : 'complete',
+    focus: focusQuery.isLoading ? 'loading' : focusQuery.isError ? 'unavailable' : 'complete',
+  };
 
-      if (disposed) return;
+  const anyLoading = summaryQuery.isLoading || alertsQuery.isLoading || tasksQuery.isLoading ||
+    metricsQuery.isLoading || thoughtsQuery.isLoading || focusQuery.isLoading;
 
-      const results: ReadResult<unknown>[] = [summary, alertFeed, recentTasks, metrics, thoughtsFeed, focusPayload];
-      const failedSources = results
-        .filter((result): result is ReadFailure => !result.ok)
-        .map((result) => SOURCE_LABELS[result.source]);
-      const successCount = results.length - failedSources.length;
-      const nextQuality: DataQuality = failedSources.length === 0
-        ? 'complete'
-        : successCount === 0
-          ? 'unavailable'
-          : 'partial';
-      const qualityFor = (result: ReadResult<unknown>): DataQuality => result.ok ? 'complete' : 'unavailable';
+  const failedSources = (Object.entries(sourceQuality) as [HomeSource, DataQuality][])
+    .filter(([, q]) => q === 'unavailable')
+    .map(([s]) => SOURCE_LABELS[s]);
 
-      setHealthSummary(summary.ok ? summary.data : null);
-      setAlerts(alertFeed.ok ? alertFeed.data.items ?? [] : []);
-      setTasks(recentTasks.ok ? recentTasks.data.items ?? [] : []);
-      setHealthScoreData(metrics.ok ? metrics.data.health_score ?? [] : []);
-      setRequestsData(metrics.ok ? metrics.data.requests ?? [] : []);
-      setErrorRateData(metrics.ok ? metrics.data.error_rate ?? [] : []);
-      setThoughts(thoughtsFeed.ok && thoughtsFeed.data.status === 'ok' ? thoughtsFeed.data.thoughts ?? [] : []);
-      setFocus(focusPayload.ok ? focusPayload.data : null);
-      setSourceQuality({
-        summary: qualityFor(summary),
-        alerts: qualityFor(alertFeed),
-        tasks: qualityFor(recentTasks),
-        metrics: qualityFor(metrics),
-        thoughts: qualityFor(thoughtsFeed),
-        focus: qualityFor(focusPayload),
-      });
-      setDataQuality(nextQuality);
-      setDegradedReasons(failedSources);
-      setLoading(false);
-    };
+  const successCount = Object.values(sourceQuality).filter((q) => q === 'complete').length;
+  const totalSources = Object.keys(sourceQuality).length;
+  const dataQuality: DataQuality = anyLoading
+    ? 'loading'
+    : failedSources.length === 0
+      ? 'complete'
+      : successCount === 0
+        ? 'unavailable'
+        : 'partial';
 
-    void fetchData();
-    const interval = setInterval(() => void fetchData(), 30000);
-    return () => {
-      disposed = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const healthSummary = summaryQuery.data ?? null;
+  const alerts = alertsQuery.data ?? [];
+  const tasks = tasksQuery.data ?? [];
+  const healthScoreData = metricsQuery.data?.health_score ?? [];
+  const requestsData = metricsQuery.data?.requests ?? [];
+  const errorRateData = metricsQuery.data?.error_rate ?? [];
+  const thoughts = thoughtsQuery.data?.status === 'ok' ? (thoughtsQuery.data.thoughts ?? []) : [];
+  const focus = focusQuery.data ?? null;
 
-  const homeMessage = loading
+  const homeMessage = anyLoading
     ? '正在读取真实首页数据'
     : dataQuality === 'complete'
       ? null
       : dataQuality === 'partial'
-        ? `首页部分数据暂不可用：${degradedReasons.join('、')}。未展示默认运行状态。`
+        ? `首页部分数据暂不可用：${failedSources.join('、')}。未展示默认运行状态。`
         : '首页数据暂不可用，当前未展示模拟或默认运行状态。';
 
   return (
     <div className="home-page">
       {homeMessage && (
-        <div className="shell-data-banner" role={loading ? 'status' : 'alert'}>
+        <div className="shell-data-banner" role={anyLoading ? 'status' : 'alert'}>
           {homeMessage}
         </div>
       )}

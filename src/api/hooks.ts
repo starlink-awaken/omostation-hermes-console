@@ -922,6 +922,62 @@ export function useOmoViolations() {
   });
 }
 
+// ── Compute Models ──
+
+export interface ComputeModelData {
+  model_name: string;
+  status: string;
+  provider?: string;
+  latency_p50?: number | null;
+  calls_today?: number;
+}
+
+export function useComputeModels() {
+  return useQuery({
+    queryKey: ['compute-models'],
+    queryFn: () => apiFetch<ComputeModelData[]>(API_ENDPOINTS.compute.getModels),
+    staleTime: 30000,
+  });
+}
+
+// ── Compute Fabric ──
+
+export interface ComputeFabricNode {
+  id: string;
+  name: string;
+  status: string;
+  type?: string;
+  cpu_usage?: number;
+  gpu_usage?: number;
+}
+
+export interface ComputeFabricWorkload {
+  id: string;
+  name: string;
+  status: string;
+  node_id?: string;
+  progress?: number;
+}
+
+export interface ComputeFabricOverview {
+  nodes?: ComputeFabricNode[];
+  workloads?: ComputeFabricWorkload[];
+  summary?: {
+    total_nodes?: number;
+    active_nodes?: number;
+    total_workloads?: number;
+    running_workloads?: number;
+  };
+}
+
+export function useComputeFabric() {
+  return useQuery({
+    queryKey: ['compute-fabric-overview'],
+    queryFn: () => apiFetch<ComputeFabricOverview>(API_ENDPOINTS.computeFabric.getOverview),
+    staleTime: 30000,
+  });
+}
+
 // ── Compute Extended ──
 
 export function useComputeQueue() {
@@ -2627,4 +2683,21 @@ export function useJourneysTimeline(params?: { scene_id?: string; limit?: number
     },
     staleTime: 30000,
   });
+}
+
+// ── Aliases (naming compatibility) ──
+
+/** Alias for useOmoStatus — matches /api/omos/status */
+export function useOmosStatus() {
+  return useOmoStatus();
+}
+
+/** Alias for useOmoViolations — matches /api/omos/violations */
+export function useOmosViolations() {
+  return useOmoViolations();
+}
+
+/** Alias for useServiceStatus — matches /api/services/status */
+export function useServicesStatus() {
+  return useServiceStatus();
 }

@@ -1,5 +1,7 @@
 import React from 'react';
 import { ChevronRight, Home } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import './common.css';
 
 interface BreadcrumbItem {
   label: string;
@@ -12,13 +14,15 @@ interface BreadcrumbProps {
 }
 
 export default function Breadcrumb({ items }: BreadcrumbProps) {
+  const navigate = useNavigate();
+
   return (
     <nav className="breadcrumb" aria-label="面包屑导航">
       <ol className="breadcrumb-list">
         <li className="breadcrumb-item">
           <button
             className="breadcrumb-link"
-            onClick={() => window.location.hash = '#home'}
+            onClick={() => navigate('/')}
             aria-label="首页"
           >
             <Home size={14} />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import './common.css';
 
 interface KeyboardShortcut {
   key: string;
@@ -61,9 +62,11 @@ interface CommandPaletteProps {
     shortcut?: string;
     action: () => void;
   }>;
+  /** Pre-fill the search query when opening */
+  initialQuery?: string;
 }
 
-export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, onClose, commands, initialQuery = '' }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -74,10 +77,10 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
 
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
+      setQuery(initialQuery);
       setSelectedIndex(0);
     }
-  }, [isOpen]);
+  }, [isOpen, initialQuery]);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -157,6 +160,7 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
 
 export function useCommandPalette(commands: CommandPaletteProps['commands']) {
   const [isOpen, setIsOpen] = useState(false);
+  const [initialQuery, setInitialQuery] = useState('');
 
   useKeyboardShortcuts({
     shortcuts: [
@@ -171,7 +175,12 @@ export function useCommandPalette(commands: CommandPaletteProps['commands']) {
 
   return {
     isOpen,
+    initialQuery,
     open: () => setIsOpen(true),
+    openWithQuery: (query: string) => {
+      setInitialQuery(query);
+      setIsOpen(true);
+    },
     close: () => setIsOpen(false),
     toggle: () => setIsOpen(prev => !prev),
   };

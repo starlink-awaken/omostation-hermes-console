@@ -67,10 +67,11 @@ export default function PieChart({
           </Pie>
           <Tooltip
             contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e0e0e0',
+              backgroundColor: 'var(--chart-tooltip-bg)',
+              border: '1px solid var(--chart-tooltip-border)',
               borderRadius: '4px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              color: 'var(--chart-tooltip-text)',
             }}
           />
           <Legend />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './dashboard-views.css';
+import './HomePage.css';
 
 interface WorkplaceTask {
   id: string;

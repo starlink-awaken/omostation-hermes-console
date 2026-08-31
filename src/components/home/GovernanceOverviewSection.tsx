@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ShieldCheck, ShieldAlert, Sparkles, Target, Scale, CheckCircle2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '../../api/client';
 
 interface GovernanceStatus {
   current_wave?: string;
@@ -14,60 +16,72 @@ interface GovernanceViolation {
   message?: string;
 }
 
-export default function GovernanceOverviewSection() {
-  const [govStatus, setGovStatus] = useState<GovernanceStatus | null>(null);
-  const [violations, setViolations] = useState<GovernanceViolation[]>([]);
-  const [passed, setPassed] = useState<boolean | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+interface OmosStatusResponse {
+  system?: {
+    current_wave?: string;
+    current_phase?: number;
+  };
+  governance?: {
+    health_score?: number;
+  };
+  theme?: string;
+}
 
-  useEffect(() => {
-    const fetchGov = async () => {
-      setError(null);
-      try {
-        const [statusRes, violationsRes] = await Promise.all([
-          fetch('/api/omos/status'),
-          fetch('/api/omos/violations')
-        ]);
+interface OmosViolationsResponse {
+  passed?: boolean;
+  violations?: GovernanceViolation[];
+}
 
-        if (statusRes.ok) {
-          const data = await statusRes.json();
-          const system = data.system || {};
-          const governance = data.governance || {};
-          setGovStatus({
-            current_wave: data.system?.current_wave,
-            current_phase: system.current_phase,
-            health_score: governance.health_score,
-            theme: data.theme || '治理状态已连接，等待后端提供主题说明。'
-          });
-        } else {
-          throw new Error('治理状态接口不可用');
-        }
+/**
+ * Fetch governance status and violations from the backend.
+ * Uses React Query for caching, background refetching, and loading/error states.
+ */
+function useGovernanceStatus() {
+  return useQuery({
+    queryKey: ['governance-status'],
+    queryFn: async () => {
+      const [statusRes, violationsRes] = await Promise.all([
+        apiFetch<OmosStatusResponse>('/api/omos/status'),
+        apiFetch<OmosViolationsResponse>('/api/omos/violations'),
+      ]);
 
-        if (violationsRes.ok) {
-          const vData = await violationsRes.json();
-          setPassed(vData.passed !== false);
-          setViolations(vData.violations || []);
-        } else {
-          throw new Error('SSOT 校验接口不可用');
-        }
-      } catch (err) {
-        console.error('Failed to fetch governance status:', err);
-        setGovStatus(null);
-        setPassed(null);
-        setViolations([]);
-        setError('核心治理面数据暂不可用。');
-      } finally {
-        setLoading(false);
+      if (!statusRes.ok) {
+        throw new Error(statusRes.error || '治理状态接口不可用');
       }
-    };
+      if (!violationsRes.ok) {
+        throw new Error(violationsRes.error || 'SSOT 校验接口不可用');
+      }
 
-    fetchGov();
-    const interval = setInterval(fetchGov, 15000);
-    return () => clearInterval(interval);
-  }, []);
+      const data = statusRes.data;
+      const system = data?.system || {};
+      const governance = data?.governance || {};
+      const govStatus: GovernanceStatus = {
+        current_wave: data?.system?.current_wave,
+        current_phase: system.current_phase,
+        health_score: governance.health_score,
+        theme: data?.theme || '治理状态已连接，等待后端提供主题说明。',
+      };
 
-  if (loading) {
+      return {
+        govStatus,
+        passed: violationsRes.data?.passed !== false,
+        violations: violationsRes.data?.violations || [],
+      };
+    },
+    staleTime: 15000,
+    refetchInterval: 15000,
+    retry: 3,
+  });
+}
+
+export default function GovernanceOverviewSection() {
+  const { data, isLoading, error } = useGovernanceStatus();
+
+  const govStatus = data?.govStatus ?? null;
+  const passed = data?.passed ?? null;
+  const violations = data?.violations ?? [];
+
+  if (isLoading) {
     return (
       <div style={{ padding: '24px', textAlign: 'center', color: 'rgba(255,255,255,0.45)' }}>
         正在读取核心治理面数据...
@@ -79,7 +93,7 @@ export default function GovernanceOverviewSection() {
     <section className="governance-overview-section animate-fade-in" style={{ marginTop: '0px', marginBottom: '24px' }}>
       <div className="section-header" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <Scale size={16} style={{ color: 'var(--antd-warning)' }} />
-        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-secondary)', margin: 0 }}>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-secondary)', margin: '0' }}>
           🏛️ eCOS 架构收敛与治理面板 (Governance & SSOT)
         </h3>
       </div>
@@ -96,20 +110,20 @@ export default function GovernanceOverviewSection() {
             fontSize: 12,
           }}
         >
-          {error}
+          {error instanceof Error ? error.message : '核心治理面数据暂不可用。'}
         </div>
       )}
 
       <div className="governance-overview-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-        
+
         {/* 左侧卡片：当前战役波次与状态 */}
-        <div className="antd-card" style={{ 
-          padding: '20px', 
+        <div className="antd-card" style={{
+          padding: '20px',
           background: 'linear-gradient(135deg, rgba(22, 119, 255, 0.03) 0%, rgba(22, 119, 255, 0.01) 100%)',
           border: '1px solid rgba(22, 119, 255, 0.1)',
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '16px' 
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -151,23 +165,23 @@ export default function GovernanceOverviewSection() {
         </div>
 
         {/* 中间卡片：直写拦截雷达 */}
-        <div className="antd-card" style={{ 
-          padding: '20px', 
+        <div className="antd-card" style={{
+          padding: '20px',
           border: passed === true ? '1px solid rgba(52, 199, 89, 0.15)' : passed === false ? '1px solid rgba(255, 69, 58, 0.25)' : '1px solid rgba(255, 184, 0, 0.25)',
           background: passed === true
-            ? 'linear-gradient(135deg, rgba(52, 199, 89, 0.02) 0%, rgba(52, 199, 89, 0.0) 100%)' 
+            ? 'linear-gradient(135deg, rgba(52, 199, 89, 0.02) 0%, rgba(52, 199, 89, 0.0) 100%)'
             : passed === false
               ? 'linear-gradient(135deg, rgba(255, 69, 58, 0.03) 0%, rgba(255, 69, 58, 0.01) 100%)'
               : 'linear-gradient(135deg, rgba(255, 184, 0, 0.03) 0%, rgba(255, 184, 0, 0.01) 100%)',
-          display: 'flex', 
-          flexDirection: 'column', 
+          display: 'flex',
+          flexDirection: 'column',
           justifyContent: 'space-between',
           gap: '12px'
         }}>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-            <div style={{ 
+            <div style={{
               backgroundColor: passed === true ? 'rgba(52, 199, 89, 0.1)' : passed === false ? 'rgba(255, 69, 58, 0.1)' : 'rgba(255, 184, 0, 0.1)',
-              padding: '10px', 
+              padding: '10px',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
@@ -188,7 +202,7 @@ export default function GovernanceOverviewSection() {
               </span>
               <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '4px', display: 'block', lineHeight: '1.4' }}>
                 {passed === true
-                  ? '未发现任何绕过持久化 Broker 直接修改 .omo/ 治理面的行为，代码处于健康合规状态。' 
+                  ? '未发现任何绕过持久化 Broker 直接修改 .omo/ 治理面的行为，代码处于健康合规状态。'
                   : passed === false
                     ? `检测到 ${violations.length} 处违规写入。请通过 omo CLI/OMO core 或 c2g 代理更改文件！`
                     : '尚未取得 SSOT 校验结果，请恢复治理接口后重试。'}
@@ -197,11 +211,11 @@ export default function GovernanceOverviewSection() {
           </div>
 
           {passed === false && violations.length > 0 && (
-            <div style={{ 
-              maxHeight: '70px', 
-              overflowY: 'auto', 
-              backgroundColor: 'rgba(0,0,0,0.2)', 
-              padding: '8px 12px', 
+            <div style={{
+              maxHeight: '70px',
+              overflowY: 'auto',
+              backgroundColor: 'rgba(0,0,0,0.2)',
+              padding: '8px 12px',
               borderRadius: '4px',
               border: '1px solid rgba(255,69,58,0.1)'
             }}>
@@ -227,26 +241,26 @@ export default function GovernanceOverviewSection() {
         </div>
 
         {/* 右侧卡片：eCOS 治理铁律 */}
-        <div className="antd-card" style={{ 
-          padding: '20px', 
+        <div className="antd-card" style={{
+          padding: '20px',
           background: 'rgba(255,255,255,0.01)',
           border: '1px solid rgba(255,255,255,0.05)',
-          display: 'flex', 
-          flexDirection: 'column', 
+          display: 'flex',
+          flexDirection: 'column',
           gap: '12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--antd-text-primary)' }}>
             <Sparkles size={14} style={{ color: 'var(--antd-warning)' }} />
             <span>eCOS 核心 SSOT 治理铁律</span>
           </div>
-          
-          <ul style={{ 
-            margin: 0, 
-            paddingLeft: '16px', 
-            fontSize: '11px', 
-            color: 'rgba(255,255,255,0.65)', 
-            display: 'flex', 
-            flexDirection: 'column', 
+
+          <ul style={{
+            margin: 0,
+            paddingLeft: '16px',
+            fontSize: '11px',
+            color: 'rgba(255,255,255,0.65)',
+            display: 'flex',
+            flexDirection: 'column',
             gap: '8px',
             lineHeight: '1.4'
           }}>

@@ -12,7 +12,7 @@ export default defineConfig({
         target: 'http://localhost:8090',
         changeOrigin: true,
         headers: {
-          'X-API-Key': '38333c9a5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2'
+          'X-API-Key': process.env.VITE_API_KEY || ''
         }
       }
     }

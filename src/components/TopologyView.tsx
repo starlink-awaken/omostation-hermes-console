@@ -8,9 +8,11 @@
  *   - 异常节点自动识别
  *   - retryToken 重试模式
  *   - buildTopology 纯函数 (可测试)
+ *
+ * 数据获取使用 React Query + 集中式 apiFetch 客户端.
  */
 
-import React, { useState, useEffect, useMemo, memo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -23,6 +25,8 @@ import ReactFlow, {
 import type { Node, Edge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { AlertTriangle, CheckCircle, RefreshCw, Server, XCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '../api/client';
 
 // ── Types ──
 
@@ -46,6 +50,24 @@ type TopologyService = {
   depends_on?: unknown;
   upstream?: unknown;
 };
+
+// ── Data fetching hook ──
+
+function useTopologyServices() {
+  return useQuery({
+    queryKey: ['topology-services'],
+    queryFn: async () => {
+      const response = await apiFetch<TopologyService[]>('/api/services');
+      if (!response.ok) {
+        throw new Error(response.error || '服务拓扑数据不可用');
+      }
+      return response.data ?? [];
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+    retry: 3,
+  });
+}
 
 // ── Pure helpers ──
 
@@ -198,49 +220,26 @@ const nodeTypes = {
 // ── Component ──
 
 export default function TopologyView() {
-  const [services, setServices] = useState<TopologyService[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [retryToken, setRetryToken] = useState(0);
   const [topologyQuery, setTopologyQuery] = useState('');
   const [topologyStatusFilter, setTopologyStatusFilter] = useState<'all' | 'online' | 'degraded' | 'offline'>('all');
 
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const response = await fetch('/api/services');
-        if (!response.ok) throw new Error('服务拓扑数据不可用');
-        const payload: unknown = await response.json();
-        const rawServices: TopologyService[] = Array.isArray(payload)
-          ? payload.filter(isRecord) as TopologyService[]
-          : isRecord(payload) && Array.isArray(payload.items)
-            ? payload.items.filter(isRecord) as TopologyService[]
-            : [];
-        if (rawServices.length === 0) {
-          setServices([]);
-          setNodes([]);
-          setEdges([]);
-          setError('暂无可用服务拓扑');
-          setLoading(false);
-          return;
-        }
-        setServices(rawServices);
-        const { nodes: builtNodes, edges: builtEdges } = buildTopology(rawServices);
-        setNodes(builtNodes);
-        setEdges(builtEdges);
-        setError('');
-      } catch (err) {
-        console.error('Failed to fetch services:', err);
-        setError(err instanceof Error ? err.message : '服务数据不可用');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const { data: rawServices, isLoading, error, refetch } = useTopologyServices();
 
-    void fetchServices();
-  }, [retryToken]);
+  // Build topology graph from fetched data
+  useMemo(() => {
+    if (!rawServices || rawServices.length === 0) {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+    const { nodes: builtNodes, edges: builtEdges } = buildTopology(rawServices);
+    setNodes(builtNodes);
+    setEdges(builtEdges);
+  }, [rawServices, setNodes, setEdges]);
+
+  const services = rawServices ?? [];
 
   const filteredServices = useMemo(() => {
     return services.filter((service) => {
@@ -267,6 +266,12 @@ export default function TopologyView() {
       }));
   }, [filteredServices]);
 
+  const handleRetry = () => {
+    void refetch();
+  };
+
+  const displayError = error ? (error instanceof Error ? error.message : '服务数据不可用') : '';
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header */}
@@ -281,7 +286,7 @@ export default function TopologyView() {
           </span>
           <button
             className="antd-btn"
-            onClick={() => { setLoading(true); setRetryToken((t) => t + 1); }}
+            onClick={handleRetry}
             aria-label="重试拓扑探测"
           >
             <RefreshCw size={14} />
@@ -334,7 +339,7 @@ export default function TopologyView() {
       </div>
 
       {/* Loading State */}
-      {loading && (
+      {isLoading && (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
           <div className="spinner" style={{ marginBottom: '8px' }} />
           <div>正在探测服务拓扑...</div>
@@ -342,7 +347,7 @@ export default function TopologyView() {
       )}
 
       {/* Error State */}
-      {error && !loading && (
+      {displayError && !isLoading && (
         <div role="alert" style={{
           padding: '16px',
           border: '1px solid rgba(255, 71, 87, 0.35)',
@@ -352,8 +357,8 @@ export default function TopologyView() {
           textAlign: 'center',
         }}>
           <AlertTriangle size={32} style={{ marginBottom: '8px' }} />
-          <div style={{ marginBottom: '8px' }}>{error}</div>
-          <button className="antd-btn" onClick={() => { setLoading(true); setRetryToken((t) => t + 1); }}>
+          <div style={{ marginBottom: '8px' }}>{displayError}</div>
+          <button className="antd-btn" onClick={handleRetry}>
             <RefreshCw size={14} />
             <span>重试</span>
           </button>
@@ -361,7 +366,7 @@ export default function TopologyView() {
       )}
 
       {/* ReactFlow Graph */}
-      {!loading && !error && services.length > 0 && (
+      {!isLoading && !displayError && services.length > 0 && (
         <div className="antd-card" style={{ width: '100%', height: '500px', padding: 0, overflow: 'hidden' }}>
           <ReactFlow
             nodes={nodes}
@@ -382,7 +387,7 @@ export default function TopologyView() {
       )}
 
       {/* Empty State */}
-      {!loading && !error && services.length === 0 && (
+      {!isLoading && !displayError && services.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--antd-text-secondary)' }}>
           <Server size={24} className="text-muted" style={{ marginBottom: '8px' }} />
           <div>暂无服务数据</div>
@@ -391,3 +396,4 @@ export default function TopologyView() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
 /* Dashboard.css — barrel import for CSS modules */
 @import './dashboard-layout.css';
 @import './dashboard-components.css';
-@import './dashboard-views.css';
+/* dashboard-views.css has been split into per-component CSS files (Phase 5) */

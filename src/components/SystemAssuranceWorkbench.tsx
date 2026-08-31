@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, ClipboardCheck, ExternalLink, Layers, RefreshCw, ShieldCheck } from 'lucide-react';
 import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
+import { useCreateTask } from '../api/hooks';
 
 type LayerStatus = {
   layer?: string;
@@ -145,6 +146,7 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
   const [taskPending, setTaskPending] = useState(false);
   const [taskNotice, setTaskNotice] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const createTaskMutation = useCreateTask();
 
   useEffect(() => {
     let active = true;
@@ -230,28 +232,22 @@ export default function SystemAssuranceWorkbench({ onNavigate, onOpenTarget }: S
     setTaskNotice(null);
     setTaskError(null);
     try {
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: assuranceTaskTitle,
-          description: assuranceTaskDescription,
-          priority: unavailableSources.length > 0 || e2eTone === 'offline' ? 'high' : 'medium',
-          risk_level: unavailableSources.length > 0 ? 'L2' : 'L1',
-          evidence_required: ['系统保证快照', '相关层、协议或服务证据', '验证与收敛结果', 'task closeout'],
-          tags: ['system-assurance', 'governance'],
-          source: {
-            type: 'cockpit.system-assurance-workbench',
-            id: 'system-assurance',
-            title: '系统保证工作台',
-            target: { tab: 'Overview', taskQuery: assuranceTaskTitle },
-          },
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.detail || response.statusText || '系统保证任务登记失败');
-      setTaskNotice(`已登记系统保证任务：${payload.title || assuranceTaskTitle}`);
-      if (payload.id) openAssuranceTarget({ tab: 'TaskCenter', taskQuery: String(payload.id) });
+      const result = await createTaskMutation.mutateAsync({
+        title: assuranceTaskTitle,
+        description: assuranceTaskDescription,
+        priority: unavailableSources.length > 0 || e2eTone === 'offline' ? 'high' : 'medium',
+        risk_level: unavailableSources.length > 0 ? 'L2' : 'L1',
+        evidence_required: ['系统保证快照', '相关层、协议或服务证据', '验证与收敛结果', 'task closeout'],
+        tags: ['system-assurance', 'governance'],
+        source: {
+          type: 'cockpit.system-assurance-workbench',
+          id: 'system-assurance',
+          title: '系统保证工作台',
+          target: { tab: 'Overview', taskQuery: assuranceTaskTitle },
+        },
+      } as any);
+      setTaskNotice(`已登记系统保证任务：${result?.title || assuranceTaskTitle}`);
+      if (result?.id) openAssuranceTarget({ tab: 'TaskCenter', taskQuery: String(result.id) });
     } catch (requestError) {
       setTaskError(requestError instanceof Error ? requestError.message : '系统保证任务登记失败');
     } finally {

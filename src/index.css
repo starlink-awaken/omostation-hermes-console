@@ -37,6 +37,47 @@
   
   --antd-shadow-card: 0 0 15px rgba(0, 242, 254, 0.05), inset 0 0 15px rgba(0, 242, 254, 0.02);
   --antd-shadow-dropdown: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Z-index Scale */
+  --z-sidebar: 10;
+  --z-topbar: 20;
+  --z-dropdown: 30;
+  --z-modal: 40;
+  --z-tooltip: 50;
+
+  /* Animation Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  /* Chart Tooltip (Dark Theme) */
+  --chart-tooltip-bg: rgba(16, 24, 48, 0.95);
+  --chart-tooltip-border: rgba(0, 242, 254, 0.15);
+  --chart-tooltip-text: #e0f2fe;
+  --chart-grid-stroke: rgba(0, 242, 254, 0.1);
+}
+
+/* Skeleton Loading Animation */
+.skeleton {
+  background: linear-gradient(90deg, var(--antd-bg-container) 25%, var(--antd-bg-elevated) 50%, var(--antd-bg-container) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: var(--antd-radius-sm);
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 * {
