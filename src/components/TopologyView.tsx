@@ -61,7 +61,8 @@ function useTopologyServices() {
       if (!response.ok) {
         throw new Error(response.error || '服务拓扑数据不可用');
       }
-      return response.data ?? [];
+      // API 可能返回 {error: "..."} 等非数组对象，需兜底保证返回数组
+      return Array.isArray(response.data) ? response.data : [];
     },
     staleTime: 30000,
     refetchInterval: 30000,
@@ -229,7 +230,7 @@ export default function TopologyView() {
 
   // Build topology graph from fetched data
   useMemo(() => {
-    if (!rawServices || rawServices.length === 0) {
+    if (!Array.isArray(rawServices) || rawServices.length === 0) {
       setNodes([]);
       setEdges([]);
       return;

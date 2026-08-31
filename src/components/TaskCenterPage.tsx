@@ -364,9 +364,9 @@ export default function TaskCenterPage({
               <div>暂无任务</div>
             </div>
           ) : (
-            filteredTasks.map((task) => (
+            filteredTasks.map((task, index) => (
               <div
-                key={task.id}
+                key={task.id || index}
                 className="antd-card"
                 style={{ 
                   display: 'flex',
@@ -390,9 +390,9 @@ export default function TaskCenterPage({
                     </div>
                     {task.tags && task.tags.length > 0 && (
                       <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                        {task.tags.map((tag) => (
+                        {task.tags.map((tag, index) => (
                           <span
-                            key={tag}
+                            key={`${tag}-${index}`}
                             style={{
                               fontSize: '11px',
                               padding: '2px 6px',
@@ -599,9 +599,9 @@ export default function TaskCenterPage({
                 <div>
                   <div style={{ fontSize: '12px', color: 'var(--antd-text-secondary)', marginBottom: '4px' }}>标签</div>
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                    {selectedTask.tags.map((tag) => (
+                    {selectedTask.tags.map((tag, index) => (
                       <span
-                        key={tag}
+                        key={`${tag}-${index}`}
                         style={{
                           fontSize: '11px',
                           padding: '2px 6px',
