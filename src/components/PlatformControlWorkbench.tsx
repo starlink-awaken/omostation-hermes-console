@@ -122,7 +122,7 @@ export default function PlatformControlWorkbench({
   // Derive typed data from hooks
   const archHealth = archHealthData as unknown as ArchHealthPayload || {};
   const bosMetrics = bosMetricsData as unknown as BosMetricsPayload || {};
-  const pipelines = (pipelinesData as unknown as string[]) || [];
+  const pipelines = Array.isArray(pipelinesData) ? pipelinesData : [];
   const quests = questsData as unknown as QuestPayload || {};
 
   // Availability derived from hook states
