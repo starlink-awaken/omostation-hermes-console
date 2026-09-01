@@ -6,8 +6,8 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from './client';
-import { API_ENDPOINTS } from './endpoints';
+import { apiFetch } from '../client';
+import { API_ENDPOINTS } from '../endpoints';
 
 // ── Debt ──
 

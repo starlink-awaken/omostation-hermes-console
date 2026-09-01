@@ -6,8 +6,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch, apiPost } from './client';
-import { API_ENDPOINTS } from './endpoints';
+import { apiFetch, apiPost } from '../client';
+import { API_ENDPOINTS } from '../endpoints';
 
 // ── Workflow Mesh Operations ──
 
@@ -393,7 +393,7 @@ export interface SceneCardPreflightProjection {
       availability: string;
       lifecycle: string;
       reason_codes: string[];
-    };
+    }>;
   }>;
   catalog_freshness?: {
     status: 'fresh' | 'stale' | 'unknown';

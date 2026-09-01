@@ -5,9 +5,9 @@
  * Covers: alerts, compute status/models/fabric, logs, sandbox, triage, engine.
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from './client';
-import { API_ENDPOINTS } from './endpoints';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, apiPost } from '../client';
+import { API_ENDPOINTS } from '../endpoints';
 
 // ── Alerts ──
 
@@ -51,6 +51,18 @@ export function useAlertRules() {
     queryKey: ['alert-rules'],
     queryFn: () => apiFetch<AlertRuleData[]>(API_ENDPOINTS.alerts.listAlertRules),
     staleTime: 60000,
+  });
+}
+
+export function useCreateAlertRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (rule: Omit<AlertRuleData, 'id' | 'created_at'>) =>
+      apiPost(API_ENDPOINTS.alerts.createAlertRule, rule),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alert-rules'] });
+    },
   });
 }
 
