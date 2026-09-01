@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* Linear-style calm dark design tokens — single SSOT for cockpit-ui v2 */
+@theme {
+  /* Surface hierarchy */
+  --color-surface-0: #0e0e12; /* app base */
+  --color-surface-1: #161618; /* panel */
+  --color-surface-2: #1e1e26; /* raised / card */
+  --color-surface-3: #26262e; /* overlay / hover */
+
+  /* Borders */
+  --color-border-subtle: #26262e;
+  --color-border-default: #33333d;
+
+  /* Text */
+  --color-text-primary: #ececf1;
+  --color-text-secondary: #a0a0ab;
+  --color-text-tertiary: #6b6b76;
+
+  /* Accent — single indigo */
+  --color-accent: #5e6ad2;
+  --color-accent-hover: #6c78e0;
+  --color-accent-muted: rgba(94, 106, 210, 0.15);
+
+  /* Status — semantic only */
+  --color-status-ok: #4cb782;
+  --color-status-warn: #f5a524;
+  --color-status-error: #e5484d;
+  --color-status-ok-muted: rgba(76, 183, 130, 0.12);
+  --color-status-warn-muted: rgba(245, 165, 36, 0.12);
+  --color-status-error-muted: rgba(229, 72, 77, 0.12);
+
+  /* Chart palette — low-saturation */
+  --color-chart-1: #5e6ad2;
+  --color-chart-2: #4cb782;
+  --color-chart-3: #f5a524;
+  --color-chart-4: #e5484d;
+  --color-chart-5: #a0a0ab;
+
+  /* Typography */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Z-index */
+  --z-sidebar: 10;
+  --z-topbar: 20;
+  --z-dropdown: 30;
+  --z-modal: 40;
+  --z-tooltip: 50;
+
+  /* Animation */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+}

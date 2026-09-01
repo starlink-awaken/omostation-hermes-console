@@ -8,13 +8,16 @@ cd "$(dirname "$0")/.."
 echo "1. Installing dependencies..."
 bun install
 
-echo "2. Running unit tests..."
+echo "2. Type checking..."
+bun run typecheck
+
+echo "3. Running unit tests..."
 bun run test:unit
 
-echo "3. Building Vite app..."
+echo "4. Building Vite app..."
 bun run build
 
-echo "4. Starting preview server..."
+echo "5. Starting preview server..."
 # Run preview server in background
 PORT=4173
 bun run preview --port $PORT &
@@ -27,16 +30,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "4. Waiting for server to start..."
+echo "6. Waiting for server to start..."
 sleep 3
 
-echo "5. Checking for 200 OK..."
+echo "7. Checking for 200 OK..."
 HTTP_STATUS=$(curl --noproxy "*" -o /dev/null -s -w "%{http_code}\n" http://localhost:$PORT/hermes/)
 
-if [ "$HTTP_STATUS" -eq 200 ]; then
-    echo "✅ Baseline check passed! Received HTTP 200 OK from preview server."
-    exit 0
-else
+if [ "$HTTP_STATUS" -ne 200 ]; then
     echo "❌ Baseline check failed! Received HTTP $HTTP_STATUS."
     exit 1
 fi
+
+echo "8. Running E2E page smoke tests..."
+bun run test:e2e
+
+echo "✅ Baseline check passed! Typecheck + Unit + Build + Preview + E2E all green."

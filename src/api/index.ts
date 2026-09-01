@@ -129,10 +129,5 @@ export type {
 // ── Provider ──
 export { ApiProvider, useQueryClientInstance } from './provider';
 
-// ── Fetch 包装器 (带超时/错误处理) ──
-export {
-  fetchWithTimeout,
-  readFetchResult,
-  DEFAULT_FETCH_TIMEOUT_MS,
-} from './fetch';
-export type { FetchResult } from './fetch';
+// ── 数组/对象防御工具 ──
+export { asArray, asRecord, isNonEmptyString } from './safe';

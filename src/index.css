@@ -1,5 +1,7 @@
+@import "./styles/theme.css";
+
 :root {
-  /* Cybertech Theme Design Tokens */
+  /* Cybertech Theme Design Tokens (legacy — phase 3 cleanup) */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   
   --antd-primary: #00f2fe; /* Cyber Neon Blue/Cyan */

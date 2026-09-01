@@ -8,6 +8,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { apiFetch, apiPost } from '../api/client';
+import { asArray } from '../api/safe';
 
 interface Message {
   id: string;
@@ -43,12 +45,18 @@ export const BrainChat: React.FC = () => {
 
   useEffect(() => {
     // 加载历史
-    fetch(`${BRAIN_API}/history?limit=30`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
+    apiFetch(`${BRAIN_API}/history?limit=30`)
+      .then((res) => {
+        if (res.ok) {
+          const history = asArray<{
+            id?: string;
+            role: string;
+            content: string;
+            sources?: Array<{ id: string; title: string; score?: number }>;
+            created_at?: string;
+          }>(res.data);
           setMessages(
-            data.map((h: any) => ({
+            history.map((h) => ({
               id: h.id || Math.random().toString(),
               role: h.role,
               content: h.content,
@@ -80,19 +88,15 @@ export const BrainChat: React.FC = () => {
     setLoading(true);
 
     try {
-      const resp = await fetch(`${BRAIN_API}/ask`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: userMsg.content }),
-      });
-      const data: AskResponse = await resp.json();
+      const res = await apiPost<AskResponse>(`${BRAIN_API}/ask`, { question: userMsg.content });
+      const data = res.data;
 
       const assistantMsg: Message = {
         id: Math.random().toString(),
         role: 'assistant',
-        content: data.answer || '抱歉，暂时无法回答。',
-        sources: data.sources,
-        suggestions: data.knowledge_suggestions,
+        content: data?.answer || '抱歉，暂时无法回答。',
+        sources: data?.sources,
+        suggestions: data?.knowledge_suggestions,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
@@ -234,10 +238,9 @@ const ContextPanel: React.FC = () => {
   const [prefs, setPrefs] = useState<Array<{ key: string; value: string }>>([]);
 
   useEffect(() => {
-    fetch(`${BRAIN_API}/context`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.preferences) setPrefs(data.preferences);
+    apiFetch(`${BRAIN_API}/context`)
+      .then((res) => {
+        if (res.ok && res.data?.preferences) setPrefs(res.data.preferences);
       })
       .catch(() => {});
   }, []);

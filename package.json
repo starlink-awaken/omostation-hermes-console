@@ -5,17 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "bash tests/baseline-check.sh",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:e2e": "node tests/e2e/pages-smoke.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
-    "@types/react-router-dom": "^5.3.3",
     "lucide-react": "^1.17.0",
-    "postcss": "^8.5.16",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.18.2",
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -39,6 +40,9 @@
     "globals": "^17.6.0",
     "happy-dom": "^20.11.1",
     "jsdom": "^29.1.1",
+    "postcss": "^8.5.16",
+    "puppeteer-core": "^25.9.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12",
