@@ -95,7 +95,14 @@ const MemoryInjector = React.lazy(() => import('./MemoryInjector'));
 const PlatformControlWorkbench = React.lazy(() => import('./PlatformControlWorkbench'));
 const RuntimeOpsWorkbench = React.lazy(() => import('./RuntimeOpsWorkbench'));
 const SystemAssuranceWorkbench = React.lazy(() => import('./SystemAssuranceWorkbench'));
-import PlaceholderView from './PlaceholderView';
+
+// Phase 2 capability-reflection views
+import CommandExplorer from './commands/CommandExplorer';
+import ChainStudio from './chain/ChainStudio';
+import AuditDashboard from './audit/AuditDashboard';
+import ResidentMonitor from './resident/ResidentMonitor';
+import BcosDashboard from './bcos/BcosDashboard';
+import PulseView from './p74/PulseView';
 
 // Icon mapping for dynamic sidebar generation
 const ICON_MAP: Record<string, React.ComponentType<{ size: number; 'aria-hidden'?: boolean; className?: string }>> = {
@@ -445,12 +452,12 @@ export default function Dashboard() {
               <Route path="/delivery-journey" element={<DeliveryJourneyView />} />
               <Route path="/workflow-mesh-operations" element={<WorkflowMeshOperationsView />} />
               <Route path="/swarm" element={<SwarmDashboard />} />
-              <Route path="/commands" element={<PlaceholderView title="命令全景" description="全量 CLI 命令浏览、搜索与帮助引导 — 阶段 2 交付" />} />
-              <Route path="/chain" element={<PlaceholderView title="链路编排" description="多命令联动链路的 DAG 可视化与 dry-run 执行 — 阶段 2 交付" />} />
-              <Route path="/command-audit" element={<PlaceholderView title="命令评分卡" description="全量命令 15 维质量评分看板 — 阶段 2 交付" />} />
-              <Route path="/agents" element={<PlaceholderView title="Agent 监控" description="常驻 Agent 五类角色状态与事件流 — 阶段 2 交付" />} />
-              <Route path="/bcos" element={<PlaceholderView title="BCOS 北极星" description="业务闭环系统：北极星价值度量 + 信号路由 + 进化引擎 — 阶段 2 交付" />} />
-              <Route path="/governance-pulse" element={<PlaceholderView title="治理脉搏" description="P74 工作流沉默治理 + 战略追踪 — 阶段 2 交付" />} />
+              <Route path="/commands" element={<CommandExplorer />} />
+              <Route path="/chain" element={<ChainStudio />} />
+              <Route path="/command-audit" element={<AuditDashboard />} />
+              <Route path="/agents" element={<ResidentMonitor />} />
+              <Route path="/bcos" element={<BcosDashboard />} />
+              <Route path="/governance-pulse" element={<PulseView />} />
               <Route path="/digital-brain" element={<DigitalBrainWorkplaceView />} />
               <Route path="/workbench/ecos-workflow" element={<EcosWorkflowWorkbench />} />
               <Route path="/workbench/governance-domain" element={<GovernanceDomainWorkbench />} />
