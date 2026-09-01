@@ -160,7 +160,7 @@ describe('DomainAppsView', () => {
     await waitFor(() => {
       expect(screen.getByText('登记应用')).toBeTruthy();
     });
-    expect(screen.getByText('高风险')).toBeTruthy();
+    expect(screen.getAllByText('高风险').length).toBeGreaterThan(0);
   });
 
   it('renders OPC workspace section', async () => {

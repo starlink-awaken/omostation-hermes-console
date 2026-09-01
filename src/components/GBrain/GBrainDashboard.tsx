@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BarChart3, Database, Users, Settings2, FileText, Activity, Heart, Shield } from 'lucide-react';
 import { gbrain } from '../../api/gbrain';
 import { LoginPage } from './Login';
-import { AgentsPage } from '../gbrain/agents';
+import { AgentsPage } from '../GBrain/agents';
 import { CalibrationPage } from './Calibration';
 import { RequestLogPage } from './RequestLog';
 import MemoryInjector from '../MemoryInjector';
