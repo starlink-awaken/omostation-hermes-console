@@ -1,25 +1,23 @@
 # DESIGN.md
 
-Cockpit UI — operator-facing React SPA for monitoring and managing the eCOS multi-agent
-system and its governance state. Phase A (infrastructure) is complete; Phase B
-(verification + test coverage) is pending per the team-plan worker decomposition.
+Cockpit UI — operator-facing React SPA for monitoring and managing the eCOS
+multi-agent system, its governance state, and CLI/command capabilities.
 
 ## Purpose
 
-Hermes Console is the human-facing dashboard for the OMO multi-agent system.
-It surfaces real-time state from workers (Nucleus, BaseMembrane, SharedBrain,
-OMO scheduler) via MCP connections, allowing operators to:
+Cockpit Console is the human-facing dashboard for the OMO multi-agent system.
+It surfaces real-time state from the cockpit MCP server, allowing operators to:
 
-- Inspect running workers and their brain health
-- View topology of the agent mesh
-- Monitor compute usage and memory
-- Configure worker parameters
-- Trigger workflow runs
+- Inspect running services, agents, and their health
+- Browse the full CLI command catalog with search and guidance
+- Visualize multi-command chain workflows as DAGs
+- Monitor command quality via 15-dimension audit scorecards
+- Track resident agent status and BCOS business metrics
+- Navigate the full capability landscape (MCP / BOS / CLI / Workflows)
 
 ## Architecture
 
-**Stack:** React 19 + TypeScript + Vite (bun), no CSS framework (raw CSS per
-component), no external chart library.
+**Stack:** React 19 + TypeScript + Vite 8 (bun) + Tailwind v4
 
 **Data flow:**
 
@@ -27,68 +25,94 @@ component), no external chart library.
 Operator Browser
      │
      ▼
-React SPA (hermes-console/)
-     │ HTTP/MCP
+React SPA (cockpit-ui/)
+     │  GET /api/*
      ▼
-cockpit MCP server ──→ kairon/ (worker state)
+Cockpit MCP/HTTP Server (localhost:8090)
      │
      ▼
-gbrain/ (brain state via MCP)
+Workspace SSOT files / CLI delegation
 ```
 
-The SPA communicates exclusively through the cockpit MCP server. It does not
-connect directly to kairon or gbrain.
+**Key dependencies:**
 
-**Key components:**
+- `@tanstack/react-query` — server-state management
+- `zustand` — client-state management
+- `recharts` — charts (audit scorecards, trends)
+- `reactflow` — DAG visualization (chain studio)
+- `lucide-react` — icon system
 
-| Component | Role |
-|-----------|------|
-| `Dashboard` | Main overview: worker health, brain score, recent events |
-| `ComputeView` | CPU/memory/IO metrics per worker |
-| `EnginesView` | LLM engine status and routing |
-| `TopologyView` | Agent mesh graph visualization |
-| `WorkflowsView` | Active workflow list and status |
-| `WorkflowGraph` | Single workflow DAG renderer |
-| `SettingsView` | Configuration panel |
-| `SandboxTerminal` | Embedded terminal for ad-hoc commands |
-| `MemoryInjector` | Memory injection into active workers |
+## Design System
 
-**Design tokens** (follows gbrain admin SPA pattern for consistency):
+**Token source:** `src/styles/theme.css` (`@theme` block) — single SSOT for
+colors, spacing, radius, z-index, animation durations.
 
-| Token | Value | Use |
-|-------|-------|-----|
-| `--bg-primary` | `#0a0a0f` | Page background |
-| `--bg-secondary` | `#14141f` | Sidebar, cards |
-| `--bg-tertiary` | `#1e1e2e` | Subtle surfaces |
-| `--text-primary` | `#e0e0e0` | Body text |
-| `--text-secondary` | `#888` | Headings, labels |
-| `--accent` | `#3b82f6` | Active states, links |
-| `--success` | `#22c55e` | Healthy / ok |
-| `--warning` | `#f59e0b` | Warnings |
-| `--error` | `#ef4444` | Failures |
+**Surface hierarchy:** `surface-0` (app base) → `surface-1` (panel) →
+`surface-2` (raised/card) → `surface-3` (overlay)
 
-**Typography:** Inter for UI, JetBrains Mono for data/numbers.
+**Status colors:** `status-ok` / `status-warn` / `status-error` (with `-muted`
+variants for backgrounds)
 
-**Spacing:** 4 / 8 / 16 / 24 / 32px scale.
+**Single accent:** `accent` (indigo) — used for primary actions and links
 
-## Phase B Scope
+### Shared Components
 
-Pending work per team-plan worker-1:
+| Component | Purpose |
+|-----------|---------|
+| `PageHeader` | Consistent page title + subtitle + actions |
+| `StatusBadge` | Maturity / risk / status indicators |
+| `LoadingSkeleton` | Loading placeholder |
+| `EmptyState` | Empty / error / no-data states |
+| `DataTable` | Sortable data table |
 
-- [ ] Verify MCP connectivity to cockpit
-- [ ] Add integration tests for each view
-- [ ] Complete Component health coverage
-- [ ] Document API surface (MCP tool calls consumed by the SPA)
+Import from `@/components/ui`:
 
-## What's NOT here yet
+```tsx
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+```
 
-- Authentication / authorization (operator tool, single-user by default)
-- Persistence layer (stateless; state comes from MCP at render time)
-- Mobile layout (desktop-only; operator tool)
-- Light mode (dark theme only; operator tool)
+## Information Architecture
 
-## References
+**Route source:** `src/routes.tsx` (`ROUTES` array) — single source of truth
+for routing, navigation, and page metadata.
 
-- cockpit MCP server: `projects/cockpit/`
-- OMO worker registry: `.omo/workers/`
-- team-plan handoff: `.omc/handoffs/team-plan.md`
+**Route metadata:** `cockpitPageRegistry.ts` and `cockpitNavigation.ts` derive
+from `ROUTES` — no independent duplication.
+
+**7 functional domains:**
+
+1. 总览与导航 — Home, Guide, SystemMap, Capabilities
+2. 运行与观测 — Overview, Mesh, Topology, Compute, Observability, Logs
+3. 治理与合规 — Governance, Audit, P74, L4Health, Debt, Alerts
+4. 知识与研究 — Research, Knowledge, KEMS, SceneCards, DecisionInbox
+5. Agent 与链路 — Commands, Chain, Resident, BCOS, Swarm, Brain
+6. 开发工具 — Tasks, Performance, Sandbox, Workflows, DomainApps
+7. 配置 — Settings
+
+## API Surface
+
+All API calls go through `src/api/client.ts` (`apiFetch` / `apiPost` /
+`apiPut` / `apiDelete`) with 30s timeout + AbortController.
+
+**Hooks:** `src/api/hooks/` — split by domain (system, tasks, kems, research,
+knowledge, governance, observability, workbench, gbrain, swarm). Barrel
+`index.ts` re-exports all.
+
+**Reflection endpoints** (new in Phase 2):
+
+| Endpoint | Source |
+|----------|--------|
+| `/api/commands` | `COMMAND_CATALOG` + `help_map` |
+| `/api/chains` | `cockpit/chain/spec.py` |
+| `/api/command-audit/*` | `docs/command-audit/*.yaml` |
+| `/api/resident` | `omo resident status` (subprocess) |
+| `/api/bcos` | `bin/bc-os/north_star_meter_v2.py` (subprocess) |
+| `/api/p74` | `bin/agent-workflow.py compliance` (subprocess) |
+
+## Testing
+
+- **Unit/Component:** vitest + `@testing-library/react` (`src/**/__tests__/`)
+- **E2E:** puppeteer-core (`tests/e2e/pages-smoke.mjs`) — full page smoke matrix
+- **Type checking:** `tsc --noEmit` (in build script)
+- **Baseline:** `tests/baseline-check.sh` — install → typecheck → unit → build → preview → e2e
