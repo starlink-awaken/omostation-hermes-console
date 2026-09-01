@@ -8,6 +8,7 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { COCKPIT_PAGE_REGISTRY } from './cockpitPageRegistry';
+import { ROUTES } from '../routes';
 
 type NavigateFunction = ReturnType<typeof useNavigate>;
 
@@ -32,44 +33,10 @@ export interface RecentNavigationEntry {
 const RECENT_NAVIGATION_STORAGE_KEY = 'cockpit.recent-navigation.v1';
 const RECENT_NAVIGATION_LIMIT = 5;
 
-// Tab ID → React Router path (与 routes.tsx 对齐)
-export const TAB_TO_ROUTE: Record<string, string> = {
-  Home: '/',
-  Guide: '/guide',
-  SystemMap: '/system-map',
-  Overview: '/overview',
-  McpMesh: '/mcpmesh',
-  Topology: '/topology',
-  Compute: '/compute',
-  Research: '/research',
-  Knowledge: '/knowledge',
-  KnowledgeAction: '/knowledge-action',
-  GBrainAdmin: '/gbrain-admin',
-  Engines: '/engines',
-  Assets: '/assets',
-  Protocol: '/protocol',
-  Workflows: '/workflows',
-  C2G: '/c2g',
-  AlertCenter: '/alerts',
-  L4Health: '/l4-health',
-  Debt: '/debt',
-  Observability: '/observability',
-  DeliveryJourney: '/delivery-journey',
-  Outcomes: '/outcomes',
-  JourneysTimeline: '/journeys',
-  WorkflowMeshOperations: '/workflow-mesh-operations',
-  SceneCards: '/scene-cards',
-  ExternalResources: '/external-resources',
-  LogViewer: '/logs',
-
-  TaskCenter: '/tasks',
-  Performance: '/performance',
-  Sandbox: '/sandbox',
-  QuestBoard: '/quest',
-  DomainApps: '/domain-apps',
-  Settings: '/settings',
-  DigitalBrainWorkplace: '/digital-brain',
-};
+// Tab ID → React Router path (派生自 ROUTES — 单一 SSOT)
+export const TAB_TO_ROUTE: Record<string, string> = Object.fromEntries(
+  ROUTES.map((r) => [r.id, r.path])
+);
 
 const COCKPIT_TAB_IDS = new Set(COCKPIT_PAGE_REGISTRY.map((page) => page.id));
 

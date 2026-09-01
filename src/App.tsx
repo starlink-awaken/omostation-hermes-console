@@ -1,8 +1,9 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { ApiProvider } from './api/provider';
 import Dashboard from './components/Dashboard';
 import { setCockpitNavigator } from './components/cockpitNavigation';
+import { ROUTE_REDIRECTS } from './routes';
 import './index.css';
 
 /**
@@ -22,8 +23,11 @@ function App() {
     <ApiProvider>
       <BrowserRouter>
         <CockpitNavBridge />
-        <div className="min-h-screen bg-[#0a0a0f] text-white">
+        <div className="min-h-screen bg-surface-0 text-text-primary">
           <Routes>
+            {Object.entries(ROUTE_REDIRECTS).map(([from, to]) => (
+              <Route key={from} path={from} element={<Navigate to={to} replace />} />
+            ))}
             <Route path="/*" element={<Dashboard />} />
           </Routes>
         </div>
