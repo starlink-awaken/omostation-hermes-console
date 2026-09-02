@@ -3,7 +3,6 @@ import { render, RenderOptions } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { ReactElement, ReactNode } from 'react';
 import { MemoryRouter, Route, Routes, Outlet } from 'react-router-dom';
-import { ApiProvider } from '../../api/provider';
 import Dashboard from '../Dashboard';
 
 export type RouteMeta = {
@@ -118,11 +117,9 @@ export function renderDashboardAt(
   return {
     ...render(
       <QueryClientProvider client={client}>
-        <ApiProvider>
-          <MemoryRouter initialEntries={initialEntries}>
-            <Dashboard />
-          </MemoryRouter>
-        </ApiProvider>
+        <MemoryRouter initialEntries={initialEntries}>
+          <Dashboard />
+        </MemoryRouter>
       </QueryClientProvider>,
     ),
     user: userEvent,

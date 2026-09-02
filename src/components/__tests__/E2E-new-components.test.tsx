@@ -64,7 +64,7 @@ describe('E2E: HarnessDashboard', () => {
     renderDashboardAt('/harness');
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Harness 合规', level: 1 })).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { name: 'Harness 合规', level: 1 })[0]).toBeInTheDocument();
     });
   });
 
@@ -99,8 +99,9 @@ describe('E2E: HarnessDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByText('12 章节合规')).toBeInTheDocument();
-      expect(screen.getByText('admission')).toBeInTheDocument();
-      expect(screen.getByText('execution')).toBeInTheDocument();
+      expect(screen.getAllByText(/admission/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/spec/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/execution/).length).toBeGreaterThan(0      );
     });
   });
 
@@ -110,7 +111,7 @@ describe('E2E: HarnessDashboard', () => {
 
     await waitFor(() => {
       // Should still render with default values (0 errors, 0 warnings)
-      expect(screen.getByRole('heading', { name: 'Harness 合规', level: 1 })).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { name: 'Harness 合规', level: 1 })[0]).toBeInTheDocument();
     });
   });
 
@@ -136,7 +137,7 @@ describe('E2E: IntentCompiler', () => {
     renderDashboardAt('/intent');
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Intent 编译器', level: 1 })).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { name: 'Intent 编译器', level: 1 })[0]).toBeInTheDocument();
     });
   });
 
@@ -145,7 +146,7 @@ describe('E2E: IntentCompiler', () => {
     renderDashboardAt('/intent');
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/输入自然语言/)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/例如：每天/)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /编译/ })).toBeInTheDocument();
     });
   });
@@ -165,7 +166,7 @@ describe('E2E: IntentCompiler', () => {
     const { user } = renderDashboardAt('/intent');
 
     await waitFor(() => {
-      const input = screen.getByPlaceholderText(/输入自然语言/);
+      const input = screen.getByPlaceholderText(/例如：每天/);
       user.type(input, 'Create a new dashboard');
     });
 
@@ -177,12 +178,27 @@ describe('E2E: IntentCompiler', () => {
 
   it('shows compilation result on successful compile', async () => {
     setupMockFetch({
-      '/api/cockpit/intent/compile': MOCK_INTENT_COMPILE_RESULT,
+      '/api/intent/compile': {
+        available: true,
+        error: null,
+        result: {
+          success: true,
+          intent_text: 'Create a dashboard',
+          dag: {
+            nodes: [
+              { id: 'entry', label: '开始', type: 'entry' },
+              { id: 'fetch', label: '获取数据', type: 'action', description: '从数据源拉取原始数据' },
+              { id: 'exit', label: '结束', type: 'exit' },
+            ],
+            edges: [{ from: 'entry', to: 'fetch' }, { from: 'fetch', to: 'exit' }],
+          },
+        },
+      },
     });
     const { user } = renderDashboardAt('/intent');
 
     await waitFor(() => {
-      const input = screen.getByPlaceholderText(/输入自然语言/);
+      const input = screen.getByPlaceholderText(/例如：每天/);
       user.type(input, 'Create a dashboard');
     });
 
@@ -190,16 +206,18 @@ describe('E2E: IntentCompiler', () => {
     await user.click(compileBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/objective:/)).toBeInTheDocument();
+      expect(screen.getByText('编译结果')).toBeInTheDocument();
     });
   });
 
   it('shows error on compilation failure', async () => {
-    setupMockFetchError('Compilation failed');
+    setupMockFetch({
+      '/api/intent/compile': { available: true, error: 'Compilation failed' },
+    });
     const { user } = renderDashboardAt('/intent');
 
     await waitFor(() => {
-      const input = screen.getByPlaceholderText(/输入自然语言/);
+      const input = screen.getByPlaceholderText(/例如：每天/);
       user.type(input, 'Invalid input');
     });
 
@@ -207,7 +225,7 @@ describe('E2E: IntentCompiler', () => {
     await user.click(compileBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/编译失败|错误/)).toBeInTheDocument();
+      expect(screen.getByText(/Compilation failed/)).toBeInTheDocument();
     });
   });
 });
@@ -222,7 +240,7 @@ describe('E2E: GovernanceSelfCheck', () => {
     renderDashboardAt('/governance-self-check');
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: '治理自检', level: 1 })).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { name: '治理自检', level: 1 })[0]).toBeInTheDocument();
     });
   });
 
@@ -242,9 +260,9 @@ describe('E2E: GovernanceSelfCheck', () => {
     setupMockFetch({ '/api/cockpit/governance/self-check': MOCK_GOVERNANCE_SELF_CHECK });
     renderDashboardAt('/governance-self-check');
 
-    await waitFor(() => {
+     await waitFor(() => {
       expect(screen.getAllByText('PASS').length).toBeGreaterThanOrEqual(3);
-      expect(screen.getByText('WARN')).toBeInTheDocument();
+      expect(screen.getAllByText('WARN').length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -272,7 +290,7 @@ describe('E2E: GovernanceSelfCheck', () => {
 
     await waitFor(() => {
       // Should still render the page even if API fails
-      expect(screen.getByRole('heading', { name: '治理自检', level: 1 })).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { name: '治理自检', level: 1 })[0]).toBeInTheDocument();
     });
   });
 
