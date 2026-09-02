@@ -1,13 +1,17 @@
 import React, { useEffect, useMemo } from 'react';
-import { AlertTriangle, BookOpen, ClipboardList, Compass, Copy, ExternalLink, GitBranch, RefreshCw, Search } from 'lucide-react';
 import '../Dashboard.css';
 import ActionSurfacePanel from '../ActionSurfacePanel';
-import { openCockpitNavigationTarget, type CockpitNavigationTarget } from '../cockpitNavigation';
+import { type CockpitNavigationTarget } from '../cockpitNavigation';
 import { useResearchHubData } from './useResearchHubData';
 import { ResearchClosureTable } from './ResearchClosureTable';
 import { ResearchDetailPanel } from './ResearchDetailPanel';
-import { type ResearchClosureRow, type ResearchItem } from './types';
-import { copyText, matchesResearchFocusQuery, shortTime, statusText } from './utils';
+import { ResearchStatsSection } from './ResearchStatsSection';
+import { ResearchFilterBar } from './ResearchFilterBar';
+import { RecentResearchList } from './RecentResearchList';
+import { ResearchWorkbenchSection } from './ResearchWorkbenchSection';
+import { FocusedResearchCard } from './FocusedResearchCard';
+import { type ResearchClosureRow } from './types';
+import { matchesResearchFocusQuery } from './utils';
 
 interface ResearchHubViewProps {
   onNavigate?: (tab: string) => void;
@@ -268,104 +272,15 @@ export default function ResearchHubView({
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <section className="antd-card" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div className="section-header" style={{ marginBottom: 0 }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 18 }}>研究主旅程</h2>
-            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-              把 `cockpit research` 从 CLI 命令堆，整理成一个能看见对象、上下文、发布和后续动作的站内入口。
-            </p>
-          </div>
-          <button className="antd-btn" onClick={() => {
-            data.load();
-          }}>
-            <RefreshCw size={14} className={data.refreshing ? 'animate-spin' : ''} />
-            <span>刷新</span>
-          </button>
-        </div>
-
-        {data.sourceError && (
-          <div className="overview-inline-error" role="alert">
-            <AlertTriangle size={16} />
-            <div>
-              <strong>研究数据需要补证</strong>
-              <span>{data.sourceError}，当前空状态不代表没有研究对象。</span>
-            </div>
-            <button type="button" className="antd-btn" onClick={() => { data.load(); }}>重试</button>
-          </div>
-        )}
-
-        <div className="stats-grid">
-          {[
-            ['活跃研究', data.payload.summary.active, <Search key="search" size={20} />],
-            ['已发布', data.payload.summary.published, <BookOpen key="book" size={20} />],
-            ['追问总数', data.payload.summary.follow_ups, <GitBranch key="branch" size={20} />],
-            ['参与 Agent', data.payload.summary.agents, <Compass key="compass" size={20} />],
-          ].map(([label, value, icon]) => (
-            <div key={String(label)} className="stat-card">
-              <div className="stat-icon-wrapper pulse-info">{icon}</div>
-              <div className="stat-info">
-                <h3>{label}</h3>
-                <p className="stat-value">{value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>
-          <article className="antd-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
-            <div className="section-header" style={{ marginBottom: 12 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 15 }}>研究到执行链</h3>
-                <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 12 }}>先确认研究对象，再补上下文，最后落任务。</p>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {data.payload.pipeline.map((step, index) => (
-                <button
-                  key={step.id}
-                  type="button"
-                  className="action-surface-item"
-                  onClick={() => openCockpitNavigationTarget({ tab: step.id, taskQuery: researchObjectQuery }, onNavigate, onOpenTarget)}
-                  style={{ textAlign: 'left', width: '100%' }}
-                >
-                  <div>
-                    <strong>{index + 1}. {step.title}</strong>
-                    <p>{step.summary}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </article>
-
-          <article className="antd-card" style={{ padding: 18, background: 'rgba(255,255,255,0.02)' }}>
-            <div className="section-header" style={{ marginBottom: 12 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 15 }}>常用命令</h3>
-                <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 12 }}>先复制，再执行，避免靠记忆敲错。</p>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {data.payload.commands.map((command) => (
-                <button
-                  key={command.id}
-                  type="button"
-                  className="action-surface-item"
-                  onClick={() => void copyText(command.value)}
-                  style={{ textAlign: 'left', width: '100%' }}
-                >
-                  <div>
-                    <strong>{command.label}</strong>
-                    <p>{command.detail}</p>
-                    <code style={{ fontSize: 12, color: 'var(--antd-primary)' }}>{command.value}</code>
-                  </div>
-                  <Copy size={14} />
-                </button>
-              ))}
-            </div>
-          </article>
-        </div>
-      </section>
+      <ResearchStatsSection
+        payload={data.payload}
+        refreshing={data.refreshing}
+        sourceError={data.sourceError}
+        researchObjectQuery={researchObjectQuery}
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        onRefresh={() => data.load()}
+      />
 
       <ActionSurfacePanel
         title="研究推进区"
@@ -377,43 +292,15 @@ export default function ResearchHubView({
       />
 
       {focusedResearchCard && (
-        <section className="services-section overview-ops-panel" aria-label="当前研究承接焦点">
-          <div className="section-header">
-            <div>
-              <h2 style={{ margin: 0, fontSize: 16 }}>当前研究承接焦点</h2>
-              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-                把系统地图、页面审计或任务里丢过来的上下文，直接翻成研究面当前该承接的对象。
-              </p>
-            </div>
-            <span className="status-badge online">{focusedResearchCard.kicker}</span>
-          </div>
-          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
-            <div>
-              <strong>{focusedResearchCard.title}</strong>
-              <p>{focusedResearchCard.detail}</p>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="antd-btn"
-                aria-label={`打开研究焦点对象 ${focusedResearchCard.title}`}
-                onClick={() => openCockpitNavigationTarget(focusedResearchCard.objectTarget, onNavigate, onOpenTarget)}
-              >
-                <Search size={14} />
-                <span>打开对象</span>
-              </button>
-              <button
-                type="button"
-                className="antd-btn"
-                aria-label={`打开研究焦点任务 ${focusedResearchCard.title}`}
-                onClick={() => openCockpitNavigationTarget(focusedResearchCard.taskTarget, onNavigate, onOpenTarget)}
-              >
-                <GitBranch size={14} />
-                <span>打开任务</span>
-              </button>
-            </div>
-          </article>
-        </section>
+        <FocusedResearchCard
+          kicker={focusedResearchCard.kicker}
+          title={focusedResearchCard.title}
+          detail={focusedResearchCard.detail}
+          objectTarget={focusedResearchCard.objectTarget}
+          taskTarget={focusedResearchCard.taskTarget}
+          onNavigate={onNavigate}
+          onOpenTarget={onOpenTarget}
+        />
       )}
 
       <ResearchClosureTable
@@ -422,134 +309,25 @@ export default function ResearchHubView({
         onOpenTarget={onOpenTarget}
       />
 
-      <section className="services-section" role="region" aria-label="研究筛选">
-        <div className="section-header" style={{ marginBottom: 0 }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 16 }}>研究对象检索</h2>
-            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-              同一组条件作用于研究闭环、承接工作台、对象列表和详情焦点，先切片再继续补上下文、落任务或发布回流。
-            </p>
-          </div>
-          <span className="status-badge online">显示 {filteredResearch.length}/{data.payload.summary.total}</span>
-        </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            type="search"
-            aria-label="搜索研究对象"
-            placeholder="主题、摘要、标签、Agent 或下一步"
-            value={data.researchQuery}
-            onChange={(event) => data.setResearchQuery(event.target.value)}
-            style={{
-              flex: '1 1 280px',
-              minWidth: 220,
-              padding: '9px 12px',
-              borderRadius: 6,
-              backgroundColor: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#fff',
-              fontSize: 13,
-              outline: 'none',
-            }}
-          />
-          <select
-            aria-label="按状态筛选研究对象"
-            value={data.researchStatusFilter}
-            onChange={(event) => data.setResearchStatusFilter(event.target.value)}
-            style={{
-              minWidth: 140,
-              padding: '9px 12px',
-              borderRadius: 6,
-              backgroundColor: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#fff',
-              fontSize: 13,
-              outline: 'none',
-            }}
-          >
-            <option value="all">全部状态</option>
-            <option value="active">活跃</option>
-            <option value="archived">归档</option>
-            <option value="quarantined">隔离</option>
-          </select>
-          <button
-            type="button"
-            className="antd-btn"
-            aria-label="清除研究筛选"
-            onClick={() => { data.setResearchQuery(''); data.setResearchStatusFilter('all'); }}
-            disabled={!data.researchQuery && data.researchStatusFilter === 'all'}
-          >
-            清除
-          </button>
-        </div>
-      </section>
+      <ResearchFilterBar
+        query={data.researchQuery}
+        statusFilter={data.researchStatusFilter}
+        filteredCount={filteredResearch.length}
+        totalCount={data.payload.summary.total}
+        onQueryChange={data.setResearchQuery}
+        onStatusChange={data.setResearchStatusFilter}
+        onClear={() => { data.setResearchQuery(''); data.setResearchStatusFilter('all'); }}
+      />
 
-      <section className="services-section">
-        <div className="section-header">
-          <div>
-            <h2>最近研究对象</h2>
-            <p className="text-muted">它们现在处在什么状态、上一次发生了什么，以及下一步应该做什么。</p>
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {filteredResearch.length === 0 ? (
-            <div className="antd-card" style={{ padding: 20 }}>
-              <p className="text-muted" style={{ margin: 0 }}>{data.payload.recent.length === 0 ? '还没有研究对象，先从"发起研究"那条命令开始。' : '当前筛选下没有匹配的研究对象。'}</p>
-            </div>
-          ) : filteredResearch.map((item) => (
-            <article key={item.id} className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 15 }}>{item.topic}</h3>
-                  <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>{item.summary || '暂无摘要'}</p>
-                </div>
-                <span className={`status-badge ${item.status === 'active' ? 'online' : item.status === 'archived' ? 'degraded' : 'offline'}`}>
-                  {statusText(item.status)}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, color: 'var(--antd-text-secondary)' }}>
-                <span>来源 {item.source_count}</span>
-                <span>追问 {item.follow_up_count}</span>
-                <span>Agent {item.agent || '未指定'}</span>
-              </div>
-              {item.tags.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {item.tags.map((tag) => (
-                    <span key={`${item.id}-${tag}`} className="system-map-chip degraded">{tag}</span>
-                  ))}
-                </div>
-              )}
-              <div style={{ fontSize: 12, color: 'var(--antd-text-secondary)' }}>
-                <strong style={{ color: 'var(--antd-text-primary)' }}>{item.last_event?.label || '暂无事件'}</strong>
-                <span> · {shortTime(item.last_event?.created_at || item.created_at)}</span>
-              </div>
-              <p style={{ margin: 0, fontSize: 13 }}>{item.next_action}</p>
-              <button
-                type="button"
-                className="action-surface-item"
-                aria-label={`查看研究详情 ${item.topic}`}
-                onClick={() => void data.openDetail(item.id)}
-                style={{ width: '100%', justifyContent: 'space-between', marginTop: 2 }}
-              >
-                <span>查看对象详情</span>
-                <ExternalLink size={14} />
-              </button>
-            </article>
-          ))}
-        </div>
-        {data.payload.has_more && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-            <button
-              type="button"
-              className="antd-btn"
-              aria-label="加载更多研究对象"
-              onClick={() => void data.load(data.payload.recent.length, true)}
-              disabled={data.loadingMore}
-            >
-              {data.loadingMore ? '正在加载...' : `加载更多（已显示 ${data.payload.recent.length}/${data.payload.summary.total}）`}
-            </button>
-          </div>
-        )}
-      </section>
+      <RecentResearchList
+        items={filteredResearch}
+        totalCount={data.payload.recent.length}
+        hasMore={data.payload.has_more}
+        loadingMore={data.loadingMore}
+        displayedCount={data.payload.recent.length}
+        onOpenDetail={(id) => void data.openDetail(id)}
+        onLoadMore={(offset, append) => void data.load(offset, append)}
+      />
 
       {data.selectedResearchId !== null && (
         <ResearchDetailPanel
@@ -561,154 +339,21 @@ export default function ResearchHubView({
         />
       )}
 
-      <section className="services-section">
-        <div className="section-header">
-          <div>
-            <h2>研究承接工作台</h2>
-            <p className="text-muted">先补上下文，再落任务，最后回到发布与复盘，不让研究对象停在半空里。</p>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <span className="status-badge degraded">待补上下文 {researchWorkbench.contextCount}</span>
-            <span className="status-badge degraded">待落任务 {researchWorkbench.taskCount}</span>
-            <span className="status-badge online">待发布回流 {researchWorkbench.publishCount}</span>
-          </div>
-        </div>
-        {data.queueError && (
-          <div className="overview-inline-error" role="alert" aria-live="polite" style={{ marginBottom: 12 }}>
-            <AlertTriangle size={16} />
-            <span>研究任务承接失败：{data.queueError}</span>
-            <button type="button" className="antd-btn small" onClick={() => data.setQueueError(null)}>关闭</button>
-          </div>
-        )}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 15 }}>待补上下文</h3>
-              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>标签、来源或负责人偏薄的对象，先补知识上下文。</p>
-            </div>
-            {researchWorkbench.contextItems.length === 0 ? (
-              <p className="text-muted" style={{ margin: 0 }}>暂无待补位对象。</p>
-            ) : (
-              <div style={{ display: 'grid', gap: 10 }}>
-                {researchWorkbench.contextItems.map((item) => (
-                  <button
-                    key={`context-${item.id}`}
-                    type="button"
-                    className="action-surface-item"
-                    aria-label={`补上下文 ${item.topic}`}
-                    onClick={() => openCockpitNavigationTarget({ tab: knowledgeTarget, taskQuery: String(item.id) }, onNavigate, onOpenTarget)}
-                    style={{ textAlign: 'left', width: '100%' }}
-                  >
-                    <div>
-                      <strong>{item.topic}</strong>
-                      <p>{item.summary || item.next_action}</p>
-                      <span className="text-muted" style={{ fontSize: 12 }}>
-                        来源 {item.source_count} · 标签 {item.tags.length} · {item.agent ? `Agent ${item.agent}` : '缺少负责人'}
-                      </span>
-                    </div>
-                    <ClipboardList size={14} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </article>
-
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 15 }}>待落任务</h3>
-              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>有追问、有下一步但还没进入执行闭环的对象，直接送去任务中心。</p>
-            </div>
-            {researchWorkbench.taskItems.length === 0 ? (
-              <p className="text-muted" style={{ margin: 0 }}>暂无待落任务对象。</p>
-            ) : (
-              <div style={{ display: 'grid', gap: 10 }}>
-                {researchWorkbench.taskItems.map((item) => (
-                  <button
-                    key={`task-${item.id}`}
-                    type="button"
-                    className="action-surface-item"
-                    aria-label={`落任务 ${item.topic}`}
-                    onClick={() => void data.queueResearchTask(item.id)}
-                    disabled={data.queueingResearchId === item.id}
-                    style={{ textAlign: 'left', width: '100%' }}
-                  >
-                    <div>
-                      <strong>{item.topic}</strong>
-                      <p>{item.next_action}</p>
-                      <span className="text-muted" style={{ fontSize: 12 }}>
-                        追问 {item.follow_up_count} · 最近事件 {item.last_event?.label || '暂无'}
-                      </span>
-                    </div>
-                    {data.queueingResearchId === item.id ? <RefreshCw size={14} className="animate-spin" /> : <GitBranch size={14} />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </article>
-
-          <article className="antd-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div className="section-header" style={{ marginBottom: 0 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 15 }}>待发布与回流</h3>
-                <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>先看对象详情，再进入发布/总览面做回流和复盘。</p>
-              </div>
-              <button
-                type="button"
-                className="antd-btn"
-                onClick={() => openCockpitNavigationTarget({ tab: publicationTarget, taskQuery: researchObjectQuery }, onNavigate, onOpenTarget)}
-              >
-                <BookOpen size={14} />
-                <span>进入发布面</span>
-              </button>
-            </div>
-            {researchWorkbench.publishItems.length === 0 ? (
-              <p className="text-muted" style={{ margin: 0 }}>暂无待发布对象。</p>
-            ) : (
-              <div style={{ display: 'grid', gap: 10 }}>
-                {researchWorkbench.publishItems.map((item) => (
-                  <button
-                    key={`publish-${item.id}`}
-                    type="button"
-                    className="action-surface-item"
-                    aria-label={`查看发布承接 ${item.topic}`}
-                    onClick={() => void data.openDetail(item.id)}
-                    style={{ textAlign: 'left', width: '100%' }}
-                  >
-                    <div>
-                      <strong>{item.topic}</strong>
-                      <p>{item.summary || item.next_action}</p>
-                      <span className="text-muted" style={{ fontSize: 12 }}>
-                        状态 {statusText(item.status)} · 最近 {shortTime(item.last_event?.created_at || item.created_at)}
-                      </span>
-                    </div>
-                    <ExternalLink size={14} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </article>
-        </div>
-
-        {data.payload.related_pages.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 16 }}>
-            {data.payload.related_pages.map((page) => (
-              <button
-                key={page.id}
-                type="button"
-                className="action-surface-item"
-                onClick={() => openCockpitNavigationTarget({ tab: page.id, taskQuery: researchObjectQuery }, onNavigate, onOpenTarget)}
-                style={{ textAlign: 'left' }}
-              >
-                <div>
-                  <strong>{page.title}</strong>
-                  <p>{page.reason}</p>
-                </div>
-                <ClipboardList size={14} />
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+      <ResearchWorkbenchSection
+        workbench={researchWorkbench}
+        knowledgeTarget={knowledgeTarget}
+        taskTarget={taskTarget}
+        publicationTarget={publicationTarget}
+        researchObjectQuery={researchObjectQuery}
+        queueError={data.queueError}
+        queueingResearchId={data.queueingResearchId}
+        relatedPages={data.payload.related_pages}
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+        onQueueTask={(id) => void data.queueResearchTask(id)}
+        onOpenDetail={(id) => void data.openDetail(id)}
+        onDismissQueueError={() => data.setQueueError(null)}
+      />
     </div>
   );
 }
