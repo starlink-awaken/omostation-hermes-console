@@ -80,7 +80,7 @@ describe('Dashboard breadcrumb', () => {
     renderDashboardAt('/overview');
 
     await waitFor(() => {
-      expect(screen.getAllByText('运行大盘').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('运行与观测').length).toBeGreaterThan(0);
       expect(screen.getAllByText('概览中心').length).toBeGreaterThan(0);
     });
   });

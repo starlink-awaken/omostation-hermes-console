@@ -22,8 +22,12 @@ global.EventSource = class MockEventSource {
   }
 } as unknown as typeof EventSource;
 
-// Clean up mocks after each test
+// Clean up mocks and restore globals after each test
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+  // Re-establish the fetch mock that vi.unstubAllGlobals may have removed
+  global.fetch = vi.fn()
 })
