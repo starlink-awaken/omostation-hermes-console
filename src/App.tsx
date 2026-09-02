@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-route
 import { ApiProvider } from './api/provider';
 import Dashboard from './components/Dashboard';
 import GlobalSearch from './components/GlobalSearch';
+import OnboardingTour from './components/OnboardingTour';
 import { setCockpitNavigator } from './components/cockpitNavigation';
 import { ROUTE_REDIRECTS } from './routes';
 import './index.css';

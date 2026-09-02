@@ -150,9 +150,9 @@ describe('Dashboard search and topbar', () => {
 
   it('renders skip navigation link for screen readers', () => {
     renderDashboardAt('/');
-    const skipLink = screen.getByText('跳过导航，直接进入主要内容');
+    const skipLink = screen.getByText('跳过导航');
     expect(skipLink).toBeInTheDocument();
-    expect(skipLink.closest('a')).toHaveAttribute('href', '#main-content');
+    expect(screen.getByRole('link', { name: '跳过导航' })).toHaveAttribute('href', '#main-content');
   });
 });
 
