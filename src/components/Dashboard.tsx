@@ -6,7 +6,7 @@
  */
 import React, { Suspense, useState, useCallback } from 'react';
 import { Routes, Route, Navigate, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { ROUTES, ROUTE_REDIRECTS, getVisibleRoutes, getRouteById, getRouteByPath } from '../routes';
+import { ROUTE_REDIRECTS, getVisibleRoutes, getRouteById, getRouteByPath } from '../routes';
 import Breadcrumb from './common/Breadcrumb';
 import { RouteErrorBoundary } from './common/RouteErrorBoundary';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
@@ -25,7 +25,10 @@ export default function Dashboard() {
   const currentRoute = getRouteByPath(location.pathname);
   const activeTab = currentRoute?.id ?? 'Home';
 
-  // Collapsible groups: default-collapse groups with > 5 items
+  // Mobile sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Collapsible groups: default-collapse groups with > 7 items
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     const groupCounts = visibleRoutes.reduce<Record<string, number>>((acc, r) => {
@@ -33,7 +36,7 @@ export default function Dashboard() {
       return acc;
     }, {});
     Object.entries(groupCounts).forEach(([group, count]) => {
-      if (count > 5) initial.add(group);
+      if (count > 7) initial.add(group);
     });
     return initial;
   });
@@ -77,6 +80,11 @@ export default function Dashboard() {
     ],
   });
 
+  // Close sidebar on route change (mobile)
+  React.useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
   // Group visible routes for sidebar
   const groupedRoutes = visibleRoutes.reduce<Record<string, typeof visibleRoutes>>((acc, route) => {
     if (!acc[route.group]) acc[route.group] = [];
@@ -100,8 +108,15 @@ export default function Dashboard() {
     <div className="dashboard-container">
       <a href="#main-content" className="sr-only-focusable">跳过导航</a>
 
+      {/* Sidebar overlay (mobile) */}
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
+      />
+
       {/* Sidebar */}
-      <aside role="complementary" aria-label="控制台侧边栏" className="sidebar">
+      <aside role="complementary" aria-label="控制台侧边栏" className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo-box" aria-hidden="true">
             <span className="text-accent font-bold text-lg">C</span>
@@ -129,10 +144,14 @@ export default function Dashboard() {
                     role="menuitem"
                     aria-describedby={`group-${group}`}
                     className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                    onClick={() => goTo(route.id)}
                   >
-                    <IconComp size={16} aria-hidden="true" />
-                    <span>{route.label}</span>
+                    {({ isActive }) => (
+                      <>
+                        <IconComp size={16} aria-hidden="true" />
+                        <span>{route.label}</span>
+                        {isActive && <span className="nav-active-indicator" aria-hidden="true" />}
+                      </>
+                    )}
                   </NavLink>
                 );
               })}
@@ -144,6 +163,14 @@ export default function Dashboard() {
       {/* Main */}
       <main id="main-content" tabIndex={-1} className="main-content">
         <header className="topbar">
+          <button
+            className="hamburger-btn"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? '关闭导航' : '打开导航'}
+            aria-expanded={sidebarOpen}
+          >
+            ☰
+          </button>
           <div className="search-bar" role="search">
             <span className="search-icon">🔍</span>
             <input
