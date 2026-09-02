@@ -28,7 +28,16 @@ import {
   triageRiskWeight,
   uniqueById,
   uniquePageMaturityItems,
+  withTaskDraftHandoff,
 } from './utils';
+
+function findMatchingDraft(project: ProjectItem, draftTasks: DraftTask[]): DraftTask | null {
+  const portfolioDraft = draftTasks.find(
+    (task) => task.source?.type === 'system_map_project_portfolio' && task.source?.id === project.id
+  );
+  if (portfolioDraft) return portfolioDraft;
+  return null;
+}
 
 type LayoutInputs = {
   systemMap: SystemMapPayload | null;
@@ -69,6 +78,7 @@ type LayoutOutputs = {
   selectedVisibleProjectIds: string[];
   filteredTriageQueues: ProjectTriageQueue[];
   filteredTriageCommandCount: number;
+  visibleCommandCount: number;
   runtimeProbeSummary: { runtimeProjects: number; stopped: number; pendingApproval: number; approved: number; commands: number };
   selectedProject: ProjectItem | null;
   activeUsagePath: UsagePath | null;
@@ -234,7 +244,7 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
         const pageId = project.cockpit_page || priority.cockpit_page;
         const page = pageId ? pagesById.get(pageId) || null : null;
         const primaryDimension = project.portfolio.non_ready_dimensions[0] || priority.non_ready_dimensions[0] || null;
-        return { priority, project, page, primaryDimension, draft: null, draftTarget: { tab: 'TaskCenter', taskQuery: project.id } };
+        return { priority, project, page, primaryDimension, draft: findMatchingDraft(project, draftTasks), draftTarget: withTaskDraftHandoff({ tab: 'TaskCenter', taskQuery: project.id }, draftTasks) };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
   }, [draftTasks, pagesById, projectsById, systemMap]);
@@ -348,7 +358,14 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
     });
   }, [filteredProjectIds, systemMap]);
 
-  const filteredTriageCommandCount = filteredTriageQueues.reduce((total, queue) => total + queue.count, 0);
+   const filteredTriageCommandCount = filteredTriageQueues.reduce((total, queue) => total + queue.count, 0);
+
+   const visibleCommandCount = useMemo(() => {
+     return (systemMap?.project_triage?.queues || []).reduce((total, queue) => {
+       const commands = queue.commands.filter((command) => command.project_id && filteredProjectIds.has(command.project_id));
+       return total + commands.length;
+     }, 0);
+   }, [filteredProjectIds, systemMap]);
 
   const runtimeProbeSummary = useMemo(() => {
     const projects = systemMap?.projects || [];
@@ -1183,6 +1200,7 @@ export function useSystemMapLayout(inputs: LayoutInputs): LayoutOutputs {
     selectedVisibleProjectIds,
     filteredTriageQueues,
     filteredTriageCommandCount,
+    visibleCommandCount,
     runtimeProbeSummary,
     selectedProject,
     activeUsagePath,

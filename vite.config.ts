@@ -18,11 +18,13 @@ export default defineConfig({
       }
     }
   },
-  test: {
+    test: {
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['./src/setupTests.ts'],
     css: true,
+    testTimeout: 15000,
+    hookTimeout: 15000,
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

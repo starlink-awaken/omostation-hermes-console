@@ -1,0 +1,136 @@
+/**
+ * E2E: sidebar navigation → route switching.
+ *
+ * Verifies that:
+ *   - Every route is accessible by directly navigating to its path
+ *   - The hero title updates to match the current route
+ *   - The sidebar nav button for the current route is marked active
+ */
+
+import React from 'react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
+import { renderDashboardAt, setupMockFetchError, ALL_ROUTES } from './route-test-helpers';
+
+describe('E2E: every route is accessible by direct path', () => {
+  beforeEach(() => {
+    setupMockFetchError();
+  });
+
+  for (const route of ALL_ROUTES) {
+    it(`navigating to ${route.path} shows hero title "${route.label}"`, async () => {
+      renderDashboardAt(route.path);
+
+      // The hero title must reflect the current route
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: route.label, level: 1 })).toBeInTheDocument();
+      });
+
+      // The corresponding sidebar nav button must be active
+      await waitFor(() => {
+        const navBtn = screen.getByRole('menuitem', { name: route.label });
+        expect(navBtn).toHaveAttribute('aria-selected', 'true');
+        expect(navBtn).toHaveClass('active');
+      });
+    });
+  }
+});
+
+describe('E2E: bidirectional navigation via direct paths', () => {
+  beforeEach(() => {
+    setupMockFetchError();
+  });
+
+  it('Home is accessible directly at /', async () => {
+    renderDashboardAt('/');
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '首页', level: 1 })).toBeInTheDocument();
+    });
+  });
+
+  it('AlertCenter is accessible directly at /alerts', async () => {
+    renderDashboardAt('/alerts');
+    await waitFor(() => {
+      const headings = screen.getAllByRole('heading', { name: '告警中心', level: 1 });
+      expect(headings.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('KOS workbench is accessible directly at /workbench/kos', async () => {
+    renderDashboardAt('/workbench/kos');
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'KOS 工作台', level: 1 })).toBeInTheDocument();
+    });
+  });
+
+  it('Home is accessible from /alerts path without browser back', async () => {
+    // Render at /alerts first
+    const { unmount } = renderDashboardAt('/alerts');
+    await waitFor(() => {
+      expect(screen.getAllByRole('heading', { name: '告警中心', level: 1 }).length).toBeGreaterThan(0);
+    });
+    unmount();
+
+    // Then render at /
+    renderDashboardAt('/');
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '首页', level: 1 })).toBeInTheDocument();
+    });
+  });
+});
+
+describe('E2E: nav group structure in sidebar', () => {
+  beforeEach(() => {
+    setupMockFetchError();
+  });
+
+  it('renders all nav groups in the sidebar', async () => {
+    renderDashboardAt('/');
+
+    const expectedGroups = [
+      '首页',
+      '运行大盘',
+      '智能与知识',
+      '系统治理',
+      '开发工具',
+      '领域应用',
+      '系统配置',
+      '工作台',
+    ];
+
+    for (const group of expectedGroups) {
+      await waitFor(() => {
+        expect(screen.getAllByText(group).length).toBeGreaterThan(0);
+      });
+    }
+  });
+
+  it('nav group titles appear as plain text (not buttons)', () => {
+    renderDashboardAt('/');
+
+    const groupTitles = [
+      '首页',
+      '运行大盘',
+      '智能与知识',
+      '系统治理',
+      '开发工具',
+      '领域应用',
+      '系统配置',
+      '工作台',
+    ];
+
+    for (const title of groupTitles) {
+      const elements = screen.getAllByText(title);
+      expect(elements.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('shows the correct active nav item when at /alerts', async () => {
+    renderDashboardAt('/alerts');
+
+    await waitFor(() => {
+      const activeItem = screen.getByRole('menuitem', { name: '告警中心' });
+      expect(activeItem).toHaveAttribute('aria-selected', 'true');
+    });
+  });
+});

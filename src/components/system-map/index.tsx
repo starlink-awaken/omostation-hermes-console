@@ -113,6 +113,7 @@ export default function SystemMapView({
     selectedVisibleProjectIds,
     filteredTriageQueues,
     filteredTriageCommandCount,
+    visibleCommandCount,
     runtimeProbeSummary,
     selectedProject,
     activeUsagePath,
@@ -288,6 +289,8 @@ export default function SystemMapView({
         onFocusCoverage={(dimensionId) => setCoverageFilter(dimensionId)}
         onFocusUsagePath={(usagePathId) => setSelectedUsagePathId(usagePathId)}
         onFocusPageMaturity={(pageId) => setSelectedPageMaturityId(pageId)}
+        onQueueAction={queueProjectAction}
+        onQueueTriageCommand={queueProjectTriageCommand}
         onSetSelectedProjectId={setSelectedProjectId}
         onSetSelectedGapId={setSelectedGapId}
         onSetSelectedPageMaturityId={setSelectedPageMaturityId}
@@ -315,6 +318,7 @@ export default function SystemMapView({
         coverageMatrixRows={coverageMatrixRows}
         filteredTriageQueues={filteredTriageQueues}
         filteredTriageCommandCount={filteredTriageCommandCount}
+        visibleCommandCount={visibleCommandCount}
         runtimeProbeSummary={runtimeProbeSummary}
         pageMaturity={pageMaturity}
         pageMaturitySummary={pageMaturitySummary}
@@ -328,6 +332,21 @@ export default function SystemMapView({
         bulkTriagePending={bulkTriagePending}
         selectedVisibleProjectIds={selectedVisibleProjectIds}
         coverageDimensions={coverageDimensions}
+        activeCoverage={activeCoverage}
+        activePortfolioBucket={activePortfolioBucket}
+        projectLayerOptions={projectLayerOptions}
+        projectPageOptions={projectPageOptions}
+        projectLayerFilter={projectLayerFilter}
+        projectPageFilter={projectPageFilter}
+        activeCoverage={activeCoverage}
+        projectFilter={projectFilter}
+        pageMaturityFilter={pageMaturityFilter}
+        onSetPageMaturityFilter={setPageMaturityFilter}
+        onSetProjectLayerFilter={setProjectLayerFilter}
+        onSetProjectPageFilter={setProjectPageFilter}
+        onSetPortfolioFilter={(bucketId) => { setPortfolioFilter(bucketId); setProjectFilter('all'); setCoverageFilter('all'); setProjectQuery(''); }}
+        onSetProjectFilter={setProjectFilter}
+        onSetProjectQuery={setProjectQuery}
         onNavigate={onNavigate}
         onOpenTarget={onOpenTarget}
         onInspect={inspectSourceRef}
@@ -337,12 +356,10 @@ export default function SystemMapView({
         onSetSelectedPageMaturityId={setSelectedPageMaturityId}
         onSetSelectedFeatureDomainId={setSelectedFeatureDomainId}
         onSetCoverageFilter={setCoverageFilter}
-        onSetPortfolioFilter={(bucketId) => { setPortfolioFilter(bucketId); setProjectFilter('all'); setCoverageFilter('all'); setProjectQuery(''); }}
-        onSetProjectFilter={setProjectFilter}
-        onSetProjectQuery={setProjectQuery}
         onQueueProjectAction={queueProjectAction}
         onQueueProjectTriageCommand={queueProjectTriageCommand}
         onPromoteDraftTask={promoteDraftTask}
+        onQueuePageOperatorAction={queuePageOperatorAction}
         onQueueCoverageDrafts={queueCoverageDrafts}
         onQueueVerificationTriage={queueVerificationTriage}
         onQueueRuntimeTriage={queueRuntimeTriage}

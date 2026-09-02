@@ -16,6 +16,7 @@ import {
   Send,
   Server,
   ShieldAlert,
+  X,
 } from 'lucide-react';
 import SummaryTileGrid from '../common/SummaryTileGrid';
 import type {
@@ -44,6 +45,7 @@ import {
   pageMaturityStatusText,
   portfolioStatusText,
   projectStatusText,
+  runtimeProfileText,
   runtimeStatusText,
   shortDate,
   statusClass,
@@ -100,8 +102,19 @@ type SystemMapGraphProps = {
   bulkTriagePending: boolean;
   selectedVisibleProjectIds: string[];
   coverageDimensions: { id: string; title: string; description: string }[];
-  onNavigate: (tab: string) => void;
-  onOpenTarget?: (target: CockpitNavigationTarget) => void;
+  activeCoverage?: { id: string; title: string; description: string } | undefined;
+  activePortfolioBucket: SystemMapPayload['project_portfolio']['buckets'][number] | null;
+  projectLayerOptions: string[];
+  projectPageOptions: { id: string; title: string }[];
+   projectLayerFilter: string;
+   projectPageFilter: string;
+   projectFilter: string;
+   pageMaturityFilter: string;
+   onSetPageMaturityFilter: (filter: string) => void;
+   onSetProjectLayerFilter: (filter: string) => void;
+   onSetProjectPageFilter: (filter: string) => void;
+   onSetPortfolioFilter: (bucketId: string) => void;
+   onOpenTarget?: (target: CockpitNavigationTarget) => void;
   onInspect: (ref: SourceRef) => void;
   onSetSelectedProjectId: (id: string | null) => void;
   onSetSelectedGapId: (id: string | null) => void;
@@ -115,12 +128,15 @@ type SystemMapGraphProps = {
   onQueueProjectAction: (projectId: string, action: ProjectAction) => void;
   onQueueProjectTriageCommand: (command: ProjectAction) => void;
   onPromoteDraftTask: (task: DraftTask) => void;
+  onQueuePageOperatorAction: (pageId: string, action: { id: string; kind?: string; label?: string }) => void;
   onQueueCoverageDrafts: () => void;
-  onQueueVerificationTriage: () => void;
+  onQueueVerificationTriage: (commandId?: 'verification-rerun' | 'verification-find-evidence', projectIds?: string[]) => void;
   onQueueRuntimeTriage: () => void;
   onExecuteVerificationTriage: () => void;
   onExecuteRuntimeTriage: () => void;
   onSetSelectedProjectIds: (ids: string[]) => void;
+  filteredTriageCommandCount: number;
+  visibleCommandCount: number;
 };
 
 function SystemMapGraph({
@@ -143,6 +159,7 @@ function SystemMapGraph({
   coverageMatrixRows,
   filteredTriageQueues,
   filteredTriageCommandCount,
+  visibleCommandCount,
   runtimeProbeSummary,
   pageMaturity,
   pageMaturitySummary,
@@ -156,17 +173,28 @@ function SystemMapGraph({
   bulkTriagePending,
   selectedVisibleProjectIds,
   coverageDimensions,
-  onNavigate,
-  onOpenTarget,
-  onInspect,
-  onSetSelectedProjectId,
-  onSetSelectedGapId,
-  onSetSelectedUsagePathId,
-  onSetSelectedPageMaturityId,
-  onSetSelectedFeatureDomainId,
-  onSetCoverageFilter,
+  activeCoverage,
+  activePortfolioBucket,
+  projectLayerOptions,
+  projectPageOptions,
+  projectLayerFilter,
+  projectPageFilter,
+   projectFilter,
+   pageMaturityFilter,
+  onSetProjectLayerFilter,
+  onSetProjectPageFilter,
+  onSetPageMaturityFilter,
   onSetPortfolioFilter,
-  onSetProjectFilter,
+   onNavigate,
+   onOpenTarget,
+   onInspect,
+   onSetSelectedProjectId,
+   onSetSelectedGapId,
+   onSetSelectedUsagePathId,
+   onSetSelectedPageMaturityId,
+   onSetSelectedFeatureDomainId,
+   onSetCoverageFilter,
+   onSetProjectFilter,
   onSetProjectQuery,
   onQueueProjectAction,
   onQueueProjectTriageCommand,
@@ -177,7 +205,9 @@ function SystemMapGraph({
   onExecuteVerificationTriage,
   onExecuteRuntimeTriage,
   onSetSelectedProjectIds,
+  onQueuePageOperatorAction,
 }: SystemMapGraphProps) {
+  const [expandedPageActions, setExpandedPageActions] = React.useState(new Set<string>());
   const pagesById = new Map(systemMap.cockpit_pages.map((p) => [p.id, p]));
 
   const systemSummaryTiles = [
@@ -736,7 +766,7 @@ function SystemMapGraph({
       </section>
 
       {/* Page maturity */}
-      <section className="services-section system-map-section">
+      <section className="services-section system-map-section" aria-label="页面受控动作证据">
         <div className="section-header">
           <div><h2>页面能力成熟度</h2><p className="text-muted">按页面核对项目、能力域、使用路径、操作清单、路线图和受控动作，找出薄弱页面。</p></div>
           <div className="system-map-page-maturity-summary">
@@ -746,6 +776,13 @@ function SystemMapGraph({
             <span className={pageMaturitySummary.untracked > 0 ? 'degraded' : 'online'}>路线图已追踪 {pageMaturitySummary.tracked}/{pageMaturity.length}</span>
             <span className={pageMaturitySummary.roadmapShipped < pageMaturity.length ? 'degraded' : 'online'}>路线图已交付 {pageMaturitySummary.roadmapShipped}/{pageMaturity.length}</span>
           </div>
+        </div>
+        <div role="group" aria-label="页面成熟度筛选" className="system-map-page-maturity-filter">
+          <button className={`antd-btn small ${pageMaturityFilter === 'untracked' ? 'active' : ''}`} aria-label="筛选页面成熟度：未追踪" aria-pressed={pageMaturityFilter === 'untracked'} onClick={() => onSetPageMaturityFilter(pageMaturityFilter === 'untracked' ? 'all' : 'untracked')}>未追踪</button>
+          <button className={`antd-btn small ${pageMaturityFilter === 'gap' ? 'active' : ''}`} aria-label="筛选页面成熟度：待补" aria-pressed={pageMaturityFilter === 'gap'} onClick={() => onSetPageMaturityFilter(pageMaturityFilter === 'gap' ? 'all' : 'gap')}>待补</button>
+          <button className={`antd-btn small ${pageMaturityFilter === 'watch' ? 'active' : ''}`} aria-label="筛选页面成熟度：观察" aria-pressed={pageMaturityFilter === 'watch'} onClick={() => onSetPageMaturityFilter(pageMaturityFilter === 'watch' ? 'all' : 'watch')}>观察</button>
+          <button className={`antd-btn small ${pageMaturityFilter === 'ready' ? 'active' : ''}`} aria-label="筛选页面成熟度：可日用" aria-pressed={pageMaturityFilter === 'ready'} onClick={() => onSetPageMaturityFilter(pageMaturityFilter === 'ready' ? 'all' : 'ready')}>可日用</button>
+          <span className="text-muted">显示 {visiblePageMaturity.length} / {pageMaturity.length}</span>
         </div>
         <div className="system-map-page-maturity-grid">
           {visiblePageMaturity.map((item) => (
@@ -768,11 +805,32 @@ function SystemMapGraph({
                 {item.domains.slice(0, 3).map((domain) => <em key={domain.id}>{domain.title}</em>)}
                 {item.usagePaths.slice(0, 2).map((path) => <em key={path.id}>{path.title}</em>)}
               </div>
-              <strong className="system-map-page-maturity-next">{item.nextAction}</strong>
-              <div className="system-map-page-maturity-card-actions">
-                <button className="antd-btn" onClick={() => onSetSelectedPageMaturityId(item.page.id)}><span>查看剖面</span></button>
-                <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: item.page.id, pageId: item.page.id }, onNavigate, onOpenTarget)}><ArrowRight size={14} /><span>进入页面</span></button>
-              </div>
+               <strong className="system-map-page-maturity-next">{item.nextAction}</strong>
+               <div className="system-map-page-maturity-card-actions">
+                 <button className="antd-btn" onClick={() => onSetSelectedPageMaturityId(item.page.id)}><span>查看剖面</span></button>
+                 <button className="antd-btn" onClick={() => openSystemMapTarget({ tab: item.page.id, pageId: item.page.id }, onNavigate, onOpenTarget)}><ArrowRight size={14} /><span>进入页面</span></button>
+               </div>
+               {item.operatorActions.length > 0 && (
+                 <div className="system-map-page-actions">
+                   {expandedPageActions.has(item.page.id) ? (
+                     <>
+                       <button className="antd-btn small" aria-label={`收起页面动作 ${item.page.title}`} onClick={() => setExpandedPageActions((prev) => { const next = new Set(prev); next.delete(item.page.id); return next; })}><span>收起页面动作 {item.page.title}</span></button>
+                       {item.operatorActions.map((actionId) => {
+                         const detail = item.operatorActionDetails.find((detail) => detail.id === actionId);
+                         return (
+                           <button key={actionId} className="antd-btn small" aria-label={`承接页面动作 ${actionId}`} onClick={() => onQueuePageOperatorAction(item.page.id, { id: actionId, label: detail?.label, kind: detail?.kind })} title={detail?.description || detail?.label || actionId}>
+                             <span>{detail?.label || actionId}</span>
+                           </button>
+                         );
+                       })}
+                     </>
+                   ) : (
+                     <button className="antd-btn small" aria-label={`展开页面动作 ${item.page.title}`} onClick={() => setExpandedPageActions((prev) => new Set(prev).add(item.page.id))}>
+                       <Layers size={13} /><span>展开页面动作 {item.page.title}（{item.operatorActions.length}）</span>
+                     </button>
+                   )}
+                 </div>
+               )}
             </article>
           ))}
           {visiblePageMaturity.length === 0 && (<div className="system-map-project-empty"><Search size={15} /><span>当前筛选没有页面</span></div>)}
@@ -949,11 +1007,12 @@ function SystemMapGraph({
           <div><h2>排查命令队列</h2><p className="text-muted">把运行探针、验证证据和项目清单缺口转换成可复制命令，仍由人确认后执行。</p></div>
           <div className="system-map-section-actions">
             <button className="antd-btn antd-btn-primary" aria-label="批量承接全站缺口" disabled={bulkTriagePending} onClick={onQueueCoverageDrafts} title="把项目组合、领域应用、能力缺口和页面成熟度草稿统一登记为 OMO 计划任务"><Layers size={13} /><span>{bulkTriagePending ? '正在承接' : '承接全站缺口'}</span></button>
-            <button className="antd-btn antd-btn-primary" aria-label="批量承接验证缺口" disabled={bulkTriagePending || systemMap.project_triage.summary.verification_commands === 0} onClick={onQueueVerificationTriage} title="只登记已有验证命令为 OMO 计划任务，不会直接执行"><ClipboardCheck size={13} /><span>{bulkTriagePending ? '正在承接' : '承接验证缺口'}</span></button>
+            <button className="antd-btn antd-btn-primary" aria-label="批量承接验证缺口" disabled={bulkTriagePending || systemMap.project_triage.summary.verification_commands === 0} onClick={() => onQueueVerificationTriage('verification-rerun', selectedVisibleProjectIds.length > 0 ? selectedVisibleProjectIds : undefined)} title="只登记已有验证命令为 OMO 计划任务，不会直接执行"><ClipboardCheck size={13} /><span>{bulkTriagePending ? '正在承接' : '承接验证缺口'}</span></button>
+            <button className="antd-btn antd-btn-primary" aria-label="批量承接验证证据补录" disabled={bulkTriagePending || systemMap.project_triage.summary.verification_commands === 0} onClick={() => onQueueVerificationTriage('verification-find-evidence', selectedVisibleProjectIds.length > 0 ? selectedVisibleProjectIds : undefined)} title="只登记验证命令为 OMO 计划任务，补录证据，不会直接执行"><ClipboardCheck size={13} /><span>{bulkTriagePending ? '正在承接' : '承接证据补录'}</span></button>
             <button className="antd-btn" aria-label="批量承接运行探针" disabled={bulkTriagePending || systemMap.project_triage.summary.runtime_commands === 0} onClick={onQueueRuntimeTriage} title="优先登记端口检查；无端口时登记端口注册排查，不会直接执行"><Server size={13} /><span>{bulkTriagePending ? '正在承接' : '承接运行探针'}</span></button>
             <button className="antd-btn" aria-label="执行待补验证" disabled={bulkTriagePending || (systemMap.project_triage.queues.find((queue) => queue.id === 'verification')?.queued || 0) === 0} onClick={onExecuteVerificationTriage} title="顺序执行最多 8 条已承接且尚未通过的低风险验证；成功后自动归档执行证据，失败保留重试"><Send size={13} /><span>{bulkTriagePending ? '正在执行' : '执行待补验证'}</span></button>
             <button className="antd-btn" aria-label="执行已批准运行探针" disabled={bulkTriagePending || (systemMap.project_triage.queues.find((queue) => queue.id === 'runtime')?.queued || 0) === 0} onClick={onExecuteRuntimeTriage} title="只执行已经获批并恢复到 active 的运行探针，不会绕过审批"><Server size={13} /><span>{bulkTriagePending ? '正在执行' : '执行已批准探针'}</span></button>
-            <span className="status-badge degraded"><ClipboardCheck size={13} />{filteredTriageCommandCount} / {systemMap.project_triage.summary.total_commands} · 已承接 {systemMap.project_triage.summary.queued_commands || 0}</span>
+            <span className="status-badge degraded"><ClipboardCheck size={13} />{selectedVisibleProjectIds.length > 0 ? `选中 ${selectedVisibleProjectIds.length} 个项目的验证缺口` : `${filteredTriageCommandCount} / ${systemMap.project_triage.summary.total_commands} · 已承接 ${systemMap.project_triage.summary.queued_commands || 0}`}</span>
           </div>
         </div>
         <div className="system-map-domain-app-summary" aria-label="运行探针处理状态">
@@ -979,10 +1038,13 @@ function SystemMapGraph({
         <div className="system-map-coverage-grid">
           {systemMap.project_capability_coverage.dimension_summary.map((dimension) => (
             <button className={`system-map-coverage-card ${statusClass(dimension.status)}`} key={dimension.id} aria-label={`查看覆盖维度：${dimension.title}`} onClick={() => onSetCoverageFilter(dimension.id)} title={`${dimension.description} 点击后只看该维度未就绪项目。`}>
-              <div className="system-map-coverage-head">
-                <div><h3>{dimension.title}</h3><p>{dimension.description}</p></div>
-                <strong>{dimension.score}%</strong>
-              </div>
+               <div className="system-map-coverage-head">
+                 <div><h3>{dimension.title}</h3><p>{dimension.description}</p></div>
+                 <div style={{ display: 'flex', gap: 4 }}>
+                 <strong>{dimension.score}%</strong>
+                 <button type="button" className="antd-btn small" aria-label={`筛选覆盖维度：${dimension.title}`} onClick={(e) => { e.stopPropagation(); onSetCoverageFilter(dimension.id); }}>筛选</button>
+                 </div>
+               </div>
               <div className="system-map-coverage-counts">
                 <span className="online">{coverageCountLabel(dimension.id, 'ready')} {dimension.ready}</span>
                 <span className="degraded">{coverageCountLabel(dimension.id, 'warning')} {dimension.warning}</span>
@@ -997,6 +1059,12 @@ function SystemMapGraph({
             </button>
           ))}
         </div>
+        {activeCoverage && activeCoverage.id !== 'all' && (
+          <div className="system-map-coverage-active" aria-label="当前覆盖维度筛选">
+            <span>覆盖维度：{activeCoverage.title}</span>
+            <button className="antd-btn small" onClick={() => onSetCoverageFilter('all')} aria-label="清除覆盖维度筛选"><X size={12} /></button>
+          </div>
+        )}
         {systemMap.project_capability_coverage.weakest_dimensions.length > 0 && (
           <div className="system-map-coverage-weak">
             <strong>优先补：</strong>
@@ -1009,14 +1077,32 @@ function SystemMapGraph({
       <section className="services-section system-map-section" aria-label="项目能力维度交叉矩阵">
         <div className="section-header">
           <div><h2>项目 × 能力维度</h2><p className="text-muted">横向看每个项目的完整覆盖，点击单元格进入项目详情；选中项目后可把运行探针或验证动作限定在这组对象。</p></div>
-          <div className="system-map-section-actions">
-            <button className="antd-btn small" aria-label={selectedVisibleProjectIds.length === coverageMatrixRows.length ? '清除项目选择' : '全选当前筛选项目'} onClick={() => onSetSelectedProjectIds(selectedVisibleProjectIds.length === coverageMatrixRows.length ? [] : coverageMatrixRows.map((row) => row.project.id))}>
-              <CheckCircle size={13} /><span>{selectedVisibleProjectIds.length === coverageMatrixRows.length ? '清除选择' : `全选项目 (${coverageMatrixRows.length})`}</span>
-            </button>
-            <span className="status-badge online">{coverageMatrixRows.length} 项目 · {coverageDimensions.length} 维度 · 已选 {selectedVisibleProjectIds.length}</span>
-          </div>
-        </div>
-        <div className="system-map-coverage-matrix-wrap">
+           <div className="system-map-section-actions">
+             <button className="antd-btn small" aria-label={selectedVisibleProjectIds.length === coverageMatrixRows.length ? '清除项目选择' : '全选当前筛选项目'} onClick={() => onSetSelectedProjectIds(selectedVisibleProjectIds.length === coverageMatrixRows.length ? [] : coverageMatrixRows.map((row) => row.project.id))}>
+               <CheckCircle size={13} /><span>{selectedVisibleProjectIds.length === coverageMatrixRows.length ? '清除选择' : `全选项目 (${coverageMatrixRows.length})`}</span>
+             </button>
+             <select aria-label="按架构层级筛选项目" value={projectLayerFilter} onChange={(e) => onSetProjectLayerFilter(e.target.value)} className="antd-select small">
+               {projectLayerOptions.map((layer) => (<option key={layer} value={layer}>{layer === 'all' ? '全部层级' : layer}</option>))}
+             </select>
+             <select aria-label="按 Cockpit 入口页筛选项目" value={projectPageFilter} onChange={(e) => onSetProjectPageFilter(e.target.value)} className="antd-select small">
+               <option value="all">全部入口页</option>
+               {projectPageOptions.map((page) => (<option key={page.id} value={page.id}>{page.title}</option>))}
+              </select>
+              {activePortfolioBucket ? (
+                <React.Fragment>
+                  <span className="status-badge degraded">组合态势：{activePortfolioBucket.title}</span>
+                  <span className="status-badge online">显示 {coverageMatrixRows.length} / {systemMap.project_capability_coverage.matrix.length} · 命令 {visibleCommandCount}</span>
+                </React.Fragment>
+              ) : activeCoverage && activeCoverage.id !== 'all' ? (
+                <span className="status-badge online">显示 {coverageMatrixRows.length} / {systemMap.project_capability_coverage.matrix.length} · 命令 {visibleCommandCount}</span>
+              ) : projectFilter !== 'all' || projectLayerFilter !== 'all' || projectPageFilter !== 'all' ? (
+                <span className="status-badge online">显示 {coverageMatrixRows.length} / {systemMap.project_capability_coverage.matrix.length}</span>
+              ) : (
+                <span className="status-badge online">{coverageMatrixRows.length} 项目 · {coverageDimensions.length} 维度 · 已选 {selectedVisibleProjectIds.length}</span>
+              )}
+            </div>
+         </div>
+         <div className="system-map-coverage-matrix-wrap">
           <table className="system-map-coverage-matrix">
             <thead>
               <tr>
@@ -1088,7 +1174,7 @@ function SystemMapGraph({
                     </td>
                     <td>
                       <span className={`status-badge ${statusClass(project.runtime.status)}`}>{runtimeStatusText(project.runtime.status)}</span>
-                      <div className="system-map-risk-line">{runtimeStatusText(project.runtime.status)} · {project.runtime.probe_reason}</div>
+                      <div className="system-map-risk-line">{project.runtime.status === 'not_applicable' ? runtimeProfileText(project.runtime.profile) : runtimeStatusText(project.runtime.status)} · {project.runtime.probe_reason}</div>
                       {project.runtime.ports.length > 0 && (<div className="system-map-port-list">{project.runtime.ports.slice(0, 3).map((port) => (<span key={port.port} className={port.listening ? 'online' : 'offline'}>:{port.port}</span>))}</div>)}
                       <div className={`system-map-risk-line ${statusClass(project.runtime.latest_verification.status)}`}>
                         {verifyText(project.runtime.latest_verification.status)}

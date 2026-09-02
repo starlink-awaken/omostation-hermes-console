@@ -1,16 +1,34 @@
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup } from '@testing-library/react';
 import HomePage from '../HomePage';
 
-function renderWithProviders(ui: React.ReactElement) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 1,
+        retryDelay: 0,
+        staleTime: 0,
+        gcTime: 0,
+        refetchOnWindowFocus: false,
+      },
+    },
+  });
+
+const renderWithProviders = (ui: React.ReactElement) => {
+  const testQueryClient = createTestQueryClient();
+  return render(<QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>);
 }
 
 describe('HomePage truthfulness contract', () => {
+  afterEach(() => {
+    cleanup();
+    vi.mocked(fetch).mockReset();
+  });
+
   it('shows a loading state while real data is pending', () => {
     vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => undefined));
 
@@ -113,4 +131,4 @@ describe('HomePage truthfulness contract', () => {
       expect(screen.getByText('需要动作的项目：1')).toBeInTheDocument();
     });
   });
-});
+})

@@ -22,7 +22,7 @@ type SystemMapData = {
   queuePageRoadmap: (roadmap: RoadmapItem) => Promise<void>;
   promoteDraftTask: (task: DraftTask) => Promise<void>;
   queueProjectTriageCommand: (command: ProjectAction) => Promise<void>;
-  queueVerificationTriage: (commandId?: 'verification-rerun' | 'verification-find-evidence') => Promise<void>;
+  queueVerificationTriage: (commandId?: 'verification-rerun' | 'verification-find-evidence', projectIds?: string[]) => Promise<void>;
   queueRuntimeTriage: () => Promise<void>;
   executeVerificationTriage: () => Promise<void>;
   executeRuntimeTriage: () => Promise<void>;
@@ -219,7 +219,7 @@ export function useSystemMapData({ onOpenTarget }: UseSystemMapDataOptions = {})
     }
   }, [bulkTriagePending, load, onOpenTarget, pendingActionKey]);
 
-  const queueVerificationTriage = useCallback(async (commandId: 'verification-rerun' | 'verification-find-evidence' = 'verification-rerun') => {
+   const queueVerificationTriage = useCallback(async (commandId: 'verification-rerun' | 'verification-find-evidence' = 'verification-rerun', projectIds?: string[]) => {
     const evidenceOnly = commandId === 'verification-find-evidence';
     setActionNotice('');
     setActionError('');
@@ -231,13 +231,14 @@ export function useSystemMapData({ onOpenTarget }: UseSystemMapDataOptions = {})
         body: JSON.stringify({
           category: 'verification',
           command_id: commandId,
+          ...(projectIds ? { project_ids: projectIds } : {}),
         }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.detail || response.statusText || (evidenceOnly ? '验证证据补录承接失败' : '验证缺口承接失败'));
       const summary = payload.summary || {};
       const actionLabel = evidenceOnly ? '验证证据补录' : '验证缺口';
-      setActionNotice(`已批量承接${actionLabel}：${summary.queued || 0} 条，跳过 ${summary.skipped || 0} 条，失败 ${summary.errors || 0} 条。`);
+      setActionNotice(projectIds ? `选中 ${projectIds.length} 个项目的验证缺口` : `已批量承接${actionLabel}：${summary.queued || 0} 条，跳过 ${summary.skipped || 0} 条，失败 ${summary.errors || 0} 条。`);
       await load();
       if (onOpenTarget && (summary.queued || 0) > 0) {
         onOpenTarget({ tab: 'TaskCenter', taskQuery: 'cockpit-triage-' });
