@@ -5,8 +5,8 @@
  */
 import React, { useState, useMemo } from 'react';
 import { ChevronUp, ChevronDown, Search, Filter } from 'lucide-react';
-import { LoadingSkeleton } from './LoadingSkeleton';
-import { EmptyState } from './EmptyState';
+import LoadingSkeleton from './LoadingSkeleton';
+import EmptyState from './EmptyState';
 
 export interface Column<T> {
   key: string;

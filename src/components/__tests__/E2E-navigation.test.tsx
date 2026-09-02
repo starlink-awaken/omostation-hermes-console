@@ -7,13 +7,17 @@
  *   - The sidebar nav button for the current route is marked active
  */
 
-import React from 'react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
-import { renderDashboardAt, setupMockFetchError, ALL_ROUTES } from './route-test-helpers';
-import { ROUTES } from '../../routes';
+import React from "react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
+import {
+  renderDashboardAt,
+  setupMockFetchError,
+  ALL_ROUTES,
+} from "./route-test-helpers";
+import { ROUTES } from "../../routes";
 
-describe('E2E: every route is accessible by direct path', () => {
+describe("E2E: every route is accessible by direct path", () => {
   beforeEach(() => {
     setupMockFetchError();
   });
@@ -24,72 +28,86 @@ describe('E2E: every route is accessible by direct path', () => {
 
       // The hero title must reflect the current route
       await waitFor(() => {
-        const headings = screen.getAllByRole('heading', { name: route.label, level: 1 });
+        const headings = screen.getAllByRole("heading", {
+          name: route.label,
+          level: 1,
+        });
         expect(headings.length).toBeGreaterThan(0);
       });
 
       // The corresponding sidebar nav button must be active
       await waitFor(() => {
-        const navBtn = screen.getByRole('menuitem', { name: route.label });
-        expect(navBtn).toHaveAttribute('aria-selected', 'true');
-        expect(navBtn).toHaveClass('active');
+        const navBtn = screen.getByRole("menuitem", { name: route.label });
+        expect(navBtn).toHaveAttribute("aria-selected", "true");
+        expect(navBtn).toHaveClass("active");
       });
     });
   }
 });
 
-describe('E2E: bidirectional navigation via direct paths', () => {
+describe("E2E: bidirectional navigation via direct paths", () => {
   beforeEach(() => {
     setupMockFetchError();
   });
 
-  it('Home is accessible directly at /', async () => {
-    renderDashboardAt('/');
+  it("Home is accessible directly at /", async () => {
+    renderDashboardAt("/");
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: '首页', level: 1 })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "首页", level: 1 }),
+      ).toBeInTheDocument();
     });
   });
 
-  it('AlertCenter is accessible directly at /alerts', async () => {
-    renderDashboardAt('/alerts');
+  it("AlertCenter is accessible directly at /alerts", async () => {
+    renderDashboardAt("/alerts");
     await waitFor(() => {
-      const headings = screen.getAllByRole('heading', { name: '告警中心', level: 1 });
+      const headings = screen.getAllByRole("heading", {
+        name: "告警中心",
+        level: 1,
+      });
       expect(headings.length).toBeGreaterThan(0);
     });
   });
 
-  it('KOS workbench is accessible directly at /workbench/kos', async () => {
-    renderDashboardAt('/workbench/kos');
+  it("KOS workbench is accessible directly at /workbench/kos", async () => {
+    renderDashboardAt("/workbench/kos");
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'KOS 工作台', level: 1 })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "KOS 工作台", level: 1 }),
+      ).toBeInTheDocument();
     });
   });
 
-  it('Home is accessible from /alerts path without browser back', async () => {
+  it("Home is accessible from /alerts path without browser back", async () => {
     // Render at /alerts first
-    const { unmount } = renderDashboardAt('/alerts');
+    const { unmount } = renderDashboardAt("/alerts");
     await waitFor(() => {
-      expect(screen.getAllByRole('heading', { name: '告警中心', level: 1 }).length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByRole("heading", { name: "告警中心", level: 1 }).length,
+      ).toBeGreaterThan(0);
     });
     unmount();
 
     // Then render at /
-    renderDashboardAt('/');
+    renderDashboardAt("/");
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: '首页', level: 1 })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "首页", level: 1 }),
+      ).toBeInTheDocument();
     });
   });
 });
 
-describe('E2E: nav group structure in sidebar', () => {
+describe("E2E: nav group structure in sidebar", () => {
   beforeEach(() => {
     setupMockFetchError();
   });
 
   const expectedGroups = [...new Set(ROUTES.map((r) => r.group))];
 
-  it('renders all nav groups in the sidebar', async () => {
-    renderDashboardAt('/');
+  it("renders all nav groups in the sidebar", async () => {
+    renderDashboardAt("/");
 
     for (const group of expectedGroups) {
       await waitFor(() => {
@@ -98,8 +116,8 @@ describe('E2E: nav group structure in sidebar', () => {
     }
   });
 
-  it('nav group titles appear as plain text (not buttons)', () => {
-    renderDashboardAt('/');
+  it("nav group titles appear as plain text (not buttons)", () => {
+    renderDashboardAt("/");
 
     for (const group of expectedGroups) {
       const elements = screen.getAllByText(group);
@@ -107,12 +125,12 @@ describe('E2E: nav group structure in sidebar', () => {
     }
   });
 
-  it('shows the correct active nav item when at /alerts', async () => {
-    renderDashboardAt('/alerts');
+  it("shows the correct active nav item when at /alerts", async () => {
+    renderDashboardAt("/alerts");
 
     await waitFor(() => {
-      const activeItem = screen.getByRole('menuitem', { name: '告警中心' });
-      expect(activeItem).toHaveAttribute('aria-selected', 'true');
+      const activeItem = screen.getByRole("menuitem", { name: "告警中心" });
+      expect(activeItem).toHaveAttribute("aria-selected", "true");
     });
   });
 });
