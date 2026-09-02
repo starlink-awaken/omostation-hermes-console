@@ -66,11 +66,18 @@ export default function BcosDashboard() {
       />
 
       {isDegraded ? (
-        <EmptyState
-          icon={<WifiOff size={32} className="text-status-warn" />}
-          title="BCOS 服务不可用"
-          message={data?.error || '无法连接到 BCOS 后端服务，请检查网络或稍后重试。'}
-        />
+        <div className="space-y-6">
+          <div className="rounded-md bg-accent-muted px-3 py-2 text-xs text-accent">
+            ⚠️ 演示数据 — BCOS 服务不可用，显示示例数据供参考
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <NorthStarCard data={{ value: 85, trend: 'up', details: { coverage: 92, health: 78 } }} loading={false} />
+            <SignalFlow signals={[{ type: 'signal', count: 12 }, { type: 'alert', count: 3 }, { type: 'proposal', count: 7 }]} loading={false} />
+            <div className="lg:col-span-2">
+              <EvolutionPipeline data={{ stage: 'evaluate', proposals: [{ id: 'p1', title: '示例提案 A' }, { id: 'p2', title: '示例提案 B' }] }} loading={false} />
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           <NorthStarCard data={data?.north_star ?? null} loading={isLoading} />
