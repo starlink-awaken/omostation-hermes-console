@@ -5,20 +5,35 @@
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background-color: var(--antd-bg-body);
+  background-color: var(--color-surface-0);
 }
 
-/* Sider Menu (Cybertech Style) */
+/* Sider Menu */
 .sidebar {
   width: 256px;
   min-width: 256px;
   height: 100%;
-  background: var(--antd-bg-layout);
+  background: var(--color-surface-1);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--antd-border-color);
-  box-shadow: 4px 0 16px rgba(0, 242, 254, 0.04);
+  border-right: 1px solid var(--color-border-default);
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
   z-index: 10;
+  transition: transform 0.25s ease, width 0.25s ease;
+}
+
+/* Responsive: collapse sidebar on small screens */
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
 }
 
 .sidebar-header {
@@ -27,20 +42,20 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid var(--antd-border-color);
+  border-bottom: 1px solid var(--color-border-subtle);
   background: rgba(0, 0, 0, 0.2);
 }
 
 .logo-box {
   width: 32px;
   height: 32px;
-  border-radius: var(--antd-radius-md);
+  border-radius: var(--radius-md);
   background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #060913;
-  box-shadow: var(--tech-cyan-glow);
+  box-shadow: 0 0 12px rgba(94,106,210,0.15);
 }
 
 .sidebar-header h2 {
@@ -49,7 +64,7 @@
   color: #fff;
   letter-spacing: 1px;
   text-transform: uppercase;
-  text-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+  text-shadow: 0 0 10px rgba(94, 106, 210, 0.3);
 }
 
 .sidebar-nav {
@@ -61,15 +76,31 @@
   gap: 4px;
 }
 
-/* Cyber Group Header */
+/* Group Header (collapsible) */
 .nav-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 11px;
   font-weight: 600;
-  color: #60a5fa; /* Cyber electric blue */
+  color: var(--color-text-secondary);
   padding: 12px 20px 6px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   opacity: 0.8;
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.nav-group-title:hover {
+  opacity: 1;
+}
+.group-toggle {
+  font-size: 14px;
+  font-weight: 400;
+  opacity: 0.6;
 }
 
 .nav-item {
@@ -79,8 +110,8 @@
   height: 40px;
   margin: 0 12px;
   padding: 0 16px;
-  border-radius: var(--antd-radius-md);
-  color: var(--antd-text-secondary);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
   text-decoration: none;
   font-weight: 400;
   font-size: 13px;
@@ -92,19 +123,19 @@
 }
 
 .nav-item:hover {
-  background: rgba(0, 242, 254, 0.04);
-  color: var(--antd-primary);
-  border-color: rgba(0, 242, 254, 0.1);
+  background: rgba(94, 106, 210, 0.04);
+  color: var(--color-accent);
+  border-color: rgba(94, 106, 210, 0.1);
   padding-left: 20px; /* Slight micro-interaction nudge */
 }
 
 .nav-item.active {
-  background: linear-gradient(90deg, rgba(0, 242, 254, 0.15) 0%, transparent 100%);
-  color: var(--antd-primary);
-  border: 1px solid var(--antd-border-color);
+  background: linear-gradient(90deg, rgba(94, 106, 210, 0.15) 0%, transparent 100%);
+  color: var(--color-accent);
+  border: 1px solid var(--color-border-subtle);
   font-weight: 500;
-  text-shadow: 0 0 6px rgba(0, 242, 254, 0.4);
-  box-shadow: inset 3px 0 0 var(--antd-primary), var(--antd-shadow-card);
+  text-shadow: 0 0 6px rgba(94, 106, 210, 0.4);
+  box-shadow: inset 3px 0 0 var(--color-accent), 0 1px 3px rgba(0,0,0,0.12);
 }
 
 /* Main Layout Area */
@@ -123,7 +154,7 @@
   background: rgba(16, 24, 48, 0.4);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--antd-border-color);
+  border-bottom: 1px solid var(--color-border-subtle);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -135,29 +166,29 @@
   align-items: center;
   gap: 8px;
   background: rgba(6, 9, 19, 0.6);
-  border: 1px solid var(--antd-border-color);
+  border: 1px solid var(--color-border-subtle);
   padding: 5px 12px;
-  border-radius: var(--antd-radius-md);
+  border-radius: var(--radius-md);
   width: 280px;
   transition: all 0.2s;
 }
 
 .search-bar:hover {
-  border-color: var(--antd-primary-hover);
-  box-shadow: var(--tech-cyan-glow);
+  border-color: var(--color-accent-hover);
+  box-shadow: 0 0 12px rgba(94,106,210,0.15);
 }
 
 .search-bar input {
   background: transparent;
   border: none;
-  color: var(--antd-text-primary);
+  color: var(--color-text-primary);
   outline: none;
   width: 100%;
   font-size: 13px;
 }
 
 .search-bar input::placeholder {
-  color: var(--antd-text-secondary);
+  color: var(--color-text-secondary);
   opacity: 0.6;
 }
 
@@ -166,16 +197,16 @@
   align-items: center;
   gap: 12px;
   padding: 4px 12px;
-  border-radius: var(--antd-radius-md);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid transparent;
 }
 
 .user-profile:hover {
-  background: rgba(0, 242, 254, 0.04);
-  border-color: rgba(0, 242, 254, 0.1);
-  box-shadow: var(--tech-cyan-glow);
+  background: rgba(94, 106, 210, 0.04);
+  border-color: rgba(94, 106, 210, 0.1);
+  box-shadow: 0 0 12px rgba(94,106,210,0.15);
 }
 
 .avatar {
@@ -189,12 +220,12 @@
   justify-content: center;
   font-weight: 600;
   font-size: 11px;
-  box-shadow: var(--tech-cyan-glow);
+  box-shadow: 0 0 12px rgba(94,106,210,0.15);
 }
 
 .user-profile span {
   font-size: 13px;
-  color: var(--antd-text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /* Content Area */
@@ -212,18 +243,18 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-bottom: 1px solid var(--antd-border-color);
+  border-bottom: 1px solid var(--color-border-subtle);
   padding-bottom: 16px;
 }
 
 .hero-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--antd-text-primary);
+  color: var(--color-text-primary);
 }
 
 .hero-subtitle {
   font-size: 13px;
-  color: var(--antd-text-secondary);
+  color: var(--color-text-secondary);
 }
 

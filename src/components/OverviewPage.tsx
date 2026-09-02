@@ -78,7 +78,9 @@ export default function OverviewPage() {
           </div>
           <div className="stat-info">
             <h3>活跃服务数</h3>
-            <p className="stat-value">24 / 28</p>
+            <p className="stat-value">
+              {isLoading ? '—' : servicesError ? '—' : `${servicesArray.filter(s => s.status === 'online').length} / ${servicesArray.length}`}
+            </p>
           </div>
         </div>
 
@@ -87,8 +89,10 @@ export default function OverviewPage() {
             <Cpu size={20} />
           </div>
           <div className="stat-info">
-            <h3>大模型请求数</h3>
-            <p className="stat-value">12.4k</p>
+            <h3>服务健康度</h3>
+            <p className="stat-value">
+              {isLoading ? '—' : servicesError ? '—' : `${servicesArray.length > 0 ? Math.round((servicesArray.filter(s => s.status === 'online').length / servicesArray.length) * 100) : 0}%`}
+            </p>
           </div>
         </div>
       </div>
