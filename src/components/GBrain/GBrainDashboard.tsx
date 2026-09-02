@@ -24,7 +24,7 @@ interface DashboardPageProps {
 }
 
 export function DashboardPage({ initialSubTab = 'monitor', initialQuery }: DashboardPageProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [subTab, setSubTab] = useState<KnowledgeDashboardSubTab>(initialSubTab);
   
   const [stats, setStats] = useState({ connected_agents: 0, requests_today: 0, active_tokens: 0 });

@@ -1,139 +1,134 @@
-# cockpit-ui 深度复盘评估 — 9 大目标达成度 + 改进计划
+# cockpit-ui 第三轮深度迭代 — 信息架构重组 + 导航修复 + 页面补全
 
-> 评估日期：2026-09-02 | 分支 main | 三份 Explore 报告 + lead 自查
-> 覆盖 Phase 1/2/3 全部已合并 PR（#23/#24/#111）
+> 日期：2026-09-02 | 分支 main | 三份 Explore 报告综合
+> 任务：修复 IA 混乱、导航消失、路由切换、页面缺失问题
 
 ## Context
 
-用户经 /grill-me 提出 cockpit-ui 第二轮全景式重构与升级，9 大目标。Phase 1/2/3 已全部完成并合并（PR #23/#24/#111），E2E 38/38 通过。现需深度复盘：哪些目标达成？哪些仍需推进？
+用户反馈 cockpit-ui 经过 Phase 1/2/3 重构后：
+1. **信息架构和组织太乱** — 分组过大、hidden 页面仍显示、双 SSOT
+2. **比之前的版本少了很多页面** — 14 条旧路径被重定向，侧边栏不再显示
+3. **路由切换有问题** — 双层路由 + 重定向导致双重导航
+4. **左侧导航没有了** — Sidebar 背景色与容器相同，视觉上不可见
+
+**根因分析**：不是页面"缺失"（49 条路由全部存在），而是导航结构重组后产生的问题：
+- Dashboard.tsx ROUTE_CONFIG（60 条）与 routes.tsx ROUTES（49 条）双 SSOT 不同步
+- Sidebar 使用 `ROUTES` 而非 `getVisibleRoutes()`，显示 8 个隐藏页面
+- Sidebar 背景色 `--color-surface-0` 与容器完全相同，视觉上"消失"
+- 无 responsive 处理，小屏下 sidebar 挤压
+- 大分组（治理 9 条、知识 9 条）缺少折叠机制
 
 ---
 
-## 9 大目标达成度评估
+## Phase 1: 导航视觉修复（P0）
 
-### 目标1: 架构清晰，边界聚焦 — **达成 85%**
+### 1.1 Sidebar 背景色修复
+- 文件：`src/components/dashboard-layout.css`
+- 将 `.sidebar` 背景从 `--color-surface-0` 改为 `--color-surface-1`（#161618）
+- 增强 border-right 对比度（从 `--color-border-subtle` 改为 `--color-border-default`）
 
-| 维度 | 状态 | 证据 |
-|---|---|---|
-| IA 功能域重组 | ✅ | 51→~42 路由，7 功能域，routes.tsx 单一 SSOT |
-| 路由元数据三源合一 | ✅ | cockpitPageRegistry + cockpitNavigation 派生自 ROUTES |
-| hooks 按域拆分 | ✅ | 2703 行→11 文件（system/tasks/kems/research/knowledge/governance/observability/workbench/gbrain/swarm + index） |
-| 巨型 View 拆分 | ✅ | DomainAppsView 1767→14 / ProtocolWorkbench 1132→8 / ResearchHub 1057→6 |
-| 新页面组件分解 | ✅ | 6 个能力域各 3-5 个子组件，<300 行/文件 |
-| **不足** | ⚠️ | charts/ 通用组件未被 Phase 2 页面复用（重复建设） |
+### 1.2 Tailwind 类名修复
+- 文件：`src/components/Dashboard.tsx`
+- 将 `text-primary` 改为 `text-accent`（与 @theme token 一致）
 
-### 目标2: 风格统一收敛 — **达成 60%** ⚠️
+### 1.3 CSS 变量冲突清理
+- 文件：`src/styles/design-tokens.css`
+- 将 `//` 注释改为 `/* */` 标准 CSS 注释
+- 删除与 `theme.css` 重复的变量定义，保留单一 SSOT
 
-| 维度 | 状态 | 证据 |
-|---|---|---|
-| Tailwind v4 基建 | ✅ | theme.css @theme token SSOT，build 前置 tsc |
-| 旧 CSS 变量重映射 | ✅ | index.css 中 `--antd-*` → `var(--color-*)` |
-| 新页面使用 Tailwind | ✅ | commands/chain/agents 用 `bg-surface-1` 等 token |
-| **CSS 双系统混用** | ❌ | AuditDashboard 整体用 `var(--antd-error)`/`antd-card`/`antd-btn`（45 处），其他 5 页用 `var(--color-*)` |
-| **布局容器不统一** | ❌ | CommandExplorer `max-w-[1400px] mx-auto px-6` vs ResidentMonitor `p-6 space-y-6` vs BcosDashboard `space-y-6` |
-| Loading 不一致 | ⚠️ | CommandExplorer 用 SkeletonLines，BcosDashboard 用 animate-pulse，AuditDashboard 用 antd-card+SkeletonLines |
-
-### 目标3: 交互友好，功能健全 — **达成 80%**
-
-| 维度 | 状态 | 证据 |
-|---|---|---|
-| 新页面三态处理 | ✅ | 全部 6 页有 loading/error/empty |
-| 降级兜底 | ✅ | ChainStudio 有 demo 链 fallback，resident/bcos/p74 有 degraded 态 |
-| 搜索/过滤 | ✅ | CommandExplorer 搜索+分类折叠，AuditDashboard 低分 TOP-N |
-| 子组件 .map 防御 | ❌ | Audit/DimensionBars/LowScoreTable/ScorecardDetail、bcos/SignalFlow、p74/WarnList 直接 `.map()` 无 `?.`/`?? []` |
-
-### 目标4: 对标业内提升 UI — **达成 65%** ⚠️
-
-| 维度 | Linear/Vercel | Cockpit 现状 | 差距 |
-|---|---|---|---|
-| 设计令牌 | 单一系统 | **两套变量并行** | 显著 |
-| 间距系统 | 8px 基准网格 | Tailwind 间距 + 硬编码混用 | 中等 |
-| 暗色层级 | 5-6 层 surface | 3 层 + 遗留变量 | 中等 |
-| 图表 | 自研极简 | recharts 默认样式 | 中等 |
-| 微交互 | 精细 hover/focus | 基本 transition 到位 | 较小 |
-
-### 目标5: 抽象沉淀利扩展 — **达成 75%**
-
-| 维度 | 状态 | 证据 |
-|---|---|---|
-| 共享 UI 组件 | ✅ | PageHeader/StatusBadge/LoadingSkeleton/EmptyState/DataTable 五件套 |
-| hooks 按域拆分 | ✅ | 11 文件 + barrel re-export |
-| 统一数据获取 | ✅ | apiFetch + useQuery 模式一致 |
-| **不足** | ⚠️ | charts/ 通用封装未被复用；缺少共享 Layout 容器 |
-
-### 目标6: 功能可用有价值 — **达成 80%**
-
-| 维度 | 状态 | 证据 |
-|---|---|---|
-| 后端端点齐全 | ✅ | 6 个反射端点，11 tests passed |
-| 前端调用正确 | ✅ | apiFetch 模式统一，降级处理完备 |
-| 能力覆盖 | 🟡 | 6 域页面全建，但 CapabilityExplorer 工作流/技能仍为 **mock 数据**（9 处"接入中"） |
-
-### 目标7: 功能引导易用性 — **达成 70%**
-
-| 维度 | 状态 | 证据 |
-|---|---|---|
-| 场景引导 | ✅ | ChainStudio 4 条 demo 链 + 场景说明卡（优秀）；CommandExplorer guide_sections+scenarios |
-| EmptyState 统一 | ✅ | 6 页全部使用共享 EmptyState |
-| 路由元数据 | ✅ | purpose/whenToUse 全量补齐 51 路由 |
-| **CommandPalette 偏弱** | ❌ | 仅做页面跳转（32 个匹配中无实际操作命令），未注册"创建任务/刷新数据"等操作 |
-
-### 目标8: 覆盖所有功能聚合管理 — **达成 85%**
-
-| 维度 | 状态 | 证据 |
-|---|---|---|
-| 6 大能力域 | ✅ | commands/chain/audit/agents/bcos/p74 全覆盖 |
-| 能力全景 | 🟡 | MCP/BOS/CLI 真实数据，**工作流 19 + 技能 3 为 mock** |
-| 路由重定向 | ✅ | 15 条旧路由→新路由映射 |
-
-### 目标9: 测试验证验收 — **达成 65%** ⚠️
-
-| 维度 | 状态 | 证据 |
-|---|---|---|
-| 新页面配套测试 | ✅ | 6 页各有测试（commands 6/chain 7/audit 16/bcos 6/p74 7/resident 测试） |
-| E2E 入库 | ✅ | tests/e2e/pages-smoke.mjs，38/38 通过 |
-| **24 个测试失败** | ❌ | SystemMapView 20 + HomePage 4 + Breadcrumb 3，失败率 8.3% |
-| **api/hooks 零覆盖** | ❌ | 2810 行拆分后代码无测试 |
-| **E2E 深度不足** | ⚠️ | 仅渲染冒烟，无交互/数据断言 |
+### 1.4 Responsive 处理
+- 文件：`src/components/dashboard-layout.css`
+- 添加 `@media (max-width: 1024px)` 断点，小屏下 sidebar 折叠
+- 添加 hamburger 菜单按钮（接入 `sidebarCollapsed` 状态）
 
 ---
 
-## 优先级改进清单
+## Phase 2: 信息架构重组（P0）
 
-| # | 改进项 | 对应目标 | 优先级 | 预估工作量 |
-|---|--------|---------|--------|-----------|
-| 1 | **AuditDashboard 迁移到 `--color-*` 变量**（消除双系统） | 目标2/4 | **P0** | 0.5d |
-| 2 | **修复 24 个失败测试**（SystemMapView triage 回归 + HomePage truthfulness + Breadcrumb Router） | 目标9 | **P0** | 1d |
-| 3 | **CapabilityExplorer 工作流/技能接入真实 API** | 目标6/8 | **P0** | 0.5d |
-| 4 | **子组件 `.map()` 增加 `?.`/`?? []` 防御** | 目标3 | **P1** | 0.5d |
-| 5 | **CommandPalette 升级为操作中枢**（注册实际操作命令） | 目标7 | **P1** | 1d |
-| 6 | **统一布局容器**（PageLayout wrapper） | 目标2/4 | **P1** | 0.5d |
-| 7 | **api/hooks 补充测试**（gbrain 1142 行 + swarm 417 行优先） | 目标9 | **P1** | 1.5d |
-| 8 | **E2E 增加交互/数据断言** | 目标9 | **P2** | 1d |
-| 9 | **charts/ 通用组件替代内联 recharts** | 目标5 | **P2** | 0.5d |
-| 10 | **HomePage ThoughtStreamSection 移除 inline style** | 目标2 | **P2** | 0.5d |
+### 2.1 统一 SSOT：删除 Dashboard.tsx ROUTE_CONFIG
+- 文件：`src/components/Dashboard.tsx`
+- 删除 ROUTE_CONFIG 数组（60 条，含 11 条死代码路径）
+- 统一使用 routes.tsx 的 ROUTES + getVisibleRoutes()
+- 消除双 SSOT 不同步问题
+
+### 2.2 Sidebar 过滤 hidden 路由
+- 文件：`src/components/Dashboard.tsx`
+- 将 `ROUTES.reduce(...)` 改为 `getVisibleRoutes().reduce(...)`
+- 侧边栏只显示 41 个可见路由，隐藏 8 个工作台页面
+
+### 2.3 大分组折叠机制
+- 文件：`src/components/Dashboard.tsx`
+- 为超过 5 个条目的分组添加折叠/展开功能
+- 默认折叠大分组（治理与合规、知识与研究）
+
+### 2.4 导航语义化
+- 文件：`src/components/Dashboard.tsx`
+- 将导航 `<button>` 改为 React Router `<NavLink>`
+- 利用 NavLink 的 active 类管理高亮
 
 ---
 
-## 执行建议
+## Phase 3: 路由架构修复（P1）
 
-**第一批（P0，~2天）**：消除 CSS 双系统 + 修复失败测试 + 接入真实 API
-- 这是提升项目质量最直接的三件事
-- AuditDashboard 变量迁移后，跨页面视觉统一度从 60%→90%
-- 测试失败修复后，通过率从 91.4%→100%
+### 3.1 消除双层路由
+- 文件：`src/App.tsx` + `src/components/Dashboard.tsx`
+- 简化 App.tsx 的路由配置，移除重定向（已在 Dashboard 内部处理）
+- 或：将重定向逻辑统一到 Dashboard 内部
 
-**第二批（P1，~3.5天）**：防御性编程 + CommandPalette 升级 + 布局统一 + hooks 测试
-- 这些是长期可维护性的基础
+### 3.2 清理重复懒加载声明
+- 文件：`src/components/Dashboard.tsx`
+- 删除重复的懒加载组件声明（routes.tsx 已声明）
+- 统一从 routes.tsx 导入
 
-**第三批（P2，~2天）**：E2E 深化 + charts 复用 + inline style 清理
-- 锦上添花
+---
 
-## 验证方式
+## Phase 4: 页面内容补全（P1）
+
+### 4.1 薄页面补全
+- `src/components/bcos/BcosDashboard.tsx` — 添加 demo fallback + 丰富子组件
+- `src/components/p74/PulseView.tsx` — 添加趋势图 + 历史视图
+- `src/components/harness/HarnessDashboard.tsx` — 补充内容深度
+
+### 4.2 硬编码数据修复
+- `src/components/OverviewPage.tsx` — 移除硬编码假数据，接入 API
+- `src/components/GBrain/GBrainDashboard.tsx` — 移除 `isAuthenticated = true`
+
+### 4.3 Demo 数据标记
+- `src/components/chain/ChainStudio.tsx` — 添加 "demo data" badge 或降级提示
+
+---
+
+## Phase 5: 死代码清理（P2）
+
+### 5.1 清理旧页面组件
+- 删除已重定向且不再使用的组件：Wave2DashboardView、C2GStrategyView 等
+- 或移动到 `.omo/_archive/` 目录
+
+### 5.2 清理 PlaceholderView
+- 删除 `src/components/PlaceholderView.tsx`（已未被引用）
+
+---
+
+## 关键文件
+
+| 文件 | 修改类型 |
+|------|---------|
+| `src/components/dashboard-layout.css` | 背景色 + responsive |
+| `src/components/Dashboard.tsx` | SSOT 统一 + 导航修复 + 分组折叠 |
+| `src/App.tsx` | 路由简化 |
+| `src/styles/design-tokens.css` | CSS 注释修复 |
+| `src/components/bcos/BcosDashboard.tsx` | 内容补全 |
+| `src/components/p74/PulseView.tsx` | 内容补全 |
+| `src/components/OverviewPage.tsx` | 硬编码修复 |
+| `src/components/GBrain/GBrainDashboard.tsx` | auth 修复 |
+
+## 验证
 
 ```bash
-bun run typecheck        # 必须通过
-bun run build            # 必须通过
-bun run test:unit        # 目标 0 失败
-bun run test:e2e         # 38/38 通过
-bun run lint             # ruff 全过
+cd /Users/xiamingxing/Workspace/projects/cockpit-ui
+bun run typecheck        # 类型检查
+bun run build            # 构建
+bun run test:unit        # 单元测试
+bun run test:e2e         # E2E 冒烟（38/38 通过目标）
+bun run preview --port 4173  # 手动验证 sidebar 可见 + 路由切换
 ```
