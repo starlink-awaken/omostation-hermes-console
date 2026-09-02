@@ -6,7 +6,7 @@
  */
 import React, { Suspense, useState, useCallback } from 'react';
 import { Routes, Route, Navigate, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { ROUTES, ROUTE_REDIRECTS, getVisibleRoutes, getRouteById, getRouteByPath } from '../routes';
+import { ROUTE_REDIRECTS, getVisibleRoutes, getRouteById, getRouteByPath } from '../routes';
 import Breadcrumb from './common/Breadcrumb';
 import { RouteErrorBoundary } from './common/RouteErrorBoundary';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
@@ -28,7 +28,7 @@ export default function Dashboard() {
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Collapsible groups: default-collapse groups with > 5 items
+  // Collapsible groups: default-collapse groups with > 7 items
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     const groupCounts = visibleRoutes.reduce<Record<string, number>>((acc, r) => {
@@ -36,7 +36,7 @@ export default function Dashboard() {
       return acc;
     }, {});
     Object.entries(groupCounts).forEach(([group, count]) => {
-      if (count > 5) initial.add(group);
+      if (count > 7) initial.add(group);
     });
     return initial;
   });
