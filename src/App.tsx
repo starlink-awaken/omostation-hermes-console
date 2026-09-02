@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { ApiProvider } from './api/provider';
 import Dashboard from './components/Dashboard';
+import GlobalSearch from './components/GlobalSearch';
 import { setCockpitNavigator } from './components/cockpitNavigation';
 import { ROUTE_REDIRECTS } from './routes';
 import './index.css';
@@ -30,6 +31,7 @@ function App() {
             ))}
             <Route path="/*" element={<Dashboard />} />
           </Routes>
+          <GlobalSearch />
         </div>
       </BrowserRouter>
     </ApiProvider>
