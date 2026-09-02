@@ -460,7 +460,8 @@ export default function Dashboard() {
               <Route path="/governance-pulse" element={<PulseView />} />
               <Route path="/digital-brain" element={<DigitalBrainWorkplaceView />} />
               <Route path="/workbench/ecos-workflow" element={<EcosWorkflowWorkbench />} />
-              <Route path="/workbench/governance-domain" element={<GovernanceDomainWorkbench />} />
+              <Route path="/governance-domain" element={<GovernanceDomainWorkbench />} />
+              <Route path="/workbench/governance-domain" element={<Navigate to="/governance-domain" replace />} />
               <Route path="/workbench/infrastructure-ops" element={<InfrastructureOpsWorkbench />} />
               <Route path="/workbench/knowledge-execution" element={<KnowledgeExecutionWorkbench />} />
               <Route path="/workbench/kos" element={<KOSWorkbench />} />

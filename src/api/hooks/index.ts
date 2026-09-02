@@ -15,3 +15,7 @@ export * from './observability';
 export * from './workbench';
 export * from './gbrain';
 export * from './swarm';
+export * from './home';
+// factory and domains are not barrel-exported to avoid naming conflicts
+// Import directly: import { createResourceHooks } from '@/api/hooks/factory';
+// import { TaskHooks, useHarnessCompliance } from '@/api/hooks/domains';

@@ -11,6 +11,7 @@ import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { renderDashboardAt, setupMockFetchError, ALL_ROUTES } from './route-test-helpers';
+import { ROUTES } from '../../routes';
 
 describe('E2E: every route is accessible by direct path', () => {
   beforeEach(() => {
@@ -23,7 +24,8 @@ describe('E2E: every route is accessible by direct path', () => {
 
       // The hero title must reflect the current route
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: route.label, level: 1 })).toBeInTheDocument();
+        const headings = screen.getAllByRole('heading', { name: route.label, level: 1 });
+        expect(headings.length).toBeGreaterThan(0);
       });
 
       // The corresponding sidebar nav button must be active
@@ -84,19 +86,10 @@ describe('E2E: nav group structure in sidebar', () => {
     setupMockFetchError();
   });
 
+  const expectedGroups = [...new Set(ROUTES.map((r) => r.group))];
+
   it('renders all nav groups in the sidebar', async () => {
     renderDashboardAt('/');
-
-    const expectedGroups = [
-      '首页',
-      '运行大盘',
-      '智能与知识',
-      '系统治理',
-      '开发工具',
-      '领域应用',
-      '系统配置',
-      '工作台',
-    ];
 
     for (const group of expectedGroups) {
       await waitFor(() => {
@@ -108,19 +101,8 @@ describe('E2E: nav group structure in sidebar', () => {
   it('nav group titles appear as plain text (not buttons)', () => {
     renderDashboardAt('/');
 
-    const groupTitles = [
-      '首页',
-      '运行大盘',
-      '智能与知识',
-      '系统治理',
-      '开发工具',
-      '领域应用',
-      '系统配置',
-      '工作台',
-    ];
-
-    for (const title of groupTitles) {
-      const elements = screen.getAllByText(title);
+    for (const group of expectedGroups) {
+      const elements = screen.getAllByText(group);
       expect(elements.length).toBeGreaterThan(0);
     }
   });

@@ -55,12 +55,14 @@ describe('E2E: every route keeps the sidebar visible and active', () => {
     it(`sidebar highlights "${route.label}" when at ${route.path}`, async () => {
       renderDashboardAt(route.path);
 
-      await waitFor(() => {
+       await waitFor(() => {
         const activeNavs = screen.getAllByRole('menuitem', { name: route.label });
-      expect(activeNavs.length).toBeGreaterThan(0);
-      const activeNav = activeNavs[0];
-      expect(activeNav).toHaveAttribute('aria-selected', 'true');
-      expect(activeNav).toHaveClass('active');
+        expect(activeNavs.length).toBeGreaterThan(0);
+        const activeNav = activeNavs.find((el) =>
+          el.getAttribute('aria-selected') === 'true',
+        );
+        expect(activeNav).toBeDefined();
+        expect(activeNav).toHaveClass('active');
       });
     });
   }

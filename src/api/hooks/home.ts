@@ -4,7 +4,7 @@
  * 统一首页 6 个 section 的数据获取，避免直接调用 apiFetch。
  */
 import { useQuery } from '@tanstack/react-query';
-import { apiFetch, ENDPOINTS } from '../index';
+import { apiFetch, API_ENDPOINTS as ENDPOINTS } from '../index';
 
 export const useHealthSummary = () =>
   useQuery({
