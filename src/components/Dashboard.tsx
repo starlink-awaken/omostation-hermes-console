@@ -128,7 +128,7 @@ const ROUTE_CONFIG: Array<{ path: string; component: React.ComponentType; wrappe
   { path: '/intent', component: IntentCompiler },
   { path: '/governance-self-check', component: GovernanceSelfCheck },
   { path: '/workbench/ecos-workflow', component: EcosWorkflowWorkbench },
-  { path: '/workbench/governance-domain', component: GovernanceDomainWorkbench },
+  { path: '/governance-domain', component: GovernanceDomainWorkbench },
   { path: '/workbench/infrastructure-ops', component: InfrastructureOpsWorkbench },
   { path: '/workbench/knowledge-execution', component: KnowledgeExecutionWorkbench },
   { path: '/workbench/kos', component: KOSWorkbench },

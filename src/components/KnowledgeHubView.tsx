@@ -1,56 +1,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Activity, BookOpen, Bot, Copy, Database, FileText, GitBranch, Route, ShieldAlert } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import { DashboardPage as GBrainDashboard } from './GBrain/GBrainDashboard';
 import KnowledgeExecutionWorkbench from './KnowledgeExecutionWorkbench';
 import KOSWorkbench from './KOSWorkbench';
-import { openCockpitNavigationTarget, type CockpitNavigationTarget } from './cockpitNavigation';
-
-interface KnowledgeHubViewProps {
-  onNavigate?: (tab: string) => void;
-  onOpenTarget?: (target: CockpitNavigationTarget) => void;
-  focusPageId?: string | null;
-  focusTaskQuery?: string;
-}
-
-type KnowledgeSubTab = 'monitor' | 'memory' | 'agents' | 'calibration' | 'logs';
-
-type KnowledgeSurfaceCard = {
-  id: KnowledgeSubTab;
-  title: string;
-  summary: string;
-  detail: string;
-  objectTarget: CockpitNavigationTarget;
-  taskTarget: CockpitNavigationTarget;
-};
-
-type KnowledgeClosureRow = {
-  id: string;
-  title: string;
-  summary: string;
-  signal: string;
-  nextAction: string;
-  statusTone: 'online' | 'degraded';
-  objectTarget: CockpitNavigationTarget;
-  taskTarget: CockpitNavigationTarget;
-};
-
-function matchesKnowledgeFocusQuery(values: Array<string | null | undefined>, query?: string) {
-  const normalizedQuery = query?.trim().toLowerCase();
-  if (!normalizedQuery) return false;
-  return values.some((value) => value?.toLowerCase().includes(normalizedQuery));
-}
-
-function inferKnowledgeSubTab(query?: string): KnowledgeSubTab {
-  if (matchesKnowledgeFocusQuery(['memory', 'context', 'knowledge', 'kos', 'rag', '记忆', '知识', '上下文'], query)) return 'memory';
-  if (matchesKnowledgeFocusQuery(['agent', 'agents', '智能体', 'multi-agent', 'mcp'], query)) return 'agents';
-  if (matchesKnowledgeFocusQuery(['calibration', 'prompt', 'model', 'policy', '校准', '模型', '策略'], query)) return 'calibration';
-  if (matchesKnowledgeFocusQuery(['log', 'logs', 'audit', 'trace', 'request', '日志', '审计', '请求'], query)) return 'logs';
-  return 'monitor';
-}
-
-async function copyText(value: string) {
-  await navigator.clipboard.writeText(value);
-}
+import { openCockpitNavigationTarget } from './cockpitNavigation';
+import {
+  type KnowledgeHubViewProps,
+  type KnowledgeSurfaceCard,
+  type KnowledgeClosureRow,
+  type KnowledgeSubTab,
+  inferKnowledgeSubTab,
+  matchesKnowledgeFocusQuery,
+  copyText,
+} from './KnowledgeHubView.types';
+import {
+  FocusedKnowledgeCardSection,
+  KnowledgeDimensionMap,
+  ActiveKnowledgeSurfacePanel,
+  KnowledgeTaskDraftSection,
+  KnowledgeClosureTable,
+} from './KnowledgeHubView.sections';
 
 export default function KnowledgeHubView({
   onNavigate,
@@ -322,276 +291,65 @@ export default function KnowledgeHubView({
     }
   };
 
+  const handleCopyKnowledgeTask = async () => {
+    await copyText(knowledgeTaskDraft.copyText);
+    setKnowledgeDraftNotice(`已复制知识补位任务：${knowledgeTaskDraft.title}`);
+  };
+
   return (
     <div className="gbrain-wrapper animate-fade-in">
       <KnowledgeExecutionWorkbench currentPage="Knowledge" onNavigate={onNavigate} onOpenTarget={onOpenTarget} />
 
       {focusedKnowledgeCard && (
-        <section className="services-section overview-ops-panel" aria-label="当前知识承接焦点">
-          <div className="section-header">
-            <div>
-              <h2 style={{ margin: 0, fontSize: 16 }}>当前知识承接焦点</h2>
-              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-                把系统地图、页面审计或任务里丢过来的上下文，先翻成知识面应该承接的对象。
-              </p>
-            </div>
-            <span className="status-badge online">{focusedKnowledgeCard.kicker}</span>
-          </div>
-          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
-            <div>
-              <strong>{focusedKnowledgeCard.title}</strong>
-              <p>{focusedKnowledgeCard.detail}</p>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="antd-btn"
-                aria-label={`打开知识焦点对象 ${focusedKnowledgeCard.title}`}
-                onClick={() => openCockpitNavigationTarget(focusedKnowledgeCard.objectTarget, onNavigate, onOpenTarget)}
-              >
-                <Database size={14} />
-                <span>打开对象</span>
-              </button>
-              <button
-                type="button"
-                className="antd-btn"
-                aria-label={`打开知识焦点任务 ${focusedKnowledgeCard.title}`}
-                onClick={() => openCockpitNavigationTarget(focusedKnowledgeCard.taskTarget, onNavigate, onOpenTarget)}
-              >
-                <GitBranch size={14} />
-                <span>打开任务</span>
-              </button>
-            </div>
-          </article>
-        </section>
+        <FocusedKnowledgeCardSection
+          kicker={focusedKnowledgeCard.kicker}
+          title={focusedKnowledgeCard.title}
+          detail={focusedKnowledgeCard.detail}
+          objectTarget={focusedKnowledgeCard.objectTarget}
+          taskTarget={focusedKnowledgeCard.taskTarget}
+          onNavigate={onNavigate}
+          onOpenTarget={onOpenTarget}
+        />
       )}
 
-      <section className="services-section" aria-label="知识维度地图">
-        <div className="section-header">
-          <div>
-            <h2 style={{ margin: 0, fontSize: 16 }}>知识维度地图</h2>
-            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-              把知识面的运行、记忆、智能体、校准和日志五个子面板直接摆出来，减少只看到旧看板却不知道怎么用的断层。
-            </p>
-          </div>
-          <span className="status-badge online">显示 {filteredKnowledgeSurfaces.length}/{knowledgeSurfaces.length}</span>
-        </div>
-        <div role="region" aria-label="知识中枢筛选" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 16 }}>
-          <input
-            type="search"
-            aria-label="搜索知识子面板和闭环"
-            placeholder="运行、记忆、智能体、日志或闭环"
-            value={knowledgeQuery}
-            onChange={(event) => setKnowledgeQuery(event.target.value)}
-            style={{ flex: '1 1 260px', minWidth: 220 }}
-          />
-          {knowledgeQuery && (
-            <button type="button" className="antd-btn small" aria-label="清除知识中枢筛选" onClick={() => setKnowledgeQuery('')}>
-              清除筛选
-            </button>
-          )}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-          {filteredKnowledgeSurfaces.map((surface) => (
-            <article key={surface.id} className="antd-card" style={{ padding: 18, display: 'grid', gap: 12 }}>
-              <div style={{ display: 'grid', gap: 6 }}>
-                <small className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase' }}>{surface.id}</small>
-                <strong style={{ fontSize: 15 }}>{surface.title}</strong>
-                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{surface.summary}</p>
-              </div>
-              <div style={{ minHeight: 54, padding: '10px 12px', borderRadius: 'var(--antd-radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <small className="text-muted" style={{ display: 'block', marginBottom: 4 }}>怎么用</small>
-                <span style={{ fontSize: 12, lineHeight: 1.6 }}>{surface.detail}</span>
-              </div>
-              <button
-                type="button"
-                className="antd-btn small"
-                aria-label={`切换知识子面板 ${surface.title}`}
-                onClick={() => setKnowledgeSubTab(surface.id)}
-              >
-                <Route size={13} />
-                <span>{surface.id === knowledgeSubTab ? '当前查看' : '切到此层'}</span>
-              </button>
-            </article>
-          ))}
-        </div>
-        {filteredKnowledgeSurfaces.length === 0 && (
-          <p className="text-muted" style={{ margin: '14px 0 0', fontSize: 13 }}>没有匹配的知识子面板，试试运行、记忆、智能体或日志。</p>
-        )}
-      </section>
+      <KnowledgeDimensionMap
+        surfaces={knowledgeSurfaces}
+        filteredSurfaces={filteredKnowledgeSurfaces}
+        subTab={knowledgeSubTab}
+        query={knowledgeQuery}
+        onQueryChange={setKnowledgeQuery}
+        onClearQuery={() => setKnowledgeQuery('')}
+        onSelectSurface={setKnowledgeSubTab}
+      />
 
-      <section className="services-section" role="region" aria-label="当前知识子面板">
-        <div className="section-header">
-          <div>
-            <h2 style={{ margin: 0, fontSize: 16 }}>当前知识子面板</h2>
-            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-              先确认当前正在看的知识层，再把相关对象和任务送到真正的承接页。
-            </p>
-          </div>
-          <span className="status-badge degraded">{activeKnowledgeSurface.title}</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
-            <div>
-              <strong>{activeKnowledgeSurface.title}</strong>
-              <p>{activeKnowledgeSurface.detail}</p>
-            </div>
-          </article>
-          <article className="antd-card" style={{ padding: 18, display: 'grid', gap: 10 }}>
-            <div style={{ display: 'grid', gap: 4 }}>
-              <strong style={{ fontSize: 15 }}>相关去向</strong>
-              <small className="text-muted">这层最常见的对象承接与任务收口。</small>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <button
-                type="button"
-                className="antd-btn"
-                aria-label={`打开知识相关对象 ${activeKnowledgeSurface.title}`}
-                onClick={() => openCockpitNavigationTarget(activeKnowledgeSurface.objectTarget, onNavigate, onOpenTarget)}
-              >
-                <BookOpen size={14} />
-                <span>打开相关对象</span>
-              </button>
-              <button
-                type="button"
-                className="antd-btn"
-                aria-label={`打开知识相关任务 ${activeKnowledgeSurface.title}`}
-                onClick={() => openCockpitNavigationTarget(activeKnowledgeSurface.taskTarget, onNavigate, onOpenTarget)}
-              >
-                <ShieldAlert size={14} />
-                <span>打开承接任务</span>
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
+      <ActiveKnowledgeSurfacePanel
+        surface={activeKnowledgeSurface}
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+      />
 
-      <section className="services-section" role="region" aria-label="知识补位任务">
-        <div className="section-header">
-          <div>
-            <h2 style={{ margin: 0, fontSize: 16 }}>知识补位任务</h2>
-            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-              把当前知识层直接翻成一条可复制、可送往任务中心的补位动作，避免知识面停在浏览状态。
-            </p>
-          </div>
-          <span className="status-badge degraded">草稿就绪</span>
-        </div>
-        <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
-          <div>
-            <strong>{knowledgeTaskDraft.title}</strong>
-            <p>{knowledgeTaskDraft.description}</p>
-            <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-              {knowledgeTaskDraft.checklist.map((item, index) => (
-                <small key={`${knowledgeTaskDraft.title}-${index}`} className="text-muted">{index + 1}. {item}</small>
-              ))}
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="antd-btn"
-              disabled={knowledgeTaskPending}
-              aria-label={`登记知识治理任务 ${knowledgeTaskDraft.title}`}
-              onClick={() => { void createKnowledgeTask(); }}
-            >
-              <ShieldAlert size={14} />
-              <span>{knowledgeTaskPending ? '登记中...' : '登记正式任务'}</span>
-            </button>
-            <button
-              type="button"
-              className="antd-btn"
-              aria-label={`复制知识补位任务 ${knowledgeTaskDraft.title}`}
-              onClick={async () => {
-                await copyText(knowledgeTaskDraft.copyText);
-                setKnowledgeDraftNotice(`已复制知识补位任务：${knowledgeTaskDraft.title}`);
-              }}
-            >
-              <Copy size={14} />
-              <span>复制补位任务</span>
-            </button>
-            <button
-              type="button"
-              className="antd-btn"
-              aria-label={`打开知识补位对象 ${knowledgeTaskDraft.title}`}
-              onClick={() => openCockpitNavigationTarget(knowledgeTaskDraft.objectTarget, onNavigate, onOpenTarget)}
-            >
-              <Bot size={14} />
-              <span>打开相关对象</span>
-            </button>
-            <button
-              type="button"
-              className="antd-btn"
-              aria-label={`打开知识补位任务 ${knowledgeTaskDraft.title}`}
-              onClick={() => openCockpitNavigationTarget(knowledgeTaskDraft.taskTarget, onNavigate, onOpenTarget)}
-            >
-              <FileText size={14} />
-              <span>送进任务中心</span>
-            </button>
-          </div>
-        </article>
-        {knowledgeDraftNotice && (
-          <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{knowledgeDraftNotice}</p>
-        )}
-        {knowledgeTaskError && (
-          <p role="alert" className="text-danger" style={{ margin: 0, fontSize: 12 }}>{knowledgeTaskError}</p>
-        )}
-      </section>
+      <KnowledgeTaskDraftSection
+        title={knowledgeTaskDraft.title}
+        description={knowledgeTaskDraft.description}
+        checklist={knowledgeTaskDraft.checklist}
+        copyTextValue={knowledgeTaskDraft.copyText}
+        objectTarget={knowledgeTaskDraft.objectTarget}
+        taskTarget={knowledgeTaskDraft.taskTarget}
+        pending={knowledgeTaskPending}
+        notice={knowledgeDraftNotice}
+        error={knowledgeTaskError}
+        onCreateTask={createKnowledgeTask}
+        onCopyTask={handleCopyKnowledgeTask}
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+      />
 
-      <section className="services-section" role="region" aria-label="知识闭环总表">
-        <div className="section-header">
-          <div>
-            <h2 style={{ margin: 0, fontSize: 16 }}>知识闭环总表</h2>
-            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-              把研究回流、知识供给、智能体协议联动和日志收口并排摆出来，知识页才能真正承接站内上下文主轴。
-            </p>
-          </div>
-          <span className="status-badge online">显示 {filteredKnowledgeClosureRows.length}/{knowledgeClosureRows.length} 条闭环</span>
-        </div>
-        <div style={{ display: 'grid', gap: 12 }}>
-          {filteredKnowledgeClosureRows.map((row) => (
-            <article
-              key={`knowledge-closure-${row.id}`}
-              className="antd-card"
-              style={{ padding: 18, display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr) auto', gap: 16, alignItems: 'center' }}
-            >
-              <div style={{ display: 'grid', gap: 6 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                  <strong style={{ fontSize: 15 }}>{row.title}</strong>
-                  <span className={`status-badge ${row.statusTone}`}>{row.signal}</span>
-                </div>
-                <p className="text-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{row.summary}</p>
-              </div>
-              <div style={{ display: 'grid', gap: 6 }}>
-                <small className="text-muted">下一步</small>
-                <span style={{ fontSize: 13, lineHeight: 1.6 }}>{row.nextAction}</span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  className="antd-btn"
-                  aria-label={`打开知识闭环对象 ${row.title}`}
-                  onClick={() => openCockpitNavigationTarget(row.objectTarget, onNavigate, onOpenTarget)}
-                >
-                  <Database size={14} />
-                  <span>打开对象</span>
-                </button>
-                <button
-                  type="button"
-                  className="antd-btn"
-                  aria-label={`打开知识闭环任务 ${row.title}`}
-                  onClick={() => openCockpitNavigationTarget(row.taskTarget, onNavigate, onOpenTarget)}
-                >
-                  <GitBranch size={14} />
-                  <span>打开任务</span>
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-        {filteredKnowledgeClosureRows.length === 0 && (
-          <p className="text-muted" style={{ margin: '14px 0 0', fontSize: 13 }}>没有匹配的知识闭环，换个关键词再试。</p>
-        )}
-      </section>
+      <KnowledgeClosureTable
+        rows={knowledgeClosureRows}
+        filteredRows={filteredKnowledgeClosureRows}
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+      />
 
       <div className="services-section" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <Activity size={16} />

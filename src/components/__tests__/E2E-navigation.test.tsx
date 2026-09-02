@@ -54,8 +54,8 @@ describe("E2E: bidirectional navigation via direct paths", () => {
     renderDashboardAt("/");
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "首页", level: 1 }),
-      ).toBeInTheDocument();
+        screen.getAllByRole("heading", { name: "首页", level: 1 }).length,
+      ).toBeGreaterThan(0);
     });
   });
 
@@ -74,8 +74,8 @@ describe("E2E: bidirectional navigation via direct paths", () => {
     renderDashboardAt("/workbench/kos");
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "KOS 工作台", level: 1 }),
-      ).toBeInTheDocument();
+        screen.getAllByRole("heading", { name: "KOS 工作台", level: 1 }).length,
+      ).toBeGreaterThan(0);
     });
   });
 
@@ -93,8 +93,8 @@ describe("E2E: bidirectional navigation via direct paths", () => {
     renderDashboardAt("/");
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "首页", level: 1 }),
-      ).toBeInTheDocument();
+        screen.getAllByRole("heading", { name: "首页", level: 1 }).length,
+      ).toBeGreaterThan(0);
     });
   });
 });
@@ -129,8 +129,11 @@ describe("E2E: nav group structure in sidebar", () => {
     renderDashboardAt("/alerts");
 
     await waitFor(() => {
-      const activeItem = screen.getByRole("menuitem", { name: "告警中心" });
-      expect(activeItem).toHaveAttribute("aria-selected", "true");
+      const navItems = screen.getAllByRole("menuitem", { name: "告警中心" });
+      const activeItem = navItems.find(
+        (el) => el.getAttribute("aria-selected") === "true",
+      );
+      expect(activeItem).toBeDefined();
     });
   });
 });

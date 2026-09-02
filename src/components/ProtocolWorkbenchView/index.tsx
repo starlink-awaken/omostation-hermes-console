@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ClipboardCheck, Copy, GitBranch, Layers, RefreshCw, Route, Search, ShieldAlert, X } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, GitBranch, Layers, RefreshCw, Route, Search, ShieldAlert, X } from 'lucide-react';
 import '../Dashboard.css';
 import ActionSurfacePanel from '../ActionSurfacePanel';
 import EcosWorkflowWorkbench from '../EcosWorkflowWorkbench';
@@ -9,6 +9,9 @@ import { ProtocolSurfaceCards } from './ProtocolSurfaceCards';
 import { ProtocolClosureTable } from './ProtocolClosureTable';
 import { ProtocolLayerBridge } from './ProtocolLayerBridge';
 import { ProtocolEvidenceSection } from './ProtocolEvidenceSection';
+import ProtocolDetail from './ProtocolDetail';
+import ProtocolEditor from './ProtocolEditor';
+import ProtocolList from './ProtocolList';
 import {
   type ProtocolClosureRow,
   type ProtocolPayload,
@@ -411,45 +414,11 @@ export default function ProtocolWorkbenchView({
         )}
       </section>
 
-      {focusedProtocolCard && (
-        <section className="services-section overview-ops-panel" aria-label="当前协议承接焦点">
-          <div className="section-header">
-            <div>
-              <h2 style={{ margin: 0, fontSize: 16 }}>当前协议承接焦点</h2>
-              <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-                把系统地图、页面审计或任务里丢过来的上下文，直接翻成协议层下一跳。
-              </p>
-            </div>
-            <span className="status-badge online">{focusedProtocolCard.kicker}</span>
-          </div>
-          <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
-            <div>
-              <strong>{focusedProtocolCard.title}</strong>
-              <p>{focusedProtocolCard.detail}</p>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="antd-btn"
-                aria-label={`打开协议焦点对象 ${focusedProtocolCard.title}`}
-                onClick={() => openCockpitNavigationTarget(focusedProtocolCard.objectTarget, onNavigate, onOpenTarget)}
-              >
-                <ClipboardCheck size={14} />
-                <span>打开对象</span>
-              </button>
-              <button
-                type="button"
-                className="antd-btn"
-                aria-label={`打开协议焦点任务 ${focusedProtocolCard.title}`}
-                onClick={() => openCockpitNavigationTarget(focusedProtocolCard.taskTarget, onNavigate, onOpenTarget)}
-              >
-                <Route size={14} />
-                <span>打开任务</span>
-              </button>
-            </div>
-          </article>
-        </section>
-      )}
+      <ProtocolDetail
+        card={focusedProtocolCard}
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+      />
 
       <section className="services-section" aria-label="协议维度地图">
         <div className="section-header">
@@ -563,76 +532,17 @@ export default function ProtocolWorkbenchView({
         onOpenTarget={onOpenTarget}
       />
 
-      <section className="services-section" role="region" aria-label="协议补位任务">
-        <div className="section-header">
-          <div>
-            <h2 style={{ margin: 0, fontSize: 16 }}>协议补位任务</h2>
-            <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 13 }}>
-              把当前协议层直接翻成一条可复制、可送往任务中心的补位动作，避免协议面停在浏览或抄命令状态。
-            </p>
-          </div>
-          <span className="status-badge degraded">草稿就绪</span>
-        </div>
-        <article className="action-surface-item" style={{ alignItems: 'flex-start' }}>
-          <div>
-            <strong>{protocolTaskDraft.title}</strong>
-            <p>{protocolTaskDraft.description}</p>
-            <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-              {protocolTaskDraft.checklist.map((item, index) => (
-                <small key={`${protocolTaskDraft.title}-${index}`} className="text-muted">{index + 1}. {item}</small>
-              ))}
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="antd-btn"
-              disabled={data.protocolTaskPending}
-              aria-label={`登记协议治理任务 ${protocolTaskDraft.title}`}
-              onClick={() => { void data.createProtocolTask(protocolTaskDraft, activeProtocolSurface.id); }}
-            >
-              <ShieldAlert size={14} />
-              <span>{data.protocolTaskPending ? '登记中...' : '登记正式任务'}</span>
-            </button>
-            <button
-              type="button"
-              className="antd-btn"
-              aria-label={`复制协议补位任务 ${protocolTaskDraft.title}`}
-              onClick={async () => {
-                await copyText(protocolTaskDraft.copyText);
-                // Note: protocolDraftNotice is managed in the hook
-              }}
-            >
-              <Copy size={14} />
-              <span>复制补位任务</span>
-            </button>
-            <button
-              type="button"
-              className="antd-btn"
-              aria-label={`打开协议补位对象 ${protocolTaskDraft.title}`}
-              onClick={() => openCockpitNavigationTarget(protocolTaskDraft.objectTarget, onNavigate, onOpenTarget)}
-            >
-              <Layers size={14} />
-              <span>打开相关对象</span>
-            </button>
-            <button
-              type="button"
-              className="antd-btn"
-              aria-label={`打开协议补位任务 ${protocolTaskDraft.title}`}
-              onClick={() => openCockpitNavigationTarget(protocolTaskDraft.taskTarget, onNavigate, onOpenTarget)}
-            >
-              <Route size={14} />
-              <span>送进任务中心</span>
-            </button>
-          </div>
-        </article>
-        {data.protocolDraftNotice && (
-          <p className="text-muted" style={{ margin: 0, fontSize: 12 }}>{data.protocolDraftNotice}</p>
-        )}
-        {data.protocolTaskError && (
-          <p role="alert" className="text-danger" style={{ margin: 0, fontSize: 12 }}>{data.protocolTaskError}</p>
-        )}
-      </section>
+      <ProtocolEditor
+        draft={protocolTaskDraft}
+        surfaceTitle={activeProtocolSurface.title}
+        surfaceId={activeProtocolSurface.id}
+        pending={data.protocolTaskPending}
+        notice={data.protocolDraftNotice}
+        error={data.protocolTaskError}
+        onCreateTask={data.createProtocolTask}
+        onNavigate={onNavigate}
+        onOpenTarget={onOpenTarget}
+      />
 
       <ActionSurfacePanel
         title="协议处理区"
@@ -647,49 +557,13 @@ export default function ProtocolWorkbenchView({
 
       <ProtocolLayerBridge layers={filteredProtocolLayers} />
 
-      <section className="services-section">
-        <div className="section-header">
-          <div>
-            <h2>最近编排记录</h2>
-            <p className="text-muted">协议层不是只看定义，最近 workflow 记录能证明它到底有没有被实际承接。</p>
-          </div>
-          <span className="status-badge online">显示 {filteredProtocolWorkflows.length}/{data.payload.summary.recent_runs}</span>
-        </div>
-        <div style={{ display: 'grid', gap: 12 }}>
-          {data.payload.recent_workflows.length === 0 ? (
-            <div className="antd-card" style={{ padding: 18 }}>
-              <p className="text-muted" style={{ margin: 0 }}>还没有最近 workflow 记录，先跑一条受控检查命令补证据。</p>
-            </div>
-          ) : filteredProtocolWorkflows.length === 0 ? (
-            <div className="antd-card" style={{ padding: 18 }}>
-              <p className="text-muted" style={{ margin: 0 }}>当前筛选下没有匹配的最近编排记录。</p>
-            </div>
-          ) : filteredProtocolWorkflows.map((workflow) => (
-            <article key={workflow.id} className="antd-card" style={{ padding: 18, display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}>
-              <div>
-                <strong>{workflow.task}</strong>
-                <p className="text-muted" style={{ margin: '6px 0 0', fontSize: 12 }}>{workflow.id} · {shortTime(workflow.updated_at)}</p>
-              </div>
-              <span className={`status-badge ${workflow.status === 'running' ? 'degraded' : workflow.status === 'completed' ? 'online' : 'offline'}`}>
-                {workflow.status}
-              </span>
-            </article>
-          ))}
-        </div>
-        {data.payload.has_more && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-            <button
-              type="button"
-              className="antd-btn"
-              aria-label="加载更多协议运行记录"
-              onClick={() => void data.load(data.payload.recent_workflows.length, true)}
-              disabled={data.loadingMore}
-            >
-              {data.loadingMore ? '正在加载...' : `加载更多（已显示 ${data.payload.recent_workflows.length}/${data.payload.summary.recent_runs}）`}
-            </button>
-          </div>
-        )}
-      </section>
+      <ProtocolList
+        workflows={filteredProtocolWorkflows}
+        totalRuns={data.payload.summary.recent_runs}
+        hasMore={data.payload.has_more ?? false}
+        loadingMore={data.loadingMore}
+        onLoadMore={data.load}
+      />
 
       <ProtocolEvidenceSection
         payload={data.payload}
