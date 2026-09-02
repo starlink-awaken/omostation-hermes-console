@@ -16,9 +16,14 @@
     ## Quick Start
 
     ```bash
-    bun install
-bun run build
-bun run lint
+bun install
+bun run dev      # start dev server
+bun run build    # typecheck + production build
+bun run preview  # preview production build
+bun run test     # baseline: typecheck + unit + build + preview + e2e
+bun run test:unit
+bun run test:e2e
+bun run typecheck
     ```
 
     ## Key Surfaces

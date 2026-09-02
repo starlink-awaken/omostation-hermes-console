@@ -1,44 +1,46 @@
 @import "./styles/theme.css";
 
 :root {
-  /* Cybertech Theme Design Tokens (legacy — phase 3 cleanup) */
+  /* Legacy variable mappings — redirect to new Linear-style calm dark theme.
+   * Phase 3 migration: CSS files referencing these will automatically use new colors.
+   * Long-term: migrate CSS classes to Tailwind utilities, then remove these. */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  
-  --antd-primary: #00f2fe; /* Cyber Neon Blue/Cyan */
-  --antd-primary-hover: #4facfe;
-  --antd-primary-active: #0052d4;
-  --antd-primary-outline: rgba(0, 242, 254, 0.2);
-  
-  --antd-success: #05f3a2;
-  --antd-success-bg: rgba(5, 243, 162, 0.1);
-  --antd-warning: #ffb800;
-  --antd-warning-bg: rgba(255, 184, 0, 0.1);
-  --antd-error: #ff4757;
-  --antd-error-bg: rgba(255, 71, 87, 0.1);
-  --antd-info: #00d2ff;
-  
-  /* Cyber Space Layout Colors */
-  --antd-bg-layout: #060913;    /* Deep cosmic blue sider */
-  --antd-bg-body: #0a0e1c;      /* Deep cyber space dark body */
-  --antd-bg-container: rgba(16, 24, 48, 0.7); /* Translucent cyber deck container */
-  --antd-bg-elevated: #151f38;
-  
-  --tech-cyan-glow: 0 0 12px rgba(0, 242, 254, 0.15);
-  --tech-glow-intense: 0 0 20px rgba(0, 242, 254, 0.3);
-  
-  --antd-border-color: rgba(0, 242, 254, 0.15); /* Tech cyan hairline borders */
-  --antd-border-color-hover: rgba(0, 242, 254, 0.35);
-  
-  --antd-text-primary: #e0f2fe;    /* Bright ice-blue/white */
-  --antd-text-secondary: #94a3b8;  /* Tech light grey-blue */
-  --antd-text-muted: #475569;
-  
-  --antd-radius-lg: 6px;
-  --antd-radius-md: 4px;
-  --antd-radius-sm: 2px;
-  
-  --antd-shadow-card: 0 0 15px rgba(0, 242, 254, 0.05), inset 0 0 15px rgba(0, 242, 254, 0.02);
-  --antd-shadow-dropdown: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+
+  --antd-primary: var(--color-accent);
+  --antd-primary-hover: var(--color-accent-hover);
+  --antd-primary-active: var(--color-accent);
+  --antd-primary-outline: var(--color-accent-muted);
+
+  --antd-success: var(--color-status-ok);
+  --antd-success-bg: var(--color-status-ok-muted);
+  --antd-warning: var(--color-status-warn);
+  --antd-warning-bg: var(--color-status-warn-muted);
+  --antd-error: var(--color-status-error);
+  --antd-error-bg: var(--color-status-error-muted);
+  --antd-info: var(--color-accent);
+
+  /* Layout Colors → surface hierarchy */
+  --antd-bg-layout: var(--color-surface-0);
+  --antd-bg-body: var(--color-surface-0);
+  --antd-bg-container: var(--color-surface-1);
+  --antd-bg-elevated: var(--color-surface-2);
+
+  --tech-cyan-glow: 0 0 12px rgba(94, 106, 210, 0.15);
+  --tech-glow-intense: 0 0 20px rgba(94, 106, 210, 0.3);
+
+  --antd-border-color: var(--color-border-subtle);
+  --antd-border-color-hover: var(--color-border-default);
+
+  --antd-text-primary: var(--color-text-primary);
+  --antd-text-secondary: var(--color-text-secondary);
+  --antd-text-muted: var(--color-text-tertiary);
+
+  --antd-radius-lg: var(--radius-lg);
+  --antd-radius-md: var(--radius-md);
+  --antd-radius-sm: var(--radius-sm);
+
+  --antd-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --antd-shadow-dropdown: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 
   /* Spacing Scale */
   --space-1: 4px;
@@ -63,10 +65,10 @@
   --duration-slow: 400ms;
 
   /* Chart Tooltip (Dark Theme) */
-  --chart-tooltip-bg: rgba(16, 24, 48, 0.95);
-  --chart-tooltip-border: rgba(0, 242, 254, 0.15);
-  --chart-tooltip-text: #e0f2fe;
-  --chart-grid-stroke: rgba(0, 242, 254, 0.1);
+  --chart-tooltip-bg: var(--color-surface-2);
+  --chart-tooltip-border: var(--color-border-subtle);
+  --chart-tooltip-text: var(--color-text-primary);
+  --chart-grid-stroke: var(--color-border-subtle);
 }
 
 /* Skeleton Loading Animation */

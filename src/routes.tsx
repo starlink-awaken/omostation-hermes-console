@@ -113,8 +113,13 @@ const RuntimeOpsWorkbench = lazy(() => import('./components/RuntimeOpsWorkbench'
 // eslint-disable-next-line react-refresh/only-export-components
 const SystemAssuranceWorkbench = lazy(() => import('./components/SystemAssuranceWorkbench'));
 
-// Phase 2 placeholder views (replaced in stage 2)
-import PlaceholderView from './components/PlaceholderView';
+// Phase 2 capability-reflection views
+import CommandExplorer from './components/commands/CommandExplorer';
+import ChainStudio from './components/chain/ChainStudio';
+import AuditDashboard from './components/audit/AuditDashboard';
+import ResidentMonitor from './components/resident/ResidentMonitor';
+import BcosDashboard from './components/bcos/BcosDashboard';
+import PulseView from './components/p74/PulseView';
 
 export interface RouteConfig {
   id: string;
@@ -153,8 +158,8 @@ export const ROUTES: RouteConfig[] = [
 
   // ── 治理与合规 ──
   { id: 'GovernanceDomain', path: '/governance-domain', label: '治理域', subtitle: '治理工作台：域治理、合规检查、SSOT 巡检。', group: '治理与合规', component: GovernanceDomainWorkbench, icon: 'Shield', purpose: '统一治理工作台，覆盖域治理、合规检查与 SSOT 巡检。', whenToUse: '做治理巡检或合规审查时。' },
-  { id: 'CommandAudit', path: '/command-audit', label: '命令评分卡', subtitle: '全量命令 15 维质量评分看板。', group: '治理与合规', component: () => <PlaceholderView title="命令评分卡" description="全量命令 15 维质量评分看板 — 阶段 2 交付" />, icon: 'ClipboardCheck', purpose: '全量命令 15 维质量评分看板。', whenToUse: '评估命令质量、发现薄弱命令时。' },
-  { id: 'GovernancePulse', path: '/governance-pulse', label: '治理脉搏', subtitle: 'P74 工作流沉默治理 + 战略追踪。', group: '治理与合规', component: () => <PlaceholderView title="治理脉搏" description="P74 工作流沉默治理 + 战略追踪 — 阶段 2 交付" />, icon: 'Activity', purpose: 'P74 工作流沉默治理与战略追踪。', whenToUse: '发现工作流沉默或战略脱节时。' },
+  { id: 'CommandAudit', path: '/command-audit', label: '命令评分卡', subtitle: '全量命令 15 维质量评分看板。', group: '治理与合规', component: AuditDashboard, icon: 'ClipboardCheck', purpose: '全量命令 15 维质量评分看板。', whenToUse: '评估命令质量、发现薄弱命令时。' },
+  { id: 'GovernancePulse', path: '/governance-pulse', label: '治理脉搏', subtitle: 'P74 工作流沉默治理 + 战略追踪。', group: '治理与合规', component: PulseView, icon: 'Activity', purpose: 'P74 工作流沉默治理与战略追踪。', whenToUse: '发现工作流沉默或战略脱节时。' },
   { id: 'L4Health', path: '/l4-health', label: 'L4 域健康', subtitle: '实时监控 L4 域健康状态、趋势分析和风险评估。', group: '治理与合规', component: L4HealthView, icon: 'Heart', purpose: '查看 L4 域健康状态与风险。', whenToUse: '比单页看得更全时。' },
   { id: 'Debt', path: '/debt', label: '债务治理', subtitle: '全自动审计技术债务评分，追踪高危风险。', group: '治理与合规', component: DebtView, icon: 'FileText', purpose: '追踪高风险技术债务与治理优先级。', whenToUse: '规划补位和治理投入时。' },
   { id: 'AlertCenter', path: '/alerts', label: '告警中心', subtitle: '统一告警管理、规则配置、告警历史。', group: '治理与合规', component: AlertCenterPage, icon: 'Bell', purpose: '统一管理告警、规则和历史。', whenToUse: 'P0/P1 先从这里落点。' },
@@ -171,11 +176,11 @@ export const ROUTES: RouteConfig[] = [
   { id: 'ExternalResources', path: '/external-resources', label: '外部能力目录', subtitle: '查看外部知识、数据、方法、工具和渠道的动态发现与健康状态。', group: '知识与研究', component: ExternalResourceCatalogView, icon: 'Database', purpose: '查看动态发现的外部知识、数据、方法、工具和渠道。', whenToUse: '判断外部能力是否存在、健康和可触达时。' },
 
   // ── Agent 与链路 ──
-  { id: 'Commands', path: '/commands', label: '命令全景', subtitle: '全量 CLI 命令浏览、搜索与帮助引导。', group: 'Agent 与链路', component: () => <PlaceholderView title="命令全景" description="全量 CLI 命令浏览、搜索与帮助引导 — 阶段 2 交付" />, icon: 'Terminal', purpose: '全量 CLI 命令浏览、搜索与帮助引导。', whenToUse: '找命令、看命令用法时。' },
-  { id: 'Chain', path: '/chain', label: '链路编排', subtitle: '多命令联动链路的 DAG 可视化与 dry-run 执行。', group: 'Agent 与链路', component: () => <PlaceholderView title="链路编排" description="多命令联动链路的 DAG 可视化与 dry-run 执行 — 阶段 2 交付" />, icon: 'GitBranch', purpose: '多命令联动链路的 DAG 可视化与 dry-run 执行。', whenToUse: '编排多命令联动链路时。' },
+  { id: 'Commands', path: '/commands', label: '命令全景', subtitle: '全量 CLI 命令浏览、搜索与帮助引导。', group: 'Agent 与链路', component: CommandExplorer, icon: 'Terminal', purpose: '全量 CLI 命令浏览、搜索与帮助引导。', whenToUse: '找命令、看命令用法时。' },
+  { id: 'Chain', path: '/chain', label: '链路编排', subtitle: '多命令联动链路的 DAG 可视化与 dry-run 执行。', group: 'Agent 与链路', component: ChainStudio, icon: 'GitBranch', purpose: '多命令联动链路的 DAG 可视化与 dry-run 执行。', whenToUse: '编排多命令联动链路时。' },
   { id: 'Swarm', path: '/swarm', label: 'Swarm 协同', subtitle: 'agent 协同运行链路、工作流窗口、声明占用与合规决策。', group: 'Agent 与链路', component: SwarmDashboard, icon: 'Activity', purpose: 'agent 协同运行链路、工作流窗口、声明占用与合规决策。', whenToUse: '查看 agent 协同时。' },
-  { id: 'Agents', path: '/agents', label: 'Agent 监控', subtitle: '常驻 Agent 五类角色状态与事件流。', group: 'Agent 与链路', component: () => <PlaceholderView title="Agent 监控" description="常驻 Agent 五类角色状态与事件流 — 阶段 2 交付" />, icon: 'Bot', purpose: '常驻 Agent 五类角色状态与事件流。', whenToUse: '监控常驻 Agent 运行状态时。' },
-  { id: 'Bcos', path: '/bcos', label: 'BCOS 北极星', subtitle: '业务闭环系统：北极星价值度量 + 信号路由 + 进化引擎。', group: 'Agent 与链路', component: () => <PlaceholderView title="BCOS 北极星" description="业务闭环系统：北极星价值度量 + 信号路由 + 进化引擎 — 阶段 2 交付" />, icon: 'Compass', purpose: '业务闭环系统：北极星价值度量、信号路由与进化引擎。', whenToUse: '查看业务闭环健康度时。' },
+  { id: 'Agents', path: '/agents', label: 'Agent 监控', subtitle: '常驻 Agent 五类角色状态与事件流。', group: 'Agent 与链路', component: ResidentMonitor, icon: 'Bot', purpose: '常驻 Agent 五类角色状态与事件流。', whenToUse: '监控常驻 Agent 运行状态时。' },
+  { id: 'Bcos', path: '/bcos', label: 'BCOS 北极星', subtitle: '业务闭环系统：北极星价值度量 + 信号路由 + 进化引擎。', group: 'Agent 与链路', component: BcosDashboard, icon: 'Compass', purpose: '业务闭环系统：北极星价值度量、信号路由与进化引擎。', whenToUse: '查看业务闭环健康度时。' },
   { id: 'Brain', path: '/brain', label: '智能大脑', subtitle: '基于知识库 + 记忆 + LLM 的智能问答助手。', group: 'Agent 与链路', component: BrainChat, icon: 'Brain', purpose: '基于知识库 + 记忆 + LLM 的智能问答助手。', whenToUse: '与智能助手对话时。' },
   { id: 'GBrainAdmin', path: '/gbrain-admin', label: 'GBrain 管理', subtitle: 'GBrain 智能体管理、校准与监控。', group: 'Agent 与链路', component: GBrainDashboard, icon: 'Brain', purpose: '管理智能体接入、访问凭证、模型校准与请求日志。', whenToUse: '需要处理 GBrain 控制面或凭证时。' },
 

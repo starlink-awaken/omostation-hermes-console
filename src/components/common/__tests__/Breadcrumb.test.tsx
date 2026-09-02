@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import Breadcrumb from '../Breadcrumb'
+
+function renderWithRouter(ui: React.ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>)
+}
 
 describe('Breadcrumb', () => {
   it('renders home link and items', () => {
@@ -8,7 +13,7 @@ describe('Breadcrumb', () => {
       { label: 'Governance', onClick: vi.fn() },
       { label: 'Tasks', onClick: vi.fn() },
     ]
-    render(<Breadcrumb items={items} />)
+    renderWithRouter(<Breadcrumb items={items} />)
 
     expect(screen.getByLabelText('首页')).toBeInTheDocument()
     expect(screen.getByText('Governance')).toBeInTheDocument()
@@ -17,7 +22,7 @@ describe('Breadcrumb', () => {
 
   it('marks last item as current', () => {
     const items = [{ label: 'Parent' }, { label: 'Current' }]
-    render(<Breadcrumb items={items} />)
+    renderWithRouter(<Breadcrumb items={items} />)
 
     const current = screen.getByText('Current')
     expect(current).toHaveAttribute('aria-current', 'page')
@@ -29,7 +34,7 @@ describe('Breadcrumb', () => {
       { label: 'Clickable', onClick: handleClick },
       { label: 'Last' },
     ]
-    render(<Breadcrumb items={items} />)
+    renderWithRouter(<Breadcrumb items={items} />)
 
     fireEvent.click(screen.getByText('Clickable'))
     expect(handleClick).toHaveBeenCalledTimes(1)

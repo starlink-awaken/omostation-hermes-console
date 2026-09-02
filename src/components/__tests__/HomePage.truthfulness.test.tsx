@@ -1,12 +1,20 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import HomePage from '../HomePage';
+
+function renderWithProviders(ui: React.ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  );
+}
 
 describe('HomePage truthfulness contract', () => {
   it('shows a loading state while real data is pending', () => {
     vi.mocked(fetch).mockImplementation(() => new Promise<Response>(() => undefined));
 
-    render(<HomePage />);
+    renderWithProviders(<HomePage />);
 
     expect(screen.getByText('正在读取真实首页数据')).toBeInTheDocument();
     expect(screen.getByText('正在读取真实健康数据。')).toBeInTheDocument();
@@ -18,7 +26,7 @@ describe('HomePage truthfulness contract', () => {
   it('does not present placeholder tasks or metrics when the backend is unavailable', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('backend unavailable'));
 
-    render(<HomePage />);
+    renderWithProviders(<HomePage />);
 
     await waitFor(() => {
       expect(screen.getByText('首页数据暂不可用，当前未展示模拟或默认运行状态。')).toBeInTheDocument();
@@ -61,7 +69,7 @@ describe('HomePage truthfulness contract', () => {
       return new Response('governance unavailable', { status: 503 });
     });
 
-    render(<HomePage />);
+    renderWithProviders(<HomePage />);
 
     await waitFor(() => {
       expect(screen.getByText(/首页部分数据暂不可用：指标趋势/)).toBeInTheDocument();
@@ -96,7 +104,7 @@ describe('HomePage truthfulness contract', () => {
       return new Response('governance unavailable', { status: 503 });
     });
 
-    render(<HomePage />);
+    renderWithProviders(<HomePage />);
 
     await waitFor(() => {
       expect(screen.getByText('需要动作')).toBeInTheDocument();
