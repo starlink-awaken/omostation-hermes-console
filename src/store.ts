@@ -8,18 +8,16 @@
 import { create } from 'zustand';
 
 // ── Navigation State ──
+// Note: activeTab is derived from URL (useLocation) to avoid drift.
+// This store keeps history for back navigation only.
 
 export interface NavigationState {
-  /** Current active tab/view ID */
-  activeTab: string;
-  /** Previous tab (for back navigation) */
-  previousTab: string | null;
   /** Navigation history stack */
   history: string[];
-  /** Navigate to a new tab */
-  setActiveTab: (tab: string) => void;
   /** Go back to previous tab */
   goBack: () => void;
+  /** Push tab to history */
+  pushHistory: (tab: string) => void;
 }
 
 // ── Search State ──
@@ -101,32 +99,26 @@ export interface CockpitStore {
 
 export const useCockpitStore = create<CockpitStore>((set) => ({
   navigation: {
-    activeTab: 'Home',
-    previousTab: null,
     history: [],
-    setActiveTab: (tab: string) =>
-      set((state) => ({
-        navigation: {
-          ...state.navigation,
-          previousTab: state.navigation.activeTab,
-          activeTab: tab,
-          history: [...state.navigation.history, state.navigation.activeTab].slice(-20),
-        },
-      })),
     goBack: () =>
       set((state) => {
         const hist = state.navigation.history;
         if (hist.length === 0) return {};
-        const prev = hist[hist.length - 1];
+        // Note: actual navigation handled by Dashboard via useNavigate
         return {
           navigation: {
             ...state.navigation,
-            previousTab: state.navigation.activeTab,
-            activeTab: prev,
             history: hist.slice(0, -1),
           },
         };
       }),
+    pushHistory: (tab: string) =>
+      set((state) => ({
+        navigation: {
+          ...state.navigation,
+          history: [...state.navigation.history, tab].slice(-20),
+        },
+      })),
   },
 
   user: {
