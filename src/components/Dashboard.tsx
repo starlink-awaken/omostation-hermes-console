@@ -4,9 +4,9 @@
  * 从 677 行精简到 < 250 行。
  * 图标映射、路由包装器已提取到独立模块。
  */
-import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { ROUTES, getRouteById, getRouteByPath } from '../routes';
+import React, { Suspense, useState, useCallback } from 'react';
+import { Routes, Route, Navigate, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { ROUTES, ROUTE_REDIRECTS, getVisibleRoutes, getRouteById, getRouteByPath } from '../routes';
 import Breadcrumb from './common/Breadcrumb';
 import { RouteErrorBoundary } from './common/RouteErrorBoundary';
 import { CommandPalette, useCommandPalette } from './common/CommandPalette';
@@ -15,136 +15,9 @@ import { useKeyboardShortcuts } from './common/CommandPalette';
 import UserMenu from './common/UserMenu';
 import { useCockpitStore } from '../store';
 import { getIconComponent } from './dashboardIcons';
-import { NavWrapper, HomeRoute, Wave2Route, TaskCenterRoute } from './routeWrappers';
 import './Dashboard.css';
 
-// ── 懒加载页面 (从 routes.tsx 复用) ──
-const HomePage = lazy(() => import('./HomePage'));
-const CockpitGuideView = lazy(() => import('./CockpitGuideView'));
-const SystemMapView = lazy(() => import('./SystemMapView'));
-const OverviewPage = lazy(() => import('./OverviewPage'));
-const McpMeshView = lazy(() => import('./McpMeshView'));
-const TopologyView = lazy(() => import('./TopologyView'));
-const ComputeView = lazy(() => import('./ComputeView'));
-const ResearchHubView = lazy(() => import('./ResearchHubView'));
-const KnowledgeHubView = lazy(() => import('./KnowledgeHubView'));
-const GBrainDashboard = lazy(() => import('./GBrain/GBrainDashboard').then(m => ({ default: m.DashboardPage })));
-const EnginesView = lazy(() => import('./EnginesView'));
-const AssetsView = lazy(() => import('./AssetsView'));
-const ProtocolWorkbenchView = lazy(() => import('./ProtocolWorkbenchView'));
-const KemsWorkbench = lazy(() => import('./KemsWorkbench'));
-const SceneCardReviewView = lazy(() => import('./SceneCardReviewView'));
-const ExternalResourceCatalogView = lazy(() => import('./ExternalResourceCatalogView'));
-const BrainChat = lazy(() => import('../views/BrainChat'));
-const WorkflowsView = lazy(() => import('./WorkflowsView'));
-const AlertCenterPage = lazy(() => import('./AlertCenterPage'));
-const L4HealthView = lazy(() => import('./L4HealthView'));
-const DebtView = lazy(() => import('./DebtView'));
-const ObservabilityView = lazy(() => import('./ObservabilityView'));
-const C2GStrategyView = lazy(() => import('./C2GStrategyView'));
-const Wave2DashboardView = lazy(() => import('./Wave2DashboardView'));
-const LogViewerPage = lazy(() => import('./LogViewerPage'));
-const TaskCenterPage = lazy(() => import('./TaskCenterPage'));
-const PerformanceMonitorPage = lazy(() => import('./PerformanceMonitorPage'));
-const SandboxTerminal = lazy(() => import('./SandboxTerminal'));
-const SettingsView = lazy(() => import('./SettingsView'));
-const OutcomesView = lazy(() => import('./OutcomesView'));
-const JourneysTimelineView = lazy(() => import('./JourneysTimelineView'));
-const CapabilityExplorer = lazy(() => import('./CapabilityExplorer'));
-const KnowledgeActionView = lazy(() => import('./KnowledgeActionView'));
-const DecisionInboxView = lazy(() => import('./DecisionInboxView'));
-const PilotReviewView = lazy(() => import('./PilotReviewView'));
-const DeliveryJourneyView = lazy(() => import('./DeliveryJourneyView'));
-const WorkflowMeshOperationsView = lazy(() => import('./WorkflowMeshOperationsView'));
-const SwarmDashboard = lazy(() => import('./SwarmDashboard'));
-const DigitalBrainWorkplaceView = lazy(() => import('./DigitalBrainWorkplaceView'));
-const EcosWorkflowWorkbench = lazy(() => import('./EcosWorkflowWorkbench'));
-const GovernanceDomainWorkbench = lazy(() => import('./GovernanceDomainWorkbench'));
-const InfrastructureOpsWorkbench = lazy(() => import('./InfrastructureOpsWorkbench'));
-const KnowledgeExecutionWorkbench = lazy(() => import('./KnowledgeExecutionWorkbench'));
-const KOSWorkbench = lazy(() => import('./KOSWorkbench'));
-const MemoryInjector = lazy(() => import('./MemoryInjector'));
-const PlatformControlWorkbench = lazy(() => import('./PlatformControlWorkbench'));
-const RuntimeOpsWorkbench = lazy(() => import('./RuntimeOpsWorkbench'));
-const SystemAssuranceWorkbench = lazy(() => import('./SystemAssuranceWorkbench'));
-const QuestBoard = lazy(() => import('./QuestBoard'));
-const KnowledgeFlow = lazy(() => import('./KnowledgeFlow'));
-const DomainAppsView = lazy(() => import('./DomainAppsView'));
-const HarnessDashboard = lazy(() => import('./harness/HarnessDashboard'));
-const IntentCompiler = lazy(() => import('./intent/IntentCompiler'));
-const GovernanceSelfCheck = lazy(() => import('./governance/GovernanceSelfCheck'));
-
-// ── 路由配置表 ──
-const ROUTE_CONFIG: Array<{ path: string; component: React.ComponentType; wrapper?: 'home' | 'nav' | 'wave2' | 'task' }> = [
-  { path: '/', component: HomePage, wrapper: 'home' },
-  { path: '/guide', component: CockpitGuideView, wrapper: 'nav' },
-  { path: '/system-map', component: SystemMapView, wrapper: 'nav' },
-  { path: '/capabilities', component: CapabilityExplorer },
-  { path: '/overview', component: OverviewPage },
-  { path: '/mesh', component: McpMeshView },
-  { path: '/topology', component: TopologyView },
-  { path: '/compute', component: ComputeView },
-  { path: '/research', component: ResearchHubView, wrapper: 'nav' },
-  { path: '/knowledge', component: KnowledgeHubView, wrapper: 'nav' },
-  { path: '/gbrain-admin', component: GBrainDashboard },
-  { path: '/engines', component: EnginesView },
-  { path: '/assets', component: AssetsView },
-  { path: '/protocol', component: ProtocolWorkbenchView, wrapper: 'nav' },
-  { path: '/kems', component: KemsWorkbench },
-  { path: '/scene-cards', component: SceneCardReviewView },
-  { path: '/external-resources', component: ExternalResourceCatalogView },
-  { path: '/brain', component: BrainChat },
-  { path: '/knowledge-flow', component: KnowledgeFlow },
-  { path: '/workflows', component: WorkflowsView },
-  { path: '/alerts', component: AlertCenterPage },
-  { path: '/l4-health', component: L4HealthView },
-  { path: '/debt', component: DebtView },
-  { path: '/observability', component: ObservabilityView },
-  { path: '/c2g', component: C2GStrategyView },
-  { path: '/wave2', component: Wave2DashboardView, wrapper: 'wave2' },
-  { path: '/logs', component: LogViewerPage },
-  { path: '/tasks', component: TaskCenterPage, wrapper: 'task' },
-  { path: '/performance', component: PerformanceMonitorPage },
-  { path: '/sandbox', component: SandboxTerminal },
-  { path: '/quests', component: QuestBoard },
-  { path: '/domain-apps', component: DomainAppsView, wrapper: 'nav' },
-  { path: '/settings', component: SettingsView },
-  { path: '/outcomes', component: OutcomesView },
-  { path: '/journeys', component: JourneysTimelineView },
-  { path: '/knowledge-action', component: KnowledgeActionView },
-  { path: '/decision-inbox', component: DecisionInboxView },
-  { path: '/pilot-review', component: PilotReviewView },
-  { path: '/delivery-journey', component: DeliveryJourneyView },
-  { path: '/workflow-mesh-operations', component: WorkflowMeshOperationsView },
-  { path: '/swarm', component: SwarmDashboard },
-  { path: '/commands', component: CommandExplorer },
-  { path: '/chain', component: ChainStudio },
-  { path: '/command-audit', component: AuditDashboard },
-  { path: '/agents', component: ResidentMonitor },
-  { path: '/bcos', component: BcosDashboard },
-  { path: '/governance-pulse', component: PulseView },
-  { path: '/digital-brain', component: DigitalBrainWorkplaceView },
-  { path: '/harness', component: HarnessDashboard },
-  { path: '/intent', component: IntentCompiler },
-  { path: '/governance-self-check', component: GovernanceSelfCheck },
-  { path: '/workbench/ecos-workflow', component: EcosWorkflowWorkbench },
-  { path: '/governance-domain', component: GovernanceDomainWorkbench },
-  { path: '/workbench/infrastructure-ops', component: InfrastructureOpsWorkbench },
-  { path: '/workbench/knowledge-execution', component: KnowledgeExecutionWorkbench },
-  { path: '/workbench/kos', component: KOSWorkbench },
-  { path: '/workbench/memory-injector', component: MemoryInjector },
-  { path: '/workbench/platform-control', component: PlatformControlWorkbench },
-  { path: '/workbench/runtime-ops', component: RuntimeOpsWorkbench },
-  { path: '/workbench/system-assurance', component: SystemAssuranceWorkbench },
-];
-
-// ── 非懒加载组件 ──
-import CommandExplorer from './commands/CommandExplorer';
-import ChainStudio from './chain/ChainStudio';
-import AuditDashboard from './audit/AuditDashboard';
-import ResidentMonitor from './resident/ResidentMonitor';
-import BcosDashboard from './bcos/BcosDashboard';
-import PulseView from './p74/PulseView';
+const visibleRoutes = getVisibleRoutes();
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -152,10 +25,32 @@ export default function Dashboard() {
   const currentRoute = getRouteByPath(location.pathname);
   const activeTab = currentRoute?.id ?? 'Home';
 
-  const goTo = (tabId: string) => {
+  // Collapsible groups: default-collapse groups with > 5 items
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    const groupCounts = visibleRoutes.reduce<Record<string, number>>((acc, r) => {
+      acc[r.group] = (acc[r.group] || 0) + 1;
+      return acc;
+    }, {});
+    Object.entries(groupCounts).forEach(([group, count]) => {
+      if (count > 5) initial.add(group);
+    });
+    return initial;
+  });
+
+  const toggleGroup = useCallback((group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  }, []);
+
+  const goTo = useCallback((tabId: string) => {
     const route = getRouteById(tabId);
     navigate(route?.path ?? '/');
-  };
+  }, [navigate]);
 
   // Search state
   const searchQuery = useCockpitStore((s) => s.search.query);
@@ -163,7 +58,7 @@ export default function Dashboard() {
 
   // Command palette
   const { isOpen: isCommandPaletteOpen, initialQuery, open: openCommandPalette, openWithQuery, close: closeCommandPalette } = useCommandPalette(
-    ROUTES.map(r => ({ id: r.id, label: r.label, description: r.label, action: () => goTo(r.id) })),
+    visibleRoutes.map(r => ({ id: r.id, label: r.label, description: r.label, action: () => goTo(r.id) })),
   );
 
   // Quick actions
@@ -182,8 +77,8 @@ export default function Dashboard() {
     ],
   });
 
-  // Group routes for sidebar
-  const groupedRoutes = ROUTES.reduce<Record<string, typeof ROUTES>>((acc, route) => {
+  // Group visible routes for sidebar
+  const groupedRoutes = visibleRoutes.reduce<Record<string, typeof visibleRoutes>>((acc, route) => {
     if (!acc[route.group]) acc[route.group] = [];
     acc[route.group].push(route);
     return acc;
@@ -191,8 +86,8 @@ export default function Dashboard() {
 
   // Breadcrumb
   const breadcrumbItems = [];
-  if (currentRoute && currentRoute.group !== '首页') {
-    breadcrumbItems.push({ label: currentRoute.group, onClick: () => goTo(ROUTES.find(r => r.group === currentRoute.group)?.id ?? 'Home') });
+  if (currentRoute && currentRoute.group !== '总览与导航') {
+    breadcrumbItems.push({ label: currentRoute.group, onClick: () => goTo(visibleRoutes.find(r => r.group === currentRoute.group)?.id ?? 'Home') });
   }
   breadcrumbItems.push({ label: currentRoute?.label ?? '控制台' });
 
@@ -200,18 +95,6 @@ export default function Dashboard() {
   const hero = currentRoute
     ? { title: currentRoute.label, subtitle: currentRoute.subtitle || '' }
     : { title: '控制台', subtitle: 'eCOS 管理面板' };
-
-  // Render route element
-  const renderRoute = (config: typeof ROUTE_CONFIG[number]) => {
-    const El = config.component;
-    switch (config.wrapper) {
-      case 'home': return <HomeRoute Component={El} />;
-      case 'nav': return <NavWrapper Component={El} />;
-      case 'wave2': return <Wave2Route Component={El} />;
-      case 'task': return <TaskCenterRoute Component={El} />;
-      default: return <El />;
-    }
-  };
 
   return (
     <div className="dashboard-container">
@@ -221,28 +104,36 @@ export default function Dashboard() {
       <aside role="complementary" aria-label="控制台侧边栏" className="sidebar">
         <div className="sidebar-header">
           <div className="logo-box" aria-hidden="true">
-            <span className="text-primary font-bold text-lg">C</span>
+            <span className="text-accent font-bold text-lg">C</span>
           </div>
           <h2>Cockpit Console</h2>
         </div>
         <nav aria-label="控制台主导航" className="sidebar-nav" role="menu">
           {Object.entries(groupedRoutes).map(([group, routes]) => (
             <React.Fragment key={group}>
-              <div className="nav-group-title" id={`group-${group}`}>{group}</div>
-              {routes.map(route => {
+              <button
+                className="nav-group-title"
+                id={`group-${group}`}
+                onClick={() => toggleGroup(group)}
+                aria-expanded={!collapsedGroups.has(group)}
+              >
+                {group}
+                <span className="group-toggle">{collapsedGroups.has(group) ? '+' : '−'}</span>
+              </button>
+              {!collapsedGroups.has(group) && routes.map(route => {
                 const IconComp = getIconComponent(route.icon);
                 return (
-                  <button
+                  <NavLink
                     key={route.id}
+                    to={route.path}
                     role="menuitem"
                     aria-describedby={`group-${group}`}
-                    aria-selected={activeTab === route.id}
-                    className={`nav-item ${activeTab === route.id ? 'active' : ''}`}
+                    className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                     onClick={() => goTo(route.id)}
                   >
                     <IconComp size={16} aria-hidden="true" />
                     <span>{route.label}</span>
-                  </button>
+                  </NavLink>
                 );
               })}
             </React.Fragment>
@@ -286,8 +177,11 @@ export default function Dashboard() {
           <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
             <RouteErrorBoundary>
               <Routes>
-                {ROUTE_CONFIG.map(({ path, component, wrapper }) => (
-                  <Route key={path} path={path} element={renderRoute({ path, component, wrapper })} />
+                {Object.entries(ROUTE_REDIRECTS).map(([from, to]) => (
+                  <Route key={from} path={from} element={<Navigate to={to} replace />} />
+                ))}
+                {visibleRoutes.map(route => (
+                  <Route key={route.path} path={route.path} element={<route.component />} />
                 ))}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
@@ -300,7 +194,7 @@ export default function Dashboard() {
         isOpen={isCommandPaletteOpen}
         onClose={closeCommandPalette}
         initialQuery={initialQuery}
-        commands={ROUTES.map(r => ({ id: r.id, label: r.label, description: r.label, action: () => goTo(r.id) }))}
+        commands={visibleRoutes.map(r => ({ id: r.id, label: r.label, description: r.label, action: () => goTo(r.id) }))}
       />
       <QuickActionsPanel isOpen={isQuickActionsOpen} onClose={closeQuickActions} />
     </div>

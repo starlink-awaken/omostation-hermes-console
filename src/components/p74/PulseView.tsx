@@ -61,11 +61,28 @@ export default function PulseView() {
       />
 
       {isDegraded ? (
-        <EmptyState
-          icon={<WifiOff size={32} className="text-status-warn" />}
-          title="P74 服务不可用"
-          message={data?.error || '无法连接到 P74 治理脉搏服务，请检查网络或稍后重试。'}
-        />
+        <div className="space-y-6">
+          <div className="rounded-md bg-accent-muted px-3 py-2 text-xs text-accent">
+            ⚠️ 演示数据 — P74 服务不可用，显示示例数据供参考
+          </div>
+          {/* warn_count 统计卡 */}
+          <div className="rounded-lg border border-border-subtle bg-surface-1 p-6">
+            <div className="flex items-center gap-2">
+              <Activity size={16} className="text-accent" />
+              <h3 className="text-sm font-medium text-secondary">告警统计</h3>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-4xl font-semibold text-text-primary">3</span>
+              <span className="text-sm text-secondary">个沉默工作流</span>
+            </div>
+          </div>
+          {/* 沉默工作流列表 */}
+          <WarnList workflows={[
+            { name: 'observer-audit-weekly', status: 'silent', days: 45, threshold: 30 },
+            { name: 'governance-patrol', status: 'silent', days: 12, threshold: 7 },
+            { name: 'adr-drift-check', status: 'silent', days: 60, threshold: 30 },
+          ]} loading={false} />
+        </div>
       ) : (
         <>
           {/* warn_count 统计卡 */}
