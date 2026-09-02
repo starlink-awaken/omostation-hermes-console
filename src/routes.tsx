@@ -66,6 +66,10 @@ const DomainAppsView = lazy(() => import('./components/DomainAppsView'));
 const QuestBoard = lazy(() => import('./components/QuestBoard'));
 // eslint-disable-next-line react-refresh/only-export-components
 const KnowledgeFlow = lazy(() => import('./components/KnowledgeFlow'));
+// Phase 8: Harness/Intent/Governance views
+const HarnessDashboard = lazy(() => import('./components/harness/HarnessDashboard'));
+const IntentCompiler = lazy(() => import('./components/intent/IntentCompiler'));
+const GovernanceSelfCheck = lazy(() => import('./components/governance/GovernanceSelfCheck'));
 // eslint-disable-next-line react-refresh/only-export-components
 const SwarmDashboard = lazy(() => import('./components/SwarmDashboard'));
 // eslint-disable-next-line react-refresh/only-export-components
@@ -163,6 +167,9 @@ export const ROUTES: RouteConfig[] = [
   { id: 'L4Health', path: '/l4-health', label: 'L4 域健康', subtitle: '实时监控 L4 域健康状态、趋势分析和风险评估。', group: '治理与合规', component: L4HealthView, icon: 'Heart', purpose: '查看 L4 域健康状态与风险。', whenToUse: '比单页看得更全时。' },
   { id: 'Debt', path: '/debt', label: '债务治理', subtitle: '全自动审计技术债务评分，追踪高危风险。', group: '治理与合规', component: DebtView, icon: 'FileText', purpose: '追踪高风险技术债务与治理优先级。', whenToUse: '规划补位和治理投入时。' },
   { id: 'AlertCenter', path: '/alerts', label: '告警中心', subtitle: '统一告警管理、规则配置、告警历史。', group: '治理与合规', component: AlertCenterPage, icon: 'Bell', purpose: '统一管理告警、规则和历史。', whenToUse: 'P0/P1 先从这里落点。' },
+  { id: 'Harness', path: '/harness', label: 'Harness 合规', subtitle: '8 阶段 DAG 全生命周期合规管理与 12 章节检查。', group: '治理与合规', component: HarnessDashboard, icon: 'ShieldCheck', purpose: 'Harness 准入→验收全链路治理。', whenToUse: 'BET 交付合规审查时。' },
+  { id: 'Intent', path: '/intent', label: 'Intent 编译器', subtitle: '自然语言→结构化 Spec 编译与历史管理。', group: '治理与合规', component: IntentCompiler, icon: 'Zap', purpose: '把模糊需求编译成可执行 Spec。', whenToUse: '把想法转成结构化任务时。' },
+  { id: 'GovernanceSelfCheck', path: '/governance-self-check', label: '治理自检', subtitle: '架构漂移、混沌演练、画布服务、SSOT 状态自检。', group: '治理与合规', component: GovernanceSelfCheck, icon: 'Activity', purpose: '一键运行全量治理自检。', whenToUse: '定期治理巡检时。' },
 
   // ── 知识与研究 ──
   { id: 'Research', path: '/research', label: '研究中心', subtitle: '学术文献检索、阅读与知识沉淀。', group: '知识与研究', component: ResearchHubView, icon: 'Search', purpose: '承接研究发起、追问、发布和后续任务。', whenToUse: '做内容、研究、产品推演时。' },
