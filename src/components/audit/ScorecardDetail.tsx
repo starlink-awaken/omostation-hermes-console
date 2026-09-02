@@ -51,15 +51,15 @@ export default function ScorecardDetail({ data, onClose }: ScorecardDetailProps)
   }));
 
   return (
-    <div className="antd-card" data-testid="scorecard-detail">
+    <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-1)] p-5" data-testid="scorecard-detail">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-[var(--antd-text-primary)]">
+        <h3 className="text-sm font-medium text-[var(--color-text-primary)]">
           {data.name}
         </h3>
         {onClose && (
           <button
             onClick={onClose}
-            className="text-xs text-[var(--antd-text-muted)] hover:text-[var(--antd-text-primary)] transition-colors"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             关闭
           </button>
@@ -69,21 +69,21 @@ export default function ScorecardDetail({ data, onClose }: ScorecardDetailProps)
       {/* 雷达图 */}
       <ResponsiveContainer width="100%" height={320}>
         <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
-          <PolarGrid stroke="var(--antd-border-color)" />
+          <PolarGrid stroke="var(--color-border-subtle)" />
           <PolarAngleAxis
             dataKey="label"
-            tick={{ fill: 'var(--antd-text-secondary)', fontSize: 11 }}
+            tick={{ fill: 'var(--color-text-secondary)', fontSize: 11 }}
           />
           <PolarRadiusAxis
             domain={[0, 5]}
-            tick={{ fill: 'var(--antd-text-muted)', fontSize: 10 }}
+            tick={{ fill: 'var(--color-text-tertiary)', fontSize: 10 }}
             axisLine={false}
           />
           <Tooltip
             contentStyle={{
               background: 'var(--chart-tooltip-bg)',
               border: '1px solid var(--chart-tooltip-border)',
-              borderRadius: 'var(--antd-radius-md)',
+              borderRadius: 'var(--radius-md)',
               color: 'var(--chart-tooltip-text)',
               fontSize: 12,
             }}
@@ -92,8 +92,8 @@ export default function ScorecardDetail({ data, onClose }: ScorecardDetailProps)
           <Radar
             name={data.name}
             dataKey="score"
-            stroke="var(--antd-primary)"
-            fill="var(--antd-primary)"
+            stroke="var(--color-accent)"
+            fill="var(--color-accent)"
             fillOpacity={0.15}
             strokeWidth={2}
           />
@@ -102,21 +102,21 @@ export default function ScorecardDetail({ data, onClose }: ScorecardDetailProps)
 
       {/* 各维度 evidence */}
       <div className="mt-4 space-y-2">
-        <h4 className="text-xs font-medium text-[var(--antd-text-secondary)] flex items-center gap-1.5">
+        <h4 className="text-xs font-medium text-[var(--color-text-secondary)] flex items-center gap-1.5">
           <FileText size={14} />
           评分依据
         </h4>
         <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
-          {data.dimensions.map((d) => (
+          {data.dimensions?.map((d) => (
             <div
               key={d.key}
               className="flex items-start gap-2 text-xs"
               data-testid={`evidence-${d.key}`}
             >
-              <span className="shrink-0 font-mono text-[var(--antd-text-muted)] w-20">
+              <span className="shrink-0 font-mono text-[var(--color-text-tertiary)] w-20">
                 {d.label}
               </span>
-              <span className="text-[var(--antd-text-secondary)]">
+              <span className="text-[var(--color-text-secondary)]">
                 {d.evidence || '—'}
               </span>
             </div>
@@ -126,12 +126,12 @@ export default function ScorecardDetail({ data, onClose }: ScorecardDetailProps)
 
       {/* 建议 */}
       {data.suggestion && (
-        <div className="mt-4 p-3 rounded-[var(--antd-radius-md)] bg-[rgba(0,242,254,0.05)] border border-[var(--antd-border-color)]">
-          <h4 className="text-xs font-medium text-[var(--antd-text-secondary)] flex items-center gap-1.5 mb-1.5">
-            <Lightbulb size={14} className="text-[var(--antd-warning)]" />
+        <div className="mt-4 p-3 rounded-[var(--radius-md)] bg-[var(--color-accent-muted)] border border-[var(--color-border-subtle)]">
+          <h4 className="text-xs font-medium text-[var(--color-text-secondary)] flex items-center gap-1.5 mb-1.5">
+            <Lightbulb size={14} className="text-[var(--color-status-warn)]" />
             改进建议
           </h4>
-          <p className="text-xs text-[var(--antd-text-secondary)] leading-relaxed">
+          <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
             {data.suggestion}
           </p>
         </div>

@@ -70,19 +70,21 @@ interface CommandsResponse {
 
 type TabId = 'mcp-bos' | 'cli' | 'workflows-skills';
 
-// ── Mock: 工作流 & 技能 (详细数据接入中) ──
+// ── 工作流 & 技能类型 ──
 
-const MOCK_WORKFLOWS = Array.from({ length: 19 }, (_, i) => ({
-  id: `wf-${i + 1}`,
-  name: `workflow-${i + 1}`,
-  description: `工作流 ${i + 1}（详细数据接入中）`,
-}));
+interface WorkflowItem {
+  id: string;
+  file: string;
+  exists: boolean;
+  [key: string]: unknown;
+}
 
-const MOCK_SKILLS = Array.from({ length: 3 }, (_, i) => ({
-  id: `sk-${i + 1}`,
-  name: `skill-${i + 1}`,
-  description: `技能 ${i + 1}（详细数据接入中）`,
-}));
+interface SkillItem {
+  id: string;
+  file: string;
+  exists: boolean;
+  [key: string]: unknown;
+}
 
 // ── Layer colors (动态值，保留 inline style) ──
 
@@ -119,6 +121,16 @@ export default function CapabilityExplorer() {
     queryFn: () => apiFetch<CommandsResponse>('/api/commands'),
   });
 
+  const { data: workflowsData } = useQuery<{ workflows: WorkflowItem[] }>({
+    queryKey: ['capability-workflows'],
+    queryFn: () => apiFetch<{ workflows: WorkflowItem[] }>('/api/capability/workflows'),
+  });
+
+  const { data: skillsData } = useQuery<{ skills: SkillItem[] }>({
+    queryKey: ['capability-skills'],
+    queryFn: () => apiFetch<{ skills: SkillItem[] }>('/api/capability/skills'),
+  });
+
   const servers = serversData?.servers ?? [];
   const totals = summary?.totals;
 
@@ -131,7 +143,7 @@ export default function CapabilityExplorer() {
     );
   }, [servers, searchQuery]);
 
-  const workflowCount = totals?.workflows ?? MOCK_WORKFLOWS.length;
+  const workflowCount = totals?.workflows ?? workflowsData?.workflows?.length ?? 0;
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'mcp-bos', label: 'MCP / BOS', icon: <Server size={16} /> },
@@ -186,7 +198,13 @@ export default function CapabilityExplorer() {
           onExpandServer={setExpandedServer} bosData={bosData} />
       )}
       {activeTab === 'cli' && <CliTab commands={commandsData?.commands ?? []} />}
-      {activeTab === 'workflows-skills' && <WorkflowsSkillsTab />}
+      {activeTab === 'workflows-skills' && (
+        <WorkflowsSkillsTab
+          workflows={workflowsData?.workflows ?? []}
+          skills={skillsData?.skills ?? []}
+          isLoading={workflowsData === undefined || skillsData === undefined}
+        />
+      )}
     </div>
   );
 }
@@ -361,10 +379,26 @@ function CommandCard({ command }: { command: Command }) {
 
 // ── Workflows & Skills Tab ──
 
-function WorkflowsSkillsTab() {
+function WorkflowsSkillsTab({
+  workflows,
+  skills,
+  isLoading,
+}: {
+  workflows: WorkflowItem[];
+  skills: SkillItem[];
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-pulse text-text-tertiary">加载中…</div>
+      </div>
+    );
+  }
+
   const sections = [
-    { title: '工作流', icon: <GitBranch size={18} className="text-accent" />, items: MOCK_WORKFLOWS, Icon: Layers },
-    { title: '技能', icon: <Wrench size={18} className="text-accent" />, items: MOCK_SKILLS, Icon: Wrench },
+    { title: '工作流', icon: <GitBranch size={18} className="text-accent" />, items: workflows, Icon: Layers },
+    { title: '技能', icon: <Wrench size={18} className="text-accent" />, items: skills, Icon: Wrench },
   ];
 
   return (
@@ -377,23 +411,18 @@ function WorkflowsSkillsTab() {
             <span className="text-xs text-text-tertiary bg-surface-1 px-2 py-0.5 rounded">{items.length}</span>
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
-            {items.map(item => (
+            {(items ?? []).map(item => (
               <div key={item.id} className="rounded-lg border border-border-subtle bg-surface-2 p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <Icon size={14} className="text-text-tertiary" />
-                  <span className="text-sm font-mono font-semibold text-text-primary">{item.name}</span>
+                  <span className="text-sm font-mono font-semibold text-text-primary">{item.id}</span>
                 </div>
-                <p className="text-xs text-text-tertiary">{item.description}</p>
+                <p className="text-xs text-text-tertiary truncate">{String(item.file || '')}</p>
               </div>
             ))}
           </div>
         </div>
       ))}
-      <div className="rounded-lg border border-border-subtle bg-surface-1 p-4 text-center">
-        <p className="text-sm text-text-tertiary">
-          详细数据接入中 — 工作流 & 技能数据将接入 /api/capability/workflows 与 /api/capability/skills
-        </p>
-      </div>
     </div>
   );
 }

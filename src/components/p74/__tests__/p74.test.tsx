@@ -1,16 +1,22 @@
 import React from 'react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, waitFor, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Window } from 'happy-dom';
+import { GlobalWindow } from 'happy-dom';
+import '@testing-library/jest-dom';
 import PulseView from '../PulseView';
 
-// Setup happy-dom for bun test
-const window = new Window();
+// Setup happy-dom global window for bun test
+const window = new GlobalWindow();
 global.document = window.document as unknown as Document;
 global.window = window as unknown as Window & typeof globalThis;
 global.navigator = window.navigator as unknown as Navigator;
 global.HTMLElement = window.HTMLElement as unknown as typeof HTMLElement;
+global.Element = window.Element as unknown as typeof Element;
+global.Node = window.Node as unknown as typeof Node;
+global.Event = window.Event as unknown as typeof Event;
+global.requestAnimationFrame = window.requestAnimationFrame.bind(window) as typeof requestAnimationFrame;
+global.cancelAnimationFrame = window.cancelAnimationFrame.bind(window) as typeof cancelAnimationFrame;
 
 function renderWithClient() {
   const client = new QueryClient({
@@ -36,20 +42,24 @@ describe('PulseView', () => {
     global.fetch = vi.fn();
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it('renders page header with title and subtitle', () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
       new Response(JSON.stringify({ available: false, error: 'unreachable' }), { status: 200 }),
     );
-    renderWithClient();
-    expect(screen.getByRole('heading', { name: '治理脉搏', level: 1 })).toBeInTheDocument();
-    expect(screen.getByText('P74 工作流沉默治理')).toBeInTheDocument();
+    const { getByRole, getByText } = renderWithClient();
+    expect(getByRole('heading', { name: '治理脉搏', level: 1 })).toBeInTheDocument();
+    expect(getByText('P74 工作流沉默治理')).toBeInTheDocument();
   });
 
   it('shows degraded state when backend is unavailable', async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('backend unavailable'));
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('P74 服务不可用')).toBeInTheDocument();
+      expect(getByText('P74 服务不可用')).toBeInTheDocument();
     });
   });
 
@@ -57,9 +67,9 @@ describe('PulseView', () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
       new Response(JSON.stringify({ available: false, error: 'service down' }), { status: 200 }),
     );
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('P74 服务不可用')).toBeInTheDocument();
+      expect(getByText('P74 服务不可用')).toBeInTheDocument();
     });
   });
 
@@ -76,9 +86,9 @@ describe('PulseView', () => {
         { status: 200 },
       ),
     );
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(getByText('3')).toBeInTheDocument();
     });
   });
 
@@ -96,10 +106,10 @@ describe('PulseView', () => {
         { status: 200 },
       ),
     );
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('project-code-change')).toBeInTheDocument();
-      expect(screen.getByText('agent-heartbeat')).toBeInTheDocument();
+      expect(getByText('project-code-change')).toBeInTheDocument();
+      expect(getByText('agent-heartbeat')).toBeInTheDocument();
     });
   });
 
@@ -116,9 +126,9 @@ describe('PulseView', () => {
         { status: 200 },
       ),
     );
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('沉默')).toBeInTheDocument();
+      expect(getByText('沉默')).toBeInTheDocument();
     });
   });
 
@@ -133,9 +143,9 @@ describe('PulseView', () => {
         { status: 200 },
       ),
     );
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText(/存在 5 个超过沉默阈值的工作流/)).toBeInTheDocument();
+      expect(getByText(/存在 5 个超过沉默阈值的工作流/)).toBeInTheDocument();
     });
   });
 });

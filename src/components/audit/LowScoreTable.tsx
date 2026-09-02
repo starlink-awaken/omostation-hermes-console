@@ -40,49 +40,49 @@ export default function LowScoreTable({
 }: LowScoreTableProps) {
   if (data.length === 0) {
     return (
-      <div className="antd-card" data-testid="low-score-table">
-        <h3 className="text-sm font-medium text-[var(--antd-text-primary)] mb-4">
+      <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-1)] p-5" data-testid="low-score-table">
+        <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-4">
           低分命令
         </h3>
-        <p className="text-sm text-[var(--antd-text-muted)]">暂无低分命令</p>
+        <p className="text-sm text-[var(--color-text-tertiary)]">暂无低分命令</p>
       </div>
     );
   }
 
   return (
-    <div className="antd-card" data-testid="low-score-table">
-      <h3 className="text-sm font-medium text-[var(--antd-text-primary)] mb-4 flex items-center gap-2">
-        <AlertTriangle size={16} className="text-[var(--antd-warning)]" />
+    <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-1)] p-5" data-testid="low-score-table">
+      <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
+        <AlertTriangle size={16} className="text-[var(--color-status-warn)]" />
         低分 TOP-{data.length}
       </h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[var(--antd-border-color)]">
-              <th className="text-left py-2 px-3 text-[var(--antd-text-secondary)] font-medium">
+            <tr className="border-b border-[var(--color-border-subtle)]">
+              <th className="text-left py-2 px-3 text-[var(--color-text-secondary)] font-medium">
                 命令
               </th>
-              <th className="text-left py-2 px-3 text-[var(--antd-text-secondary)] font-medium">
+              <th className="text-left py-2 px-3 text-[var(--color-text-secondary)] font-medium">
                 评分
               </th>
-              <th className="text-left py-2 px-3 text-[var(--antd-text-secondary)] font-medium">
+              <th className="text-left py-2 px-3 text-[var(--color-text-secondary)] font-medium">
                 最弱维度
               </th>
             </tr>
           </thead>
           <tbody>
-            {data.map((item) => (
+            {data?.map((item) => (
               <tr
                 key={item.cmd_path}
-                className={`border-b border-[var(--antd-border-color)] cursor-pointer transition-colors duration-150 ${
+                className={`border-b border-[var(--color-border-subtle)] cursor-pointer transition-colors duration-150 ${
                   selectedPath === item.cmd_path
-                    ? 'bg-[rgba(0,242,254,0.08)]'
-                    : 'hover:bg-[var(--antd-bg-elevated)]'
+                    ? 'bg-[var(--color-accent-muted)]'
+                    : 'hover:bg-[var(--color-surface-2)]'
                 }`}
                 onClick={() => onSelect?.(item.cmd_path)}
                 data-testid={`low-score-row-${item.cmd_path}`}
               >
-                <td className="py-2 px-3 text-[var(--antd-text-primary)] font-mono text-xs">
+                <td className="py-2 px-3 text-[var(--color-text-primary)] font-mono text-xs">
                   {item.name}
                 </td>
                 <td className="py-2 px-3">
@@ -90,7 +90,7 @@ export default function LowScoreTable({
                     {item.score.toFixed(1)}
                   </span>
                 </td>
-                <td className="py-2 px-3 text-[var(--antd-text-secondary)]">
+                <td className="py-2 px-3 text-[var(--color-text-secondary)]">
                   {item.weakest_dimension}
                 </td>
               </tr>

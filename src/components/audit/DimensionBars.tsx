@@ -35,15 +35,15 @@ export interface DimensionBarsProps {
 
 /** 根据分值返回对应颜色 token */
 function scoreColor(score: number): string {
-  if (score <= 2) return 'var(--antd-error)';
-  if (score <= 3) return 'var(--antd-warning)';
-  return 'var(--antd-success)';
+  if (score <= 2) return 'var(--color-status-error)';
+  if (score <= 3) return 'var(--color-status-warn)';
+  return 'var(--color-status-ok)';
 }
 
 export default function DimensionBars({ data, height = 300 }: DimensionBarsProps) {
   return (
-    <div className="antd-card" data-testid="dimension-bars">
-      <h3 className="text-sm font-medium text-[var(--antd-text-primary)] mb-4">
+    <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-1)] p-5" data-testid="dimension-bars">
+      <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-4">
         维度均分
       </h3>
       <ResponsiveContainer width="100%" height={height}>
@@ -58,8 +58,8 @@ export default function DimensionBars({ data, height = 300 }: DimensionBarsProps
           />
           <XAxis
             dataKey="label"
-            tick={{ fill: 'var(--antd-text-secondary)', fontSize: 11 }}
-            axisLine={{ stroke: 'var(--antd-border-color)' }}
+            tick={{ fill: 'var(--color-text-secondary)', fontSize: 11 }}
+            axisLine={{ stroke: 'var(--color-border-subtle)' }}
             tickLine={false}
             interval={0}
             angle={-35}
@@ -68,15 +68,15 @@ export default function DimensionBars({ data, height = 300 }: DimensionBarsProps
           />
           <YAxis
             domain={[0, 5]}
-            tick={{ fill: 'var(--antd-text-secondary)', fontSize: 11 }}
-            axisLine={{ stroke: 'var(--antd-border-color)' }}
+            tick={{ fill: 'var(--color-text-secondary)', fontSize: 11 }}
+            axisLine={{ stroke: 'var(--color-border-subtle)' }}
             tickLine={false}
           />
           <Tooltip
             contentStyle={{
               background: 'var(--chart-tooltip-bg)',
               border: '1px solid var(--chart-tooltip-border)',
-              borderRadius: 'var(--antd-radius-md)',
+              borderRadius: 'var(--radius-md)',
               color: 'var(--chart-tooltip-text)',
               fontSize: 12,
             }}
@@ -91,7 +91,7 @@ export default function DimensionBars({ data, height = 300 }: DimensionBarsProps
               dataKey="score"
               position="top"
               formatter={(v: number) => v.toFixed(1)}
-              style={{ fill: 'var(--antd-text-secondary)', fontSize: 10 }}
+              style={{ fill: 'var(--color-text-secondary)', fontSize: 10 }}
             />
           </Bar>
         </BarChart>

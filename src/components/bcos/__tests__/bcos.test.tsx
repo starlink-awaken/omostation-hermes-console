@@ -1,16 +1,22 @@
 import React from 'react';
-import { describe, expect, it, vi, beforeEach, beforeAll } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, waitFor, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Window } from 'happy-dom';
+import { GlobalWindow } from 'happy-dom';
+import '@testing-library/jest-dom';
 import BcosDashboard from '../BcosDashboard';
 
-// Setup happy-dom for bun test
-const window = new Window();
+// Setup happy-dom global window for bun test
+const window = new GlobalWindow();
 global.document = window.document as unknown as Document;
 global.window = window as unknown as Window & typeof globalThis;
 global.navigator = window.navigator as unknown as Navigator;
 global.HTMLElement = window.HTMLElement as unknown as typeof HTMLElement;
+global.Element = window.Element as unknown as typeof Element;
+global.Node = window.Node as unknown as typeof Node;
+global.Event = window.Event as unknown as typeof Event;
+global.requestAnimationFrame = window.requestAnimationFrame.bind(window) as typeof requestAnimationFrame;
+global.cancelAnimationFrame = window.cancelAnimationFrame.bind(window) as typeof cancelAnimationFrame;
 
 function renderWithClient() {
   const client = new QueryClient({
@@ -36,20 +42,24 @@ describe('BcosDashboard', () => {
     global.fetch = vi.fn();
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it('renders page header with title and subtitle', () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
       new Response(JSON.stringify({ available: false, error: 'unreachable' }), { status: 200 }),
     );
-    renderWithClient();
-    expect(screen.getByRole('heading', { name: 'BCOS 北极星', level: 1 })).toBeInTheDocument();
-    expect(screen.getByText('业务闭环系统：北极星价值度量 + 信号路由 + 进化引擎')).toBeInTheDocument();
+    const { getByRole, getByText } = renderWithClient();
+    expect(getByRole('heading', { name: 'BCOS 北极星', level: 1 })).toBeInTheDocument();
+    expect(getByText('业务闭环系统：北极星价值度量 + 信号路由 + 进化引擎')).toBeInTheDocument();
   });
 
   it('shows degraded state when backend is unavailable', async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('backend unavailable'));
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('BCOS 服务不可用')).toBeInTheDocument();
+      expect(getByText('BCOS 服务不可用')).toBeInTheDocument();
     });
   });
 
@@ -57,9 +67,9 @@ describe('BcosDashboard', () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
       new Response(JSON.stringify({ available: false, error: 'service down' }), { status: 200 }),
     );
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('BCOS 服务不可用')).toBeInTheDocument();
+      expect(getByText('BCOS 服务不可用')).toBeInTheDocument();
     });
   });
 
@@ -75,9 +85,9 @@ describe('BcosDashboard', () => {
         { status: 200 },
       ),
     );
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('85')).toBeInTheDocument();
+      expect(getByText('85')).toBeInTheDocument();
     });
   });
 
@@ -96,12 +106,12 @@ describe('BcosDashboard', () => {
         { status: 200 },
       ),
     );
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('code')).toBeInTheDocument();
-      expect(screen.getByText('12')).toBeInTheDocument();
-      expect(screen.getByText('meeting')).toBeInTheDocument();
-      expect(screen.getByText('5')).toBeInTheDocument();
+      expect(getByText('code')).toBeInTheDocument();
+      expect(getByText('12')).toBeInTheDocument();
+      expect(getByText('meeting')).toBeInTheDocument();
+      expect(getByText('5')).toBeInTheDocument();
     });
   });
 
@@ -117,10 +127,10 @@ describe('BcosDashboard', () => {
         { status: 200 },
       ),
     );
-    renderWithClient();
+    const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(screen.getByText('提议')).toBeInTheDocument();
-      expect(screen.getByText('test proposal')).toBeInTheDocument();
+      expect(getByText('提议')).toBeInTheDocument();
+      expect(getByText('test proposal')).toBeInTheDocument();
     });
   });
 });

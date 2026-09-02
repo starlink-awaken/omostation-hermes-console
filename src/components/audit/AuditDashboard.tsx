@@ -97,11 +97,11 @@ export default function AuditDashboard() {
       <div data-testid="audit-error">
         <PageHeader title="命令评分卡" subtitle="全量命令 15 维质量评分看板" />
         <EmptyState
-          icon={<AlertTriangle size={32} className="text-[var(--antd-error)]" />}
+          icon={<AlertTriangle size={32} className="text-[var(--color-status-error)]" />}
           title="加载失败"
           message={summaryQuery.error?.message || '无法获取评分卡数据'}
           action={
-            <button className="antd-btn antd-btn-primary" onClick={() => summaryQuery.refetch()}>
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] text-sm transition-colors bg-[var(--color-accent)] text-white px-4 py-2 rounded-[var(--radius-md)] hover:bg-[var(--color-accent-hover)] transition-colors" onClick={() => summaryQuery.refetch()}>
               重试
             </button>
           }
@@ -200,7 +200,7 @@ export default function AuditDashboard() {
         />
         {selectedPath ? (
           scorecardQuery.isLoading ? (
-            <div className="antd-card">
+            <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-1)] p-5">
               <SkeletonLines count={8} />
             </div>
           ) : scorecardData ? (
@@ -209,15 +209,15 @@ export default function AuditDashboard() {
               onClose={() => setSelectedPath(null)}
             />
           ) : (
-            <div className="antd-card flex items-center justify-center min-h-[200px]">
-              <p className="text-sm text-[var(--antd-text-muted)]">
+            <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-1)] p-5 flex items-center justify-center min-h-[200px]">
+              <p className="text-sm text-[var(--color-text-tertiary)]">
                 点击左侧命令查看详情
               </p>
             </div>
           )
         ) : (
-          <div className="antd-card flex items-center justify-center min-h-[200px]">
-            <p className="text-sm text-[var(--antd-text-muted)]">
+          <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-1)] p-5 flex items-center justify-center min-h-[200px]">
+            <p className="text-sm text-[var(--color-text-tertiary)]">
               点击左侧命令查看详情
             </p>
           </div>
@@ -239,18 +239,18 @@ interface StatCardProps {
 function StatCard({ label, value, icon, tone = 'default' }: StatCardProps) {
   const valueColor =
     tone === 'success'
-      ? 'text-[var(--antd-success)]'
+      ? 'text-[var(--color-status-ok)]'
       : tone === 'warning'
-        ? 'text-[var(--antd-warning)]'
-        : 'text-[var(--antd-text-primary)]';
+        ? 'text-[var(--color-status-warn)]'
+        : 'text-[var(--color-text-primary)]';
 
   return (
-    <div className="antd-card flex items-center gap-4" data-testid={`stat-card-${label}`}>
-      <div className="p-2.5 rounded-[var(--antd-radius-md)] bg-[rgba(0,242,254,0.08)] text-[var(--antd-primary)]">
+    <div className="rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-1)] p-5 flex items-center gap-4" data-testid={`stat-card-${label}`}>
+      <div className="p-2.5 rounded-[var(--radius-md)] bg-[var(--color-accent-muted)] text-[var(--color-accent)]">
         {icon}
       </div>
       <div>
-        <p className="text-xs text-[var(--antd-text-muted)]">{label}</p>
+        <p className="text-xs text-[var(--color-text-tertiary)]">{label}</p>
         <p className={`text-2xl font-semibold ${valueColor}`}>{value}</p>
       </div>
     </div>

@@ -100,7 +100,7 @@ export default function WarnList({ workflows, loading }: WarnListProps) {
                 </span>
               </div>
               <ul className="space-y-2">
-                {grouped[label].map((w) => (
+                {(grouped[label] ?? []).map((w) => (
                   <li
                     key={w.name}
                     className="flex items-center justify-between rounded-md bg-surface-2 px-3 py-2"

@@ -35,7 +35,7 @@ export default function SignalFlow({ signals, loading }: SignalFlowProps) {
 
   if (!signals || signals.length === 0) return null;
 
-  const maxCount = Math.max(...signals.map((s) => s.count), 1);
+  const maxCount = Math.max(...(signals ?? []).map((s) => s.count), 1);
 
   return (
     <div className="rounded-lg border border-border-subtle bg-surface-1 p-6">
@@ -44,7 +44,7 @@ export default function SignalFlow({ signals, loading }: SignalFlowProps) {
         <h3 className="text-sm font-medium text-secondary">信号路由</h3>
       </div>
       <div className="mt-4 space-y-3">
-        {signals.map((signal) => (
+        {(signals ?? []).map((signal) => (
           <div key={signal.type} className="flex items-center gap-3">
             <span className="w-20 shrink-0 text-sm text-text-primary truncate">
               {signal.type}
