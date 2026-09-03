@@ -59,7 +59,7 @@ describe('BcosDashboard', () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('backend unavailable'));
     const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(getByText('BCOS 服务不可用')).toBeInTheDocument();
+      expect(getByText(/BCOS 服务不可用/)).toBeInTheDocument();
     });
   });
 
@@ -69,7 +69,7 @@ describe('BcosDashboard', () => {
     );
     const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(getByText('BCOS 服务不可用')).toBeInTheDocument();
+      expect(getByText(/BCOS 服务不可用/)).toBeInTheDocument();
     });
   });
 

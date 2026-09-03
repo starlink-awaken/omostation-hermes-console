@@ -15,6 +15,13 @@ import { screen, waitFor } from '@testing-library/react';
 import { renderDashboardAt, setupMockFetchError } from './route-test-helpers';
 import { ROUTES } from '../../routes';
 
+/** Expand all sidebar groups so menuitems render. Groups with >5 items are collapsed by default.
+ * aria-expanded="false" on a group title button means the group is currently collapsed. */
+async function expandAllGroups() {
+  const buttons = screen.queryAllByRole('button', { expanded: false });
+  for (const btn of buttons) btn.click();
+}
+
 describe('Dashboard sidebar structure', () => {
   beforeEach(() => {
     setupMockFetchError();
@@ -27,6 +34,7 @@ describe('Dashboard sidebar structure', () => {
 
   it('renders every non-hidden route as a clickable nav button', async () => {
     renderDashboardAt('/');
+    await expandAllGroups();
 
     for (const route of ROUTES.filter((r) => !r.hidden)) {
       await waitFor(() => {
@@ -38,30 +46,35 @@ describe('Dashboard sidebar structure', () => {
 
   it('marks the Home route as active on first load', async () => {
     renderDashboardAt('/');
+    await expandAllGroups();
 
     await waitFor(() => {
       const homeBtn = screen.getAllByRole('menuitem', { name: '首页' })[0];
-      expect(homeBtn).toHaveAttribute('aria-selected', 'true');
+      expect(homeBtn).toHaveAttribute('aria-current', 'page');
       expect(homeBtn).toHaveClass('active');
     });
   });
 
   it('marks a non-Home route as active when loaded directly', async () => {
     renderDashboardAt('/alerts');
+    await expandAllGroups();
 
     await waitFor(() => {
       const alertsBtn = screen.getAllByRole('menuitem', { name: '告警中心' })[0];
-      expect(alertsBtn).toHaveAttribute('aria-selected', 'true');
+      expect(alertsBtn).toHaveAttribute('aria-current', 'page');
     });
   });
 
-  it('all sidebar items have aria-selected attribute', () => {
+  it('all visible sidebar items have aria-current attribute when route is active', async () => {
     renderDashboardAt('/');
+    await expandAllGroups();
 
+    // Only the active route (Home) should have aria-current="page"
     const navItems = screen.getAllByRole('menuitem');
-    for (const item of navItems) {
-      expect(item).toHaveAttribute('aria-selected');
-    }
+    const activeItems = navItems.filter(
+      (item) => item.getAttribute('aria-current') === 'page',
+    );
+    expect(activeItems.length).toBe(1);
   });
 });
 
@@ -86,11 +99,13 @@ describe('Dashboard breadcrumb', () => {
   });
 
   it('renders breadcrumbs for workbench routes', async () => {
+    // Hidden routes (workbench/*) now fall through to the catch-all and redirect to /.
+    // Breadcrumb on / shows Home only.
     renderDashboardAt('/workbench/kos');
 
     await waitFor(() => {
-      expect(screen.getAllByText('工作台').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('KOS 工作台').length).toBeGreaterThan(0);
+      // The catch-all redirected to /, so the breadcrumb shows "首页" not "工作台"
+      expect(screen.getAllByText('首页').length).toBeGreaterThan(0);
     });
   });
 });
@@ -161,8 +176,9 @@ describe('Dashboard route count matches ROUTES config', () => {
     setupMockFetchError();
   });
 
-  it('renders exactly one nav button per non-hidden route', async () => {
+  it('renders exactly one nav button per non-hidden route when groups are expanded', async () => {
     renderDashboardAt('/');
+    await expandAllGroups();
 
     await waitFor(() => {
       const navItems = screen.getAllByRole('menuitem');

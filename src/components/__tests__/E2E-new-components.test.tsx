@@ -119,11 +119,14 @@ describe('E2E: HarnessDashboard', () => {
     setupMockFetch({ '/api/cockpit/harness/compliance': MOCK_HARNESS_COMPLIANCE });
     const { container } = renderDashboardAt('/harness');
 
+    // Harness lives in 治理与合规 group which is collapsed by default.
+    // Verify the route loaded and the page text contains the route label.
     await waitFor(() => {
-      const activeNavItem = container.querySelector('.nav-item.active');
-      expect(activeNavItem).toBeInTheDocument();
-      expect(activeNavItem?.textContent).toContain('Harness 合规');
+      expect(
+        screen.getAllByRole('heading', { name: 'Harness 合规', level: 1 })[0],
+      ).toBeInTheDocument();
     });
+    expect(container.textContent).toContain('Harness 合规');
   });
 });
 

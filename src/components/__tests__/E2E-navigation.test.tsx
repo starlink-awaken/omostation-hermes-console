@@ -23,6 +23,7 @@ describe("E2E: every route is accessible by direct path", () => {
   });
 
   for (const route of ALL_ROUTES) {
+    if (route.hidden) continue;
     it(`navigating to ${route.path} shows hero title "${route.label}"`, async () => {
       renderDashboardAt(route.path);
 
@@ -35,10 +36,17 @@ describe("E2E: every route is accessible by direct path", () => {
         expect(headings.length).toBeGreaterThan(0);
       });
 
+      // Expand all sidebar groups so this route's menuitem is rendered
+      // (groups with >5 items are collapsed by default — aria-expanded="false" on the group title means currently collapsed)
+      const groupButtons = screen.getAllByRole("button", { expanded: false });
+      for (const btn of groupButtons) {
+        btn.click();
+      }
+
       // The corresponding sidebar nav button must be active
       await waitFor(() => {
         const navBtn = screen.getByRole("menuitem", { name: route.label });
-        expect(navBtn).toHaveAttribute("aria-selected", "true");
+        expect(navBtn).toHaveAttribute("aria-current", "page");
         expect(navBtn).toHaveClass("active");
       });
     });
@@ -71,10 +79,12 @@ describe("E2E: bidirectional navigation via direct paths", () => {
   });
 
   it("KOS workbench is accessible directly at /workbench/kos", async () => {
+    // KOS workbench is a hidden route (Phase 3 IA重组 removed it from nav).
+    // It now falls through to the catch-all route and redirects to / (Home).
     renderDashboardAt("/workbench/kos");
     await waitFor(() => {
       expect(
-        screen.getAllByRole("heading", { name: "KOS 工作台", level: 1 }).length,
+        screen.getAllByRole("heading", { name: "首页", level: 1 }).length,
       ).toBeGreaterThan(0);
     });
   });
@@ -104,7 +114,9 @@ describe("E2E: nav group structure in sidebar", () => {
     setupMockFetchError();
   });
 
-  const expectedGroups = [...new Set(ROUTES.map((r) => r.group))];
+  const expectedGroups = [
+    ...new Set(ROUTES.filter((r) => !r.hidden).map((r) => r.group)),
+  ];
 
   it("renders all nav groups in the sidebar", async () => {
     renderDashboardAt("/");
@@ -116,7 +128,7 @@ describe("E2E: nav group structure in sidebar", () => {
     }
   });
 
-  it("nav group titles appear as plain text (not buttons)", () => {
+  it("nav group titles appear as collapsible buttons", () => {
     renderDashboardAt("/");
 
     for (const group of expectedGroups) {
@@ -128,10 +140,17 @@ describe("E2E: nav group structure in sidebar", () => {
   it("shows the correct active nav item when at /alerts", async () => {
     renderDashboardAt("/alerts");
 
+    // Expand 治理与合规 group (where 告警中心 lives, 9 items > 5 default collapsed)
+    const groupTitles = screen.getAllByText("治理与合规");
+    for (const title of groupTitles) {
+      const btn = title.closest("button");
+      if (btn) (btn as HTMLButtonElement).click();
+    }
+
     await waitFor(() => {
       const navItems = screen.getAllByRole("menuitem", { name: "告警中心" });
       const activeItem = navItems.find(
-        (el) => el.getAttribute("aria-selected") === "true",
+        (el) => el.getAttribute("aria-current") === "page",
       );
       expect(activeItem).toBeDefined();
     });

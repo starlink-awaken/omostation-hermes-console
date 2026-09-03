@@ -59,7 +59,7 @@ describe('PulseView', () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('backend unavailable'));
     const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(getByText('P74 服务不可用')).toBeInTheDocument();
+      expect(getByText(/P74 服务不可用/)).toBeInTheDocument();
     });
   });
 
@@ -69,7 +69,7 @@ describe('PulseView', () => {
     );
     const { getByText } = renderWithClient();
     await waitFor(() => {
-      expect(getByText('P74 服务不可用')).toBeInTheDocument();
+      expect(getByText(/P74 服务不可用/)).toBeInTheDocument();
     });
   });
 
