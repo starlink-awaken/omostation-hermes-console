@@ -62,7 +62,7 @@ describe('E2E: Command Palette', () => {
     openCommandPalette();
 
     await waitFor(() => {
-      const command = screen.getByText('Harness 合规');
+      const command = screen.getAllByText('Harness 合规')[0];
       user.click(command);
     });
 
@@ -92,35 +92,61 @@ describe('E2E: Command Palette', () => {
 // ── Navigation E2E ──
 
 describe('E2E: Navigation', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   it('navigates between pages via sidebar', async () => {
-    setupMockFetch({});
+    setupMockFetchError();
     const { user, container } = renderDashboardAt('/');
 
-    // Click on a sidebar item
+    // Verify initial state: Home is the active nav item
     await waitFor(() => {
       const harnessNav = container.querySelector('.nav-item[class*="active"]');
-      // Current active is Home
       expect(harnessNav?.textContent).toContain('首页');
     });
 
-    // Navigate to Harness
-    const harnessBtn = screen.getByText('Harness 合规');
-    await user.click(harnessBtn);
+    // Expand the 治理与合规 group (where Harness lives, 9 items default-collapsed).
+    // aria-expanded="false" on the group title means the group is currently collapsed.
+    // Use user.click (async) to let React state update between clicks.
+    const collapsedGroups = screen.getAllByRole('button', { expanded: false });
+    for (const btn of collapsedGroups) {
+      await user.click(btn);
+    }
+
+    // Find Harness nav-item in the now-expanded group
+    const harnessNavItem = screen
+      .getAllByText('Harness 合规')
+      .find((el) => el.closest('.nav-item') !== null)!;
+    await user.click(harnessNavItem);
 
     await waitFor(() => {
-      expect(screen.getAllByRole('heading', { name: 'Harness 合规', level: 1 })[0]).toBeInTheDocument();
+      expect(
+        screen.getAllByRole('heading', { name: 'Harness 合规', level: 1 })[0],
+      ).toBeInTheDocument();
     });
   });
 
   it('shows correct active state in sidebar', async () => {
-    setupMockFetch({});
+    setupMockFetchError();
     const { user, container } = renderDashboardAt('/');
 
-    // Navigate to Intent page
-    const intentBtn = await screen.findByText('Intent 编译器');
-    await user.click(intentBtn);
+    // Expand the 治理与合规 group (where Intent lives, 9 items default-collapsed).
+    // Use user.click (async) to let React state update between clicks.
+    const collapsedGroups = screen.getAllByRole('button', { expanded: false });
+    for (const btn of collapsedGroups) {
+      await user.click(btn);
+    }
+
+    // Find Intent nav-item in the expanded group
+    const intentNavItem = screen
+      .getAllByText('Intent 编译器')
+      .find((el) => el.closest('.nav-item') !== null)!;
+    await user.click(intentNavItem);
 
     await waitFor(() => {
       const activeNavItem = container.querySelector('.nav-item.active');

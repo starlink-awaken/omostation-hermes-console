@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, useNavigate } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { ApiProvider } from './api/provider';
 import Dashboard from './components/Dashboard';
 import GlobalSearch from './components/GlobalSearch';
@@ -10,7 +10,7 @@ import './index.css';
  * 内部组件: 在 BrowserRouter 上下文中注入 React Router 的 navigate 到 cockpitNavigation 桥接.
  */
 function CockpitNavBridge() {
-  const navigate = useNavigate();
+  const navigate = require('react-router-dom').useNavigate();
   React.useEffect(() => {
     setCockpitNavigator(navigate);
   }, [navigate]);

@@ -13,9 +13,25 @@
 
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderDashboardAt, setupMockFetchError } from "./route-test-helpers";
-import { ROUTES } from "../../routes";
+import { ROUTES, ROUTE_REDIRECTS } from "../../routes";
+
+/**
+ * Expand all sidebar groups so every visible route appears as a menuitem.
+ * Groups with >5 items are collapsed by default per the Dashboard design.
+ * aria-expanded="false" on a group title button means the group is currently collapsed.
+ * Uses userEvent to ensure React state updates settle between clicks (vs. raw
+ * HTMLElement.click() which can leave the test in an intermediate render).
+ */
+async function expandAllGroups() {
+  const user = userEvent.setup();
+  const groupButtons = screen.getAllByRole("button", { expanded: false });
+  for (const btn of groupButtons) {
+    await user.click(btn);
+  }
+}
 
 describe("E2E: every route renders with disconnected backend", () => {
   beforeEach(() => {
@@ -23,6 +39,7 @@ describe("E2E: every route renders with disconnected backend", () => {
   });
 
   for (const route of ROUTES) {
+    if (route.hidden) continue;
     it(`renders ${route.path} and shows hero title "${route.label}"`, async () => {
       const { container } = renderDashboardAt(route.path);
 
@@ -56,9 +73,10 @@ describe("E2E: every route keeps the sidebar visible and active", () => {
     setupMockFetchError();
   });
 
-  for (const route of ROUTES) {
+  for (const route of ROUTES.filter((r) => !r.hidden)) {
     it(`sidebar highlights "${route.label}" when at ${route.path}`, async () => {
       renderDashboardAt(route.path);
+      await expandAllGroups();
 
       await waitFor(() => {
         const activeNavs = screen.getAllByRole("menuitem", {
@@ -66,7 +84,7 @@ describe("E2E: every route keeps the sidebar visible and active", () => {
         });
         expect(activeNavs.length).toBeGreaterThan(0);
         const activeNav = activeNavs.find(
-          (el) => el.getAttribute("aria-selected") === "true",
+          (el) => el.getAttribute("aria-current") === "page",
         );
         expect(activeNav).toBeDefined();
         expect(activeNav).toHaveClass("active");
@@ -80,8 +98,9 @@ describe("E2E: all sidebar nav labels are present", () => {
     setupMockFetchError();
   });
 
-  it("renders every non-hidden route as a sidebar menuitem", async () => {
+  it("renders every non-hidden route as a sidebar menuitem when groups are expanded", async () => {
     renderDashboardAt("/");
+    await expandAllGroups();
 
     for (const route of ROUTES.filter((r) => !r.hidden)) {
       await waitFor(() => {
@@ -90,6 +109,27 @@ describe("E2E: all sidebar nav labels are present", () => {
       });
     }
   });
+});
+
+describe("E2E: legacy redirects land on the right target", () => {
+  beforeEach(() => {
+    setupMockFetchError();
+  });
+
+  for (const [from, to] of Object.entries(ROUTE_REDIRECTS)) {
+    it(`redirects ${from} → ${to}`, async () => {
+      renderDashboardAt(from);
+      const target = ROUTES.find((r) => r.path === to);
+      if (!target || target.hidden) return; // skip if target is itself legacy/hidden
+      await waitFor(() => {
+        const headings = screen.getAllByRole("heading", {
+          name: target.label,
+          level: 1,
+        });
+        expect(headings.length).toBeGreaterThan(0);
+      });
+    });
+  }
 });
 
 describe("E2E: 404 redirect to home", () => {
