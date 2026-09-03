@@ -10,6 +10,7 @@
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   renderDashboardAt,
   setupMockFetchError,
@@ -37,10 +38,12 @@ describe("E2E: every route is accessible by direct path", () => {
       });
 
       // Expand all sidebar groups so this route's menuitem is rendered
-      // (groups with >5 items are collapsed by default — aria-expanded="false" on the group title means currently collapsed)
+      // (groups with >5 items are collapsed by default — aria-expanded="false" on the group title means currently collapsed).
+      // Use userEvent to ensure React state updates settle between clicks.
+      const user = userEvent.setup();
       const groupButtons = screen.getAllByRole("button", { expanded: false });
       for (const btn of groupButtons) {
-        btn.click();
+        await user.click(btn);
       }
 
       // The corresponding sidebar nav button must be active

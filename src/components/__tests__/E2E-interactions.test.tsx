@@ -102,46 +102,56 @@ describe('E2E: Navigation', () => {
 
   it('navigates between pages via sidebar', async () => {
     setupMockFetchError();
-    const { container } = renderDashboardAt('/');
+    const { user, container } = renderDashboardAt('/');
 
-    // Click on a sidebar item
+    // Verify initial state: Home is the active nav item
     await waitFor(() => {
       const harnessNav = container.querySelector('.nav-item[class*="active"]');
-      // Current active is Home
       expect(harnessNav?.textContent).toContain('首页');
     });
 
-    // Direct navigation via URL is equivalent to clicking a sidebar item
-    // (Harness lives in 治理与合规 group which is collapsed by default; the
-    //  nav-item is reachable only after expanding the group. The end-to-end
-    //  flow is identical whether we click a nav-item or navigate directly.)
-    const { unmount } = renderDashboardAt('/harness');
+    // Expand the 治理与合规 group (where Harness lives, 9 items default-collapsed).
+    // aria-expanded="false" on the group title means the group is currently collapsed.
+    // Use user.click (async) to let React state update between clicks.
+    const collapsedGroups = screen.getAllByRole('button', { expanded: false });
+    for (const btn of collapsedGroups) {
+      await user.click(btn);
+    }
+
+    // Find Harness nav-item in the now-expanded group
+    const harnessNavItem = screen
+      .getAllByText('Harness 合规')
+      .find((el) => el.closest('.nav-item') !== null)!;
+    await user.click(harnessNavItem);
+
     await waitFor(() => {
       expect(
         screen.getAllByRole('heading', { name: 'Harness 合规', level: 1 })[0],
       ).toBeInTheDocument();
     });
-    unmount();
   });
 
   it('shows correct active state in sidebar', async () => {
     setupMockFetchError();
-    // Direct URL navigation is the cleanest way to verify active state — the
-    // alternative (clicking a nav-item) requires expanding 治理与合规 group,
-    // which adds noise to this unit-level test.
-    const { container } = renderDashboardAt('/intent');
+    const { user, container } = renderDashboardAt('/');
 
-    // Verify the hero h1 reflects the current route
+    // Expand the 治理与合规 group (where Intent lives, 9 items default-collapsed).
+    // Use user.click (async) to let React state update between clicks.
+    const collapsedGroups = screen.getAllByRole('button', { expanded: false });
+    for (const btn of collapsedGroups) {
+      await user.click(btn);
+    }
+
+    // Find Intent nav-item in the expanded group
+    const intentNavItem = screen
+      .getAllByText('Intent 编译器')
+      .find((el) => el.closest('.nav-item') !== null)!;
+    await user.click(intentNavItem);
+
     await waitFor(() => {
-      expect(
-        screen.getAllByRole('heading', { name: 'Intent 编译器', level: 1 })[0],
-      ).toBeInTheDocument();
+      const activeNavItem = container.querySelector('.nav-item.active');
+      expect(activeNavItem?.textContent).toContain('Intent 编译器');
     });
-
-    // The exact nav-item for Intent lives in the 治理与合规 group which is
-    // collapsed by default — the underlying router state and hero confirm
-    // navigation, which is what this test is asserting.
-    expect(container.textContent).toContain('Intent 编译器');
   });
 
   it('navigates via breadcrumbs', async () => {

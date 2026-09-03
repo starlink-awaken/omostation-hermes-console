@@ -22,11 +22,14 @@ import { ROUTES, ROUTE_REDIRECTS } from "../../routes";
  * Expand all sidebar groups so every visible route appears as a menuitem.
  * Groups with >5 items are collapsed by default per the Dashboard design.
  * aria-expanded="false" on a group title button means the group is currently collapsed.
+ * Uses userEvent to ensure React state updates settle between clicks (vs. raw
+ * HTMLElement.click() which can leave the test in an intermediate render).
  */
 async function expandAllGroups() {
+  const user = userEvent.setup();
   const groupButtons = screen.getAllByRole("button", { expanded: false });
   for (const btn of groupButtons) {
-    btn.click();
+    await user.click(btn);
   }
 }
 

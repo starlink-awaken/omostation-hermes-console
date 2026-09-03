@@ -12,14 +12,17 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderDashboardAt, setupMockFetchError } from './route-test-helpers';
 import { ROUTES } from '../../routes';
 
 /** Expand all sidebar groups so menuitems render. Groups with >5 items are collapsed by default.
- * aria-expanded="false" on a group title button means the group is currently collapsed. */
+ * aria-expanded="false" on a group title button means the group is currently collapsed.
+ * Uses userEvent so React state updates settle between clicks. */
 async function expandAllGroups() {
+  const user = userEvent.setup();
   const buttons = screen.queryAllByRole('button', { expanded: false });
-  for (const btn of buttons) btn.click();
+  for (const btn of buttons) await user.click(btn);
 }
 
 describe('Dashboard sidebar structure', () => {
